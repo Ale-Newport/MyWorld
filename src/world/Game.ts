@@ -1,0 +1,570 @@
+import * as THREE from 'three'
+import type RAPIER from '@dimforge/rapier3d-compat'
+
+import { Bin } from './core/Disposal'
+import { Events } from './core/Events'
+import { Ticker } from './core/Ticker'
+import { Tweens } from './core/Tween'
+import { Viewport } from './core/Viewport'
+import { Quality, probeDevice, type QualityPreference } from './core/Quality'
+import { Inputs, ACTION_DEFINITIONS } from './input/Inputs'
+import { Nipple } from './input/Nipple'
+import { Physics } from './physics/Physics'
+import { PhysicsVehicle } from './physics/PhysicsVehicle'
+import { Player } from './player/Player'
+import { View } from './view/View'
+import { Renderer } from './render/Renderer'
+import { Materials } from './world/materials'
+import { Terrain } from './world/Terrain'
+import { Lighting } from './world/Lighting'
+import { VisualVehicle } from './world/VisualVehicle'
+import { Respawns } from './systems/Respawns'
+import { Zones } from './systems/Zones'
+import { Achievements } from './systems/Achievements'
+import { Save } from './systems/Save'
+import type { WorldStore } from './state/store'
+
+/* ============================================================
+   THE GAME
+
+   One instance per mount of the /world route. Owns a canvas, a
+   physics world, a render loop and nothing outside itself: no
+   module-level singletons, no globals, no listeners on anything
+   it does not also remove.
+
+   Upstream (`sources/Game/Game.js`) is a classic
+   `Game.getInstance()` singleton, which is right for an app that
+   owns its tab for life. It is wrong here — a visitor can open
+   /world, go back to the portfolio and open it again, and a
+   singleton would either leak the first world or refuse to build
+   the second. Everything is instance-scoped and everything
+   registers with `this.bin`.
+
+   Construction order matters and is not alphabetical. Physics
+   before the vehicle, the vehicle before the player, the view
+   before the renderer, and the world last because it measures the
+   terrain it sits on.
+   ============================================================ */
+
+export interface GameOptions {
+  canvas: HTMLCanvasElement
+  /** The element the viewport measures and pointer events bind to. */
+  host: HTMLElement
+  store: WorldStore
+  /** Honours `prefers-reduced-motion` unless the visitor overrides it. */
+  reducedMotion: boolean
+}
+
+export type GameEvent = 'ready' | 'districtEnter' | 'districtLeave' | 'interact'
+
+export class Game {
+  readonly bin = new Bin()
+  readonly events = new Events<GameEvent>()
+
+  readonly save: Save
+  readonly quality: Quality
+  readonly viewport: Viewport
+  readonly ticker = new Ticker()
+  readonly tweens: Tweens
+  readonly inputs: Inputs
+  readonly achievements: Achievements
+
+  physics!: Physics
+  view!: View
+  renderer!: Renderer
+  materials!: Materials
+  terrain!: Terrain
+  lighting!: Lighting
+  vehicle!: PhysicsVehicle
+  player!: Player
+  visualVehicle!: VisualVehicle
+  respawns!: Respawns
+  zones!: Zones
+  nipple!: Nipple
+
+  readonly store: WorldStore
+  private host: HTMLElement
+  private canvas: HTMLCanvasElement
+  private raf = 0
+  private running = false
+  private destroyed = false
+  private rapier!: typeof RAPIER
+
+  reducedMotion: boolean
+
+  constructor(options: GameOptions) {
+    this.canvas = options.canvas
+    this.host = options.host
+    this.store = options.store
+    this.reducedMotion = options.reducedMotion
+
+    this.save = new Save()
+    this.bin.add(() => this.save.destroy())
+
+    const probe = probeDevice()
+    if (probe.unsupported) {
+      this.store.getState().setFatal(
+        'This browser cannot start WebGL, so the interactive world will not run here. Everything it contains is on the main portfolio.',
+      )
+    }
+
+    const preference: QualityPreference = this.save.data.settings.quality
+    this.quality = new Quality(preference, probe)
+    this.bin.add(() => this.quality.destroy())
+
+    this.viewport = new Viewport(this.host, this.quality.pixelRatio)
+    this.bin.add(() => this.viewport.destroy())
+
+    this.tweens = new Tweens(this.ticker, this.bin)
+
+    this.inputs = new Inputs(this.canvas)
+    this.inputs.setOverrides(this.save.data.settings.bindings)
+    this.inputs.add(ACTION_DEFINITIONS)
+    if (probe.isTouch && probe.isMobile) this.inputs.assumeTouch()
+    this.bin.add(() => this.inputs.destroy())
+
+    this.achievements = new Achievements(this.save)
+    this.bin.add(() => this.achievements.destroy())
+
+    // Reduced motion is a stored override on top of the OS setting.
+    const stored = this.save.data.settings.reducedMotion
+    if (stored !== null) this.reducedMotion = stored
+
+    this.store.getState().setQuality(this.quality.level, preference)
+    this.store.getState().setAudio(this.save.data.settings.muted, this.save.data.settings.volume)
+    this.store.getState().setReducedMotion(this.reducedMotion)
+    this.store.getState().setOnboarding(!this.save.data.settings.onboarded)
+    this.bin.add(() => this.ticker.destroy())
+  }
+
+  /* ========================================================
+     BOOT
+     ======================================================== */
+
+  async init(): Promise<void> {
+    const ui = this.store.getState()
+    if (ui.fatal) return
+
+    /* ---- physics ---------------------------------------- */
+    // Rapier ships as WebAssembly and must be initialised before any
+    // of its constructors exist. Dynamic import keeps its ~2 MB out
+    // of every other route's bundle.
+    const rapier = await import('@dimforge/rapier3d-compat')
+    await rapier.init()
+    if (this.destroyed) return
+    this.rapier = rapier as unknown as typeof RAPIER
+
+    this.physics = new Physics(this.rapier, this.ticker, this.bin)
+    ui.setStep('physics', true)
+
+    /* ---- view + renderer -------------------------------- */
+    this.view = new View(
+      this.ticker,
+      this.viewport,
+      this.inputs,
+      this.physics,
+      this.bin,
+      this.quality.level === 'low',
+    )
+    this.view.reducedMotion = this.reducedMotion
+
+    this.renderer = new Renderer(
+      this.canvas,
+      this.viewport,
+      this.quality,
+      this.ticker,
+      this.view,
+      this.bin,
+    )
+
+    this.materials = new Materials(this.bin)
+
+    /* ---- world ------------------------------------------ */
+    this.lighting = new Lighting(this.renderer, this.view, this.ticker, this.quality, this.bin)
+    this.terrain = new Terrain(this.physics, this.quality, this.materials, this.bin)
+    this.renderer.scene.add(this.terrain.group)
+    ui.setStep('world', true)
+
+    /* ---- vehicle ---------------------------------------- */
+    this.respawns = new Respawns('hub')
+    const spawn = this.respawns.getDefault()
+    // Drop the car onto the actual ground rather than a guessed height.
+    spawn.position.y = this.terrain.colliderHeightAt(spawn.position.x, spawn.position.z) + 3
+
+    this.vehicle = new PhysicsVehicle(
+      this.physics,
+      this.ticker,
+      this.bin,
+      spawn.position,
+      spawn.rotation,
+    )
+
+    this.nipple = new Nipple(this.tweens)
+    this.renderer.scene.add(this.nipple.group)
+    this.bin.add(() => this.nipple.destroy())
+
+    this.player = new Player(
+      this.inputs,
+      this.vehicle,
+      this.view,
+      this.respawns,
+      this.ticker,
+      this.tweens,
+      this.nipple,
+      this.bin,
+    )
+    this.player.hydrate({
+      distanceDriven: this.save.data.progress.distanceDriven,
+      timePlayed: this.save.data.progress.timePlayed,
+    })
+
+    this.visualVehicle = new VisualVehicle(
+      this.vehicle,
+      this.player,
+      this.inputs,
+      this.physics,
+      this.ticker,
+      this.materials,
+      this.bin,
+      this.quality.settings.shadows,
+    )
+    this.visualVehicle.camera = this.view.camera
+    this.renderer.scene.add(this.visualVehicle.group)
+    ui.setStep('vehicle', true)
+
+    /* ---- gameplay systems ------------------------------- */
+    this.zones = new Zones(this.ticker, this.bin)
+
+    this.bindFrameLoopSystems()
+    this.bindUiActions()
+    this.bindAchievementFeed()
+
+    ui.setStep('projects', true)
+    ui.setStep('audio', true)
+    ui.setLoaded(true)
+
+    this.renderer.precompile()
+
+    if (process.env.NODE_ENV === 'development') {
+      // A handle for the browser console during tuning. Never in production.
+      ;(window as unknown as { __world?: Game }).__world = this
+      this.bin.add(() => {
+        delete (window as unknown as { __world?: Game }).__world
+      })
+    }
+
+    this.events.trigger('ready')
+    this.start()
+  }
+
+  /* ========================================================
+     FRAME WIRING
+     ======================================================== */
+
+  private bindFrameLoopSystems(): void {
+    // Order 0 on `frame`: sample devices once per rendered frame,
+    // never per physics substep.
+    const pollInputs = () => {
+      this.inputs.update()
+      this.nipple.update()
+    }
+    this.ticker.events.on('frame', pollInputs, 0)
+
+    // Order 8 on `fixed`: the zone target must be the post-physics
+    // position, or triggers fire a step late.
+    const syncZones = () => this.zones.setTarget(this.player.position)
+    this.ticker.events.on('fixed', syncZones, 7)
+
+    // Touch joystick needs the camera and viewport to unproject.
+    const onPointerAction = (action: { name: string }) => {
+      if (this.inputs.mode !== 'touch') return
+      const orbit = this.inputs.actions.get('orbit')
+      if (!orbit || action.name !== 'orbit') return
+      this.nipple.updateFromPointer(this.inputs.pointer, orbit, this.view.defaultCamera, this.viewport)
+    }
+    this.inputs.events.on('orbit', onPointerAction as never)
+
+    const onModeChange = (mode: string) => {
+      this.store.getState().setInputMode(mode as never)
+    }
+    this.inputs.events.on('modeChange', onModeChange as never)
+
+    // Landing shake, scaled by how hard the impact was.
+    const onLand = (airtime: number, wheels: number) => {
+      if (airtime > 0.35) this.view.kick(Math.min(1, airtime * 0.9))
+      if (wheels >= 2 && airtime > 0.25) this.achievements.set('takeoff', 1)
+    }
+    this.vehicle.events.on('land', onLand as never)
+
+    const onCollision = (force: number) => {
+      if (force > 24) this.view.kick(Math.min(1, force / 140))
+    }
+    this.vehicle.events.on('collision', onCollision as never)
+
+    // Night factor drives headlights and a few secrets.
+    const syncNight = () => {
+      this.visualVehicle.nightFactor = this.lighting.nightFactor
+      if (this.lighting.nightFactor > 0.6 && this.vehicle.speed > 1) {
+        this.achievements.set('nightDrive', 1)
+      }
+    }
+    this.ticker.events.on('tick', syncNight, 10)
+
+    this.bin.add(() => {
+      this.ticker.events.off('frame', pollInputs)
+      this.ticker.events.off('fixed', syncZones)
+      this.ticker.events.off('tick', syncNight)
+      this.inputs.events.off('orbit', onPointerAction as never)
+      this.inputs.events.off('modeChange', onModeChange as never)
+      this.vehicle.events.off('land', onLand as never)
+      this.vehicle.events.off('collision', onCollision as never)
+    })
+  }
+
+  /**
+   * The keys that open and close things. Deliberately separate from
+   * the driving bindings: these actions carry no category, so the
+   * `ui` filter cannot lock the visitor out of the menu that would
+   * let them unlock it.
+   */
+  private bindUiActions(): void {
+    const ui = () => this.store.getState()
+
+    /** Toggles an overlay, or closes whatever is open. */
+    const toggle = (kind: 'map' | 'achievements' | 'pause') => () => {
+      const state = ui()
+      if (state.overlay === kind) state.setOverlay(null)
+      else state.setOverlay(kind)
+    }
+
+    const onMap = (action: { active: boolean }) => { if (action.active) toggle('map')() }
+    const onAchievements = (action: { active: boolean }) => {
+      if (action.active) toggle('achievements')()
+    }
+    const onPause = (action: { active: boolean }) => {
+      if (!action.active) return
+      const state = ui()
+      // Escape always steps *out*: out of a panel, then out of the
+      // menu. It should never be the key that opens a submenu.
+      if (state.overlay && state.overlay !== 'pause') state.setOverlay('pause')
+      else if (state.overlay === 'pause') state.setOverlay(null)
+      else state.setOverlay('pause')
+    }
+    const onMute = (action: { active: boolean }) => {
+      if (!action.active) return
+      const muted = !this.save.data.settings.muted
+      this.save.data.settings.muted = muted
+      this.save.schedule()
+      ui().setAudio(muted, this.save.data.settings.volume)
+    }
+    const onHelp = (action: { active: boolean }) => {
+      if (action.active) toggle('pause')()
+    }
+
+    this.inputs.events.on('map', onMap as never)
+    this.inputs.events.on('achievements', onAchievements as never)
+    this.inputs.events.on('pause', onPause as never)
+    this.inputs.events.on('mute', onMute as never)
+    this.inputs.events.on('help', onHelp as never)
+
+    // Any driving input dismisses the first-run card.
+    const onFirstMove = () => {
+      if (this.store.getState().onboarding) this.markOnboarded()
+    }
+    this.vehicle.events.on('start', onFirstMove as never)
+
+    this.bin.add(() => {
+      this.inputs.events.off('map', onMap as never)
+      this.inputs.events.off('achievements', onAchievements as never)
+      this.inputs.events.off('pause', onPause as never)
+      this.inputs.events.off('mute', onMute as never)
+      this.inputs.events.off('help', onHelp as never)
+      this.vehicle.events.off('start', onFirstMove as never)
+    })
+  }
+
+  private bindAchievementFeed(): void {
+    const ui = this.store.getState()
+
+    const onUnlock = (group: { definition: { label: string; hint: string } }) => {
+      this.store.getState().notify({
+        kind: 'achievement',
+        title: group.definition.label,
+        body: group.definition.hint,
+        duration: 4.5,
+      })
+    }
+    this.achievements.events.on('unlock', onUnlock as never)
+
+    // First movement, boost, distance and time are cheap to watch here
+    // rather than sprinkling calls through the vehicle.
+    const onStart = () => this.achievements.set('firstDrive', 1)
+    this.vehicle.events.on('start', onStart as never)
+
+    const onFlip = (direction: number) => {
+      this.achievements.set(direction > 0 ? 'frontflip' : 'backflip', 1)
+    }
+    this.vehicle.events.on('flip', onFlip as never)
+
+    const onUpsideDown = (ratio: number) => {
+      if (ratio > 0.75) this.achievements.set('upsideDown', 1)
+    }
+    this.vehicle.events.on('upsideDown', onUpsideDown as never)
+
+    const onHonk = () => this.achievements.add('honk')
+    this.player.events.on('honk', onHonk as never)
+
+    const onHydraulics = (count: number, state: string) => {
+      // Only the number-key lowrider bounce counts, not the jump.
+      if (state === 'mid' && count > 0) this.achievements.add('hydraulics')
+    }
+    this.player.events.on('hydraulics', onHydraulics as never)
+
+    const onDistance = (metres: number) => {
+      this.save.data.progress.distanceDriven = metres
+      this.save.schedule()
+      this.achievements.set('distance', Math.floor(metres / 1000))
+    }
+    this.player.events.on('distance', onDistance as never)
+
+    const watchWorldFacts = () => {
+      if (this.player.boosting > 0.5 && this.vehicle.speed > 6) {
+        this.achievements.set('boosted', 1)
+      }
+      const elevation = this.player.position.y - this.terrain.colliderHeightAt(
+        this.player.position.x,
+        this.player.position.z,
+      )
+      this.player.elevation = elevation
+      if (elevation > 3) this.achievements.set('goHigh', Math.floor(elevation))
+      if (Math.hypot(this.player.position.x, this.player.position.z) > 360) {
+        this.achievements.set('sea', 1)
+      }
+    }
+    this.ticker.events.on('tick', watchWorldFacts, 11)
+
+    void ui
+    this.bin.add(() => {
+      this.achievements.events.off('unlock', onUnlock as never)
+      this.vehicle.events.off('start', onStart as never)
+      this.vehicle.events.off('flip', onFlip as never)
+      this.vehicle.events.off('upsideDown', onUpsideDown as never)
+      this.player.events.off('honk', onHonk as never)
+      this.player.events.off('hydraulics', onHydraulics as never)
+      this.player.events.off('distance', onDistance as never)
+      this.ticker.events.off('tick', watchWorldFacts)
+    })
+  }
+
+  /* ========================================================
+     LOOP
+     ======================================================== */
+
+  start(): void {
+    if (this.running || this.destroyed) return
+    this.running = true
+    const loop = (now: number) => {
+      if (!this.running) return
+      this.raf = requestAnimationFrame(loop)
+      this.ticker.update(now)
+      this.quality.governor(now)
+      this.save.data.progress.timePlayed = this.player?.timePlayed.all ?? 0
+    }
+    this.raf = requestAnimationFrame(loop)
+
+    // A hidden tab must not accumulate a physics debt, and must not
+    // leave the throttle held down when the visitor tabs away.
+    const onVisibility = () => {
+      if (document.visibilityState === 'hidden') {
+        this.inputs.releaseAll()
+        this.pause()
+      } else if (this.store.getState().overlay === null) {
+        this.resume()
+      }
+    }
+    document.addEventListener('visibilitychange', onVisibility)
+    this.bin.add(() => document.removeEventListener('visibilitychange', onVisibility))
+
+    const onPageHide = () => this.save.flush()
+    window.addEventListener('pagehide', onPageHide)
+    this.bin.add(() => window.removeEventListener('pagehide', onPageHide))
+  }
+
+  pause(): void {
+    if (!this.running) return
+    this.running = false
+    cancelAnimationFrame(this.raf)
+    this.raf = 0
+    this.inputs.releaseAll()
+    this.save.flush()
+  }
+
+  resume(): void {
+    if (this.running || this.destroyed) return
+    this.running = true
+    // Re-seed the clock so the first frame back is not a giant delta.
+    const loop = (now: number) => {
+      if (!this.running) return
+      this.raf = requestAnimationFrame(loop)
+      this.ticker.update(now)
+      this.quality.governor(now)
+    }
+    this.raf = requestAnimationFrame(loop)
+  }
+
+  /* ========================================================
+     SETTINGS
+     ======================================================== */
+
+  setQualityPreference(preference: QualityPreference): void {
+    this.quality.setPreference(preference)
+    this.save.data.settings.quality = preference
+    this.save.schedule()
+    this.store.getState().setQuality(this.quality.level, preference)
+  }
+
+  setReducedMotion(value: boolean): void {
+    this.reducedMotion = value
+    this.view.reducedMotion = value
+    this.save.data.settings.reducedMotion = value
+    this.save.schedule()
+    this.store.getState().setReducedMotion(value)
+  }
+
+  markOnboarded(): void {
+    if (this.save.data.settings.onboarded) return
+    this.save.data.settings.onboarded = true
+    this.save.schedule()
+    this.store.getState().setOnboarding(false)
+  }
+
+  /** Live values the HUD samples on its own rAF. */
+  readonly telemetry = {
+    speed: 0,
+    position: new THREE.Vector3(),
+    heading: 0,
+    fps: 60,
+  }
+
+  sampleTelemetry(): typeof this.telemetry {
+    this.telemetry.speed = this.vehicle ? this.vehicle.speedKmh : 0
+    if (this.player) this.telemetry.position.copy(this.player.position)
+    this.telemetry.heading = this.player?.rotationY ?? 0
+    this.telemetry.fps = this.ticker.fps
+    return this.telemetry
+  }
+
+  /* ========================================================
+     TEARDOWN
+     ======================================================== */
+
+  destroy(): void {
+    if (this.destroyed) return
+    this.destroyed = true
+    this.running = false
+    if (this.raf) cancelAnimationFrame(this.raf)
+    this.raf = 0
+    this.events.clear()
+    this.bin.dispose()
+  }
+}

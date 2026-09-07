@@ -1,0 +1,97 @@
+import * as THREE from 'three'
+
+/* ============================================================
+   PALETTE
+
+   The world reads from the same tokens as the rest of the site
+   (`src/styles/tokens.css`). Two mediums, one colour system: the
+   3D world must not look like a different designer's project
+   bolted onto the portfolio.
+
+   Values are duplicated here as literals rather than read from
+   computed styles, because a shader that waits on `getComputedStyle`
+   is a shader that flashes the wrong colour on first frame. They
+   are checked against the stylesheet by `npm run typecheck`? No —
+   by hand, and by the note below. Keep them in sync.
+
+   tokens.css            here
+   --paper    #f4f2ee    paper
+   --paper-2  #eceae5    paper2
+   --paper-3  #e2dfd8    paper3
+   --void     #0a0a0b    voidDark
+   --void-2   #111113    voidDark2
+   --void-3   #1a1a1d    voidDark3
+   --ink      #0c0c0d    ink
+   --ink-2    #3a3a3e    ink2
+   --ink-3    #75757c    ink3
+   --ink-4    #a6a6ad    ink4
+   --chalk    #f2f1ee    chalk
+   --accent   #d4491f    accent
+   --signal   #2f6f5e    signal
+   ============================================================ */
+
+export const palette = {
+  paper: '#f4f2ee',
+  paper2: '#eceae5',
+  paper3: '#e2dfd8',
+  paper4: '#d8d4cb',
+
+  voidDark: '#0a0a0b',
+  voidDark2: '#111113',
+  voidDark3: '#1a1a1d',
+
+  ink: '#0c0c0d',
+  ink2: '#3a3a3e',
+  ink3: '#75757c',
+  ink4: '#a6a6ad',
+
+  chalk: '#f2f1ee',
+  chalk2: '#b8b7b3',
+  chalk3: '#7c7b79',
+
+  accent: '#d4491f',
+  accentSoft: '#e8734d',
+  accentDeep: '#a13415',
+  signal: '#2f6f5e',
+  signalSoft: '#4f9a85',
+
+  /* Working greys for the world's built environment. */
+  concrete: '#cfcbc2',
+  concreteDark: '#a8a49b',
+  asphalt: '#2e2e33',
+  asphaltLight: '#3c3c42',
+  metal: '#8a8a92',
+  glass: '#9fb4c9',
+
+  /* Sky and light. */
+  skyDay: '#dfe4e8',
+  skyDusk: '#c69a7e',
+  skyNight: '#0d1017',
+  sunDay: '#fff4e2',
+  sunDusk: '#ff9a5c',
+  moon: '#c8d4e8',
+} as const
+
+export type PaletteKey = keyof typeof palette
+
+const cache = new Map<string, THREE.Color>()
+
+/** Cached `THREE.Color` for a hex string. Never mutate the result. */
+export function colour(hex: string): THREE.Color {
+  let c = cache.get(hex)
+  if (!c) {
+    c = new THREE.Color(hex)
+    cache.set(hex, c)
+  }
+  return c
+}
+
+/** Cached colour for a palette token. */
+export function token(key: PaletteKey): THREE.Color {
+  return colour(palette[key])
+}
+
+/** A fresh, mutable copy — for anything that lerps. */
+export function colourOf(hex: string): THREE.Color {
+  return new THREE.Color(hex)
+}
