@@ -2,9 +2,14 @@
 
 .visual {
   position: absolute;
-  inset: clamp(4rem, 10vh, 7rem) 17% clamp(4rem, 10vh, 6rem) var(--gutter);
+  /* Clear the title column on the left and the layer list on the
+     right — the stack keeps the middle, which is where it belongs. */
+  inset: clamp(4rem, 10vh, 7rem) 17% clamp(4rem, 10vh, 6rem) 22%;
   z-index: -1;
   pointer-events: auto;
+}
+@media (max-width: 1200px) {
+  .visual { inset: clamp(4rem, 10vh, 7rem) 17% clamp(4rem, 10vh, 6rem) var(--gutter); }
 }
 @media (max-width: 1000px) {
   .visual { inset: clamp(9rem, 20vh, 12rem) var(--gutter) clamp(9rem, 22vh, 12rem); }
