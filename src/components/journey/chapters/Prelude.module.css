@@ -1,0 +1,69 @@
+.stage { place-content: center; }
+
+.center {
+  grid-column: 1 / span 12;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: clamp(0.9rem, 2.4vh, 1.9rem);
+  text-align: center;
+  /* Sit the type in the upper field and leave the lower third to
+     the Core, so the object and the name never fight. */
+  margin-bottom: clamp(6rem, 22vh, 13rem);
+}
+
+.name {
+  display: flex;
+  flex-direction: column;
+  font-size: var(--fs-mega);
+  font-weight: 500;
+  letter-spacing: -0.045em;
+  line-height: 0.82;
+  text-transform: uppercase;
+  margin: 0;
+}
+.nameLine { display: block; }
+.nameLine:last-child { margin-left: 0.06em; }
+
+.rolesWrap {
+  position: relative;
+  height: 1.4em;
+  width: 100%;
+  display: grid;
+  place-items: center;
+}
+.role {
+  grid-area: 1 / 1;
+  font-family: var(--font-mono);
+  font-size: var(--fs-tiny);
+  letter-spacing: var(--tracking-wide);
+  text-transform: uppercase;
+  color: var(--text-muted);
+  opacity: 0;
+  transform: translateY(0.4em);
+  filter: blur(3px);
+  transition: opacity 420ms var(--ease-out-expo), transform 520ms var(--ease-out-expo), filter 420ms linear;
+  white-space: nowrap;
+}
+.role[data-on='true'] { opacity: 1; transform: none; filter: none; }
+
+.thesis {
+  font-size: clamp(1.1rem, 0.8rem + 1.6vw, 2.2rem);
+  font-weight: 500;
+  letter-spacing: -0.028em;
+  line-height: 1;
+  text-transform: uppercase;
+  opacity: 0;
+  will-change: transform, opacity;
+}
+
+@media (max-width: 620px) {
+  .center { margin-bottom: clamp(8rem, 30vh, 16rem); gap: 1rem; }
+  .thesis { font-size: clamp(0.95rem, 4.4vw, 1.4rem); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .role { opacity: 1; transform: none; filter: none; position: static; }
+  .rolesWrap { height: auto; display: block; }
+  .thesis { opacity: 1 !important; transform: none !important; }
+}

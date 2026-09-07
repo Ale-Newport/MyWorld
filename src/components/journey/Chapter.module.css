@@ -1,0 +1,15 @@
+.chapter {
+  position: relative;
+  width: 100%;
+}
+
+.stage {
+  position: sticky;
+  top: 0;
+  height: 100svh;
+  width: 100%;
+  overflow: clip;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}

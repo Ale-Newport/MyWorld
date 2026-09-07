@@ -1,0 +1,16 @@
+.canvasHost {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-canvas);
+  pointer-events: none;
+}
+
+.canvasHost[data-interactive='true'] {
+  pointer-events: auto;
+}
+
+.canvasHost canvas {
+  display: block;
+  width: 100% !important;
+  height: 100% !important;
+}

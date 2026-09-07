@@ -1,0 +1,96 @@
+/* ============================================================
+   SHARED CHAPTER LAYOUT
+   Editorial grid: full-bleed stage, content on a 12-column
+   field, generous whitespace, no card design anywhere.
+   ============================================================ */
+
+.stage {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  display: grid;
+  grid-template-columns: repeat(12, 1fr);
+  gap: 0 clamp(0.75rem, 1.6vw, 1.75rem);
+  align-content: center;
+  padding: clamp(4.5rem, 9vh, 7rem) var(--gutter) clamp(4.5rem, 9vh, 6rem);
+  z-index: var(--z-content);
+  pointer-events: none;
+}
+.stage > * { pointer-events: auto; }
+
+/* Column spans */
+.c1_6  { grid-column: 1 / span 6; }
+.c1_5  { grid-column: 1 / span 5; }
+.c1_7  { grid-column: 1 / span 7; }
+.c1_12 { grid-column: 1 / span 12; }
+.c7_6  { grid-column: 7 / span 6; }
+.c8_5  { grid-column: 8 / span 5; }
+.c6_7  { grid-column: 6 / span 7; }
+
+@media (max-width: 900px) {
+  .c1_6, .c1_5, .c1_7, .c7_6, .c8_5, .c6_7 { grid-column: 1 / span 12; }
+  .stage { gap: var(--sp-5) 0; align-content: center; }
+}
+
+.mega {
+  font-size: var(--fs-mega);
+  font-weight: 500;
+  letter-spacing: var(--tracking-mega);
+  line-height: 0.82;
+  text-transform: uppercase;
+}
+
+.big {
+  font-size: var(--fs-h1);
+  font-weight: 500;
+  letter-spacing: var(--tracking-mega);
+  line-height: 0.88;
+}
+
+.lead {
+  font-size: var(--fs-lead);
+  line-height: 1.42;
+  letter-spacing: -0.012em;
+  color: var(--text-secondary);
+  max-width: var(--measure-wide);
+  text-wrap: pretty;
+}
+
+.note {
+  font-size: var(--fs-small);
+  line-height: 1.6;
+  color: var(--text-muted);
+  max-width: var(--measure);
+}
+
+/* A layer that is driven directly by scroll (transform written
+   in a rAF loop, never through React state). */
+.driven { will-change: transform, opacity; }
+
+/* Full-bleed canvas layer inside a chapter stage. */
+.canvasLayer {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+}
+.canvasLayerInteractive { pointer-events: auto; }
+
+.corner {
+  position: absolute;
+  font-family: var(--font-mono);
+  font-size: var(--fs-nano);
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  color: var(--text-faint);
+  line-height: 1.6;
+}
+.cornerTL { top: clamp(4.5rem, 9vh, 6.5rem); left: var(--gutter); }
+.cornerTR { top: clamp(4.5rem, 9vh, 6.5rem); right: var(--gutter); text-align: right; }
+.cornerBL { bottom: clamp(4.5rem, 9vh, 5.5rem); left: var(--gutter); }
+.cornerBR { bottom: clamp(4.5rem, 9vh, 5.5rem); right: var(--gutter); text-align: right; }
+
+@media (max-width: 700px) {
+  .corner { font-size: 9px; }
+  .cornerTR, .cornerBR { max-width: 42vw; }
+}

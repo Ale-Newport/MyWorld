@@ -1,0 +1,90 @@
+.stage { align-content: center; }
+
+.head {
+  grid-column: 1 / span 5;
+  display: flex; flex-direction: column; gap: var(--sp-4);
+  will-change: transform, opacity;
+}
+@media (max-width: 900px) { .head { grid-column: 1 / span 12; } }
+
+.title {
+  font-size: clamp(2rem, 1.1rem + 3.4vw, 4.2rem);
+  font-weight: 500;
+  letter-spacing: -0.038em;
+  line-height: 0.92;
+  white-space: pre-line;
+}
+.degree {
+  font-size: var(--fs-small);
+  color: var(--text-muted);
+  line-height: 1.5;
+  max-width: 30ch;
+  display: flex; flex-direction: column; gap: 0.25rem;
+}
+.degreeDates {
+  font-family: var(--font-mono); font-size: var(--fs-nano);
+  letter-spacing: var(--tracking-label); color: var(--text-faint);
+}
+
+.modules {
+  grid-column: 7 / span 5;
+  max-width: 620px;
+  justify-self: end;
+  width: 100%;
+  display: flex; flex-direction: column;
+  gap: clamp(0.5rem, 1.4vh, 1rem);
+}
+@media (max-width: 900px) { .modules { grid-column: 1 / span 12; margin-top: var(--sp-5); } }
+
+.module {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr);
+  grid-template-rows: auto auto;
+  column-gap: var(--sp-4);
+  align-items: center;
+  padding: clamp(0.4rem, 1vh, 0.75rem) 0;
+  border-bottom: var(--hair) solid var(--border);
+  opacity: 0;
+  will-change: transform, opacity;
+}
+.moduleGlyph {
+  grid-row: 1 / span 2;
+  width: 44px; height: 44px;
+  display: grid; place-items: center;
+  color: var(--text-faint);
+  transition: color var(--dur-mid) var(--ease-out-expo);
+}
+.module[data-on='true'] .moduleGlyph { color: var(--accent); }
+
+.moduleName {
+  font-size: clamp(0.95rem, 0.8rem + 0.5vw, 1.3rem);
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+}
+.moduleBlurb { font-size: var(--fs-tiny); color: var(--text-muted); line-height: 1.4; }
+
+.result {
+  grid-column: 1 / span 12;
+  position: absolute;
+  inset: auto var(--gutter) 12vh var(--gutter);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  opacity: 0;
+  will-change: transform, opacity;
+  pointer-events: none;
+}
+.resultLine {
+  font-size: var(--fs-mega);
+  font-weight: 500;
+  letter-spacing: -0.05em;
+  line-height: 0.8;
+  text-transform: uppercase;
+}
+.resultLine:last-of-type { margin-left: 0.1em; }
+.resultTag {
+  font-family: var(--font-mono); font-size: var(--fs-nano);
+  letter-spacing: var(--tracking-label); color: var(--accent);
+  margin-top: var(--sp-4);
+}

@@ -1,0 +1,183 @@
+@import './tokens.css';
+
+/* ============================================================
+   RESET / BASE
+   ============================================================ */
+*, *::before, *::after { box-sizing: border-box; }
+
+html {
+  -webkit-text-size-adjust: 100%;
+  scroll-behavior: auto;
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  overflow-x: clip;
+}
+
+body {
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  font-family: var(--font-display);
+  font-size: var(--fs-body);
+  line-height: var(--lh-body);
+  font-synthesis-weight: none;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  transition: background-color 700ms var(--ease-in-out), color 700ms var(--ease-in-out);
+}
+
+h1, h2, h3, h4, h5, h6, p, figure, blockquote, dl, dd { margin: 0; }
+ul, ol { margin: 0; padding: 0; list-style: none; }
+img, svg, video, canvas { display: block; max-width: 100%; }
+button { font: inherit; color: inherit; background: none; border: none; padding: 0; cursor: pointer; }
+a { color: inherit; text-decoration: none; }
+
+::selection { background: var(--accent); color: var(--paper); }
+
+/* ============================================================
+   SCROLLBAR — thin, editorial
+   ============================================================ */
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+  background: var(--border-strong);
+  border-radius: var(--radius-pill);
+}
+::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
+
+/* ============================================================
+   FOCUS
+   ============================================================ */
+:focus { outline: none; }
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+  border-radius: var(--radius);
+}
+
+/* ============================================================
+   TYPE PRIMITIVES
+   ============================================================ */
+.label {
+  font-family: var(--font-mono);
+  font-size: var(--fs-nano);
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  color: var(--text-muted);
+  font-weight: 500;
+  line-height: 1;
+}
+
+.label-strong { color: var(--text-secondary); }
+
+.mono {
+  font-family: var(--font-mono);
+  font-size: var(--fs-tiny);
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+}
+
+.display {
+  font-weight: 500;
+  letter-spacing: var(--tracking-tight);
+  line-height: var(--lh-tight);
+  text-wrap: balance;
+}
+
+.mega {
+  font-size: var(--fs-mega);
+  font-weight: 500;
+  letter-spacing: var(--tracking-mega);
+  line-height: 0.82;
+  text-transform: uppercase;
+}
+
+.lead {
+  font-size: var(--fs-lead);
+  line-height: 1.42;
+  letter-spacing: -0.012em;
+  color: var(--text-secondary);
+  max-width: var(--measure-wide);
+  text-wrap: pretty;
+}
+
+/* ============================================================
+   LAYOUT PRIMITIVES
+   ============================================================ */
+.shell {
+  width: 100%;
+  padding-inline: var(--gutter);
+  margin-inline: auto;
+  max-width: 1680px;
+}
+
+.rule {
+  height: var(--hair);
+  width: 100%;
+  background: var(--border);
+  border: 0;
+}
+
+/* Screen-reader only, but focusable */
+.sr-only {
+  position: absolute;
+  width: 1px; height: 1px;
+  padding: 0; margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+.skip-link {
+  position: fixed;
+  top: var(--sp-4);
+  left: var(--sp-4);
+  z-index: 200;
+  transform: translateY(-200%);
+  background: var(--ink);
+  color: var(--paper);
+  padding: var(--sp-3) var(--sp-5);
+  font-family: var(--font-mono);
+  font-size: var(--fs-tiny);
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  transition: transform var(--dur-fast) var(--ease-out-expo);
+}
+.skip-link:focus-visible { transform: translateY(0); }
+
+/* ============================================================
+   ACCESSIBLE MOTION
+   ============================================================ */
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+  body { transition: none; }
+}
+
+/* Hide the real cursor only when the custom one is live */
+html[data-cursor='custom'],
+html[data-cursor='custom'] * { cursor: none !important; }
+html[data-cursor='custom'] input,
+html[data-cursor='custom'] textarea { cursor: text !important; }
+
+/* ============================================================
+   JOURNEY SHELL
+   ============================================================ */
+.journey {
+  position: relative;
+  z-index: var(--z-content);
+  width: 100%;
+}
+
+/* Konami: the world inverts for a few seconds. */
+html[data-konami='true'] body { filter: invert(1) hue-rotate(180deg); }
+html[data-konami='true'] canvas { filter: invert(1) hue-rotate(180deg); }

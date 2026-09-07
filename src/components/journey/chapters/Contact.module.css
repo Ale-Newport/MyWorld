@@ -1,0 +1,78 @@
+.stage { align-content: center; }
+
+.center {
+  grid-column: 1 / span 12;
+  display: grid;
+  place-items: center;
+  min-height: 40vh;
+}
+
+.question, .answer {
+  grid-area: 1 / 1;
+  font-size: clamp(2.6rem, 0.5rem + 9.4vw, 10rem);
+  font-weight: 500;
+  letter-spacing: -0.052em;
+  line-height: 0.82;
+  text-transform: uppercase;
+  text-align: center;
+  opacity: 0;
+  will-change: transform, opacity;
+}
+.answer { color: var(--accent); }
+.answerText { display: block; }
+
+.links {
+  position: absolute;
+  left: var(--gutter); right: var(--gutter);
+  bottom: clamp(6rem, 15vh, 9rem);
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 0;
+  border-top: var(--hair) solid var(--border);
+}
+.links > li { opacity: 0; will-change: transform, opacity; border-bottom: var(--hair) solid var(--border); }
+
+.link {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  grid-template-rows: auto auto;
+  align-items: baseline;
+  gap: 0.2rem var(--sp-3);
+  padding: var(--sp-4) var(--sp-4) var(--sp-4) 0;
+  transition: padding-left var(--dur-mid) var(--ease-out-expo), color var(--dur-fast);
+  color: var(--text-muted);
+}
+.link:hover { padding-left: var(--sp-4); color: var(--text-primary); }
+
+.linkLabel {
+  font-family: var(--font-mono); font-size: var(--fs-nano);
+  letter-spacing: var(--tracking-label); text-transform: uppercase;
+  color: var(--accent);
+}
+.linkValue {
+  grid-column: 1; grid-row: 2;
+  font-size: var(--fs-small); letter-spacing: -0.01em;
+  color: var(--text-primary);
+  overflow: hidden; text-overflow: ellipsis;
+}
+.linkArrow { grid-column: 2; grid-row: 1 / span 2; align-self: center; font-size: var(--fs-tiny); }
+
+.colophon {
+  position: absolute;
+  left: var(--gutter); right: var(--gutter);
+  bottom: clamp(4rem, 10vh, 5.5rem);
+  display: flex; justify-content: space-between; gap: var(--sp-4); flex-wrap: wrap;
+  font-family: var(--font-mono); font-size: var(--fs-nano);
+  letter-spacing: var(--tracking-label); text-transform: uppercase;
+  color: var(--text-faint);
+}
+
+@media (max-width: 700px) {
+  .colophon span:last-child { display: none; }
+  .links { grid-template-columns: 1fr; bottom: 8rem; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .question, .answer, .links > li { opacity: 1 !important; transform: none !important; }
+  .question { display: none; }
+}
