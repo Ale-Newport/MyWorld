@@ -22,6 +22,9 @@ import { Respawns } from './systems/Respawns'
 import { Zones } from './systems/Zones'
 import { Achievements } from './systems/Achievements'
 import { InteractivePoints } from './systems/InteractivePoints'
+import { Audio } from './systems/Audio'
+import { Minigames } from './minigames/Minigame'
+import { CircuitRace } from './minigames/CircuitRace'
 import { Save } from './systems/Save'
 import type { Terrain } from './world/Terrain'
 import type { WorldStore } from './state/store'
@@ -84,6 +87,8 @@ export class Game {
   respawns!: Respawns
   zones!: Zones
   interactions!: InteractivePoints
+  audio!: Audio
+  minigames!: Minigames
   nipple!: Nipple
 
   readonly store: WorldStore
@@ -242,6 +247,12 @@ export class Game {
     this.interactions = new InteractivePoints(
       this.ticker, this.inputs, this.view, this.store, this.bin,
     )
+
+    this.audio = new Audio(this.ticker, this.player, this.vehicle, this.save, this.bin)
+
+    this.minigames = new Minigames(this, this.bin)
+    this.minigames.register(new CircuitRace(this, this.bin))
+    this.startMinigame = (id) => this.minigames.start(id)
 
     this.bindLandmarks()
     this.bindDistricts()
@@ -551,10 +562,8 @@ export class Game {
     }
     const onMute = (action: { active: boolean }) => {
       if (!action.active) return
-      const muted = !this.save.data.settings.muted
-      this.save.data.settings.muted = muted
-      this.save.schedule()
-      ui().setAudio(muted, this.save.data.settings.volume)
+      this.audio.setMuted(!this.audio.muted)
+      ui().setAudio(this.audio.muted, this.audio.volume)
     }
     const onHelp = (action: { active: boolean }) => {
       if (action.active) toggle('pause')()
@@ -565,6 +574,10 @@ export class Game {
     this.inputs.events.on('pause', onPause as never)
     this.inputs.events.on('mute', onMute as never)
     this.inputs.events.on('help', onHelp as never)
+
+    const onInteractSound = () => this.audio?.play('interact')
+    this.interactions.events.on('interact', onInteractSound as never)
+    this.bin.add(() => this.interactions.events.off('interact', onInteractSound as never))
 
     // Any driving input dismisses the first-run card.
     const onFirstMove = () => {
@@ -586,6 +599,7 @@ export class Game {
     const ui = this.store.getState()
 
     const onUnlock = (group: { definition: { label: string; hint: string } }) => {
+      this.audio?.play('achievement')
       this.store.getState().notify({
         kind: 'achievement',
         title: group.definition.label,
@@ -728,6 +742,26 @@ export class Game {
     this.save.data.settings.reducedMotion = value
     this.save.schedule()
     this.store.getState().setReducedMotion(value)
+  }
+
+  /** Called from the loader's ENTER, which is the required gesture. */
+  enableAudio(): void {
+    this.audio?.resume()
+  }
+
+  setMuted(muted: boolean): void {
+    this.audio?.setMuted(muted)
+    this.store.getState().setAudio(muted, this.audio?.volume ?? 0.7)
+  }
+
+  setVolume(volume: number): void {
+    this.audio?.setVolume(volume)
+    this.store.getState().setAudio(this.audio?.muted ?? false, volume)
+  }
+
+  /** Puts every prop back where it started. */
+  resetObjects(): void {
+    this.world?.resetObjects()
   }
 
   markOnboarded(): void {

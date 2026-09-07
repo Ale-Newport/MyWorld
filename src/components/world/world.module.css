@@ -781,6 +781,27 @@
   border-color: var(--ink);
 }
 
+.optionSlider {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  margin-bottom: var(--sp-3);
+}
+
+.optionSlider input {
+  flex: 1;
+  max-width: 220px;
+  accent-color: var(--accent);
+}
+
+.optionValue {
+  font-family: var(--font-mono);
+  font-size: var(--fs-nano);
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+  min-width: 3.5ch;
+}
+
 .optionNote {
   font-size: var(--fs-tiny);
   color: var(--ink-3);

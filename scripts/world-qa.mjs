@@ -360,6 +360,63 @@ if (should('ui')) {
   check('closing the menu restores driving', resumed === 0)
 }
 
+/* ---- race circuit ---------------------------------------- */
+
+if (should('circuit')) {
+  console.log('\nCIRCUIT')
+  const built = await page.evaluate(() => {
+    const g = window.__world
+    const race = g.minigames.get('circuit')
+    return race ? { gates: race.gates?.length ?? null, best: race.bestTime } : null
+  })
+  check('circuit is registered', Boolean(built))
+
+  const started = await page.evaluate(() => window.__world.minigames.start('circuit'))
+  check('circuit starts', started === true)
+  await settle(600)
+
+  const counting = await page.evaluate(() => {
+    const g = window.__world
+    return { state: g.minigames.current?.state, hud: g.store.getState().minigame?.lines?.[0] }
+  })
+  check('countdown runs before the clock', counting.state === 'countdown', `state ${counting.state}`)
+
+  await settle(3200)
+  const racing = await page.evaluate(() => ({
+    state: window.__world.minigames.current?.state,
+    terrain: window.__world.physics.physicals.find((p) => p.type === 'fixed')?.body.isEnabled(),
+  }))
+  check('race begins after the countdown', racing.state === 'running', `state ${racing.state}`)
+  check('the road collider replaces the terrain', racing.terrain === false)
+
+  // Drive one gate.
+  await hold('KeyW', 2600)
+  const progressed = await page.evaluate(() => {
+    const g = window.__world
+    return { reached: g.minigames.current?.reached ?? 0, y: g.player.position.y }
+  })
+  check('gates register while driving', progressed.reached > 0, `${progressed.reached} gates`)
+  await shot('11-circuit')
+
+  // Escape must always get out.
+  await page.keyboard.press('Escape')
+  await settle(500)
+  const cancelled = await page.evaluate(() => {
+    const g = window.__world
+    return {
+      running: g.minigames.current?.running ?? false,
+      terrain: g.physics.physicals.find((p) => p.type === 'fixed')?.body.isEnabled(),
+      minigameHud: g.store.getState().minigame,
+    }
+  })
+  check('escape cancels the race', !cancelled.running)
+  check('cancelling restores the terrain collider', cancelled.terrain === true)
+  check('cancelling clears the race HUD', cancelled.minigameHud === null)
+
+  await page.keyboard.press('Escape')
+  await settle(400)
+}
+
 /* ---- teardown -------------------------------------------- */
 
 if (should('teardown')) {

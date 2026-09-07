@@ -213,6 +213,8 @@ function Options({ store, getGame }: Props) {
   const quality = useStore(store, (s) => s.qualityPreference)
   const reducedMotion = useStore(store, (s) => s.reducedMotion)
   const resolved = useStore(store, (s) => s.quality)
+  const muted = useStore(store, (s) => s.muted)
+  const volume = useStore(store, (s) => s.volume)
 
   return (
     <div className={styles.options}>
@@ -236,6 +238,63 @@ function Options({ store, getGame }: Props) {
         <p className={styles.optionNote}>
           Currently running at {resolved.toUpperCase()}. Collisions and the world layout are
           identical at every setting — only the visuals change.
+        </p>
+      </fieldset>
+
+      <fieldset className={styles.optionRow}>
+        <legend className="label">Audio</legend>
+        <div className={styles.optionButtons}>
+          <button type="button" data-on={!muted} onClick={() => getGame()?.setMuted(false)}>
+            ON
+          </button>
+          <button type="button" data-on={muted} onClick={() => getGame()?.setMuted(true)}>
+            MUTED
+          </button>
+        </div>
+        <label className={styles.optionSlider}>
+          <span className="label">Volume</span>
+          <input
+            type="range"
+            min={0}
+            max={1}
+            step={0.05}
+            value={volume}
+            onChange={(event) => getGame()?.setVolume(Number(event.target.value))}
+            aria-label="Volume"
+          />
+          <span className={styles.optionValue}>{Math.round(volume * 100)}%</span>
+        </label>
+        <p className={styles.optionNote}>
+          Every sound in the world is synthesised in the browser — there are no audio files.
+          L mutes without opening this menu.
+        </p>
+      </fieldset>
+
+      <fieldset className={styles.optionRow}>
+        <legend className="label">World</legend>
+        <div className={styles.optionButtons}>
+          <button
+            type="button"
+            onClick={() => {
+              getGame()?.resetObjects()
+              store.getState().setOverlay(null)
+            }}
+          >
+            RESET OBJECTS
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              getGame()?.player.respawn()
+              store.getState().setOverlay(null)
+            }}
+          >
+            RESPAWN
+          </button>
+        </div>
+        <p className={styles.optionNote}>
+          Puts every cone, crate and barrier back where it started. Progress and achievements are
+          untouched.
         </p>
       </fieldset>
 
