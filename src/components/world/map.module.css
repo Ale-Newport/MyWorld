@@ -1,0 +1,69 @@
+.map {
+  display: grid;
+  gap: var(--sp-4);
+}
+
+.title {
+  font-size: var(--fs-h3);
+  font-weight: 500;
+  letter-spacing: var(--tracking-tight);
+  line-height: var(--lh-snug);
+  text-transform: uppercase;
+  margin-top: var(--sp-2);
+}
+
+.canvasWrap {
+  display: grid;
+  place-items: center;
+  aspect-ratio: 1;
+  max-height: 46vh;
+  border: 1px solid var(--border);
+  background: var(--paper-2);
+}
+
+.canvasWrap canvas {
+  display: block;
+}
+
+.hint {
+  font-size: var(--fs-tiny);
+  color: var(--text-muted);
+}
+
+.legend {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 1px;
+  border-top: 1px solid var(--border);
+}
+
+.legend li button {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  width: 100%;
+  padding: var(--sp-3) 0;
+  border-bottom: 1px solid var(--border);
+  font-family: var(--font-mono);
+  font-size: var(--fs-nano);
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  color: var(--text-secondary);
+  text-align: left;
+  transition: color 180ms var(--ease-out-expo), padding-left 180ms var(--ease-out-expo);
+}
+
+.legend li[data-seen='false'] button {
+  color: var(--text-faint);
+  cursor: not-allowed;
+}
+
+.legend li[data-seen='true'] button:hover {
+  color: var(--accent);
+  padding-left: var(--sp-2);
+}
+
+.legendShort {
+  color: var(--text-faint);
+}
