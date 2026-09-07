@@ -122,8 +122,19 @@ Each scene is a separate lazy chunk.
 | Sound | Web Audio, synthesised | Zero audio bytes shipped |
 | Capture | Playwright + sharp | Client screenshots → AVIF/WebP |
 
-GSAP is **not** used: ScrollTrigger's job here is done by ~40 lines of progress mapping,
-and dropping it saved a dependency that would have earned nothing.
+**Two deliberate omissions from the brief's suggested stack.**
+
+GSAP/ScrollTrigger is not here. Its job on this site — mapping scroll position to a
+normalised progress value per section — is about forty lines in
+`useLenisScroll` + `useChapterProgress`, and doing it directly is what makes the
+zero-React-render-per-frame architecture possible. A dependency that only wraps
+those forty lines would have earned nothing.
+
+Rapier is not here either. The one chapter with physics is the playground, and it
+needs a car model: acceleration, drag, and steering authority that scales with
+speed. That is about twenty lines in `PlaygroundScene`. A WASM physics engine for
+one drivable object would have added a few hundred kilobytes to a chapter Quick
+View skips entirely.
 
 ---
 

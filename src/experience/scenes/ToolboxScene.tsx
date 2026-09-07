@@ -131,9 +131,11 @@ export function ToolboxScene() {
     ;(techMesh.current.material as THREE.MeshBasicMaterial).opacity = opacity.current
     ;(projMesh.current.material as THREE.MeshBasicMaterial).opacity = opacity.current
 
-    // Behind the chip grid, not through it: the interactive layer is
-    // the DOM, the lattice is the evidence made visible around it.
-    group.current.position.set(0, -1.4, -9)
+    // Above the chip grid, not through it. The chapter reads as two
+    // stacked halves: the evidence graph, then the taxonomy that
+    // indexes it. Overlapping them made both unreadable.
+    group.current.position.set(0, 5.2, -6)
+    group.current.scale.setScalar(0.48)
     group.current.rotation.y = frame.time * 0.045 + frame.pointerX * 0.42
     group.current.rotation.x = damp(group.current.rotation.x, -frame.pointerY * 0.18, 2.4, d)
   })
