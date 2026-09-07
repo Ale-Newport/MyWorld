@@ -1,0 +1,53 @@
+.host {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-cursor);
+  pointer-events: none;
+  display: none;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .host { display: block; }
+}
+
+.dot, .ring {
+  position: fixed;
+  top: 0; left: 0;
+  will-change: transform;
+  transition: opacity 200ms linear;
+}
+
+.dot {
+  width: 5px; height: 5px;
+  margin: -2.5px 0 0 -2.5px;
+  border-radius: 50%;
+  background: var(--text-primary);
+}
+
+.ring {
+  width: 26px; height: 26px;
+  margin: -13px 0 0 -13px;
+  border-radius: 50%;
+  border: var(--hair) solid var(--border-strong);
+  display: grid;
+  place-items: center;
+  transition: border-color var(--dur-fast), background var(--dur-fast), opacity 200ms linear;
+}
+
+.ring[data-kind='link']    { border-color: var(--text-primary); }
+.ring[data-kind='explore'] { border-color: var(--accent); background: color-mix(in oklab, var(--accent) 12%, transparent); }
+.ring[data-kind='view']    { border-color: var(--accent); }
+.ring[data-kind='drag']    { border-style: dashed; border-color: var(--text-secondary); }
+.ring[data-down='true']    { background: color-mix(in oklab, var(--text-primary) 14%, transparent); }
+
+.label {
+  font-family: var(--font-mono);
+  font-size: 3.4px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-primary);
+  white-space: nowrap;
+  opacity: 0;
+  transition: opacity 160ms linear;
+}
+.ring[data-has-text='true'] .label { opacity: 1; }

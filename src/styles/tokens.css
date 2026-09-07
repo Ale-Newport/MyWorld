@@ -1,0 +1,116 @@
+/* ============================================================
+   DESIGN TOKENS — Alejandro Newport
+   Editorial · Minimal · Cinematic · Spatial · Precise
+   ============================================================ */
+
+:root {
+  /* ---- Surfaces: light chapters -------------------------- */
+  --paper:            #f4f2ee;   /* warm off-white  */
+  --paper-2:          #eceae5;   /* recessed        */
+  --paper-3:          #e2dfd8;   /* deeper recess   */
+
+  /* ---- Surfaces: dark chapters --------------------------- */
+  --void:             #0a0a0b;
+  --void-2:           #111113;
+  --void-3:           #1a1a1d;
+
+  /* ---- Ink ------------------------------------------------ */
+  --ink:              #0c0c0d;
+  --ink-2:            #3a3a3e;
+  --ink-3:            #75757c;
+  --ink-4:            #a6a6ad;
+
+  /* ---- Inverse ink (on dark) ----------------------------- */
+  --chalk:            #f2f1ee;
+  --chalk-2:          #b8b7b3;
+  --chalk-3:          #7c7b79;
+  --chalk-4:          #4a4a4c;
+
+  /* ---- Accent: a single restrained signal colour ---------- */
+  --accent:           #d4491f;   /* burnt vermilion  */
+  --accent-soft:      #e8734d;
+  --accent-deep:      #a13415;
+  --signal:           #2f6f5e;   /* muted teal, secondary */
+
+  /* ---- Live theme variables (driven by chapter) ---------- */
+  --bg-primary:       var(--paper);
+  --bg-secondary:     var(--paper-2);
+  --bg-tertiary:      var(--paper-3);
+  --text-primary:     var(--ink);
+  --text-secondary:   var(--ink-2);
+  --text-muted:       var(--ink-3);
+  --text-faint:       var(--ink-4);
+  --border:           color-mix(in oklab, var(--ink) 14%, transparent);
+  --border-strong:    color-mix(in oklab, var(--ink) 30%, transparent);
+  --overlay:          color-mix(in oklab, var(--paper) 82%, transparent);
+
+  /* ---- Type ---------------------------------------------- */
+  --font-display: var(--font-geist-sans), 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  --font-mono:    var(--font-geist-mono), ui-monospace, 'SF Mono', Menlo, monospace;
+
+  --fs-nano:   0.625rem;  /* 10px  technical labels */
+  --fs-micro:  0.6875rem; /* 11px  */
+  --fs-tiny:   0.75rem;   /* 12px  */
+  --fs-small:  0.875rem;  /* 14px  */
+  --fs-body:   1rem;
+  --fs-lead:   clamp(1.05rem, 0.95rem + 0.5vw, 1.375rem);
+  --fs-h3:     clamp(1.5rem, 1.1rem + 1.6vw, 2.25rem);
+  --fs-h2:     clamp(2.25rem, 1.4rem + 3.6vw, 4.5rem);
+  --fs-h1:     clamp(3rem, 1.2rem + 8vw, 9rem);
+  --fs-mega:   clamp(3.4rem, 0.5rem + 13.2vw, 14rem);
+
+  --lh-tight:  0.86;
+  --lh-snug:   1.06;
+  --lh-body:   1.55;
+
+  --tracking-mega:  -0.045em;
+  --tracking-tight: -0.03em;
+  --tracking-label:  0.18em;
+  --tracking-wide:   0.32em;
+
+  /* ---- Space --------------------------------------------- */
+  --sp-1: 0.25rem;  --sp-2: 0.5rem;   --sp-3: 0.75rem;  --sp-4: 1rem;
+  --sp-5: 1.5rem;   --sp-6: 2rem;     --sp-7: 3rem;     --sp-8: 4rem;
+  --sp-9: 6rem;     --sp-10: 8rem;    --sp-11: 12rem;   --sp-12: 16rem;
+
+  --gutter: clamp(1.25rem, 4vw, 4.5rem);
+  --measure: 34ch;
+  --measure-wide: 52ch;
+
+  /* ---- Form ---------------------------------------------- */
+  --radius:      2px;
+  --radius-pill: 999px;
+  --hair:        1px;
+
+  /* ---- Motion -------------------------------------------- */
+  --ease-out-expo:  cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in-out:    cubic-bezier(0.65, 0, 0.35, 1);
+  --ease-swift:     cubic-bezier(0.22, 1, 0.36, 1);
+  --dur-fast:   180ms;
+  --dur-mid:    420ms;
+  --dur-slow:   900ms;
+
+  /* ---- Layering ------------------------------------------ */
+  --z-canvas:   1;
+  --z-content:  10;
+  --z-hud:      60;
+  --z-overlay:  80;
+  --z-cursor:   100;
+
+  color-scheme: light;
+}
+
+/* ============ Dark chapter theme =========================== */
+[data-theme='dark'] {
+  --bg-primary:     var(--void);
+  --bg-secondary:   var(--void-2);
+  --bg-tertiary:    var(--void-3);
+  --text-primary:   var(--chalk);
+  --text-secondary: var(--chalk-2);
+  --text-muted:     var(--chalk-3);
+  --text-faint:     var(--chalk-4);
+  --border:         color-mix(in oklab, var(--chalk) 15%, transparent);
+  --border-strong:  color-mix(in oklab, var(--chalk) 32%, transparent);
+  --overlay:        color-mix(in oklab, var(--void) 84%, transparent);
+  color-scheme: dark;
+}

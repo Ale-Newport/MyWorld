@@ -1,0 +1,61 @@
+/* ============================================================
+   TEXT REVEAL MODES
+   Six behaviours so no two headings animate identically.
+   ============================================================ */
+
+.reveal { display: block; }
+.reveal .unitWrap { display: inline-block; overflow: hidden; vertical-align: top; }
+.reveal .unit { display: inline-block; will-change: transform, opacity, filter; }
+
+/* Screen readers get the clean string; the animated units are decorative. */
+.reveal > .unitWrap { }
+
+/* ---- mask: lines rise out of a clipped box ---------------- */
+.reveal[data-mode='mask'] .unitWrap { display: block; }
+.reveal[data-mode='mask'][data-state='hidden'] .unit { transform: translateY(105%); }
+.reveal[data-mode='mask'][data-state='shown'] .unit {
+  transform: translateY(0);
+  transition: transform 1.05s var(--ease-out-expo);
+}
+
+/* ---- chars: characters lift and fade in ------------------- */
+.reveal[data-mode='chars'][data-state='hidden'] .unit { transform: translateY(0.5em); opacity: 0; }
+.reveal[data-mode='chars'][data-state='shown'] .unit {
+  transform: translateY(0); opacity: 1;
+  transition: transform 700ms var(--ease-out-expo), opacity 500ms linear;
+}
+
+/* ---- words: horizontal slide with a blur settle ----------- */
+.reveal[data-mode='words'][data-state='hidden'] .unit { transform: translateX(-0.3em); opacity: 0; filter: blur(6px); }
+.reveal[data-mode='words'][data-state='shown'] .unit {
+  transform: none; opacity: 1; filter: blur(0);
+  transition: transform 800ms var(--ease-swift), opacity 600ms linear, filter 700ms var(--ease-out-expo);
+}
+
+/* ---- perspective: words rotate up out of the page --------- */
+.reveal[data-mode='perspective'] { perspective: 700px; }
+.reveal[data-mode='perspective'] .unitWrap { overflow: visible; }
+.reveal[data-mode='perspective'][data-state='hidden'] .unit {
+  transform: rotateX(-72deg) translateY(0.35em); opacity: 0; transform-origin: 50% 100%;
+}
+.reveal[data-mode='perspective'][data-state='shown'] .unit {
+  transform: none; opacity: 1; transform-origin: 50% 100%;
+  transition: transform 900ms var(--ease-out-expo), opacity 500ms linear;
+}
+
+/* ---- clip: a wipe across the line ------------------------- */
+.reveal[data-mode='clip'] .unitWrap { display: block; overflow: visible; }
+.reveal[data-mode='clip'][data-state='hidden'] .unit { clip-path: inset(0 100% 0 0); }
+.reveal[data-mode='clip'][data-state='shown'] .unit {
+  clip-path: inset(0 0 0 0);
+  transition: clip-path 1s var(--ease-in-out);
+}
+
+/* ---- scramble: JS-driven; only fades opacity here --------- */
+.reveal[data-mode='scramble'] .unit { font-variant-numeric: tabular-nums; }
+.reveal[data-mode='scramble'][data-state='hidden'] .unit { opacity: 0; }
+.reveal[data-mode='scramble'][data-state='shown'] .unit { opacity: 1; transition: opacity 240ms linear; }
+
+@media (prefers-reduced-motion: reduce) {
+  .reveal .unit { transform: none !important; opacity: 1 !important; filter: none !important; clip-path: none !important; }
+}

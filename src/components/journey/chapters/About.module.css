@@ -1,0 +1,51 @@
+.stage { align-content: center; }
+
+.intro { grid-column: 2 / span 7; will-change: transform, opacity; }
+@media (max-width: 900px) { .intro { grid-column: 1 / span 12; } }
+
+.summary {
+  font-size: clamp(1.4rem, 0.9rem + 2.4vw, 3.1rem);
+  font-weight: 500;
+  letter-spacing: -0.032em;
+  line-height: 1.06;
+  text-wrap: balance;
+  max-width: 22ch;
+}
+
+.markers {
+  grid-column: 2 / span 4;
+  max-width: 400px;
+  margin-top: clamp(2rem, 6vh, 4.5rem);
+  display: flex;
+  flex-direction: column;
+  gap: clamp(0.5rem, 1.4vh, 0.9rem);
+}
+@media (max-width: 900px) { .markers { grid-column: 1 / span 12; } }
+
+.marker {
+  display: grid;
+  grid-template-columns: minmax(64px, auto) minmax(30px, 1fr) minmax(64px, auto);
+  align-items: center;
+  gap: var(--sp-4);
+  opacity: 0;
+  will-change: transform, opacity;
+}
+
+.markerFrom, .markerTo {
+  font-family: var(--font-mono);
+  font-size: var(--fs-nano);
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.markerFrom { color: var(--text-faint); }
+.markerTo { color: var(--text-primary); }
+
+.markerBarWrap { position: relative; height: 1px; background: var(--border); overflow: hidden; }
+.markerBar {
+  position: absolute; inset: 0;
+  background: var(--accent);
+  transform-origin: 0 50%;
+  transform: scaleX(0);
+  will-change: transform;
+}

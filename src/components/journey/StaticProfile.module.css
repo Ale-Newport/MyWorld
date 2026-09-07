@@ -1,0 +1,30 @@
+/* Present in the DOM and reachable by keyboard and screen
+   readers, but visually out of the way of the experience.
+   Not `display:none` — that would hide it from assistive tech
+   and from some crawlers. */
+.host {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  top: 0;
+  left: 0;
+}
+
+/* When any element inside receives focus, reveal the whole
+   summary as a readable document. */
+.host:focus-within {
+  position: static;
+  width: auto;
+  height: auto;
+  clip-path: none;
+  white-space: normal;
+  overflow: visible;
+  padding: var(--sp-8) var(--gutter);
+  background: var(--bg-primary);
+  z-index: 300;
+  max-width: 68ch;
+  margin-inline: auto;
+}

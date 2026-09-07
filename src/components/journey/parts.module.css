@@ -1,0 +1,82 @@
+.tag {
+  font-family: var(--font-mono);
+  font-size: var(--fs-nano);
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  color: var(--text-muted);
+  line-height: 1;
+  white-space: nowrap;
+}
+.tag[data-accent='true'] { color: var(--accent); }
+
+.tagRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: clamp(0.7rem, 2vw, 1.6rem);
+  font-family: var(--font-mono);
+  font-size: var(--fs-nano);
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  color: var(--text-muted);
+  line-height: 1;
+}
+.tagRowItem { position: relative; }
+.tagRowItem:first-child { color: var(--accent); }
+
+.head { display: flex; flex-direction: column; gap: clamp(0.9rem, 2vw, 1.6rem); }
+.headTitle {
+  font-size: var(--fs-h2);
+  font-weight: 500;
+  letter-spacing: var(--tracking-tight);
+  line-height: 0.94;
+  text-wrap: balance;
+}
+.headSub {
+  font-size: var(--fs-small);
+  color: var(--text-muted);
+  max-width: var(--measure);
+  line-height: 1.5;
+}
+
+.metric { display: flex; flex-direction: column; gap: 0.28rem; }
+.metricValue {
+  font-weight: 500;
+  letter-spacing: -0.035em;
+  line-height: 0.9;
+  font-variant-numeric: tabular-nums;
+}
+.metric[data-size='sm'] .metricValue { font-size: clamp(1.4rem, 1rem + 1.4vw, 2.2rem); }
+.metric[data-size='md'] .metricValue { font-size: clamp(2rem, 1.2rem + 3vw, 4rem); }
+.metric[data-size='lg'] .metricValue { font-size: clamp(3rem, 1rem + 7vw, 8.5rem); }
+.metricLabel {
+  font-family: var(--font-mono);
+  font-size: var(--fs-nano);
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.metricNote { font-size: var(--fs-nano); color: var(--text-faint); font-style: italic; max-width: 32ch; line-height: 1.4; }
+
+.rule { display: flex; align-items: center; gap: var(--sp-4); width: 100%; }
+.ruleLine { flex: 1; height: var(--hair); background: var(--border); }
+.ruleCaption {
+  font-family: var(--font-mono); font-size: var(--fs-nano);
+  letter-spacing: var(--tracking-label); text-transform: uppercase;
+  color: var(--text-faint); white-space: nowrap;
+}
+
+.hint {
+  display: flex; align-items: center; gap: var(--sp-3);
+  font-family: var(--font-mono); font-size: var(--fs-nano);
+  letter-spacing: var(--tracking-wide); text-transform: uppercase;
+  color: var(--text-muted);
+}
+.hintLine {
+  width: 46px; height: var(--hair);
+  background: linear-gradient(90deg, var(--text-muted), transparent);
+  animation: hintSlide 2.4s var(--ease-in-out) infinite;
+}
+@keyframes hintSlide {
+  0%, 100% { transform: translateX(0); opacity: 0.35; }
+  50% { transform: translateX(10px); opacity: 1; }
+}

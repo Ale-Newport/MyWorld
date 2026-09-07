@@ -1,0 +1,131 @@
+.stage { align-content: center; }
+
+.head {
+  position: absolute;
+  top: clamp(4.5rem, 10vh, 7rem);
+  left: var(--gutter);
+  display: flex; flex-direction: column; gap: var(--sp-3);
+  max-width: min(30ch, 44vw);
+}
+.title {
+  font-size: clamp(1.7rem, 1rem + 2.8vw, 3.4rem);
+  font-weight: 500; letter-spacing: -0.042em; line-height: 0.92;
+  white-space: pre-line;
+}
+.count {
+  font-family: var(--font-mono); font-size: var(--fs-nano);
+  letter-spacing: var(--tracking-label); text-transform: uppercase; color: var(--accent);
+  font-variant-numeric: tabular-nums;
+}
+
+.filters {
+  position: absolute;
+  top: clamp(4.5rem, 10vh, 7rem);
+  right: var(--gutter);
+  display: flex; flex-wrap: wrap; justify-content: flex-end;
+  gap: 0.3rem;
+  max-width: min(420px, 52vw);
+}
+.filter {
+  display: inline-flex; align-items: baseline; gap: 0.35rem;
+  font-family: var(--font-mono); font-size: var(--fs-nano);
+  letter-spacing: var(--tracking-label); text-transform: uppercase;
+  border: var(--hair) solid var(--border);
+  padding: 0.32rem 0.5rem;
+  color: var(--text-muted);
+  transition: color var(--dur-fast), border-color var(--dur-fast);
+}
+.filter:hover { color: var(--text-primary); border-color: var(--border-strong); }
+.filter[data-on='true'] { color: var(--accent); border-color: var(--accent); }
+.filterCount { color: var(--text-faint); font-size: 9px; }
+
+.label {
+  position: absolute;
+  left: 50%; top: 50%;
+  transform: translate(-50%, 3rem);
+  display: flex; flex-direction: column; align-items: center; gap: 0.3rem;
+  text-align: center;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--dur-fast) linear, transform var(--dur-mid) var(--ease-out-expo);
+  max-width: min(40ch, 80vw);
+}
+.label[data-on='true'] { opacity: 1; transform: translate(-50%, 2.2rem); }
+.labelName { font-size: var(--fs-lead); font-weight: 500; letter-spacing: -0.02em; }
+.labelMeta {
+  font-family: var(--font-mono); font-size: var(--fs-nano);
+  letter-spacing: var(--tracking-label); text-transform: uppercase;
+}
+.labelDesc { font-size: var(--fs-tiny); color: var(--text-muted); line-height: 1.4; }
+
+.footer {
+  position: absolute;
+  left: var(--gutter); right: var(--gutter);
+  bottom: clamp(4.5rem, 11vh, 6.5rem);
+  display: flex; justify-content: space-between; align-items: flex-end; gap: var(--sp-4);
+}
+.hint {
+  font-family: var(--font-mono); font-size: var(--fs-nano);
+  letter-spacing: var(--tracking-label); text-transform: uppercase; color: var(--text-faint);
+}
+.listToggle {
+  font-family: var(--font-mono); font-size: var(--fs-micro);
+  letter-spacing: var(--tracking-label); text-transform: uppercase;
+  border: var(--hair) solid var(--border-strong);
+  padding: 0.45rem 0.8rem;
+  transition: background var(--dur-fast), color var(--dur-fast);
+}
+.listToggle:hover { background: var(--text-primary); color: var(--bg-primary); }
+
+.list {
+  position: absolute;
+  inset: 0;
+  background: color-mix(in oklab, var(--bg-primary) 94%, transparent);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  overflow-y: auto;
+  padding: clamp(5rem, 12vh, 8rem) var(--gutter) clamp(6rem, 14vh, 8rem);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--dur-mid) var(--ease-out-expo);
+}
+.list[data-open='true'] { opacity: 1; pointer-events: auto; }
+
+.listItem {
+  display: grid;
+  grid-template-columns: 3.4rem minmax(0, 1.1fr) minmax(0, 2fr) 5rem;
+  gap: var(--sp-4);
+  align-items: baseline;
+  width: 100%;
+  text-align: left;
+  padding: 0.55rem 0;
+  border-bottom: var(--hair) solid var(--border);
+  color: var(--text-muted);
+  --row-accent: var(--accent);
+  transition: color var(--dur-fast), padding-left var(--dur-mid) var(--ease-out-expo);
+}
+.listItem:hover { color: var(--text-primary); padding-left: 0.6rem; }
+.listYear { font-family: var(--font-mono); font-size: var(--fs-nano); color: var(--text-faint); }
+.listName { font-size: var(--fs-small); font-weight: 500; letter-spacing: -0.015em; color: var(--text-primary); }
+.listDesc { font-size: var(--fs-tiny); line-height: 1.4; }
+.listTier {
+  font-family: var(--font-mono); font-size: var(--fs-nano);
+  letter-spacing: var(--tracking-label); text-transform: uppercase;
+  color: var(--row-accent); text-align: right;
+}
+
+@media (max-width: 860px) {
+  .listItem { grid-template-columns: 3rem 1fr auto; }
+  .listDesc { display: none; }
+  .footer { flex-direction: column; align-items: flex-start; }
+  /* Stack the filters under the heading — side by side they collide
+     on any phone, and the filter row is the useful control here. */
+  .head { position: absolute; top: clamp(4rem, 9vh, 6rem); left: var(--gutter); right: var(--gutter); max-width: none; }
+  .filters {
+    position: absolute;
+    top: clamp(11rem, 24vh, 14rem);
+    left: var(--gutter); right: var(--gutter);
+    justify-content: flex-start;
+    max-width: none;
+  }
+}

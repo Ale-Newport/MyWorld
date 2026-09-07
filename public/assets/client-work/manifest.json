@@ -1,0 +1,140 @@
+{
+  "capturedWith": "playwright/chromium",
+  "sites": [
+    {
+      "slug": "fuerteventura-2000",
+      "url": "https://www.fuerteventura2000.com",
+      "desktop": "/assets/client-work/fuerteventura-2000-desktop.webp",
+      "mobile": "/assets/client-work/fuerteventura-2000-mobile.webp",
+      "blur": "data:image/webp;base64,UklGRh4BAABXRUJQVlA4IBIBAACwBgCdASoYACUAPxGEtlUsKSSjKrgIAYAiCUAWHbujCkqoUrFJnrFjmPD5+oF6lYeDE/Vui2/jtesuMGPQAAD9d9gvGMzTsEbTETPpkMFNKEiXZvUW21tUWOEgxdJ5xpZ3BlIZkOdU2flQWDW2nkLjaVehb8gNO7Ve/zJnks7Np9GMCNr8jWKC+yWUfIG/Eq0ou0JR9BnwggEUSrY16aMEPgzwQXCNolwAild9QuO+CVkflhV9Y7G62Q8IRy+aNus0bBPzZl4GQEYsFd6MgoUk/BhfCC3qYQAFpo2mN5hG4n+R7UX94x4BTXzv23vJgbvksWk/l/dJBTdBnWMZakEtllwqFvKjeTPwY2YOHYCSAAAA",
+      "status": "ok",
+      "error": null
+    },
+    {
+      "slug": "pansofia",
+      "url": "https://pansofia.com",
+      "desktop": "/assets/client-work/pansofia-desktop.webp",
+      "mobile": "/assets/client-work/pansofia-mobile.webp",
+      "blur": "data:image/webp;base64,UklGRrAAAABXRUJQVlA4IKQAAAAQBQCdASoYACUAPwVorlArpaQitVv4AXAgiWcAAFKqAVi3QqTifljOJIaovWzfP6gAAP7pBm2tD0YvpfM/Ded9uQH5p+2jeHFYNGen5fsdvqFsD0fdWeLfs64xdUZ7Qi0QoybEkCfHqd6VERGg5QrBkAaePY8cRtqQ3A7bMEGHDAX7RToGZkXlu/Xl9+NPRgHcDX3caG7UDmfBTbUMJMQ89UAAAA==",
+      "status": "ok",
+      "error": null
+    },
+    {
+      "slug": "cht-canarias",
+      "url": "https://chtcanarias.com",
+      "desktop": "/assets/client-work/cht-canarias-desktop.webp",
+      "mobile": "/assets/client-work/cht-canarias-mobile.webp",
+      "blur": "data:image/webp;base64,UklGRgIBAABXRUJQVlA4IPYAAADwBgCdASoYACUAPxGCr1MsKSOiqrgMAYAiCWMAzU2wHGBpADd20m+eoHOloh/JMksrKSueqNG6dXr5d8KHonAAAP7F4F6c3zAm65UXd+fkv0rSAh9YXTep55tbQzEGz0ahuN9Gd/0+XYrPbIMvSsU1ZXyPHCLNnG+Aps2miIiDAH7a8ILC1zTAM6znHfIEYtR96FTu56AsSDyboH6sIpGhBqLyNsfk9A17fKFWXdhFcPYf2LD1LlA2awehlqXdqaMsehIi/ZxlFvlt0IiNpwr84L9P6chB4j32ovde+ktfGCikP/a/PxA6KQD5dXrIz+RT6AiiAAA=",
+      "status": "ok",
+      "error": null
+    },
+    {
+      "slug": "hotel-escuela-el-mirador",
+      "url": "https://hotelescuelaelmirador.com",
+      "desktop": "/assets/client-work/hotel-escuela-el-mirador-desktop.webp",
+      "mobile": "/assets/client-work/hotel-escuela-el-mirador-mobile.webp",
+      "blur": "data:image/webp;base64,UklGRjQAAABXRUJQVlA4ICgAAADwAgCdASoYACUAPxGGvFcsKSYjpWgBgCIJaQAAKUNt8AD+8AtvAAAA",
+      "status": "ok",
+      "error": null
+    },
+    {
+      "slug": "newport-media-films",
+      "url": "https://newportmediafilms.com",
+      "desktop": "/assets/client-work/newport-media-films-desktop.webp",
+      "mobile": "/assets/client-work/newport-media-films-mobile.webp",
+      "blur": "data:image/webp;base64,UklGRjQAAABXRUJQVlA4ICgAAADwAgCdASoYACUAPxGGvFcsKSYjpWgBgCIJaQAAKUNt8AD+8AtvAAAA",
+      "status": "ok",
+      "error": null
+    },
+    {
+      "slug": "escuela-de-hosteleria-canaria",
+      "url": "https://escueladehosteleriacanaria.com",
+      "desktop": "/assets/client-work/escuela-de-hosteleria-canaria-desktop.webp",
+      "mobile": "/assets/client-work/escuela-de-hosteleria-canaria-mobile.webp",
+      "blur": "data:image/webp;base64,UklGRroAAABXRUJQVlA4IK4AAAAQBQCdASoYACUAPxFssVCsJaSisBqqqYAiCWUA0FQPl+olE/6WRS532DK/2f3PSgrYAP7ZYVOwk9DvZHiVKH9Tvw/YxePLIm3caIgc/YSeYOO0kYyYgV4quxHz+4j+ZWePZvl59PCALQ0EFabgy+d6HgPA/rdy2wQLzw9C83ERbQWAWzTSGqL2GnFLR47jxqj4G06PRbqMSX+ENcAu9ULBShe48ZukcIGhDG378AA=",
+      "status": "ok",
+      "error": null
+    },
+    {
+      "slug": "esenfuer",
+      "url": "https://esenfuer.com",
+      "desktop": "/assets/client-work/esenfuer-desktop.webp",
+      "mobile": "/assets/client-work/esenfuer-mobile.webp",
+      "blur": "data:image/webp;base64,UklGRuIAAABXRUJQVlA4INYAAAAQBgCdASoYACUAPxFytlIsJqUiqrgMAYAiCUAZDAEAKuM5RQ/fKVbUhsGVVqIXhucb7OlnR3QKcAAA/u2ozzl95IkkxWhMYVZxzz5K9qzDbyQlIeHgwII9L4WuxgVJZyMV+F3i2CiYm2e093Y6yXsO4Pq7I+h1hA2TuB5qvC0tIxN4bVgUevXNs5lSBwckda6kLupONwqsHoLPVKZRsL07uMR/e6+K74m3QQFYS55pqmgX51DjsDDM9YEvrPw5iaeeuUQKnb2K6pp195+O35rKxIORoAAA",
+      "status": "ok",
+      "error": null
+    },
+    {
+      "slug": "fpe-europea",
+      "url": "https://fpeeuropea.com",
+      "desktop": "/assets/client-work/fpe-europea-desktop.webp",
+      "mobile": "/assets/client-work/fpe-europea-mobile.webp",
+      "blur": "data:image/webp;base64,UklGRqQAAABXRUJQVlA4IJgAAADQBQCdASoYACUAPxFurVEsJiQisBqqqYAiCWMAwCg6+XYCNjiGVABofK1ieQS+58c6CLPKR6AAAP7zgSVt8BQ4kw1/P5BFQHDhFoxFtfQb1JuRhg8BWgo3gBtIEaSmSu2EeZrZnGoN8OXqX00lC2KhhidAPxvZGcNw3UXoxXvGHBFe5dRbhmwTXMe2LFSmA79V8y4rTAAAAA==",
+      "status": "ok",
+      "error": null
+    },
+    {
+      "slug": "nformar",
+      "url": "https://nformar.com",
+      "desktop": "/assets/client-work/nformar-desktop.webp",
+      "mobile": "/assets/client-work/nformar-mobile.webp",
+      "blur": "data:image/webp;base64,UklGRtoAAABXRUJQVlA4IM4AAAAwBgCdASoYACUAPxF0rlAsJyQisBVdUYAiCWMAz9wvADq1YYjVRiMcLltg2yHAQDeSQLtBC9ErSm0AAOZF84Ww/3YTl0n02icT/+/IwGm+MAXONzkRN3dx7AFQPIcJ8oLrwRRKGe1ikpP6bSwWUETJwNoswl6T5fUNJN+F7NpyZyDNadfZwdS+lEqx7PoOBSduqg0opy60tdS8UKDIK8vjunBWo2VI3ZAwL3ODIst3cGXWvZZQsi6bnPEuxvUhf3N/b0wsrP/YMHB8gnm4AA==",
+      "status": "ok",
+      "error": null
+    },
+    {
+      "slug": "aula-impulsa",
+      "url": "https://aulaimpulsa.com",
+      "desktop": "/assets/client-work/aula-impulsa-desktop.webp",
+      "mobile": "/assets/client-work/aula-impulsa-mobile.webp",
+      "blur": "data:image/webp;base64,UklGRgIBAABXRUJQVlA4IPYAAACQBQCdASoYACUAPxF+tFWsJ6SjJWsxgCIJQBjIAV/i9t6eBQKwucOLERTDq+5uch24lkzHAAD9bnfVIMQEoJE0l2//CmdsjGr6Xe4ypNV8qr5qGKA9qQHRxua7ImheY+xTWLcDzYm12NvsFW++ryzYxkYsLo6acjHzFSUGy0QnwFHibS7DANlDJdsq31fV7/OMEJrwxHcZch60es1NOjFZy2kSLOO+TBogbcOKim8UPv7dffBBd3e0SnHrgxAXr4TsFFknD0Oxet8qpSBkP1Hpb3GHrNmE/Wdk+DCyT9Fk9zqkXiNV/tA/voWdMtn8a0P7pr8wAAA=",
+      "status": "ok",
+      "error": null
+    },
+    {
+      "slug": "talento-profesional",
+      "url": "https://talentoprofesional.com",
+      "desktop": "/assets/client-work/talento-profesional-desktop.webp",
+      "mobile": "/assets/client-work/talento-profesional-mobile.webp",
+      "blur": "data:image/webp;base64,UklGRrIAAABXRUJQVlA4IKYAAAAwBQCdASoYACUAPxF4s1EsJ6SiqqwBgCIJZwAAPdEZxNV2mURPwTQbLQrTj17VtQRkAAD+59cmQAHoq4VFt9dnyrqSCtrZ3h/L35zV4QzwEY2O8xW1rzARWhBfIWT9g8wPhyGXnoyGfc4csMniXUyb2MWKYEjtTXuVOTru6L3OdUNW72/+9h8fQ1kXDx31/0fzgq1pcQ/YHhfKLBO0w419Xf8j5AAA",
+      "status": "ok",
+      "error": null
+    },
+    {
+      "slug": "eduprisma",
+      "url": "https://eduprisma.es",
+      "desktop": "/assets/client-work/eduprisma-desktop.webp",
+      "mobile": "/assets/client-work/eduprisma-mobile.webp",
+      "blur": "data:image/webp;base64,UklGRp4AAABXRUJQVlA4IJIAAADwBACdASoYACUAPwVsrFArpiQitVv4AXAgiWkAA+WJ1jtyyY/3kmeKQVl26ENh5AAA/u1uzB1FDFpqfZv90ouifhyZ63qlv5LTx/FfaVZvVP850ATvL6fDXcfDEaapVo9XWwvdKDw0byUYtyJUg66+T6QZQiaxraO2bn+QT9dpGNp4rlp9/oXG0ShD4wEW7wgAAA==",
+      "status": "ok",
+      "error": null
+    },
+    {
+      "slug": "level-up-canarias",
+      "url": "https://levelupcanarias.com",
+      "desktop": "/assets/client-work/level-up-canarias-desktop.webp",
+      "mobile": "/assets/client-work/level-up-canarias-mobile.webp",
+      "blur": "data:image/webp;base64,UklGRpoAAABXRUJQVlA4II4AAACQBQCdASoYACUAPv1oq1ArJiQitVv8AWAfiWUAASx/zmpM+IJOYvY3GHjlYJoBIjoQhN3GAAD+9QBHLFAyr4OmTcMTicWqPBJRtZ/Ow3V3xx398mWk0Ogry7uq1+dJ0aSTis6f+hh+NpP1lSX7J7EeYnMyAFZBJdK33qSLcCwSMg4XAs5InRtxdMnPgAAA",
+      "status": "ok",
+      "error": null
+    },
+    {
+      "slug": "avanza-fp",
+      "url": "https://avanzafp.es",
+      "desktop": "/assets/client-work/avanza-fp-desktop.webp",
+      "mobile": "/assets/client-work/avanza-fp-mobile.webp",
+      "blur": "data:image/webp;base64,UklGRrQAAABXRUJQVlA4IKgAAADwBACdASoYACUAPxF0uFQsJiWjKrgKAYAiCUAZdIFl6R91f3/cMr4km/WhBnXWE8AA/uvawMMVKx7C+Blg7eknIc+NS1mkd7m220qh/X58qOOlz/BEz/fEm/285N3rKU4qi6lkOqrw3MYplW63maeX49rKS6ZpDmN7eayqlrFIfizK65BYLnVjbpiS81zTBaXV74ci0+cOau5Wdl35sehKxV8/hUAAAAA=",
+      "status": "ok",
+      "error": null
+    },
+    {
+      "slug": "innova-urbis",
+      "url": "https://innovaurbis.com/es",
+      "desktop": "/assets/client-work/innova-urbis-desktop.webp",
+      "mobile": "/assets/client-work/innova-urbis-mobile.webp",
+      "blur": "data:image/webp;base64,UklGRggBAABXRUJQVlA4IPwAAADwBQCdASoYACUAPxGEuVcsKCWjpWgBgCIJYwDHbFDVZNhHTFF9BMQAFojs8/d5fQv7p93Hzyl0kADLT/F5Gkv5XWSn1m71uijDLZpQby90klL+XItUMu5ulONCD75E+d913tsVkv2mABTlRQOQYQ1Y3rZf+2IYO1n1CThEpC6EEigLJOsc38A6ByQvxWJnhmDatXnObnro8LvSiLU9Utwn1uboa9pI89RMv4U1mqmXsNxng6KDkRf/bqTKO57HlQOm9EDw8TrzI4ZXd+zd6Sn5ZeG8i9VqWBH8fRJqRqtSZpmqov6Lc1jwVpZryaK5iXqezQaFy3EhsfmQAAA=",
+      "status": "ok",
+      "error": null
+    }
+  ]
+}

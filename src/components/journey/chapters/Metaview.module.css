@@ -1,0 +1,130 @@
+.stage { align-content: center; }
+
+.head {
+  grid-column: 1 / span 4;
+  position: absolute;
+  top: clamp(4.5rem, 10vh, 7rem);
+  left: var(--gutter);
+  display: flex; flex-direction: column; gap: var(--sp-3);
+  will-change: transform, opacity;
+}
+
+.title {
+  font-size: clamp(2rem, 1.1rem + 3.4vw, 4.2rem);
+  font-weight: 500; letter-spacing: -0.045em; line-height: 0.9;
+  text-transform: uppercase;
+}
+.role {
+  font-family: var(--font-mono); font-size: var(--fs-nano);
+  letter-spacing: var(--tracking-label); text-transform: uppercase; color: var(--accent);
+}
+
+.beats {
+  grid-column: 1 / span 12;
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+}
+/* A soft ground under the beat text. Not a card — no edge, no
+   radius, no border: just enough falloff that a metric stays
+   readable over a half-million points. */
+.beat::before {
+  content: '';
+  position: absolute;
+  inset: -18% -14%;
+  background: radial-gradient(ellipse at center,
+    color-mix(in oklab, var(--bg-primary) 88%, transparent) 0%,
+    color-mix(in oklab, var(--bg-primary) 55%, transparent) 45%,
+    transparent 72%);
+  pointer-events: none;
+  z-index: -1;
+}
+
+.beat {
+  position: relative;
+  grid-area: 1 / 1;
+  display: flex; flex-direction: column; align-items: center;
+  gap: var(--sp-3);
+  text-align: center;
+  opacity: 0;
+  will-change: transform, opacity;
+  max-width: min(46ch, 82vw);
+}
+.beatKicker {
+  font-family: var(--font-mono); font-size: var(--fs-nano);
+  letter-spacing: var(--tracking-wide); text-transform: uppercase;
+  color: var(--accent);
+}
+.beatValue {
+  font-size: var(--fs-mega);
+  font-weight: 500; letter-spacing: -0.05em; line-height: 0.82;
+  font-variant-numeric: tabular-nums;
+}
+.beatLine {
+  font-size: var(--fs-lead);
+  line-height: 1.4; color: var(--text-secondary);
+  text-wrap: pretty;
+}
+
+.pipeline {
+  position: absolute;
+  left: var(--gutter); right: var(--gutter);
+  bottom: clamp(4.5rem, 11vh, 6.5rem);
+  display: flex; flex-wrap: wrap; align-items: center;
+  gap: clamp(0.5rem, 1.6vw, 1.5rem);
+  opacity: 0;
+  pointer-events: none;
+}
+.pipeStep {
+  position: relative;
+  font-family: var(--font-mono); font-size: var(--fs-nano);
+  letter-spacing: var(--tracking-label); text-transform: uppercase;
+  color: var(--text-faint);
+  padding-right: clamp(0.5rem, 1.6vw, 1.5rem);
+  transition: color 420ms var(--ease-out-expo);
+}
+.pipeStep[data-on='true'] { color: var(--text-primary); }
+.pipeStep:not(:last-child)::after {
+  content: '→';
+  position: absolute; right: 0; top: 0;
+  color: var(--text-faint);
+  opacity: 0.5;
+}
+
+.all {
+  position: absolute;
+  top: clamp(4.5rem, 10vh, 7rem);
+  right: var(--gutter);
+  max-width: min(320px, 40vw);
+  font-family: var(--font-mono);
+  font-size: var(--fs-nano);
+}
+.all summary {
+  letter-spacing: var(--tracking-label); text-transform: uppercase;
+  color: var(--text-muted); cursor: pointer; list-style: none;
+  border-bottom: var(--hair) solid var(--border);
+  padding-bottom: 0.35rem;
+  transition: color var(--dur-fast);
+}
+.all summary::-webkit-details-marker { display: none; }
+.all summary::after { content: ' +'; }
+.all[open] summary::after { content: ' −'; }
+.all summary:hover { color: var(--text-primary); }
+.all ul { margin-top: var(--sp-3); display: flex; flex-direction: column; gap: 0.3rem; }
+.all li { color: var(--text-faint); line-height: 1.4; }
+.all li span { color: var(--accent); display: inline-block; min-width: 4.2em; }
+
+@media (max-width: 800px) {
+  .all { display: none; }
+  .beatValue { font-size: clamp(2.6rem, 12vw, 4.5rem); }
+  .head { max-width: 60vw; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .beats { position: static; display: flex; flex-direction: column; gap: var(--sp-7); grid-column: 1 / span 12; }
+  .beat { opacity: 1 !important; transform: none !important; grid-area: auto; align-items: flex-start; text-align: left; }
+  .beatValue { font-size: clamp(2rem, 8vw, 3.4rem); }
+  .head, .pipeline { opacity: 1 !important; transform: none !important; position: static; }
+}
