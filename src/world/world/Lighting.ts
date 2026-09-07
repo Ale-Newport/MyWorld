@@ -6,6 +6,7 @@ import type { Quality } from '../core/Quality'
 import type { Ticker } from '../core/Ticker'
 import type { Renderer } from '../render/Renderer'
 import type { View } from '../view/View'
+import type { World } from './World'
 
 /* ============================================================
    LIGHTING & DAY CYCLE
@@ -79,6 +80,10 @@ export class Lighting {
   private readonly scratchB = new THREE.Color()
 
   private shadowExtent = 0
+
+  /** Set by the Game so the sky dome follows the same clock. */
+  world: World | null = null
+  private readonly zenith = new THREE.Color()
 
   constructor(
     private renderer: Renderer,
@@ -194,6 +199,12 @@ export class Lighting {
 
     this.renderer.setBackground(this.skyColor)
     this.renderer.setFogRange(frame.fogNear, frame.fogFar)
+
+    // The dome runs a little deeper than the horizon so the sky has
+    // somewhere to go; at night the difference is what stops it
+    // reading as a flat black ceiling.
+    this.zenith.copy(this.skyColor).multiplyScalar(0.86).lerp(this.ambientColor, 0.22)
+    this.world?.setSkyColors(this.skyColor, this.zenith)
 
     // Night is measured from sun elevation rather than clock time, so
     // it stays right if the phase is scrubbed or frozen.

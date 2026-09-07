@@ -62,7 +62,11 @@ const COMPOSITE_FRAGMENT = /* glsl */ `
 
     // Cheap radial blur: five taps along the vector to the centre,
     // scaled by distance, so the middle of the frame stays crisp.
-    float blur = smoothstep(0.28, 0.95, radius) * uStrength;
+    // The falloff starts LATE on purpose. At a 25-degree field of
+    // view everything on screen is roughly the same distance away,
+    // so a wide blur does not read as depth of field — it reads as
+    // a broken renderer. This is a soft corner, nothing more.
+    float blur = smoothstep(0.58, 1.15, radius) * uStrength;
     vec3 color = texture2D(tScene, uv).rgb;
 
     if (blur > 0.001) {
@@ -202,8 +206,8 @@ export class Renderer {
       uniforms: {
         tScene: { value: this.target.texture },
         uResolution: { value: new THREE.Vector2(1, 1) },
-        uStrength: { value: 1.25 },
-        uVignette: { value: 0.2 },
+        uStrength: { value: 0.42 },
+        uVignette: { value: 0.16 },
         uGrain: { value: 0.006 },
         uTime: { value: 0 },
         uSpeedLines: { value: 0 },

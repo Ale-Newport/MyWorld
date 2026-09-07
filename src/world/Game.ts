@@ -15,14 +15,17 @@ import { Player } from './player/Player'
 import { View } from './view/View'
 import { Renderer } from './render/Renderer'
 import { Materials } from './world/materials'
-import { Terrain } from './world/Terrain'
 import { Lighting } from './world/Lighting'
 import { VisualVehicle } from './world/VisualVehicle'
+import { World } from './world/World'
 import { Respawns } from './systems/Respawns'
 import { Zones } from './systems/Zones'
 import { Achievements } from './systems/Achievements'
+import { InteractivePoints } from './systems/InteractivePoints'
 import { Save } from './systems/Save'
+import type { Terrain } from './world/Terrain'
 import type { WorldStore } from './state/store'
+import { districtById, landmarkById, resolvePanel, type DistrictId } from '@/content/world'
 
 /* ============================================================
    THE GAME
@@ -73,13 +76,14 @@ export class Game {
   view!: View
   renderer!: Renderer
   materials!: Materials
-  terrain!: Terrain
+  world!: World
   lighting!: Lighting
   vehicle!: PhysicsVehicle
   player!: Player
   visualVehicle!: VisualVehicle
   respawns!: Respawns
   zones!: Zones
+  interactions!: InteractivePoints
   nipple!: Nipple
 
   readonly store: WorldStore
@@ -181,15 +185,16 @@ export class Game {
 
     /* ---- world ------------------------------------------ */
     this.lighting = new Lighting(this.renderer, this.view, this.ticker, this.quality, this.bin)
-    this.terrain = new Terrain(this.physics, this.quality, this.materials, this.bin)
-    this.renderer.scene.add(this.terrain.group)
+    this.world = new World(this.physics, this.quality, this.materials, this.ticker, this.bin)
+    this.renderer.scene.add(this.world.group)
+    this.lighting.world = this.world
     ui.setStep('world', true)
 
     /* ---- vehicle ---------------------------------------- */
     this.respawns = new Respawns('hub')
     const spawn = this.respawns.getDefault()
     // Drop the car onto the actual ground rather than a guessed height.
-    spawn.position.y = this.terrain.colliderHeightAt(spawn.position.x, spawn.position.z) + 3
+    spawn.position.y = this.world.terrain.colliderHeightAt(spawn.position.x, spawn.position.z) + 3
 
     this.vehicle = new PhysicsVehicle(
       this.physics,
@@ -234,7 +239,13 @@ export class Game {
 
     /* ---- gameplay systems ------------------------------- */
     this.zones = new Zones(this.ticker, this.bin)
+    this.interactions = new InteractivePoints(
+      this.ticker, this.inputs, this.view, this.store, this.bin,
+    )
 
+    this.bindLandmarks()
+    this.bindDistricts()
+    this.bindNotes()
     this.bindFrameLoopSystems()
     this.bindUiActions()
     this.bindAchievementFeed()
@@ -272,7 +283,10 @@ export class Game {
 
     // Order 8 on `fixed`: the zone target must be the post-physics
     // position, or triggers fire a step late.
-    const syncZones = () => this.zones.setTarget(this.player.position)
+    const syncZones = () => {
+      this.zones.setTarget(this.player.position)
+      this.interactions.setTarget(this.player.position)
+    }
     this.ticker.events.on('fixed', syncZones, 7)
 
     // Touch joystick needs the camera and viewport to unproject.
@@ -319,6 +333,191 @@ export class Game {
       this.vehicle.events.off('land', onLand as never)
       this.vehicle.events.off('collision', onCollision as never)
     })
+  }
+
+  /* ========================================================
+     LANDMARKS → INTERACTION
+     ======================================================== */
+
+  private bindLandmarks(): void {
+    const opened = new Set(this.save.data.progress.landmarks)
+
+    for (const handle of this.world.landmarks.values()) {
+      const landmark = handle.landmark
+      if (landmark.interaction === 'none') continue
+
+      const label =
+        landmark.interaction === 'minigame' ? 'START'
+          : landmark.interaction === 'link' ? 'OPEN'
+          : 'READ'
+
+      this.interactions.add({
+        id: landmark.id,
+        position: new THREE.Vector3(
+          landmark.x,
+          this.world.terrain.colliderHeightAt(landmark.x, landmark.z),
+          landmark.z,
+        ),
+        anchor: handle.anchor,
+        radius: handle.radius,
+        label,
+        sublabel: landmark.label,
+        onInteract: () => this.openLandmark(landmark.id),
+      })
+    }
+
+    void opened
+  }
+
+  /** What ENTER does at a landmark. */
+  openLandmark(id: string): void {
+    const handle = this.world.landmarks.get(id)
+    const landmark = handle?.landmark ?? landmarkById[id]
+    if (!landmark) return
+
+    if (landmark.interaction === 'link' && landmark.href) {
+      window.open(landmark.href, '_blank', 'noopener,noreferrer')
+      return
+    }
+
+    if (landmark.interaction === 'minigame' && landmark.minigame) {
+      this.events.trigger('interact', [landmark.id, landmark.minigame])
+      // Mini-games are registered by the Minigames system; if one is
+      // not present the landmark still opens its panel, so a landmark
+      // can never be a dead end.
+      if (this.startMinigame?.(landmark.minigame)) return
+    }
+
+    // Everything else — projects, panels and notes — opens the same
+    // overlay, rendered from the same content the scroll journey uses.
+    if (resolvePanel(landmark)) {
+      this.store.getState().setOverlay('panel', landmark.id)
+      this.recordLandmark(landmark.id)
+    }
+
+    if (landmark.achievement) this.achievements.set(landmark.achievement, 1)
+    if (landmark.secret) this.recordSecret(landmark.id)
+  }
+
+  /** Installed by the Minigames system. Returns true if it handled it. */
+  startMinigame: ((id: string) => boolean) | null = null
+
+  private recordLandmark(id: string): void {
+    const list = this.save.data.progress.landmarks
+    if (list.includes(id)) return
+    list.push(id)
+    this.save.schedule()
+
+    this.achievements.set('projects', id)
+    const handle = this.world.landmarks.get(id)
+    if (handle?.landmark.district === 'archive') this.achievements.set('archivist', id)
+  }
+
+  private recordSecret(id: string): void {
+    const list = this.save.data.progress.secrets
+    if (list.includes(id)) return
+    list.push(id)
+    this.save.schedule()
+    this.achievements.set('curious', 1)
+  }
+
+  /* ========================================================
+     DISTRICTS → DISCOVERY
+     ======================================================== */
+
+  private bindDistricts(): void {
+    const visited = new Set(this.save.data.progress.districts)
+
+    for (const district of Object.values(districtById)) {
+      const y = this.world.terrain.colliderHeightAt(district.x, district.z)
+      const zone = this.zones.create<DistrictId>(
+        `district-${district.id}`,
+        'cylinder',
+        new THREE.Vector3(district.x, y, district.z),
+        district.radius,
+        district.id,
+      )
+
+      zone.events.on('enter', () => {
+        this.store.getState().setDistrict(district.id)
+
+        if (!visited.has(district.id)) {
+          visited.add(district.id)
+          this.save.data.progress.districts.push(district.id)
+          this.save.schedule()
+
+          // The toast only fires the first time. Being told where you
+          // are on every lap is nagging, not navigation.
+          this.store.getState().notify({
+            kind: 'district',
+            title: district.label,
+            body: district.blurb,
+            duration: 4,
+          })
+
+          if (district.signposted) this.achievements.set('explorer', district.id)
+          if (district.secret) this.recordSecret(district.id)
+        }
+      })
+
+      zone.events.on('leave', () => {
+        if (this.store.getState().district === district.id) {
+          this.store.getState().setDistrict(null)
+        }
+      })
+    }
+  }
+
+  /* ========================================================
+     DEV NOTES
+     Driven over rather than interacted with, so finding one is
+     a reward for wandering rather than another prompt to read.
+     ======================================================== */
+
+  private bindNotes(): void {
+    const found = new Set(this.save.data.progress.notes)
+
+    for (const note of this.world.notes) {
+      if (found.has(note.id)) {
+        note.found = true
+        note.mesh.visible = false
+        continue
+      }
+
+      const zone = this.zones.create(
+        `note-${note.id}`,
+        'cylinder',
+        note.position,
+        4.5,
+        note.id,
+      )
+      zone.events.on('enter', () => {
+        if (note.found) return
+        note.found = true
+        note.mesh.visible = false
+        this.save.data.progress.notes.push(note.id)
+        this.save.schedule()
+        this.store.getState().notify({
+          kind: 'note',
+          title: 'DEV NOTE',
+          body: note.text,
+          duration: 6,
+        })
+        this.achievements.set('notes', note.id)
+      })
+    }
+
+    // Spin the un-found markers so they read as collectable.
+    const spin = () => {
+      const t = this.ticker.elapsed
+      for (const note of this.world.notes) {
+        if (note.found) continue
+        note.mesh.rotation.y = t * 0.9
+        note.mesh.position.y = note.position.y + 1.6 + Math.sin(t * 2 + note.position.x) * 0.18
+      }
+    }
+    this.ticker.events.on('tick', spin, 14)
+    this.bin.add(() => this.ticker.events.off('tick', spin))
   }
 
   /**
@@ -431,7 +630,7 @@ export class Game {
       if (this.player.boosting > 0.5 && this.vehicle.speed > 6) {
         this.achievements.set('boosted', 1)
       }
-      const elevation = this.player.position.y - this.terrain.colliderHeightAt(
+      const elevation = this.player.position.y - this.world.terrain.colliderHeightAt(
         this.player.position.x,
         this.player.position.z,
       )
@@ -536,6 +735,10 @@ export class Game {
     this.save.data.settings.onboarded = true
     this.save.schedule()
     this.store.getState().setOnboarding(false)
+  }
+
+  get terrain(): Terrain {
+    return this.world.terrain
   }
 
   /** Live values the HUD samples on its own rAF. */

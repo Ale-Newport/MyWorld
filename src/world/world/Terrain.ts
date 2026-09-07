@@ -308,23 +308,11 @@ export class Terrain {
       const height = this.colliderHeightAt(x, z)
       position.setY(i, height)
 
-      const sample = this.sample(x, z)
+      // A whisper of tonal variation, so the huge flat plain does not
+      // band. Everything else the ground says is said by the painted
+      // texture below, which has 0.4 m resolution instead of 2.5 m.
+      const grain = (hash2(x * 3.7, z * 3.7) - 0.5) * 0.02
       scratch.copy(grass)
-
-      if (sample.district) {
-        const distance = Math.hypot(x - sample.district.x, z - sample.district.z)
-        const inside = 1 - smoothstep(distance, sample.district.radius * 0.6, sample.district.radius)
-        const target = sample.district.theme === 'dark' ? deep : plate
-        scratch.lerp(target, inside * 0.85)
-        if (sample.district.theme === 'dark') {
-          scratch.lerp(new THREE.Color(palette.voidDark3), inside * 0.8)
-        }
-      }
-
-      if (sample.road > 0) scratch.lerp(asphalt, sample.road * 0.9)
-
-      // A little tonal noise stops the large flats from banding.
-      const grain = (hash2(x * 3.7, z * 3.7) - 0.5) * 0.022
       colors[i * 3] = clamp(scratch.r + grain, 0, 1)
       colors[i * 3 + 1] = clamp(scratch.g + grain, 0, 1)
       colors[i * 3 + 2] = clamp(scratch.b + grain, 0, 1)
@@ -333,8 +321,13 @@ export class Terrain {
     geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3))
     geometry.computeVertexNormals()
 
+    void plate
+    void deep
+    void asphalt
+
     const material = this.materials.own(
       new THREE.MeshStandardMaterial({
+        map: this.paintGround(bin),
         vertexColors: true,
         roughness: 0.96,
         metalness: 0,
@@ -348,6 +341,149 @@ export class Terrain {
     this.mesh.updateMatrix()
     this.group.add(this.mesh)
     bin.add(() => geometry.dispose())
+  }
+
+  /* ========================================================
+     GROUND PAINT
+
+     Districts, roads and markings are painted once into a single
+     canvas covering the whole world, and used as the terrain's
+     colour map.
+
+     The obvious alternative — vertex colours on the terrain mesh —
+     was the first attempt, and it does not work: the mesh has a
+     vertex every 2.5 m, so an 11 m road becomes a four-vertex
+     smear and a district boundary becomes a soft stain. At 2048
+     px across 800 m this canvas has 0.4 m resolution, so a road
+     edge is a road edge, and it costs one texture instead of
+     200,000 extra triangles.
+     ======================================================== */
+
+  private paintGround(bin: Bin): THREE.CanvasTexture {
+    const size = this.quality.level === 'low' ? 1024 : 2048
+    const canvas = document.createElement('canvas')
+    canvas.width = size
+    canvas.height = size
+    const ctx = canvas.getContext('2d')
+    if (!ctx) throw new Error('[world] 2D canvas unavailable')
+
+    /** World metres → canvas pixels. */
+    const toPx = (v: number) => ((v + FIELD_HALF) / (FIELD_HALF * 2)) * size
+    const scale = size / (FIELD_HALF * 2)
+
+    ctx.fillStyle = palette.paper2
+    ctx.fillRect(0, 0, size, size)
+
+    // The island: everything outside it is off the map.
+    ctx.save()
+    ctx.beginPath()
+    ctx.arc(toPx(0), toPx(0), WORLD_RADIUS * scale, 0, Math.PI * 2)
+    ctx.clip()
+
+    ctx.fillStyle = palette.paper
+    ctx.fillRect(0, 0, size, size)
+
+    /* ---- district plates ------------------------------- */
+    for (const district of districts) {
+      const x = toPx(district.x)
+      const y = toPx(district.z)
+      const r = district.radius * scale
+      const dark = district.theme === 'dark'
+
+      ctx.beginPath()
+      ctx.arc(x, y, r, 0, Math.PI * 2)
+      ctx.fillStyle = dark ? palette.voidDark3 : palette.paper
+      ctx.fill()
+
+      // An inner plate, so the plate has an edge rather than a fade.
+      ctx.beginPath()
+      ctx.arc(x, y, r * 0.94, 0, Math.PI * 2)
+      ctx.fillStyle = dark ? palette.voidDark2 : palette.paper2
+      ctx.fill()
+
+      ctx.beginPath()
+      ctx.arc(x, y, r * 0.94, 0, Math.PI * 2)
+      ctx.strokeStyle = dark ? palette.chalk3 : palette.ink4
+      ctx.lineWidth = Math.max(1, 0.5 * scale)
+      ctx.globalAlpha = 0.55
+      ctx.stroke()
+      ctx.globalAlpha = 1
+
+      // Its name, set large and quiet, like a plan drawing.
+      ctx.save()
+      ctx.translate(x, y + r * 0.62)
+      ctx.fillStyle = dark ? palette.chalk3 : palette.ink4
+      ctx.globalAlpha = 0.5
+      ctx.textAlign = 'center'
+      ctx.textBaseline = 'middle'
+      const fontSize = Math.max(10, r * 0.2)
+      ctx.font = `500 ${fontSize}px ui-monospace, SFMono-Regular, Menlo, monospace`
+      const label = district.short
+      let cursor = -(ctx.measureText(label).width + fontSize * 0.34 * (label.length - 1)) / 2
+      for (const char of label) {
+        ctx.fillText(char, cursor + ctx.measureText(char).width / 2, 0)
+        cursor += ctx.measureText(char).width + fontSize * 0.34
+      }
+      ctx.restore()
+    }
+
+    /* ---- roads ------------------------------------------ */
+    ctx.lineCap = 'round'
+    ctx.lineJoin = 'round'
+
+    for (const pass of ['edge', 'surface', 'centre'] as const) {
+      for (const road of roads) {
+        ctx.beginPath()
+        road.points.forEach(([x, z], i) => {
+          const px = toPx(x)
+          const py = toPx(z)
+          if (i === 0) ctx.moveTo(px, py)
+          else ctx.lineTo(px, py)
+        })
+
+        if (pass === 'edge') {
+          ctx.strokeStyle = palette.paper4
+          ctx.lineWidth = (road.width + 1.6) * scale
+        } else if (pass === 'surface') {
+          ctx.strokeStyle = palette.concrete
+          ctx.lineWidth = road.width * scale
+        } else {
+          ctx.strokeStyle = palette.paper2
+          ctx.lineWidth = Math.max(1, 0.45 * scale)
+          ctx.setLineDash([3.5 * scale, 3.5 * scale])
+        }
+        ctx.stroke()
+        ctx.setLineDash([])
+      }
+    }
+
+    ctx.restore()
+
+    /* ---- grain ------------------------------------------ */
+    // Fine per-pixel noise. Without it the paper reads as a flat
+    // fill under a directional light, which is the one thing that
+    // makes a large ground plane look synthetic. Done as one
+    // ImageData pass — a hundred thousand `fillRect` calls is
+    // hundreds of milliseconds of load time for the same result.
+    const image = ctx.getImageData(0, 0, size, size)
+    const data = image.data
+    const noise = seeded(4242)
+    for (let i = 0; i < data.length; i += 4) {
+      const delta = (noise() - 0.5) * 9
+      data[i] = clamp(data[i] + delta, 0, 255)
+      data[i + 1] = clamp(data[i + 1] + delta, 0, 255)
+      data[i + 2] = clamp(data[i + 2] + delta, 0, 255)
+    }
+    ctx.putImageData(image, 0, 0)
+
+    const texture = new THREE.CanvasTexture(canvas)
+    texture.colorSpace = THREE.SRGBColorSpace
+    texture.anisotropy = this.quality.level === 'high' ? 8 : 4
+    texture.wrapS = THREE.ClampToEdgeWrapping
+    texture.wrapT = THREE.ClampToEdgeWrapping
+    texture.needsUpdate = true
+    bin.add(() => texture.dispose())
+    return texture
   }
 
   /** Places an object on the ground, returning the surface height. */
