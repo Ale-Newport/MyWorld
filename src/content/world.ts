@@ -971,6 +971,9 @@ export const devNotes: { id: string; x: number; z: number; text: string }[] = [
 
 export const landmarkById = Object.fromEntries(landmarks.map((l) => [l.id, l]))
 
+/** Re-exported so the engine reads projects through one door. */
+export const projectsBySlugForWorld = projectBySlug
+
 export function landmarksOf(district: DistrictId) {
   return landmarks.filter((l) => l.district === district)
 }
