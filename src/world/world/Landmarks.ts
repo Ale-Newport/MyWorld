@@ -177,10 +177,10 @@ function markerRing(ctx: LandmarkContext, parent: THREE.Object3D, radius: number
    BUILDERS
    ============================================================ */
 
-type Builder = (ctx: LandmarkContext, landmark: Landmark, at: THREE.Vector3) => BuiltLandmark
+type Builder = (ctx: LandmarkContext, landmark: Landmark) => BuiltLandmark
 
 /** A roadside signpost: a post, an arrow blade, a label. */
-const buildSign: Builder = (ctx, landmark, at) => {
+const buildSign: Builder = (ctx, landmark) => {
   const group = new THREE.Group()
   const metal = ctx.materials.get('metal')
   const ink = ctx.materials.get('ink')
@@ -216,7 +216,7 @@ const buildSign: Builder = (ctx, landmark, at) => {
 }
 
 /** A slab with a headline and a rule — the world's editorial voice. */
-const buildBillboard: Builder = (ctx, landmark, at) => {
+const buildBillboard: Builder = (ctx, landmark) => {
   const group = new THREE.Group()
   const scale = landmark.scale ?? 1
   const width = 10 * scale
@@ -260,7 +260,7 @@ const buildBillboard: Builder = (ctx, landmark, at) => {
 }
 
 /** The hub's name, in physical letters you can drive between. */
-const buildMonumentName: Builder = (ctx, _landmark, at) => {
+const buildMonumentName: Builder = (ctx, _landmark) => {
   const group = new THREE.Group()
   const size = 5.2
   const material = ctx.materials.tinted(palette.ink, 0.62, 0.08)
@@ -285,7 +285,8 @@ const buildMonumentName: Builder = (ctx, _landmark, at) => {
       ctx.physics.add({
         type: 'fixed',
         category: 'floor',
-        position: { x: at.x + box.x, y: at.y + box.y, z: at.z + row * -7.5 },
+        position: toWorld(ctx, box.x, box.y, row * -7.5),
+        rotation: toWorldRotation(ctx),
         friction: 0.6,
         restitution: 0.2,
         colliders: [
@@ -299,7 +300,7 @@ const buildMonumentName: Builder = (ctx, _landmark, at) => {
 }
 
 /** A generic project marker: a plinth, a form, a label, a ring. */
-const buildMonument: Builder = (ctx, landmark, at) => {
+const buildMonument: Builder = (ctx, landmark) => {
   const group = new THREE.Group()
   const scale = landmark.scale ?? 1
   const height = 4.4 * scale
@@ -352,7 +353,7 @@ const buildMonument: Builder = (ctx, landmark, at) => {
 }
 
 /** A giant ID card, leaning on its edge. The About landmark. */
-const buildIdCard: Builder = (ctx, landmark, at) => {
+const buildIdCard: Builder = (ctx, landmark) => {
   const group = new THREE.Group()
   const width = 9
   const height = 5.6
@@ -411,7 +412,7 @@ const buildIdCard: Builder = (ctx, landmark, at) => {
 }
 
 /** Nodes and edges, standing up. The Data Structures monument. */
-const buildGraphSculpture: Builder = (ctx, landmark, at) => {
+const buildGraphSculpture: Builder = (ctx, landmark) => {
   const group = new THREE.Group()
   const nodeMaterial = ctx.materials.get('ink')
   const edgeMaterial = ctx.materials.get('accent')
@@ -473,7 +474,7 @@ const buildGraphSculpture: Builder = (ctx, landmark, at) => {
 }
 
 /** Scheduled blocks in lanes. Operating Systems, and the debug yard. */
-const buildProcessBlocks: Builder = (ctx, landmark, at) => {
+const buildProcessBlocks: Builder = (ctx, landmark) => {
   const group = new THREE.Group()
   const scale = landmark.scale ?? 1
   const lanes = 4
@@ -518,7 +519,7 @@ const buildProcessBlocks: Builder = (ctx, landmark, at) => {
 }
 
 /** A wall of shifting cipher blocks. */
-const buildCipherWall: Builder = (ctx, landmark, at) => {
+const buildCipherWall: Builder = (ctx, landmark) => {
   const group = new THREE.Group()
   const cols = 12
   const rows = 6
@@ -552,7 +553,7 @@ const buildCipherWall: Builder = (ctx, landmark, at) => {
 }
 
 /** A stack of discs: pages, indexes, a root at the top. */
-const buildDatabaseTower: Builder = (ctx, landmark, at) => {
+const buildDatabaseTower: Builder = (ctx, landmark) => {
   const group = new THREE.Group()
   const layers = 7
 
@@ -587,7 +588,7 @@ const buildDatabaseTower: Builder = (ctx, landmark, at) => {
 }
 
 /** Modules assembling into one system. Offset slabs, interlocking. */
-const buildModuleStack: Builder = (ctx, landmark, at) => {
+const buildModuleStack: Builder = (ctx, landmark) => {
   const group = new THREE.Group()
   const modules = 6
 
@@ -609,7 +610,7 @@ const buildModuleStack: Builder = (ctx, landmark, at) => {
 }
 
 /** UCL's research building: a white shell over an open floor. */
-const buildResearchShell: Builder = (ctx, landmark, at) => {
+const buildResearchShell: Builder = (ctx, landmark) => {
   const group = new THREE.Group()
   const chalk = ctx.materials.tinted(palette.chalk, 0.7, 0.02)
 
@@ -654,7 +655,7 @@ const buildResearchShell: Builder = (ctx, landmark, at) => {
 }
 
 /** Half a million documents, standing up as light. */
-const buildDataField: Builder = (ctx, landmark, at) => {
+const buildDataField: Builder = (ctx, landmark) => {
   const group = new THREE.Group()
   const scale = landmark.scale ?? 1
   const count = ctx.quality.count(900, 180)
@@ -702,7 +703,7 @@ const buildDataField: Builder = (ctx, landmark, at) => {
 }
 
 /** A drivable chessboard with real pieces. */
-const buildChessboard: Builder = (ctx, landmark, at) => {
+const buildChessboard: Builder = (ctx, landmark) => {
   const group = new THREE.Group()
   const cell = 3.2
   const size = 8
@@ -769,7 +770,7 @@ const buildChessboard: Builder = (ctx, landmark, at) => {
 }
 
 /** Two moving walls of orders meeting at a matching engine. */
-const buildOrderBook: Builder = (ctx, landmark, at) => {
+const buildOrderBook: Builder = (ctx, landmark) => {
   const group = new THREE.Group()
   const levels = 14
 
@@ -801,7 +802,7 @@ const buildOrderBook: Builder = (ctx, landmark, at) => {
 }
 
 /** A phone the size of a building, that you drive into. */
-const buildDevice: Builder = (ctx, landmark, at) => {
+const buildDevice: Builder = (ctx, landmark) => {
   const group = new THREE.Group()
   const width = 17
   const length = 34
@@ -866,7 +867,7 @@ const buildDevice: Builder = (ctx, landmark, at) => {
 }
 
 /** A browser window standing on the ground. Client City's unit. */
-const buildBrowserTower: Builder = (ctx, landmark, at) => {
+const buildBrowserTower: Builder = (ctx, landmark) => {
   const group = new THREE.Group()
   const width = 8
   const height = (landmark.scale ?? 1) * 14
@@ -912,7 +913,7 @@ const buildBrowserTower: Builder = (ctx, landmark, at) => {
 }
 
 /** A production station: a plinth with a labelled block on it. */
-const buildStation: Builder = (ctx, landmark, at) => {
+const buildStation: Builder = (ctx, landmark) => {
   const group = new THREE.Group()
   solidBox(ctx, group, 4.4, 1.0, 4.4, [0, 0.5, 0], ctx.materials.get('concrete'),
     { chamfer: 0.1 })
@@ -930,7 +931,7 @@ const buildStation: Builder = (ctx, landmark, at) => {
 }
 
 /** A gate you drive through. Start lines, checkpoints, circuits. */
-const buildGate: Builder = (ctx, landmark, at) => {
+const buildGate: Builder = (ctx, landmark) => {
   const group = new THREE.Group()
   const span = 16
   const height = 8
@@ -956,7 +957,7 @@ const buildGate: Builder = (ctx, landmark, at) => {
 }
 
 /** A terminal: a screen on a stand, for reading and for secrets. */
-const buildTerminal: Builder = (ctx, landmark, at) => {
+const buildTerminal: Builder = (ctx, landmark) => {
   const group = new THREE.Group()
   solidBox(ctx, group, 2.4, 0.5, 2.0, [0, 0.25, 0], ctx.materials.get('graphite'),
     { chamfer: 0.06 })
@@ -992,7 +993,7 @@ const buildTerminal: Builder = (ctx, landmark, at) => {
 }
 
 /** A small island, floating a little proud of the ground. */
-const buildIsland: Builder = (ctx, landmark, at) => {
+const buildIsland: Builder = (ctx, landmark) => {
   const group = new THREE.Group()
   const radius = 9 * (landmark.scale ?? 1)
 
@@ -1016,7 +1017,7 @@ const buildIsland: Builder = (ctx, landmark, at) => {
 }
 
 /** A rubber duck. Every debugging area needs one. */
-const buildDuck: Builder = (ctx, _landmark, at) => {
+const buildDuck: Builder = (ctx, _landmark) => {
   const group = new THREE.Group()
   const yellow = ctx.materials.tinted('#e8b23d', 0.55, 0)
 
@@ -1060,7 +1061,7 @@ const buildDuck: Builder = (ctx, _landmark, at) => {
 }
 
 /** Two brackets to jump between. `{ }` — SHIP IT. */
-const buildBracket: Builder = (ctx, _landmark, at) => {
+const buildBracket: Builder = (ctx, _landmark) => {
   const group = new THREE.Group()
   const material = ctx.materials.tinted(palette.ink, 0.6, 0.1)
 
@@ -1137,7 +1138,7 @@ export function buildLandmark(
   // The hub's name is the one landmark with a bespoke builder,
   // because it is the only one made of letters.
   const builder = landmark.id === 'hub-name' ? buildMonumentName : BUILDERS[landmark.visual]
-  const built = builder(ctx, landmark, at)
+  const built = builder(ctx, landmark)
   built.group.position.copy(at)
   built.group.rotation.y = ctx.rotation
   return built

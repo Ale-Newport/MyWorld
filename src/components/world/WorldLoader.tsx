@@ -55,6 +55,11 @@ export function WorldLoader({ store, getGame }: Props) {
     setLeaving(true)
     // Let the fade play before the HUD arrives.
     window.setTimeout(() => store.getState().setEntered(true), 520)
+
+    // This click is the user gesture the browser requires before an
+    // AudioContext will start. There is no other moment to take it,
+    // and asking earlier just fails silently.
+    getGame()?.enableAudio()
     getGame()?.markOnboarded()
   }
 
