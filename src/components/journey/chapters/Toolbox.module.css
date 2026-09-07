@@ -48,6 +48,7 @@
   color: var(--accent); border-color: var(--accent); transform: translateY(-1px);
 }
 .chip[data-dim='true'] { opacity: 0.24; }
+.chip[data-pinned='true'] { background: color-mix(in oklab, var(--accent) 14%, transparent); }
 .chipCount { font-size: 8px; color: var(--text-faint); }
 .chip[data-on='true'] .chipCount { color: var(--accent); }
 

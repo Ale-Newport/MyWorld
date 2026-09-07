@@ -82,8 +82,11 @@ files in `src/content/` and regenerate.
    repository configures 4 trader threads at 5 ticks/sec. The metric carries that note in the
    data and is shown with it.
 5. **Contact links** — `email`, `linkedin` and `cv` in `src/content/profile.ts` are
-   marked `needsVerification: true`. Only the GitHub URL is confirmed. Replace them and drop
-   the CV PDF at `public/assets/alejandro-newport-cv.pdf`.
+   marked `needsVerification: true`; only the GitHub URL is confirmed. Replace the email and
+   LinkedIn values with the real ones. The CV deliberately renders as "On request" rather
+   than a link, because the file does not exist yet — drop the PDF at
+   `public/assets/alejandro-newport-cv.pdf` and set that entry's `dataStatus` to `verified`
+   and it becomes a download with no other change.
 6. **Site URL** — `siteConfig.url` is a placeholder. Set the real domain before deploying,
    or OpenGraph and the sitemap will point at the wrong host.
 

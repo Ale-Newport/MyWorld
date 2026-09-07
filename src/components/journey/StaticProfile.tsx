@@ -84,9 +84,13 @@ export function StaticProfile() {
 
       <h2>Contact</h2>
       <ul>
-        {contact.map((c) => (
-          <li key={c.id}><a href={c.href}>{c.label}: {c.value}</a></li>
-        ))}
+        {contact.map((c) =>
+          c.id === 'cv' && c.dataStatus === 'placeholder' ? (
+            <li key={c.id}>{c.label}: available on request</li>
+          ) : (
+            <li key={c.id}><a href={c.href}>{c.label}: {c.value}</a></li>
+          ),
+        )}
       </ul>
     </div>
   )

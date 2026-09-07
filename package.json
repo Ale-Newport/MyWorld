@@ -9,7 +9,9 @@
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "content:status": "node scripts/content-status.mjs",
-    "capture:clients": "node scripts/capture-clients.mjs"
+    "capture:clients": "node scripts/capture-clients.mjs",
+    "qa": "node scripts/visual-qa.mjs",
+    "perf": "node scripts/perf-check.mjs"
   },
   "dependencies": {
     "@react-three/drei": "^10.7.8",

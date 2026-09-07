@@ -59,7 +59,7 @@ export const CORE_STATES: Record<CoreState, CoreTransform> = {
   grid:      { ...base, scale: 0.3,  y: 2.3,  z: -2.4, shatter: 0.32, spin: 0.3, ringSpread: 0.9, opacity: 0.35 },
 
   // Stock — stretched into a stream of parallel orders.
-  stream:    { ...base, scale: 0.36, x: -3.9, y: 1.4, z: -1.8, stretch: 1.6, spin: 1.4, ringSpread: 0.25, opacity: 0.4 },
+  stream:    { ...base, scale: 0.36, x: -3.9, y: 1.4, z: -1.8, stretch: 1.6, spin: 1.4, ringSpread: 0.25, opacity: 0.22 },
 
   // Universe — the central star everything orbits.
   star:      { ...base, scale: 0.42, spin: 0.4, ringSpread: 1.4, opacity: 0.75 },

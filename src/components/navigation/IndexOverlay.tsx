@@ -119,20 +119,30 @@ export function IndexOverlay({ open, onClose }: { open: boolean; onClose: () => 
           </div>
 
           <ul className={styles.links}>
-            {contact.map((c) => (
-              <li key={c.id}>
-                <a
-                  href={c.href}
-                  className={styles.link}
-                  target={c.href.startsWith('http') ? '_blank' : undefined}
-                  rel={c.href.startsWith('http') ? 'noreferrer noopener' : undefined}
-                  data-cursor="link"
-                >
-                  <span>{c.label}</span>
-                  <span className={styles.linkValue}>{c.value}</span>
-                </a>
-              </li>
-            ))}
+            {contact.map((c) => {
+              const pending = c.id === 'cv' && c.dataStatus === 'placeholder'
+              return (
+                <li key={c.id}>
+                  {pending ? (
+                    <span className={styles.link}>
+                      <span>{c.label}</span>
+                      <span className={styles.linkValue}>On request</span>
+                    </span>
+                  ) : (
+                    <a
+                      href={c.href}
+                      className={styles.link}
+                      target={c.href.startsWith('http') ? '_blank' : undefined}
+                      rel={c.href.startsWith('http') ? 'noreferrer noopener' : undefined}
+                      data-cursor="link"
+                    >
+                      <span>{c.label}</span>
+                      <span className={styles.linkValue}>{c.value}</span>
+                    </a>
+                  )}
+                </li>
+              )
+            })}
           </ul>
         </footer>
       </div>

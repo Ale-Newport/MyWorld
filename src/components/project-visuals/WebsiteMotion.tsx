@@ -23,7 +23,7 @@
  *   0.00  /        mounted at 1280px — pills out, three columns
  *   0.33  /COURSES the frame crossing lg — three columns folding to two
  *   0.66  /GALLERY at 390px — nav collapsed to a burger, one column,
- *         the page twice as long and the gauge saying so
+ *         the page half again as long and the gauge saying so
  *   1.00  /CONTACT expanded back to 1280px, pills unfolded, form beside list
  *
  * Reduced motion holds /COURSES at 820px: the two-column layout solid, the
@@ -274,8 +274,8 @@ function computeLayout(w: number, h: number, hud: boolean, ledger: boolean): Lay
   const detail = w >= 330 && h >= 190
   const showRuler = avail > 118
   const showLedger = ledger && avail > 188 && w >= 300
-  const rulerH = showRuler ? 24 : 0
-  const ledgerH = showLedger ? 17 : 0
+  const rulerH = showRuler ? 26 : 0
+  const ledgerH = showLedger ? 18 : 0
   const frameH = Math.max(54, avail - rulerH - ledgerH)
   const frameY = padTop
 
@@ -295,7 +295,7 @@ function computeLayout(w: number, h: number, hud: boolean, ledger: boolean): Lay
     // against it, so a one-column reflow visibly runs off the bottom.
     rowUnit: (contentH * 0.94) / MAX_DESK_H,
     rulerY: frameY + frameH + 15,
-    ledgerY: frameY + frameH + rulerH + 11,
+    ledgerY: frameY + frameH + rulerH + 13,
     fontMicro: `${micro}px ui-monospace, monospace`,
     fontNano: `${nano}px ui-monospace, monospace`,
   }
@@ -419,9 +419,9 @@ function drawSkeleton(
         ctx.globalAlpha = a * 0.42 * clamp(p * 3 - k * 0.7)
         ctx.strokeRect(ix, iy + ih * 0.3 + k * (fh + Math.max(3, ih * 0.06)), iw * 0.92, fh)
       }
-      ctx.globalAlpha = a * 0.7 * range(p, 0.6, 1)
+      ctx.globalAlpha = a * 0.5 * range(p, 0.6, 1)
       ctx.fillStyle = soft
-      bar(ctx, ix, iy + ih - fh, Math.max(6, iw * 0.3), fh)
+      bar(ctx, ix, iy + ih - fh, Math.max(6, iw * 0.26), fh * 0.9)
       break
     }
     case 'list': {
@@ -464,14 +464,15 @@ function drawView(
   const n = blocks.length
   const stag = Math.min(0.1, 0.45 / Math.max(1, n - 1))
   const spanF = stag * (n - 1)
-  const shift = vw * 0.32
+  const shift = vw * 0.42
   const a0 = PACKED[route][i0].slots
   const a1 = PACKED[route][i1].slots
 
   for (let i = 0; i < n; i += 1) {
     const pin = clamp(reveal * (1 + spanF) - i * stag)
     const pout = clamp(exit * (1 + spanF) - i * stag)
-    const a = alpha * pin * (1 - pout)
+    // The old view lets go early so the two never sit on top of each other.
+    const a = alpha * pin * (1 - easeOutCubic(pout))
     if (a <= 0.012) continue
 
     const sx = lerp(a0[i].x, a1[i].x, f)
@@ -820,12 +821,13 @@ export function WebsiteMotion(props: ProjectVisualProps) {
         ctx.rect(urlX, fy0 + 1, urlW, L.chromeH - 2)
         ctx.clip()
         ctx.textBaseline = 'middle'
-        const rise = L.chromeH * 0.8
-        if (from !== route && trans < 1) {
-          nib(ctx, inkSoft, (1 - trans) * 0.6, L.fontMicro)
+        // The old path lets go quickly — pushState replaces, it does not blend.
+        const rise = L.chromeH * 0.5
+        if (from !== route && trans < 0.7) {
+          nib(ctx, inkSoft, (1 - trans / 0.7) ** 2 * 0.5, L.fontMicro)
           ctx.fillText(ROUTES[from].path, urlX, cbY - rise * eTrans)
         }
-        nib(ctx, ink, from !== route ? clamp(trans * 1.6) : 1, L.fontMicro)
+        nib(ctx, ink, from !== route ? clamp(trans * 2.2) : 1, L.fontMicro)
         ctx.fillText(ROUTES[route].path, urlX, cbY + rise * (1 - eTrans))
         ctx.restore()
       }
@@ -921,11 +923,14 @@ export function WebsiteMotion(props: ProjectVisualProps) {
       ctx.strokeRect(vx, vy, vw, vh)
       ctx.setLineDash(NODASH)
 
-      if (L.detail && fw > 220) {
+      // The channel above the view is shared: at rest it is labelled, and
+      // during a navigation the routed path runs through it instead.
+      const tracing = reducedMotion || (from !== route && trans < 1)
+      if (L.detail && fw > 220 && !tracing && L.chan > 7) {
         nib(ctx, inkFaint, 0.38, L.fontNano)
         ctx.textAlign = 'left'
         ctx.textBaseline = 'bottom'
-        ctx.fillText('<ROUTER-VIEW/>', vx, vy - 2)
+        ctx.fillText('<ROUTER-VIEW/>', vx, vy - 1.5)
       }
 
       ctx.save()
@@ -951,14 +956,14 @@ export function WebsiteMotion(props: ProjectVisualProps) {
 
       // Out to the left, staggered; in from the right behind the routed path.
       if (from !== route && trans < 1) drawView(ctx, V, palette, from, i0, i1, f, 1, trans, 1)
-      drawView(ctx, V, palette, route, i0, i1, f, from === route ? 1 : clamp((trans - 0.28) / 0.72), 0, 1)
+      drawView(ctx, V, palette, route, i0, i1, f, from === route ? 1 : clamp((trans - 0.34) / 0.66), 0, 1)
       ctx.restore()
 
       /* ---- page-length gauge ------------------------------------------------ */
 
       const pageH = lerp(PACKED[route][i0].height, PACKED[route][i1].height, f) * L.rowUnit
       const seen = clamp(vh / Math.max(vh, pageH), 0.12, 1)
-      const gx = fx1 - L.padIn * 0.5 - gauge * 0.5
+      const gx = vx + vw + Math.max(2.5, gauge * 0.5)
       pen(ctx, inkFaint, 0.22)
       line(ctx, gx, vy, gx, vy + vh)
       pen(ctx, inkSoft, seen < 0.999 ? 0.7 : 0.35, 1.6)
@@ -977,7 +982,7 @@ export function WebsiteMotion(props: ProjectVisualProps) {
 
       // Held complete in reduced motion: pill → channel → view, the route
       // resolved rather than resolving.
-      if (reducedMotion || (from !== route && trans < 1)) {
+      if (tracing) {
         const originCollapsed = collapsed > 0.5
         const sx = originCollapsed ? burgerX : hit.pill[route * 4] + hit.pill[route * 4 + 2] * 0.5
         const sy = originCollapsed ? navY + L.navH * 0.5 + 6 : pillY + pillH + 3
@@ -1075,8 +1080,8 @@ export function WebsiteMotion(props: ProjectVisualProps) {
 
       if (L.ledger) {
         const ly = L.ledgerY
-        const span = Math.min(L.x1 - L.x0 - 62, ledgerTicks * 9 + (nRoutes - 1) * 6)
-        const step = span / Math.max(1, ledgerTicks + (nRoutes - 1) * 0.66)
+        const span = L.x1 - L.x0 - 78
+        const step = clamp(span / Math.max(1, ledgerTicks + (nRoutes - 1) * 0.66), 3.5, 11)
         let cx2 = L.x0
         for (let r = 0; r < nRoutes; r += 1) {
           const n = ROUTES[r].blocks.length
@@ -1088,12 +1093,6 @@ export function WebsiteMotion(props: ProjectVisualProps) {
             cx2 += step
           }
           cx2 += step * 0.66
-        }
-        if (L.detail) {
-          nib(ctx, inkFaint, 0.4, L.fontNano)
-          ctx.textAlign = 'right'
-          ctx.textBaseline = 'middle'
-          ctx.fillText(`${compCount} COMPONENTS`, L.x1, ly - 1)
         }
       }
 

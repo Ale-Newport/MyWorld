@@ -43,6 +43,8 @@
   color: var(--text-muted);
 }
 .link:hover { padding-left: var(--sp-4); color: var(--text-primary); }
+.link[data-pending='true'] { cursor: default; }
+.link[data-pending='true']:hover { padding-left: 0; color: var(--text-muted); }
 
 .linkLabel {
   font-family: var(--font-mono); font-size: var(--fs-nano);
