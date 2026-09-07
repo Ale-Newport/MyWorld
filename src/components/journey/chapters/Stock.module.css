@@ -23,7 +23,7 @@
 .ladder {
   position: absolute;
   left: var(--gutter); right: var(--gutter);
-  bottom: clamp(8rem, 20vh, 11rem);
+  bottom: clamp(11rem, 27vh, 15rem);
   display: flex; flex-wrap: wrap; align-items: baseline; justify-content: center;
   gap: clamp(0.6rem, 3vw, 3rem);
 }

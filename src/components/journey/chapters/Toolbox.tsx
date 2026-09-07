@@ -18,7 +18,13 @@ import styles from './Toolbox.module.css'
    ============================================================ */
 
 export function Toolbox() {
-  const [active, setActive] = useState<string | null>(null)
+  /* Hover previews, click pins. Keeping these separate matters:
+     with one piece of state, a click on an already-hovered chip
+     toggles it straight back off — and on touch there is no hover
+     at all, so a tap has to be what selects. */
+  const [hovered, setHovered] = useState<string | null>(null)
+  const [pinned, setPinned] = useState<string | null>(null)
+  const active = pinned ?? hovered
   const setActiveProject = useJourney((s) => s.setActiveProject)
 
   useEffect(() => {
@@ -41,7 +47,7 @@ export function Toolbox() {
           </p>
         </div>
 
-        <div className={styles.grid} onMouseLeave={() => setActive(null)}>
+        <div className={styles.grid} onMouseLeave={() => setHovered(null)}>
           {techGroups.map((g) => (
             <section key={g.id} className={styles.group}>
               <h3 className={styles.groupLabel}>{g.label}</h3>
@@ -52,13 +58,16 @@ export function Toolbox() {
                       type="button"
                       className={styles.chip}
                       data-on={active === n.id}
+                      data-pinned={pinned === n.id}
                       data-dim={active !== null && active !== n.id}
                       data-weight={n.weight}
                       data-evidence={n.evidence.length > 0}
-                      onMouseEnter={() => setActive(n.id)}
-                      onFocus={() => setActive(n.id)}
-                      onClick={() => setActive(active === n.id ? null : n.id)}
-                      aria-pressed={active === n.id}
+                      onMouseEnter={() => setHovered(n.id)}
+                      onMouseLeave={() => setHovered((h) => (h === n.id ? null : h))}
+                      onFocus={() => setHovered(n.id)}
+                      onBlur={() => setHovered((h) => (h === n.id ? null : h))}
+                      onClick={() => setPinned((v) => (v === n.id ? null : n.id))}
+                      aria-pressed={pinned === n.id}
                       data-cursor="link"
                     >
                       {n.name}

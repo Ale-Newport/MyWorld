@@ -81,23 +81,33 @@ export function Contact() {
         </div>
 
         <ul className={styles.links} ref={linksRef}>
-          {contact.map((c) => (
-            <li key={c.id} className={shared.driven}>
-              <a
-                href={c.href}
-                className={styles.link}
-                target={c.href.startsWith('http') ? '_blank' : undefined}
-                rel={c.href.startsWith('http') ? 'noreferrer noopener' : undefined}
-                download={c.id === 'cv' ? '' : undefined}
-                data-cursor="link"
-                data-cursor-text={c.label.toUpperCase()}
-              >
-                <span className={styles.linkLabel}>{c.label}</span>
-                <span className={styles.linkValue}>{c.value}</span>
-                <span className={styles.linkArrow} aria-hidden="true">↗</span>
-              </a>
-            </li>
-          ))}
+          {contact.map((c) => {
+            const pending = c.id === 'cv' && c.dataStatus === 'placeholder'
+            const external = c.href.startsWith('http')
+            return (
+              <li key={c.id} className={shared.driven}>
+                {pending ? (
+                  <span className={styles.link} data-pending="true">
+                    <span className={styles.linkLabel}>{c.label}</span>
+                    <span className={styles.linkValue}>On request</span>
+                  </span>
+                ) : (
+                  <a
+                    href={c.href}
+                    className={styles.link}
+                    target={external ? '_blank' : undefined}
+                    rel={external ? 'noreferrer noopener' : undefined}
+                    data-cursor="link"
+                    data-cursor-text={c.label.toUpperCase()}
+                  >
+                    <span className={styles.linkLabel}>{c.label}</span>
+                    <span className={styles.linkValue}>{c.value}</span>
+                    <span className={styles.linkArrow} aria-hidden="true">↗</span>
+                  </a>
+                )}
+              </li>
+            )
+          })}
         </ul>
 
         <footer className={styles.colophon}>

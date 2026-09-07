@@ -72,6 +72,16 @@ export function JourneyCamera() {
     tmpPos.x += frame.pointerX * 0.55 * drift
     tmpPos.y += frame.pointerY * 0.4 * drift
 
+    // The playground is the one chapter the visitor steers, so the
+    // camera follows the rover instead of holding a fixed shot —
+    // otherwise driving away simply loses the object.
+    if (s.chapter === 'playground') {
+      tmpPos.x += frame.roverX
+      tmpPos.z += frame.roverZ
+      tmpLook.x += frame.roverX
+      tmpLook.z += frame.roverZ
+    }
+
     if (!initialised.current) {
       camera.position.copy(tmpPos)
       curLook.copy(tmpLook)

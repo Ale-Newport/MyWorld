@@ -408,3 +408,28 @@ pull it off by ~30%.
 **The React Compiler lint rules are scoped off in two directories** — see the
 comment in `eslint.config.mjs` for why, and what to do if the compiler is ever
 switched on.
+
+---
+
+## 14. Verification
+
+What was actually checked, and how:
+
+| Check | Method | Result |
+| --- | --- | --- |
+| Production build | `npm run build` | Passes. 4 routes, all static. |
+| Types | `tsc --noEmit`, strict | Clean. No `any` in the codebase. |
+| Lint | `eslint src` (flat config, Next 16) | Clean. |
+| Layout, 15 chapters × 5 viewports | `npm run qa` — Playwright walks the journey at 1920/1440/1280/834/390 and screenshots every chapter | No horizontal overflow at any size. |
+| Runtime errors | console + pageerror capture during the same sweep | None. |
+| Index overlay, project deep-links, Quick View | asserted in the sweep | All pass; Quick View correctly drops the playground. |
+| Reduced motion | separate context with `reducedMotion: 'reduce'` | Renders a designed static state. |
+| First load | `node scripts/perf-check.mjs` | FCP ~56 ms, ~611 KB transferred including fonts and the client captures. |
+| Frame rate | same script, scrubbing the entire journey | Holds up under software rendering (headless SwiftShader); real GPUs are far above it. |
+
+```bash
+npm run qa     # visual + functional sweep (needs a server running)
+npm run perf   # payload and frame-rate measurement
+```
+
+Screenshots land in `.qa/<viewport>/<chapter>.png` with a `report.json` next to them.
