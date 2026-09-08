@@ -66,7 +66,15 @@ export class IslandChallenge extends Minigame {
       for(const [x,z] of RELAY_POINTS)this.addTarget(x,z,3)
       const ring=new THREE.Mesh(new THREE.RingGeometry(4.5,5.4,40),new THREE.MeshBasicMaterial({color:'#d1ad69',side:THREE.DoubleSide}));ring.rotation.x=-Math.PI/2;ring.position.set(spot.x,this.game.terrain.colliderHeightAt(spot.x,spot.z)+.12,spot.z);this.group.add(ring)
       this.game.playground.label('CACHE',this.group,new THREE.Vector3(spot.x,this.game.terrain.colliderHeightAt(spot.x,spot.z)+5,spot.z),6,1.5)
-    } else if(this.kind==='domino') {this.limit=30;this.startPosition.set(spot.x-20,this.game.terrain.colliderHeightAt(spot.x-20,spot.z)+1.6,spot.z)}
+    } else if(this.kind==='domino') {
+      // Lined up with the near row, not down the gap between the two.
+      // Started in the middle the car threads the quarry at speed and
+      // touches nothing, which makes "hit a crate hard enough" a game
+      // you cannot win by driving at it.
+      this.limit=30
+      const lane=spot.z-2.6
+      this.startPosition.set(spot.x-20,this.game.terrain.colliderHeightAt(spot.x-20,lane)+1.6,lane)
+    }
     else {this.limit=90;this.startPosition.copy(this.game.playground.altar).add(new THREE.Vector3(21,2,7))}
     this.game.playground.label(this.title,this.group,this.startPosition.clone().add(new THREE.Vector3(0,5,0)),this.kind==='deployment'?13:10,1.8)
     this.game.renderer.scene.add(this.group);this.bin.object3D(this.group)
