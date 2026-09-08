@@ -71,6 +71,8 @@ export const FOREST_POCKETS = [
   [26,-24,13],[74,-90,15],[112,-46,14],[124,14,14],[70,72,14],[16,84,14],
   // South coast scrub.
   [56,120,15],[-4,110,14],
+  // Gaps found by sampling the island rather than by eye.
+  [60,-10,13],[90,130,13],
 ] as const
 /**
  * The coastline, as a radius that varies with bearing. A perfect

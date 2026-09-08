@@ -107,7 +107,7 @@ export class Ecology {
     // square: nine attempts in ten used to land in the sea and be
     // thrown away, which is why the ground looked bare.
     const scatterSpan = WORLD_RADIUS * 2.2
-    const scatterCount = Math.round(96000 * Math.max(0.3, game.quality.settings.density))
+    const scatterCount = Math.round(140000 * Math.max(0.3, game.quality.settings.density))
     for (let i = 0; i < scatterCount; i++) {
       const x = (r() - .5) * scatterSpan, z = (r() - .5) * scatterSpan
       if (!this.allowed(x, z, .5)) continue
