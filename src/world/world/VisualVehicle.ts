@@ -143,9 +143,10 @@ export class VisualVehicle {
     }
 
     /* ---- body ------------------------------------------- */
+    this.defaultShellMaterial = shell
     // Matches the main collider (half-extents 1.3 × 0.4 × 0.85)
     // with the chamfer pulled in, so what you see is what hits.
-    add(chamferedBox(2.56, 0.74, 1.66, 0.14), shell, [0, -0.1, 0])
+    this.shellMeshes.push(add(chamferedBox(2.56, 0.74, 1.66, 0.14), shell, [0, -0.1, 0]))
 
     // A lower sill in graphite: visually separates body from wheels
     // and hides the gap when the suspension is fully compressed.
@@ -153,7 +154,7 @@ export class VisualVehicle {
 
     // Bonnet scoop and boot lip, for a silhouette that has a front.
     add(chamferedBox(0.5, 0.1, 1.0, 0.04), graphite, [0.86, 0.24, 0])
-    add(chamferedBox(0.26, 0.16, 1.5, 0.05), shell, [-1.2, 0.16, 0])
+    this.shellMeshes.push(add(chamferedBox(0.26, 0.16, 1.5, 0.05), shell, [-1.2, 0.16, 0]))
 
     /* ---- greenhouse ------------------------------------- */
     // Matches the cabin collider (0.5 × 0.15 × 0.65 at y 0.4).
@@ -419,6 +420,26 @@ export class VisualVehicle {
 
   /** Written by DayCycle. 0 = noon, 1 = fully dark. */
   nightFactor = 0
+
+  /**
+   * Swappable body shells. The brief asks for unlockable ones; this
+   * is the mechanism, and the Konami code is its first user. The
+   * body meshes are re-materialled rather than rebuilt, so a swap
+   * costs nothing and cannot leak geometry.
+   */
+  private shellMeshes: THREE.Mesh[] = []
+  private defaultShellMaterial: THREE.Material | null = null
+
+  setShell(shell: 'default' | 'konami' | 'graphite'): void {
+    if (!this.defaultShellMaterial) return
+    const material =
+      shell === 'konami'
+        ? this.materials.tinted(palette.accent, 0.38, 0.24)
+        : shell === 'graphite'
+          ? this.materials.tinted(palette.ink2, 0.5, 0.2)
+          : this.defaultShellMaterial
+    for (const mesh of this.shellMeshes) mesh.material = material
+  }
 
   /** Set by the Game once the View exists. */
   camera: THREE.Camera = new THREE.PerspectiveCamera()

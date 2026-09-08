@@ -387,7 +387,183 @@ Where a number comes only from the CV, the data says so and the note is shown ne
 
 ---
 
-## 13. Notes for whoever works on this next
+## 13. The interactive world (`/world`)
+
+A second, optional way through the same material: a drivable 3D world built from
+the same `src/content/` data as the scroll journey. Nothing in it is exclusive —
+every project it contains links back to its case study, and the whole thing is
+written out as plain DOM for anyone not driving.
+
+**It is a derivative of Bruno Simon's MIT-licensed
+[folio-2025](https://github.com/brunosimon/folio-2025).** The engine under it —
+game loop, physics, ray-cast vehicle, camera, input system — is ported from that
+project. See [THIRD_PARTY_NOTICES.md](./THIRD_PARTY_NOTICES.md) for the licence,
+what was ported, what was adapted, and what is original. Every ported file
+carries a `PORTED FROM` header.
+
+### Architecture
+
+```
+src/world/                     the engine — imperative TypeScript, no React
+    Game.ts                    one instance per mount; owns everything
+    core/                      Events, Ticker, Viewport, Quality, Tween, Disposal, palette
+    physics/                   Physics (Rapier), PhysicsVehicle  ← the game feel
+    input/                     Inputs action-map, Keyboard, Pointer, Wheel, Gamepad, Nipple
+    player/Player.ts           input → driver intent, hydraulics, respawn
+    view/View.ts               the follow camera
+    render/Renderer.ts         WebGL renderer + one composite pass
+    world/                     terrain, materials, geometry, landmarks, props, the car
+    minigames/                 Minigame base + one file per game
+    systems/                   achievements, audio, save, zones, weather, secrets, interaction
+    state/store.ts             the narrow bridge to React
+src/content/world.ts           WHERE EVERYTHING STANDS — districts, landmarks, roads, ramps
+src/content/achievements.ts    what can be unlocked
+src/components/world/          the React shell: loader, HUD, overlays, map
+src/app/world/page.tsx         the route
+```
+
+React renders the loader, the HUD and the overlays. It does not render a single
+frame of the world and does not re-render while you drive.
+
+### Physics
+
+Rapier (`@dimforge/rapier3d-compat`, pinned to 0.17.3 to match upstream) with its
+`DynamicRayCastVehicleController`. `PhysicsVehicle.ts` keeps every upstream
+tuning constant — engine force, top speeds, brake amplitudes, the three
+suspension heights and stiffnesses, wheel friction and suspension settings, the
+flip impulse. Those numbers are the difference between a car that moves and a car
+that is fun, and they are not recoverable by guessing.
+
+One deliberate change: the simulation runs on a **fixed-timestep accumulator**
+rather than upstream's variable step. At 60 Hz it produces upstream's exact
+numbers (`world.timestep = 1/30`, `controller.updateVehicle(1/60)`, including the
+deliberate 2:1 asymmetry between them); everywhere else it holds them, so the car
+handles the same on a 144 Hz desktop and a 40 Hz laptop.
+
+The tick order is upstream's, split across three channels:
+
+| Channel | Order | What runs |
+| --- | --- | --- |
+| `frame` (once per rendered frame) | 0 | sample inputs and devices |
+| `fixed` (0–5 substeps) | 1 | player pre-physics |
+| | 2 | vehicle pre-physics |
+| | 3 | **physics step** |
+| | 5 | vehicle post-physics |
+| | 6 | player post-physics |
+| | 7–8 | zones, interaction targets |
+| `tick` (once per rendered frame) | 7 | camera |
+| | 8–15 | visual vehicle, lighting, tracks, weather, mini-games, secrets |
+| | 998 | render |
+
+### Controls
+
+| | Keyboard | Gamepad | Touch |
+| --- | --- | --- | --- |
+| Drive | WASD / arrows | left stick, R2 / L2 | drag anywhere |
+| Boost | Shift | ○ | — |
+| Brake | B or Ctrl | □ | — |
+| Jump | Space | △ | tap near the car |
+| Hydraulics | number keys / numpad | L1, R1 | — |
+| Interact | Enter or E | ✕ | tap the prompt |
+| Camera | drag to orbit, middle-drag to pan, wheel to zoom | right stick, R3 | two fingers |
+| Horn | H | L3 | — |
+| Respawn | R | Select | menu |
+| Map | M | Start | menu |
+| Achievements | K | | menu |
+| Mute | L | | options |
+| Pause | Escape | | ESC button |
+
+Every binding is data in `ACTION_DEFINITIONS` (`src/world/input/Inputs.ts`) and
+can be overridden at runtime through `inputs.rebind()`; overrides persist in the
+save file.
+
+### The world is data
+
+`src/content/world.ts` is the whole map. Districts, landmarks, roads, ramps,
+respawn points, timeline plates and dev notes are arrays; `src/world/world/World.ts`
+is the machine that turns them into geometry and colliders.
+
+**To add a landmark**, add an entry to `landmarks`:
+
+```ts
+{
+  id: 'kcl-compilers', district: 'kcl', label: 'COMPILERS',
+  x: -140, z: 22, visual: 'moduleStack', interaction: 'panel', radius: 10,
+  panel: { title: 'COMPILERS', lines: ['Lexing, parsing, lowering.'] },
+}
+```
+
+`visual` picks a builder from `src/world/world/Landmarks.ts`; adding a new kind
+means adding a `Builder` there and a name to `LandmarkVisual`. Setting `ref`
+instead of `panel` pulls the copy from `projects`, `experience` or `education` —
+which is how the world and the scroll journey stay in agreement.
+
+**Archive projects place themselves.** Any project not explicitly given a
+landmark appears as an island in the archive district, generated from the same
+inventory the Project Universe uses. Adding a project to
+`src/content/projects/personal.ts` puts it in both experiences with no other
+change.
+
+**To add a mini-game**, extend `Minigame` (`src/world/minigames/Minigame.ts`),
+implement `build()`, `tick()` and `reset()`, register it in `Game.init()`, and
+point a landmark at it with `interaction: 'minigame'` and a `minigame` id. The
+base class owns cancellation — Escape, R, respawn, opening the map and straying
+too far all end a run — so a new game cannot strand anyone even if it forgets to
+handle any of that.
+
+### Assets
+
+There are none. Every mesh is generated in code, every texture is drawn to a
+canvas, the display typography is swept from stroke outlines in
+`src/world/world/alphabet.ts`, and every sound is synthesised with the Web Audio
+API. The route downloads JavaScript and Rapier's WebAssembly, and nothing else.
+
+That is a licensing position as much as a performance one: nothing here needed
+its provenance checked because nothing here came from anywhere.
+
+### Save state
+
+One versioned key, `alejandro-world-save-v1`, holding settings, achievements,
+discovered districts, opened landmarks, found notes and secrets, best times and
+distance driven. A corrupt, foreign or newer blob is discarded and replaced with
+defaults — a visitor should never see the world fail to load because of something
+in their own browser. Writes are debounced; `Save.ts` is the only thing that
+touches `localStorage`.
+
+There is no backend and no leaderboard. The interfaces would take one, but
+shipping an unauthenticated score endpoint to make a portfolio look busier is not
+a trade worth making.
+
+### Quality
+
+`AUTO` probes cores, memory, WebGL limits and the GPU string, then watches the
+frame rate and steps down after two bad two-second windows (and back up once, if
+the machine recovers). `LOW` / `MEDIUM` / `HIGH` are also selectable in the
+options menu.
+
+**Quality changes what the world looks like, never what it collides with.**
+Physics props, colliders, terrain shape and every trigger radius are identical at
+every setting. A phone and a desktop are playing the same game.
+
+### Testing
+
+```bash
+npm run world:qa     # drives the car and asserts on it
+npm run world:tour   # screenshots every district
+```
+
+`scripts/world-qa.mjs` is not a screenshot test. It presses keys, waits, and
+reads telemetry back out of the running engine through `window.__world` (exposed
+in development only): that the car settles on four wheels at the right ride
+height, that it accelerates and coasts to a stop, that boost roughly triples top
+speed, that steering turns it, that jumping leaves the ground and lands upright,
+that it never falls through the world, that respawning works, that it rights
+itself when flipped, that Escape always escapes, and that leaving the route and
+coming back starts a genuinely clean second world.
+
+---
+
+## 14. Notes for whoever works on this next
 
 A few things that are load-bearing and not obvious:
 
@@ -422,7 +598,7 @@ switched on.
 
 ---
 
-## 14. Verification
+## 15. Verification
 
 What was actually checked, and how:
 

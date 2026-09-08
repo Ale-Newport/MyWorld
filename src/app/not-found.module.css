@@ -34,3 +34,10 @@
   transition: background var(--dur-fast), color var(--dur-fast);
 }
 .link:hover { background: var(--text-primary); color: var(--bg-primary); }
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-5);
+  align-items: baseline;
+}

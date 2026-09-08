@@ -76,9 +76,17 @@ export default function NotFound() {
         <p className={styles.body}>
           Nothing at this coordinate. The Core drifted somewhere it wasn’t supposed to.
         </p>
-        <Link href="/" className={styles.link} data-cursor="link" data-cursor-text="HOME">
-          Return to the journey →
-        </Link>
+        <div className={styles.actions}>
+          <Link href="/" className={styles.link} data-cursor="link" data-cursor-text="HOME">
+            Return to the journey →
+          </Link>
+          {/* A 404 should not silently boot a 3D world — but it can
+              offer one. The void is a real district out past the edge
+              of the map, and this is the only signpost to it. */}
+          <Link href="/world" className={styles.link} data-cursor="link" data-cursor-text="DRIVE">
+            Enter the void →
+          </Link>
+        </div>
       </div>
     </div>
   )

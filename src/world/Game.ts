@@ -18,11 +18,14 @@ import { Materials } from './world/materials'
 import { Lighting } from './world/Lighting'
 import { VisualVehicle } from './world/VisualVehicle'
 import { World } from './world/World'
+import { Tracks } from './world/Tracks'
 import { Respawns } from './systems/Respawns'
 import { Zones } from './systems/Zones'
 import { Achievements } from './systems/Achievements'
 import { InteractivePoints } from './systems/InteractivePoints'
 import { Audio } from './systems/Audio'
+import { Weather } from './systems/Weather'
+import { Secrets } from './systems/Secrets'
 import { Minigames } from './minigames/Minigame'
 import { CircuitRace } from './minigames/CircuitRace'
 import { Save } from './systems/Save'
@@ -88,6 +91,9 @@ export class Game {
   zones!: Zones
   interactions!: InteractivePoints
   audio!: Audio
+  weather!: Weather
+  secrets!: Secrets
+  tracks!: Tracks
   minigames!: Minigames
   nipple!: Nipple
 
@@ -250,14 +256,41 @@ export class Game {
 
     this.audio = new Audio(this.ticker, this.player, this.vehicle, this.save, this.bin)
 
+    this.tracks = new Tracks(this.vehicle, this.ticker, this.quality, this.bin)
+    this.renderer.scene.add(this.tracks.group)
+
+    this.weather = new Weather(
+      this.ticker, this.view, this.renderer, this.lighting, this.quality, this.bin,
+    )
+
     this.minigames = new Minigames(this, this.bin)
     this.minigames.register(new CircuitRace(this, this.bin))
     this.startMinigame = (id) => this.minigames.start(id)
+
+    // A timed run has to be comparable with the last one, so the
+    // weather is held still for its duration.
+    const circuit = this.minigames.get('circuit')
+    if (circuit) {
+      const onRaceStart = () => this.weather.lock('clear')
+      const onRaceEnd = () => this.weather.unlock()
+      circuit.events.on('start', onRaceStart as never)
+      circuit.events.on('finish', onRaceEnd as never)
+      circuit.events.on('cancel', onRaceEnd as never)
+      this.bin.add(() => {
+        circuit.events.off('start', onRaceStart as never)
+        circuit.events.off('finish', onRaceEnd as never)
+        circuit.events.off('cancel', onRaceEnd as never)
+      })
+    }
 
     this.bindLandmarks()
     this.bindDistricts()
     this.bindNotes()
     this.bindFrameLoopSystems()
+
+    // Secrets last: it reaches into landmarks, zones and the vehicle,
+    // all of which have to exist first.
+    this.secrets = new Secrets(this, this.bin)
     this.bindUiActions()
     this.bindAchievementFeed()
 
@@ -639,6 +672,11 @@ export class Game {
       this.achievements.set('distance', Math.floor(metres / 1000))
     }
     this.player.events.on('distance', onDistance as never)
+
+    // A teleport must not leave a tyre mark spanning the map.
+    const onPlayerRespawn = () => this.tracks?.reset()
+    this.player.events.on('respawn', onPlayerRespawn as never)
+    this.bin.add(() => this.player.events.off('respawn', onPlayerRespawn as never))
 
     const watchWorldFacts = () => {
       if (this.player.boosting > 0.5 && this.vehicle.speed > 6) {
