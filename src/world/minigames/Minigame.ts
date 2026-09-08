@@ -4,6 +4,7 @@ import { formatTime } from '../core/maths'
 import type { Bin } from '../core/Disposal'
 import type { Game } from '../Game'
 import type { MinigameId } from '@/content/world'
+import type { TweenHandle } from '../core/Tween'
 
 /* ============================================================
    MINI-GAMES
@@ -15,8 +16,9 @@ import type { MinigameId } from '@/content/world'
    that NONE OF THEM CAN TRAP THE PLAYER.
 
    So cancelling is not each game's problem. The base class binds
-   it once: ESCAPE cancels, R cancels, respawning cancels, opening
-   the map cancels, and driving far enough away cancels. A
+   it once: ESCAPE, respawning and opening the map release ordinary
+   games; a race pauses or recovers at its checkpoint. Driving far
+   enough away cancels. A
    subclass that forgets to handle any of those still cannot
    strand anyone.
 
@@ -27,7 +29,7 @@ import type { MinigameId } from '@/content/world'
    is not a trade worth making.
    ============================================================ */
 
-export type MinigameState = 'idle' | 'countdown' | 'running' | 'finished' | 'failed'
+export type MinigameState = 'idle' | 'ready' | 'countdown' | 'running' | 'finished' | 'failed' | 'resetting'
 
 export abstract class Minigame {
   abstract readonly id: MinigameId
@@ -41,6 +43,8 @@ export abstract class Minigame {
   state: MinigameState = 'idle'
   protected elapsed = 0
   protected origin = new THREE.Vector3()
+  private resultOrigin = new THREE.Vector3()
+  private resultTimer: TweenHandle | null = null
 
   constructor(protected game: Game, protected bin: Bin) {}
 
@@ -60,6 +64,9 @@ export abstract class Minigame {
 
   get running(): boolean {
     return this.state === 'countdown' || this.state === 'running'
+  }
+  get resultIsDistant(): boolean {
+    return this.game.player.position.distanceTo(this.resultOrigin) > Math.min(140, this.abandonRadius)
   }
 
   /* ---- lifecycle ---------------------------------------- */
@@ -88,7 +95,13 @@ export abstract class Minigame {
   }
 
   protected finish(time: number | null = null): void {
+    if (this.state === 'finished') return
     this.state = 'finished'
+    this.resultOrigin.copy(this.game.player.position)
+    this.game.save.data.progress.completedGames = Array.from(new Set([
+      ...this.game.save.data.progress.completedGames, this.id,
+    ]))
+    this.game.save.schedule()
     const best = time === null ? null : this.recordBest(time)
 
     this.game.store.getState().setMinigame({
@@ -104,10 +117,11 @@ export abstract class Minigame {
     })
 
     // Leave the result up for a moment, then get out of the way.
-    this.game.tweens.delay(5, () => {
+    this.resultTimer?.kill()
+    this.resultTimer = this.game.tweens.delay(5, () => {
       if (this.state !== 'finished') return
       this.state = 'idle'
-      this.game.store.getState().setMinigame(null)
+      if (this.game.store.getState().minigame?.id === this.id) this.game.store.getState().setMinigame(null)
     })
 
     this.events.trigger('finish', [time])
@@ -123,11 +137,12 @@ export abstract class Minigame {
       best: this.bestTime,
       progress: null,
     })
-    this.game.tweens.delay(2.6, () => {
+    this.resultTimer?.kill()
+    this.resultTimer = this.game.tweens.delay(2.6, () => {
       if (this.state !== 'failed') return
       this.state = 'idle'
       this.reset()
-      this.game.store.getState().setMinigame(null)
+      if (this.game.store.getState().minigame?.id === this.id) this.game.store.getState().setMinigame(null)
     })
   }
 
@@ -162,8 +177,25 @@ export abstract class Minigame {
 
     this.elapsed += delta
     this.tick(delta)
-    this.publish()
+    if (this.running) this.publish()
   }
+
+  /** Invalidates pending result callbacks, including rapid same-game retries. */
+  prepareAttempt(): void {
+    this.resultTimer?.kill()
+    this.resultTimer = null
+  }
+
+  restoreObjects(): void {
+    this.prepareAttempt()
+    this.cancel('player')
+    this.reset()
+    this.elapsed = 0
+    this.state = 'idle'
+  }
+
+  /** Race overrides this; other games keep the usual district respawn. */
+  recover(): boolean { return false }
 
   /** Writes the mini-game HUD. Subclasses override `lines`/`progress`. */
   protected publish(): void {
@@ -198,18 +230,20 @@ export class Minigames {
   constructor(private game: Game, bin: Bin) {
     const tick = () => {
       if (!this.active) return
+      if (this.game.store.getState().overlay !== null) return
+      if (this.active.state === 'finished' && this.active.resultIsDistant) { this.cancel('strayed'); return }
       this.active.update(this.game.ticker.delta * this.game.ticker.scale)
       if (!this.active.running && this.active.state === 'idle') this.active = null
     }
     this.game.ticker.events.on('tick', tick, 13)
 
-    // The universal escape hatches. Every one of these cancels
-    // whatever is running, no matter which game it is.
+    // Ordinary games cancel on these escape hatches. CircuitRace owns
+    // its checkpoint recovery and freezes the clock/body during overlays.
     const onRespawn = () => this.cancel('respawn')
     this.game.player.events.on('respawn', onRespawn as never)
 
     const onPause = (action: { active: boolean }) => {
-      if (action.active) this.cancel('player')
+      if (action.active && (this.active?.id !== 'circuit' || !this.active?.running)) this.cancel('player')
     }
     this.game.inputs.events.on('pause', onPause as never)
     this.game.inputs.events.on('map', onPause as never)
@@ -240,12 +274,20 @@ export class Minigames {
     // Starting one always ends the last, so two timers can never run.
     if (this.active && this.active !== minigame) this.active.cancel('player')
     this.active = minigame
+    if (!minigame.running) minigame.prepareAttempt()
     return minigame.start()
   }
 
   cancel(reason: 'player' | 'strayed' | 'respawn' = 'player'): void {
+    this.active?.prepareAttempt()
     this.active?.cancel(reason)
     this.active = null
+  }
+
+  resetAll(): void {
+    for (const item of this.items.values()) item.restoreObjects()
+    this.active = null
+    this.game.store.getState().setMinigame(null)
   }
 
   get current(): Minigame | null {

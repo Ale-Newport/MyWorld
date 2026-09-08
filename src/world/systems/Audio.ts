@@ -53,6 +53,7 @@ export class Audio {
 
   private noiseBuffer: AudioBuffer | null = null
   private lastOneShot = new Map<OneShot, number>()
+  private lastEnvironment = new Map<string, number>()
   private started = false
 
   muted: boolean
@@ -359,6 +360,37 @@ export class Audio {
   /** A short tone. `rate` shifts the pitch — the checkpoint ladder. */
   blip(rate = 1): void {
     this.play('blip', rate)
+  }
+
+  /** Quiet environmental voices. Callers supply distance attenuation; the
+   * common bus still honours mute/volume and limits overlapping transients. */
+  environment(kind: 'bird' | 'leaves' | 'water' | 'splash' | 'rolling' | 'explosion', amount = 1): void {
+    if (!this.ctx || this.muted || amount < .01) return
+    const ctx=this.ctx, now=ctx.currentTime, last=this.lastEnvironment.get(kind)??-100
+    if(now-last<(kind==='water'?1:kind==='bird'?3:.16))return
+    this.lastEnvironment.set(kind,now)
+    const gain=ctx.createGain(), strength=Math.min(1,amount)
+    gain.connect(this.compressor!)
+    if(kind==='bird') {
+      gain.gain.value=.04*strength
+      for(let i=0;i<3;i++) {
+        const osc=ctx.createOscillator(),voice=ctx.createGain(),at=now+i*.15
+        osc.type='sine';osc.frequency.setValueAtTime(1700+i*170,at);osc.frequency.exponentialRampToValueAtTime(3300,at+.055);osc.frequency.exponentialRampToValueAtTime(2100,at+.1)
+        voice.gain.setValueAtTime(.001,at);voice.gain.linearRampToValueAtTime(1,at+.015);voice.gain.exponentialRampToValueAtTime(.001,at+.12)
+        osc.connect(voice).connect(gain);osc.start(at);osc.stop(at+.13);osc.onended=()=>{osc.disconnect();voice.disconnect();if(i===2)gain.disconnect()}
+      }
+      return
+    }
+    const duration=kind==='water'?1.3:kind==='explosion'?.85:kind==='leaves'?.6:.35
+    const peak=(kind==='explosion'?.32:kind==='water'?.026:kind==='rolling'?.026:.07)*strength
+    gain.gain.setValueAtTime(.0001,now);gain.gain.exponentialRampToValueAtTime(Math.max(.0002,peak),now+(kind==='water'?.3:.02));gain.gain.exponentialRampToValueAtTime(.0001,now+duration)
+    const source=ctx.createBufferSource(),filter=ctx.createBiquadFilter();source.buffer=this.noiseBuffer
+    filter.type=kind==='explosion'||kind==='rolling'?'lowpass':'bandpass';filter.frequency.value=kind==='explosion'?260:kind==='rolling'?480:kind==='leaves'?4200:1700;filter.Q.value=.55
+    source.playbackRate.value=.75+Math.random()*.4;source.connect(filter).connect(gain);source.start(now);source.stop(now+duration+.05)
+    source.onended=()=>{source.disconnect();filter.disconnect();gain.disconnect()}
+    if(kind==='explosion') {
+      const osc=ctx.createOscillator();osc.frequency.setValueAtTime(75+Math.random()*25,now);osc.frequency.exponentialRampToValueAtTime(24,now+.6);osc.connect(gain);osc.start(now);osc.stop(now+.7);osc.onended=()=>osc.disconnect()
+    }
   }
 
   horn(): void {

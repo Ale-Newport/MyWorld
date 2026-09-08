@@ -413,10 +413,14 @@
 
 .minigame {
   position: absolute;
-  top: 50%;
   left: 50%;
-  transform: translate(-50%, -50%);
-  top: clamp(4.5rem, 12vh, 8rem);
+  transform: translateX(-50%);
+  top: clamp(3.6rem, 8vh, 5.5rem);
+  width: max-content;
+  max-width: min(580px, calc(100vw - 28px));
+  padding: 12px 20px;
+  background: rgba(244, 241, 226, .92);
+  border: 1px solid rgba(47, 72, 52, .16);
   display: grid;
   justify-items: center;
   gap: 3px;
@@ -438,6 +442,12 @@
   font-variant-numeric: tabular-nums;
   letter-spacing: -0.02em;
   color: var(--ink);
+}
+
+.minigameLine:not(:nth-child(2)) {
+  font-size: clamp(.65rem, 1.15vw, .82rem);
+  line-height: 1.45;
+  letter-spacing: .015em;
 }
 
 .minigameBar {
@@ -599,6 +609,30 @@
   display: grid;
   gap: 1px;
   border-top: 1px solid var(--border);
+}
+
+.minigameActions {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 10px;
+  pointer-events: auto;
+}
+
+.minigameActions button {
+  min-height: 34px;
+  padding: 6px 14px;
+  border: 1px solid currentColor;
+  font: inherit;
+  font-size: 10px;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+}
+
+.minigameActions button:hover,
+.minigameActions button:focus-visible {
+  color: var(--accent);
+  outline-offset: 3px;
 }
 
 .pauseItem {

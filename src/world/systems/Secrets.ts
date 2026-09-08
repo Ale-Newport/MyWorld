@@ -177,11 +177,14 @@ export class Secrets {
      ======================================================== */
 
   private bindCones(): void {
-    const target = 20
-    this.game.world.props.onDisturb = (instance) => {
-      if (instance.tag !== 'cones') return
-      const knocked = this.game.world.props.disturbedCount('cones')
-      this.game.achievements.set('cones', Math.min(knocked, target))
+    const props=this.game.world.props,previous=props.onHit
+    props.onHit = (instance,force,at) => {
+      previous?.(instance,force,at)
+      // Initial ground contacts used to award CLEAN SWEEP before anyone drove.
+      // Count unique cones hit near the moving car, including after a reset.
+      if(instance.tag!=='cones'||force<2||this.game.vehicle.xzSpeed<1)return
+      if(instance.physical.current.position.distanceTo(this.game.player.position)>4.5)return
+      this.game.achievements.set('cones',`cone-${instance.index}`)
     }
   }
 

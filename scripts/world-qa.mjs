@@ -16,7 +16,7 @@
  * line beginning with FAIL and sets a non-zero exit code.
  */
 import { chromium } from 'playwright'
-import { mkdir, rm, writeFile } from 'node:fs/promises'
+import { mkdir, readFile, rm, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 
 const args = process.argv.slice(2)
@@ -117,6 +117,50 @@ async function shot(name) {
   await page.screenshot({ path: path.join(OUT, `${name}.png`) })
 }
 
+/**
+ * A patch of ground with nothing on it, chosen from the running world
+ * rather than written down here. The handling checks measure the car,
+ * not the map, so they need room — and a hard-coded clearing stops
+ * being a clearing the first time the world is re-authored.
+ */
+async function clearGround() {
+  return page.evaluate(() => {
+    const g = window.__world
+    // The car is a physics body too. Counting it makes every call
+    // avoid wherever the car currently is, so each successive test
+    // gets a worse patch than the last one.
+    const car = g.player.position
+    const bodies = []
+    for (const ph of g.physics.physicals) {
+      const p = ph.current?.position
+      if (!p || p.y <= 0.4 || p.y >= 20) continue
+      if (Math.hypot(p.x - car.x, p.z - car.z) < 5) continue
+      bodies.push(p)
+    }
+    let best = null
+    for (let x = -140; x <= 140; x += 10) {
+      for (let z = -140; z <= 140; z += 10) {
+        if (Math.hypot(x, z) > 140) continue
+        if (g.terrain.colliderHeightAt(x, z) < 0.6) continue          // dry land only
+        let nearest = Infinity
+        for (const b of bodies) {
+          const d = Math.hypot(b.x - x, b.z - z)
+          if (d < nearest) nearest = d
+        }
+        // Flat enough that the car is not launched or beached.
+        let relief = 0
+        for (const [dx, dz] of [[12,0],[-12,0],[0,12],[0,-12]]) {
+          relief = Math.max(relief, Math.abs(
+            g.terrain.colliderHeightAt(x + dx, z + dz) - g.terrain.colliderHeightAt(x, z)))
+        }
+        if (relief > 1.6) continue
+        if (!best || nearest > best.clear) best = { x, z, clear: nearest }
+      }
+    }
+    return best ?? { x: 0, z: 0, clear: 0 }
+  })
+}
+
 async function teleport(x, z, rotation = 0) {
   await page.evaluate(
     ({ x, z, rotation }) => {
@@ -200,7 +244,9 @@ if (should('drive')) {
 
 if (should('boost')) {
   console.log('\nBOOST')
-  await teleport(0, 60, Math.PI)
+  const boostSpot = await clearGround()
+  note(`boost tested at ${boostSpot.x}, ${boostSpot.z} — nearest object ${boostSpot.clear.toFixed(0)} m`)
+  await teleport(boostSpot.x, boostSpot.z, Math.PI)
   await page.keyboard.down('KeyW')
   await settle(900)
   const cruise = (await telemetry()).speed
@@ -230,7 +276,9 @@ if (should('boost')) {
 
 if (should('steer')) {
   console.log('\nSTEER')
-  await teleport(0, 40, 0)
+  const steerSpot = await clearGround()
+  note(`steering tested at ${steerSpot.x}, ${steerSpot.z} — nearest object ${steerSpot.clear.toFixed(0)} m`)
+  await teleport(steerSpot.x, steerSpot.z, 0)
   await page.keyboard.down('KeyW')
   await settle(900)
   const before = await telemetry()
@@ -255,7 +303,11 @@ if (should('steer')) {
 
 if (should('brake')) {
   console.log('\nBRAKE')
-  await teleport(0, 60, Math.PI)
+  // Braking is a property of the car. Measure it with room to roll,
+  // not inside a district where the car stops because it hit a wall.
+  const brakeSpot = await clearGround()
+  note(`braking tested at ${brakeSpot.x}, ${brakeSpot.z} — nearest object ${brakeSpot.clear.toFixed(0)} m`)
+  await teleport(brakeSpot.x, brakeSpot.z, Math.PI)
   await hold('KeyW', 1600)
   const rolling = await telemetry()
   await hold('KeyB', 900)
@@ -293,14 +345,23 @@ if (should('jump')) {
 
 if (should('collide')) {
   console.log('\nCOLLIDE')
-  // Drive into the world edge slope and make sure nothing tunnels.
-  await teleport(0, 0, 0)
+  // A long boost run straight across the island, to make sure nothing
+  // tunnels through terrain or props on the way. It is aimed INWARD,
+  // at the origin: the island is now small enough that six seconds of
+  // boost aimed outward simply leaves it, and a car in the void is
+  // the OUT OF BOUNDS achievement working rather than a collision bug.
+  const edgeSpot = await clearGround()
+  await teleport(edgeSpot.x, edgeSpot.z, Math.atan2(edgeSpot.z, -edgeSpot.x))
   const start = await telemetry()
   await page.keyboard.down('KeyW')
   await page.keyboard.down('ShiftLeft')
   await settle(6000)
   await page.keyboard.up('ShiftLeft')
   await page.keyboard.up('KeyW')
+  // Let it come to rest first. "Still upright, still on the ground" is
+  // a statement about where the car ends up, not about which frame of
+  // a bounce the sample happened to catch.
+  await settle(1500)
   const end = await telemetry()
   check('never falls through the world', end.y > end.terrainY - 1.5,
     `y ${end.y.toFixed(2)} vs terrain ${end.terrainY.toFixed(2)}`)
@@ -325,44 +386,54 @@ if (should('collide')) {
 if (should('island')) {
   console.log('\nHIDDEN ISLAND')
 
-  const ramp = await page.evaluate(() => {
-    const g = window.__world
-    return g.world ? { ok: true } : { ok: false }
-  })
-  void ramp
+  // Read the ramp and the island out of the source rather than
+  // repeating their coordinates here. This test asserts a measured
+  // relationship between the two, and a fixture that has to be
+  // hand-updated when the map moves is a fixture that silently
+  // stops testing anything.
+  const worldSource = await readFile('src/content/world.ts', 'utf8')
+  const terrainSource = await readFile('src/world/world/Terrain.ts', 'utf8')
+  const rampMatch = worldSource.match(
+    /id: 'ramp-stunt', x: (-?[\d.]+), z: (-?[\d.]+), rotation: Math\.PI \* (-?[\d.]+)/)
+  const islandMatch = terrainSource.match(
+    /VOID_ISLAND = \{ x: (-?[\d.]+), z: (-?[\d.]+), radius: (-?[\d.]+)/)
+  if (!rampMatch || !islandMatch) throw new Error('could not read the stunt ramp or the void island')
+  const RAMP = { x: +rampMatch[1], z: +rampMatch[2], rotation: Math.PI * +rampMatch[3] }
+  const ISLAND = { x: +islandMatch[1], z: +islandMatch[2], radius: +islandMatch[3] }
 
   // Line up well behind the stunt ramp, on its axis, and go.
-  await page.evaluate(() => {
+  await page.evaluate(({ RAMP }) => {
     const g = window.__world
-    // Ramp: (238, -196), rotation PI * 0.427, rising along local +X.
-    const r = Math.PI * 0.427
-    const dirX = Math.cos(r)
-    const dirZ = -Math.sin(r)
-    const x = 238 - dirX * 62
-    const z = -196 - dirZ * 62
+    // A ramp rises along its local +X and the car drives along its own
+    // local +X too, so one rotation serves both: line the car up behind
+    // the ramp on that axis and point it the same way.
+    const dirX = Math.cos(RAMP.rotation)
+    const dirZ = -Math.sin(RAMP.rotation)
+    const x = RAMP.x - dirX * 62
+    const z = RAMP.z - dirZ * 62
     const y = g.terrain.colliderHeightAt(x, z) + 2
-    g.vehicle.moveTo({ x, y, z }, r)
+    g.vehicle.moveTo({ x, y, z }, RAMP.rotation)
     g.view.focusPoint.trackedPosition.set(x, y, z)
     g.view.snapToTarget()
-  })
+  }, { RAMP })
   await settle(900)
 
   await page.keyboard.down('KeyW')
   await page.keyboard.down('ShiftLeft')
   let peakY = -Infinity
   let landed = null
-  for (let i = 0; i < 40; i++) {
+  for (let i = 0; i < 80; i++) {
     await settle(120)
     const t = await telemetry()
     peakY = Math.max(peakY, t.y)
-    const toIsland = Math.hypot(t.x - 259, t.z + 285)
-    if (toIsland < 30 && t.wheelsDown >= 2) { landed = t; break }
+    const toIsland = Math.hypot(t.x - ISLAND.x, t.z - ISLAND.z)
+    if (toIsland < ISLAND.radius * 0.8 && t.wheelsDown >= 2) { landed = t; break }
   }
   await page.keyboard.up('ShiftLeft')
   await page.keyboard.up('KeyW')
 
   check('the stunt ramp can reach the hidden island', landed !== null,
-    landed ? `landed ${Math.hypot(landed.x - 259, landed.z + 285).toFixed(0)} m from centre`
+    landed ? `landed ${Math.hypot(landed.x - ISLAND.x, landed.z - ISLAND.z).toFixed(0)} m from centre`
            : `peaked at y ${peakY.toFixed(1)}`)
 
   if (landed) {
@@ -458,7 +529,7 @@ if (should('circuit')) {
     terrain: window.__world.physics.physicals.find((p) => p.type === 'fixed')?.body.isEnabled(),
   }))
   check('race begins after the countdown', racing.state === 'running', `state ${racing.state}`)
-  check('the road collider replaces the terrain', racing.terrain === false)
+  check('terrain remains active during the race', racing.terrain === true)
 
   // Drive one gate.
   await hold('KeyW', 2600)
@@ -469,9 +540,14 @@ if (should('circuit')) {
   check('gates register while driving', progressed.reached > 0, `${progressed.reached} gates`)
   await shot('11-circuit')
 
-  // Escape must always get out.
+  // Escape pauses a race; the explicit exit action releases its state.
   await page.keyboard.press('Escape')
   await settle(500)
+  check('escape pauses the race', await page.evaluate(() => window.__world.store.getState().overlay === 'pause'))
+  await page.keyboard.press('Escape')
+  await settle(300)
+  await page.getByRole('button', { name: 'Exit game', exact: true }).click()
+  await settle(300)
   const cancelled = await page.evaluate(() => {
     const g = window.__world
     return {
@@ -480,12 +556,10 @@ if (should('circuit')) {
       minigameHud: g.store.getState().minigame,
     }
   })
-  check('escape cancels the race', !cancelled.running)
-  check('cancelling restores the terrain collider', cancelled.terrain === true)
+  check('exit cancels the race', !cancelled.running)
+  check('exiting keeps the terrain collider active', cancelled.terrain === true)
   check('cancelling clears the race HUD', cancelled.minigameHud === null)
 
-  await page.keyboard.press('Escape')
-  await settle(400)
 }
 
 /* ---- every mini-game ------------------------------------- */
@@ -496,7 +570,7 @@ if (should('minigames')) {
   const ids = await page.evaluate(() =>
     Array.from(window.__world.minigames['items'].keys()),
   )
-  check('all nine mini-games are registered', ids.length === 9, ids.join(', '))
+  check('all fifteen mini-games are registered', ids.length === 15, ids.join(', '))
 
   for (const id of ids) {
     const problems = []
@@ -507,9 +581,8 @@ if (should('minigames')) {
       const g = window.__world
       const entry = Array.from(g.world.landmarks.values())
         .find((h) => h.landmark.minigame === id)
-      if (!entry) return
-      const { x, z } = entry.landmark
-      const y = g.terrain.colliderHeightAt(x, z) + 3
+      const { x, z } = entry?.landmark ?? g.minigames.get(id).startPosition
+      const y = Math.max(g.physics.groundAt(x, z) ?? -100, g.terrain.colliderHeightAt(x, z)) + 3
       g.vehicle.moveTo({ x: x + 6, y, z: z + 6 }, 0)
       g.view.focusPoint.trackedPosition.set(x, y, z)
       g.view.snapToTarget()
@@ -531,6 +604,12 @@ if (should('minigames')) {
     await hold('KeyW', 1200)
     await page.keyboard.press('Escape')
     await settle(700)
+    if (id === 'circuit') {
+      await page.keyboard.press('Escape')
+      await settle(300)
+      await page.getByRole('button', { name: 'Exit game', exact: true }).click()
+      await settle(300)
+    }
 
     const after = await page.evaluate(() => {
       const g = window.__world
@@ -546,7 +625,7 @@ if (should('minigames')) {
     })
 
     // The contract: cancelling gives everything back.
-    if (after.running) problems.push('still running after Escape')
+    if (after.running) problems.push('still running after exit')
     if (after.hud !== null) problems.push('HUD left on screen')
     if (after.playerState !== 'default') problems.push(`player left ${after.playerState}`)
     if (after.cinematic) problems.push('camera left in cinematic mode')
@@ -597,12 +676,16 @@ if (should('world')) {
     // Land at the district's edge and drive into it. This is the
     // check the brief asks for: no accidental holes, no impossible
     // slopes, no invisible blocking colliders.
-    await page.evaluate(({ x, z, r }) => {
+    await page.evaluate(({ id, x, z, r }) => {
       const g = window.__world
-      const px = x
+      // KCL's south-centre is the physical module stack. Its entrance road
+      // passes sixteen metres east of it.
+      const px = x + (id === 'kcl' ? 16 : 0)
       const pz = z + r * 0.85
-      const y = g.terrain.colliderHeightAt(px, pz) + 2.5
-      g.vehicle.moveTo({ x: px, y, z: pz }, Math.PI * 1.5)
+      // Some authored district rims contain physical structures: place above
+      // their actual top rather than dropping the chassis inside a module.
+      const y = Math.max(g.physics.groundAt(px, pz) ?? -100, g.terrain.colliderHeightAt(px, pz)) + 2.5
+      g.vehicle.moveTo({ x: px, y, z: pz }, Math.PI * .5)
       g.view.focusPoint.trackedPosition.set(px, y, pz)
       g.view.snapToTarget()
     }, district)

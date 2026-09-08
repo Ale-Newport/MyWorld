@@ -6,6 +6,7 @@ import type { Quality } from '../core/Quality'
 import type { Physics } from '../physics/Physics'
 import type { Materials } from './materials'
 import { districts, ramps, roads, WORLD_RADIUS, type District } from '@/content/world'
+import { inlandWater, coastRadius, FOREST_POCKETS, BRIDGES } from '@/content/world-environment'
 
 /* ============================================================
    TERRAIN
@@ -25,18 +26,24 @@ import { districts, ramps, roads, WORLD_RADIUS, type District } from '@/content/
    Visual detail is reduced by quality; the COLLIDER NEVER IS.
 
    Layout, top-down (+X east, +Z south):
-     - a broad, almost flat plain out to ~250 m
-     - gentle rolling noise, ±1.4 m, so the suspension has work
-     - every district flattened to a plate at its own elevation
+     - a compact island, ~320 m across, sized so the next thing
+       worth driving to is always close
+     - macro landform — a wooded ridge north, a valley, coastal
+       dunes — over gentle rolling noise for the suspension
+     - only districts with a BUILT footprint flattened to a plate
      - roads cut flat corridors between them
      - past `WORLD_RADIUS` the ground falls away into the void,
        which is both the map edge and the OUT OF BOUNDS achievement
    ============================================================ */
 
-/** Collider resolution. Identical at every quality level. */
-const COLLIDER_SEGMENTS = 320
-/** Half-width of the heightfield, metres. */
-const FIELD_HALF = 400
+/** Collider resolution. Identical at every quality level. With
+ *  `FIELD_HALF` at 290 this is a 1.51 m cell — the same order as the
+ *  reference's 1.5 m heightfield, and finer than the 2.5 m it was. */
+const COLLIDER_SEGMENTS = 384
+/** Half-width of the heightfield, metres. It has to reach past
+ *  `WORLD_RADIUS` far enough to carry the void island, or the island
+ *  renders with no collider under it and the jump lands in nothing. */
+const FIELD_HALF = 290
 
 const rand = seeded(20260908)
 /** Four octaves of value noise, precomputed offsets. */
@@ -80,6 +87,38 @@ function fbm(x: number, z: number): number {
   return sum / norm
 }
 
+/** A smooth, finite bump: 1 at the centre, 0 at `r`, flat at both ends. */
+function bump(x: number, z: number, cx: number, cz: number, r: number): number {
+  const t = Math.min(1, Math.hypot(x - cx, z - cz) / r)
+  const s = 1 - t * t
+  return s * s
+}
+
+/**
+ * Authored landform — the shape of the island as opposed to its
+ * texture. Summed BEFORE anything flattens, so district plates, ramp
+ * pads and road corridors still cut cleanly into it.
+ *
+ * Without this the island is a 0.5% grade in every direction, which
+ * is the "terrain has little macro variation" complaint: there is
+ * nowhere for a forest to climb, nowhere for a river to fall from,
+ * and no horizon that changes as you drive.
+ */
+function landform(x: number, z: number): number {
+  let h = 0
+  // The north-west highland. The island's high ground and the head of
+  // the river: the waterfall needs something real to fall off.
+  h += 14 * bump(x, z, -108, -104, 58)
+  // A long rise north of the lab, so the northern half is not a plain.
+  h += 5 * bump(x, z, 40, -110, 52)
+  // The eastern shoulder the circuit is cut into.
+  h += 4 * bump(x, z, 132, -20, 55)
+  // A shallow basin under the southern ring, so the road has a dip
+  // and the lakes have somewhere to sit.
+  h -= 2.5 * bump(x, z, 6, 46, 55)
+  return h
+}
+
 /** Distance from a point to a polyline, and the segment parameter. */
 function distanceToPolyline(x: number, z: number, points: [number, number][]): number {
   let best = Infinity
@@ -104,7 +143,7 @@ function distanceToPolyline(x: number, z: number, points: [number, number][]): n
  * is shaved off by the drop and a jump that lands two metres long
  * lands in the sea. Being outside the world is the point of it.
  */
-const VOID_ISLAND = { x: 259, z: -285, radius: 40 }
+const VOID_ISLAND = { x: 40, z: -238, radius: 40 }
 
 /** Elevation of each district's plate. Most sit at zero. */
 const DISTRICT_ELEVATION: Partial<Record<string, number>> = {
@@ -126,9 +165,33 @@ export interface TerrainSample {
   road: number
 }
 
+/** Resolution of the ground mask. One texel is ~1.1 m at FIELD_HALF 290. */
+const MASK_SIZE = 512
+
 export class Terrain {
   readonly group = new THREE.Group()
   mesh!: THREE.Mesh
+
+  /**
+   * The ground, as data a shader can read. Adapted from the R/G/B mask
+   * `folio-2025` samples in `Terrain.js` (MIT), except that here it is
+   * baked from this project's own height/road/water functions rather
+   * than authored in an image:
+   *
+   *   R — paving: roads and built plates
+   *   G — grass coverage, which is what the grass field grows from
+   *   B — water depth, 0 on land
+   *   A — ground height, normalised through `maskHeightBias/Scale`
+   *
+   * Anything that needs to know what it is standing on reads this
+   * instead of re-deriving it.
+   */
+  readonly mask: THREE.DataTexture
+  /** World half-extent the mask covers, metres. */
+  readonly maskExtent = FIELD_HALF
+  /** `height = mask.a * maskHeightScale + maskHeightBias`. */
+  readonly maskHeightBias = -24
+  readonly maskHeightScale = 56
 
   private colliderHeights!: Float32Array
   private step = (FIELD_HALF * 2) / COLLIDER_SEGMENTS
@@ -139,6 +202,8 @@ export class Terrain {
     private materials: Materials,
     bin: Bin,
   ) {
+    this.mask = this.buildMask()
+    bin.add(() => this.mask.dispose())
     this.buildCollider()
     this.buildMesh(bin)
     bin.object3D(this.group)
@@ -154,6 +219,7 @@ export class Terrain {
    */
   heightAt(x: number, z: number): number {
     const radius = Math.hypot(x, z)
+    const coast = coastRadius(x, z, WORLD_RADIUS)
 
     const voidDistance = Math.hypot(x - VOID_ISLAND.x, z - VOID_ISLAND.z)
     const onVoidIsland = voidDistance < VOID_ISLAND.radius * 1.2
@@ -161,8 +227,8 @@ export class Terrain {
     // Past the edge, the ground falls away. Not a wall: driving off
     // is allowed, and is its own achievement. The void island is the
     // one exception — a slab of ground where there should not be any.
-    if (radius > WORLD_RADIUS && !onVoidIsland) {
-      const over = radius - WORLD_RADIUS
+    if (radius > coast && !onVoidIsland) {
+      const over = radius - coast
       return -Math.pow(over * 0.12, 1.7) - 0.5
     }
 
@@ -170,25 +236,30 @@ export class Terrain {
       // Flat on top, then a cliff. The cliff IS the moat: there is no
       // walkable slope from the mainland onto this, which is the only
       // reason it stays a secret.
-      const edge = 1 - smoothstep(voidDistance, VOID_ISLAND.radius * 0.8, VOID_ISLAND.radius * 1.2)
+      const edge = 1 - smoothstep(voidDistance, VOID_ISLAND.radius * 0.92, VOID_ISLAND.radius * 1.15)
       return 5 * edge - (1 - edge) * 26
     }
 
     // Rolling base. Deliberately gentle — the suspension should have
     // something to do, but nothing should launch the car unbidden.
-    let height = (fbm(x * 0.0042, z * 0.0042) - 0.5) * 2.8
+    let height = landform(x, z)
+    height += (fbm(x * 0.0042, z * 0.0042) - 0.5) * 2.8
     height += (fbm(x * 0.017, z * 0.017) - 0.5) * 0.55
 
     // A soft rim so the world reads as an island rather than a
     // rectangle that stops.
-    height += smoothstep(radius, WORLD_RADIUS - 90, WORLD_RADIUS) * 3.2
+    height += smoothstep(radius, coast - 42, coast) * 3.2
 
-    // District plates. Each flattens its footprint towards its own
-    // elevation, with a shoulder so the transition is drivable.
+    // District plates. Each flattens its BUILT footprint towards its
+    // own elevation, with a shoulder so the transition is drivable.
+    // Districts without a `plate` are not flattened at all: they sit
+    // on the natural ground, which is what stops the map reading as a
+    // field of discs.
     for (const district of districts) {
+      if (!district.plate) continue
       const distance = Math.hypot(x - district.x, z - district.z)
-      if (distance > district.radius * 1.55) continue
-      const inside = 1 - smoothstep(distance, district.radius * 0.72, district.radius * 1.5)
+      if (distance > district.plate * 1.55) continue
+      const inside = 1 - smoothstep(distance, district.plate * 0.72, district.plate * 1.5)
       const target = DISTRICT_ELEVATION[district.id] ?? 0
       height = height * (1 - inside) + target * inside
     }
@@ -217,7 +288,13 @@ export class Terrain {
 
       // The pad sits at the height of the ramp's own centre, which is
       // what its mesh and collider were built against.
-      const pad = (fbm(ramp.x * 0.0042, ramp.z * 0.0042) - 0.5) * 2.8
+      // The pad has to match what the ground around it actually is,
+      // rim included. Leave the rim out and the ramp sits in a step:
+      // the car hits a wall where it should start climbing.
+      const pad =
+        landform(ramp.x, ramp.z) +
+        (fbm(ramp.x * 0.0042, ramp.z * 0.0042) - 0.5) * 2.8 +
+        smoothstep(Math.hypot(ramp.x, ramp.z), coastRadius(ramp.x, ramp.z, WORLD_RADIUS) - 42, coastRadius(ramp.x, ramp.z, WORLD_RADIUS)) * 3.2
       height = height * (1 - inside) + pad * inside
     }
 
@@ -230,21 +307,99 @@ export class Terrain {
       if (on <= 0) continue
       // The road surface follows the terrain it was flattened onto,
       // just without the small noise, so hills stay but ruts do not.
-      const smooth = (fbm(x * 0.0042, z * 0.0042) - 0.5) * 2.8
-      let roadHeight = smooth + smoothstep(radius, WORLD_RADIUS - 90, WORLD_RADIUS) * 3.2
+      const smooth = landform(x, z) + (fbm(x * 0.0042, z * 0.0042) - 0.5) * 2.8
+      let roadHeight = smooth + smoothstep(radius, coast - 42, coast) * 3.2
       for (const district of districts) {
+        if (!district.plate) continue
         const dd = Math.hypot(x - district.x, z - district.z)
-        if (dd > district.radius * 1.55) continue
-        const inside = 1 - smoothstep(dd, district.radius * 0.72, district.radius * 1.5)
+        if (dd > district.plate * 1.55) continue
+        const inside = 1 - smoothstep(dd, district.plate * 0.72, district.plate * 1.5)
         roadHeight = roadHeight * (1 - inside) + (DISTRICT_ELEVATION[district.id] ?? 0) * inside
       }
       height = height * (1 - on) + roadHeight * on
     }
 
+    // Banks are part of the same heightfield as the rest of the island.
+    const water = inlandWater(x, z)
+    if (water) {
+      // The mapped edge meets the water level; a shallow shelf then descends
+      // into the bed. Blending straight to the deep floor here would make even
+      // the apparent shoreline immediately dangerous to the car.
+      const bank = smoothstep(water.edge, -3.5, 0)
+      const depth = water.depth * smoothstep(water.edge, 0, water.flow > .9 ? 4.5 : 7)
+      height = height * (1 - bank) + (water.level - depth) * bank
+    }
+    // A dry, gently joined grotto behind the waterfall curtain.
+    if (z < -81 && z > -94 && Math.abs(x + 112) < 8) {
+      const dry=(1-smoothstep(Math.abs(x+112),4,8))*(1-smoothstep(Math.abs(z+87.5),3,7))
+      height=height*(1-dry)+.2*dry
+    }
+    // Gradual bridge approaches; the deck is a separate physical surface.
+    for (const bridge of BRIDGES) {
+      const end = Math.abs(x - bridge.x) - bridge.length / 2
+      if (end > -3 && end < 18 && Math.abs(z - bridge.z) < bridge.width / 2 + 3) {
+        const blend = (1 - smoothstep(end, 0, 18)) * (1 - smoothstep(Math.abs(z - bridge.z), bridge.width / 2, bridge.width / 2 + 3))
+        height = height * (1 - blend) + 0.5 * blend
+      }
+    }
     return height
   }
 
   /** Full sample, for placement code that also wants context. */
+  /** Bakes the R/G/B ground mask once, at construction. */
+  private buildMask(): THREE.DataTexture {
+    const data = new Uint8Array(MASK_SIZE * MASK_SIZE * 4)
+    const span = FIELD_HALF * 2
+
+    for (let j = 0; j < MASK_SIZE; j++) {
+      const z = -FIELD_HALF + ((j + 0.5) / MASK_SIZE) * span
+      for (let i = 0; i < MASK_SIZE; i++) {
+        const x = -FIELD_HALF + ((i + 0.5) / MASK_SIZE) * span
+
+        let paved = 0
+        for (const road of roads) {
+          const distance = distanceToPolyline(x, z, road.points)
+          paved = Math.max(paved, 1 - smoothstep(distance, road.width * 0.42, road.width * 0.72))
+        }
+        for (const district of districts) {
+          if (!district.plate) continue
+          const distance = Math.hypot(x - district.x, z - district.z)
+          paved = Math.max(paved, 1 - smoothstep(distance, district.plate * 0.72, district.plate * 1.02))
+        }
+
+        const water = inlandWater(x, z)
+        const depth = water && water.edge > 0
+          ? Math.min(1, (water.depth * smoothstep(water.edge, 0, 5)) / 5)
+          : 0
+
+        // Nothing grows past the shore, on paving, or in water. The
+        // taper at the coast keeps the beach clear of blades.
+        const coast = coastRadius(x, z, WORLD_RADIUS)
+        const land = 1 - smoothstep(Math.hypot(x, z), coast - 16, coast - 2)
+        const grass = Math.max(0, (1 - paved) * (1 - Math.min(1, depth * 4)) * land)
+
+        // Height rides in alpha so anything reading the mask on the
+        // GPU can sit on the ground without a second texture.
+        const height = this.heightAt(x, z)
+        const normalised = Math.min(1, Math.max(0, (height - this.maskHeightBias) / this.maskHeightScale))
+
+        const o = (j * MASK_SIZE + i) * 4
+        data[o] = Math.round(paved * 255)
+        data[o + 1] = Math.round(grass * 255)
+        data[o + 2] = Math.round(depth * 255)
+        data[o + 3] = Math.round(normalised * 255)
+      }
+    }
+
+    const texture = new THREE.DataTexture(data, MASK_SIZE, MASK_SIZE, THREE.RGBAFormat)
+    texture.wrapS = THREE.ClampToEdgeWrapping
+    texture.wrapT = THREE.ClampToEdgeWrapping
+    texture.minFilter = THREE.LinearFilter
+    texture.magFilter = THREE.LinearFilter
+    texture.needsUpdate = true
+    return texture
+  }
+
   sample(x: number, z: number): TerrainSample {
     let district: District | null = null
     let bestDistance = Infinity
@@ -273,14 +428,16 @@ export class Terrain {
     const n = COLLIDER_SEGMENTS + 1
     const heights = new Float32Array(n * n)
 
-    // Rapier's heightfield indexes [i * (ncols + 1) + j] with i along
-    // Z and j along X. Getting this transposed is the classic way to
-    // end up with a world that collides 90° out from what you see.
+    // Keep our readable row-Z grid for painting and sampling. Rapier consumes
+    // column-major heights (the contiguous index runs along Z), so upload a
+    // transpose. A small asymmetric raycast fixture verifies this convention.
+    const rapierHeights = new Float32Array(n * n)
     for (let i = 0; i < n; i++) {
       const z = -FIELD_HALF + i * this.step
       for (let j = 0; j < n; j++) {
         const x = -FIELD_HALF + j * this.step
         heights[i * n + j] = this.heightAt(x, z)
+        rapierHeights[j * n + i] = heights[i * n + j]
       }
     }
 
@@ -297,7 +454,7 @@ export class Terrain {
           parameters: [
             COLLIDER_SEGMENTS,
             COLLIDER_SEGMENTS,
-            heights,
+            rapierHeights,
             { x: FIELD_HALF * 2, y: 1, z: FIELD_HALF * 2 },
           ],
         },
@@ -305,7 +462,7 @@ export class Terrain {
     })
   }
 
-  /** Bilinear read of the collider grid — matches physics exactly. */
+  /** Same two triangles per cell as Rapier and PlaneGeometry. */
   colliderHeightAt(x: number, z: number): number {
     const n = COLLIDER_SEGMENTS + 1
     const fx = (x + FIELD_HALF) / this.step
@@ -320,7 +477,9 @@ export class Terrain {
     const h01 = this.colliderHeights[(i + 1) * n + j]
     const h11 = this.colliderHeights[(i + 1) * n + j + 1]
 
-    return (h00 * (1 - tx) + h10 * tx) * (1 - tz) + (h01 * (1 - tx) + h11 * tx) * tz
+    return tx + tz <= 1
+      ? h00 + tx * (h10 - h00) + tz * (h01 - h00)
+      : h11 + (1 - tx) * (h01 - h11) + (1 - tz) * (h10 - h11)
   }
 
   /* ========================================================
@@ -340,7 +499,7 @@ export class Terrain {
     const position = geometry.getAttribute('position') as THREE.BufferAttribute
     const colors = new Float32Array(position.count * 3)
 
-    const grass = new THREE.Color(palette.paper2)
+    const grass = new THREE.Color('#ffffff')
     const plate = new THREE.Color(palette.paper)
     const asphalt = new THREE.Color(palette.concrete)
     const deep = new THREE.Color(palette.paper4)
@@ -424,19 +583,52 @@ export class Terrain {
     // The island: everything outside it is off the map.
     ctx.save()
     ctx.beginPath()
-    ctx.arc(toPx(0), toPx(0), WORLD_RADIUS * scale, 0, Math.PI * 2)
+    // The same coastline the heightfield uses, so the painted island
+    // and the ground you can actually drive on are one shape.
+    for (let i = 0; i <= 360; i++) {
+      const a = (i / 360) * Math.PI * 2
+      const r = coastRadius(Math.cos(a), Math.sin(a), WORLD_RADIUS)
+      const px = toPx(Math.cos(a) * r)
+      const py = toPx(Math.sin(a) * r)
+      if (i === 0) ctx.moveTo(px, py)
+      else ctx.lineTo(px, py)
+    }
+    ctx.closePath()
     ctx.clip()
 
-    ctx.fillStyle = palette.paper
+    ctx.fillStyle = '#b6be88'
     ctx.fillRect(0, 0, size, size)
 
-    /* ---- district plates ------------------------------- */
+    for (const [x, z, r] of FOREST_POCKETS) {
+      const gradient = ctx.createRadialGradient(toPx(x), toPx(z), 0, toPx(x), toPx(z), r * scale * 1.4)
+      gradient.addColorStop(0, z < -160 ? '#7b9569' : '#859b64')
+      gradient.addColorStop(0.68, '#91a570')
+      gradient.addColorStop(1, '#b6be8800')
+      ctx.fillStyle = gradient
+      ctx.fillRect(toPx(x - r * 1.4), toPx(z - r * 1.4), r * scale * 2.8, r * scale * 2.8)
+    }
+
+    /* ---- district ground -------------------------------- */
+    // Only a district with a built footprint gets paving. The rest
+    // are clearings: a soft tint that fades into the grass, so the
+    // island reads as landscape rather than as discs on a lawn.
     for (const district of districts) {
       const x = toPx(district.x)
       const y = toPx(district.z)
-      const r = district.radius * scale
       const dark = district.theme === 'dark'
 
+      if (!district.plate) {
+        const r = district.radius * scale
+        const clearing = ctx.createRadialGradient(x, y, r * 0.15, x, y, r)
+        clearing.addColorStop(0, dark ? '#3a3a3f' : '#c7cb9d')
+        clearing.addColorStop(0.6, dark ? '#3a3a3f88' : '#c2c797aa')
+        clearing.addColorStop(1, dark ? '#3a3a3f00' : '#b6be8800')
+        ctx.fillStyle = clearing
+        ctx.fillRect(x - r, y - r, r * 2, r * 2)
+        continue
+      }
+
+      const r = district.plate * scale
       ctx.beginPath()
       ctx.arc(x, y, r, 0, Math.PI * 2)
       ctx.fillStyle = dark ? palette.voidDark3 : palette.paper

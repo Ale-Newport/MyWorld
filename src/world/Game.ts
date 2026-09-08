@@ -18,6 +18,11 @@ import { Materials } from './world/materials'
 import { Lighting } from './world/Lighting'
 import { VisualVehicle } from './world/VisualVehicle'
 import { World } from './world/World'
+import { Ecology } from './world/Ecology'
+import { Grass } from './world/Grass'
+import { Water } from './world/Water'
+import { Playground } from './world/Playground'
+import { buildSceneryDetails } from './world/SceneryDetails'
 import { Tracks } from './world/Tracks'
 import { Particles } from './world/Particles'
 import { Respawns } from './systems/Respawns'
@@ -37,8 +42,11 @@ import { OrderRush } from './minigames/OrderRush'
 import { GymCircuit } from './minigames/GymCircuit'
 import { ThreeBody } from './minigames/ThreeBody'
 import { PacketRun } from './minigames/PacketRun'
+import { Bowling } from './minigames/Bowling'
+import { IslandChallenge } from './minigames/IslandChallenges'
 import { AnimationStudio } from './world/districts/AnimationStudio'
 import { VoxelField } from './world/districts/VoxelField'
+import { LabInstallations } from './world/districts/LabInstallations'
 import { Save } from './systems/Save'
 import type { Terrain } from './world/Terrain'
 import type { WorldStore } from './state/store'
@@ -94,6 +102,10 @@ export class Game {
   renderer!: Renderer
   materials!: Materials
   world!: World
+  ecology!: Ecology
+  grass!: Grass
+  water!: Water
+  playground!: Playground
   lighting!: Lighting
   vehicle!: PhysicsVehicle
   player!: Player
@@ -282,6 +294,7 @@ export class Game {
     )
 
     this.minigames = new Minigames(this, this.bin)
+    this.player.onRespawnRequest = () => this.minigames.current?.recover() ?? false
     // Registration order is display order in nothing, but build order
     // in everything: each one raises its geometry here, on the world
     // that already exists.
@@ -295,6 +308,31 @@ export class Game {
     this.minigames.register(new ThreeBody(this, this.bin))
     this.minigames.register(new PacketRun(this, this.bin))
     this.startMinigame = (id) => this.minigames.start(id)
+    this.water = new Water(this, this.bin)
+    this.ecology = new Ecology(this, this.bin)
+
+    // The grass field follows the camera, so it is created after the
+    // view exists and updated in the same slot as the rest of the
+    // vegetation (upstream runs Grass at tick order 10 too).
+    this.grass = new Grass(this.world.terrain, this.quality, this.bin)
+    this.renderer.scene.add(this.grass.mesh)
+    {
+      const follow = () => {
+        this.grass.update(
+          this.view.camera.position,
+          this.player.position,
+          this.weather.windDirection.clone().multiplyScalar(0.35 + this.weather.windStrength),
+          this.ticker.elapsed,
+        )
+      }
+      this.ticker.events.on('tick', follow, 10)
+      this.bin.add(() => this.ticker.events.off('tick', follow))
+    }
+    this.playground = new Playground(this, this.bin)
+    new LabInstallations(this, this.bin)
+    buildSceneryDetails(this, this.bin)
+    this.minigames.register(new Bowling(this, this.bin))
+    for (const id of ['debugDash', 'riverRun', 'chipRelay', 'domino', 'deployment'] as const) this.minigames.register(new IslandChallenge(this, this.bin, id))
 
     // District set pieces: places rather than games. They have no
     // completion state and nothing to cancel.
@@ -508,7 +546,7 @@ export class Game {
     if (handle?.landmark.district === 'archive') this.achievements.set('archivist', id)
   }
 
-  private recordSecret(id: string): void {
+  recordSecret(id: string): void {
     const list = this.save.data.progress.secrets
     if (list.includes(id)) return
     list.push(id)
@@ -864,7 +902,9 @@ export class Game {
 
   /** Puts every prop back where it started. */
   resetObjects(): void {
+    this.minigames?.resetAll()
     this.world?.resetObjects()
+    this.playground?.reset()
   }
 
   markOnboarded(): void {

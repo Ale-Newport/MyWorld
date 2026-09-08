@@ -42,6 +42,7 @@ export interface AchievementGroupState {
 
 /** Ids whose progress is a set of unique things rather than a count. */
 const UNIQUE_GROUPS: Record<string, true> = {
+  labPlay: true,
   explorer: true,
   notes: true,
   projects: true,

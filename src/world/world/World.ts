@@ -11,6 +11,7 @@ import { Terrain } from './Terrain'
 import { Props, type PropKind } from './Props'
 import { buildLandmark } from './Landmarks'
 import { rampGeometry } from './geometry'
+import { PLAY_SPOTS } from '@/content/world-environment'
 import {
   archiveIslands,
   clientTowers,
@@ -23,8 +24,11 @@ import {
   type Landmark,
 } from '@/content/world'
 
-/** No prop may be scattered this close to a ramp's approach. */
+/** No prop may be scattered this close to a ramp itself. */
 const RAMP_CLEARANCE = 30
+/** How far back down a ramp's approach the run-up is kept clear. A big
+ *  jump needs the whole run-up, not just the ground beside the lip. */
+const RAMP_RUNUP = 74
 
 /* ============================================================
    THE WORLD
@@ -468,12 +472,21 @@ export class World {
     this.props.reserve('panel', q.count(30, 12))
 
     const place = (kind: PropKind, x: number, z: number, options?: { tag?: string; rotation?: number }) => {
+      if (PLAY_SPOTS.some(p => Math.hypot(x - p.x, z - p.z) < p.radius)) return
       // Never on or in front of a ramp. A barrier lying across a
       // run-up is the difference between a jump that works and one
       // the player is convinced is broken — and the car is lighter
       // than most props, so it beaches rather than shoves.
       for (const ramp of ramps) {
         if (Math.hypot(x - ramp.x, z - ramp.z) < RAMP_CLEARANCE) return
+        // The run-up too. A ramp rises along its local +X, so the
+        // approach runs back along -X from its centre; anything within
+        // a lane's width of that line is in the way.
+        const cos = Math.cos(ramp.rotation)
+        const sin = -Math.sin(ramp.rotation)
+        const along = (x - ramp.x) * cos + (z - ramp.z) * sin
+        const across = Math.abs(-(x - ramp.x) * sin + (z - ramp.z) * cos)
+        if (along < 12 && along > -RAMP_RUNUP && across < ramp.width * 0.9) return
       }
       const y = this.terrain.colliderHeightAt(x, z)
       this.props.add(kind, x, y + 0.6, z, options)
@@ -510,7 +523,8 @@ export class World {
       focus: [{ kind: 'crate', count: 12 }, { kind: 'panel', count: 6 }, { kind: 'ball', count: 6 }],
       gym: [{ kind: 'drum', count: 12 }, { kind: 'plank', count: 8 }, { kind: 'ball', count: 6 }],
       client: [{ kind: 'barrier', count: 16 }, { kind: 'cone', count: 20, tag: 'cones' }],
-      circuit: [{ kind: 'barrier', count: 30 }, { kind: 'cone', count: 26, tag: 'cones' }],
+      // Circuit scenery is placed by the race, clear of the racing line.
+      circuit: [],
       labyrinth: [{ kind: 'crate', count: 6 }],
       voxel: [{ kind: 'block', count: 14 }],
       network: [{ kind: 'drum', count: 6 }],

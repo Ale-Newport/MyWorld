@@ -12,6 +12,8 @@ import {
   type DistrictId,
 } from '@/content/world'
 import styles from './map.module.css'
+import { LAKES, RIVER, BRIDGES, FOREST_POCKETS, PLAY_SPOTS, WATERFALL } from '@/content/world-environment'
+import type { CircuitRace } from '@/world/minigames/CircuitRace'
 
 /* ============================================================
    MAP
@@ -80,11 +82,13 @@ export function WorldMap({ store, getGame }: Props) {
     const draw = () => {
       raf = requestAnimationFrame(draw)
       ctx.clearRect(0, 0, size, size)
+      ctx.fillStyle = '#d0dfd8'
+      ctx.fillRect(0, 0, size, size)
 
       /* ---- world disc ---------------------------------- */
       ctx.beginPath()
       ctx.arc(px(0), py(0), (WORLD_RADIUS / SPAN) * size, 0, Math.PI * 2)
-      ctx.fillStyle = paper2
+      ctx.fillStyle = '#c6ccac'
       ctx.fill()
       ctx.strokeStyle = ink4
       ctx.lineWidth = 1
@@ -92,18 +96,48 @@ export function WorldMap({ store, getGame }: Props) {
       ctx.stroke()
       ctx.setLineDash([])
 
+      // Woodland masses, open district plates and shoreline use the same
+      // authored geography as the playable island.
+      for (const [x, z, radius] of FOREST_POCKETS) {
+        ctx.beginPath(); ctx.ellipse(px(x), py(z), radius / SPAN * size, radius / SPAN * size * .85, -.3, 0, Math.PI * 2)
+        ctx.fillStyle = '#9bac88'; ctx.fill()
+        ctx.beginPath(); ctx.arc(px(x), py(z), radius / SPAN * size * .55, 0, Math.PI * 2); ctx.fillStyle = '#8fA37d'; ctx.fill()
+      }
+      for (const district of districts) {
+        if (district.secret && !foundSecrets.has(district.id)) continue
+        ctx.beginPath(); ctx.arc(px(district.x), py(district.z), district.radius / SPAN * size, 0, Math.PI * 2)
+        ctx.fillStyle = '#e2dfcd'; ctx.fill()
+      }
+      for (const lake of LAKES) {
+        ctx.beginPath(); ctx.ellipse(px(lake.x), py(lake.z), lake.rx / SPAN * size, lake.rz / SPAN * size, 0, 0, Math.PI * 2)
+        ctx.fillStyle = '#6fa9a0'; ctx.fill(); ctx.strokeStyle = '#b9d3b0'; ctx.lineWidth = 3; ctx.stroke()
+      }
+      ctx.beginPath(); RIVER.points.forEach(([x,z],i) => { if (i) ctx.lineTo(px(x),py(z)); else ctx.moveTo(px(x),py(z)) })
+      ctx.strokeStyle = '#7bafa4'; ctx.lineWidth = RIVER.width / SPAN * size; ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.stroke()
+      ctx.fillStyle = '#e9f3da'; ctx.fillRect(px(WATERFALL.x)-3,py(WATERFALL.z)-2,6,4)
+
       /* ---- roads --------------------------------------- */
       ctx.strokeStyle = ink4
       ctx.lineWidth = 1.5
       ctx.lineCap = 'round'
       ctx.lineJoin = 'round'
       for (const road of roads) {
+        ctx.lineWidth = Math.max(1.5, road.width / SPAN * size)
         ctx.beginPath()
         road.points.forEach(([x, z], i) => {
           if (i === 0) ctx.moveTo(px(x), py(z))
           else ctx.lineTo(px(x), py(z))
         })
         ctx.stroke()
+      }
+      for (const bridge of BRIDGES) {
+        ctx.strokeStyle = '#f4e8c9'; ctx.lineWidth = bridge.width / SPAN * size
+        ctx.beginPath(); ctx.moveTo(px(bridge.x-bridge.length/2),py(bridge.z)); ctx.lineTo(px(bridge.x+bridge.length/2),py(bridge.z)); ctx.stroke()
+      }
+      const circuit = game.minigames.get('circuit') as CircuitRace
+      if (circuit) {
+        ctx.beginPath(); circuit.curve.getSpacedPoints(120).forEach((p,i) => { if (i) ctx.lineTo(px(p.x),py(p.z)); else ctx.moveTo(px(p.x),py(p.z)) })
+        ctx.strokeStyle = '#65786b'; ctx.lineWidth = 12 / SPAN * size; ctx.stroke()
       }
 
       /* ---- districts ----------------------------------- */
@@ -151,6 +185,19 @@ export function WorldMap({ store, getGame }: Props) {
         ctx.beginPath()
         ctx.arc(px(landmark.x), py(landmark.z), 1.6, 0, Math.PI * 2)
         ctx.fill()
+      }
+      for (const spot of PLAY_SPOTS.filter(p => p.id !== 'tnt')) {
+        const complete = game.save.data.progress.completedGames.includes(spot.id)
+        const discovered = game.save.data.progress.landmarks.includes(`play-${spot.id}`)
+        ctx.beginPath(); ctx.arc(px(spot.x),py(spot.z),4,0,Math.PI*2)
+        ctx.fillStyle = complete ? '#325c46' : discovered ? '#d58b4d' : '#ebe6d2'; ctx.fill()
+        ctx.strokeStyle = '#42624e'; ctx.lineWidth = 1; ctx.stroke()
+        if (discovered) { ctx.font='600 7px monospace'; ctx.fillStyle='#334f3f'; ctx.fillText(spot.label,px(spot.x),py(spot.z)+10) }
+      }
+      // Safe return points are diamonds; activities are circles.
+      for (const point of game.respawns.items.values()) {
+        if (!visited.has(point.district ?? '')) continue
+        ctx.save(); ctx.translate(px(point.position.x),py(point.position.z)); ctx.rotate(Math.PI/4); ctx.fillStyle=paper2;ctx.fillRect(-2,-2,4,4);ctx.strokeStyle=ink3;ctx.strokeRect(-2,-2,4,4);ctx.restore()
       }
 
       /* ---- player -------------------------------------- */
@@ -224,6 +271,7 @@ export function WorldMap({ store, getGame }: Props) {
       </div>
 
       <p className={styles.hint}>
+        Green: woodland · Teal: water · ○ activity · ◆ safe return · Orange: you.<br />
         {visited.size} of {districts.length} districts discovered. Travel moves the car to a
         district&rsquo;s entrance.
       </p>

@@ -50,6 +50,8 @@ export interface SaveData {
     timePlayed: number
     /** Mini-game id → best time in seconds (lower is better). */
     bestTimes: Record<string, number>
+    completedGames: string[]
+    raceHistory: number[]
     /** Last respawn point name. */
     lastRespawn: string | null
   }
@@ -75,6 +77,8 @@ function defaults(): SaveData {
       distanceDriven: 0,
       timePlayed: 0,
       bestTimes: {},
+      completedGames: [],
+      raceHistory: [],
       lastRespawn: null,
     },
   }
@@ -130,6 +134,10 @@ function coerce(raw: unknown): SaveData {
   out.progress.landmarks = stringArray(progress.landmarks)
   out.progress.notes = stringArray(progress.notes)
   out.progress.secrets = stringArray(progress.secrets)
+  out.progress.completedGames = stringArray(progress.completedGames)
+  out.progress.raceHistory = Array.isArray(progress.raceHistory)
+    ? progress.raceHistory.filter((v): v is number => typeof v === 'number' && Number.isFinite(v) && v > 0).sort((a, b) => a - b).slice(0, 5)
+    : []
   out.progress.distanceDriven = Math.max(0, numberOr(progress.distanceDriven, 0))
   out.progress.timePlayed = Math.max(0, numberOr(progress.timePlayed, 0))
   out.progress.lastRespawn =

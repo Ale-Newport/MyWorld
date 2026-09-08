@@ -21,7 +21,7 @@ hidden: without `folio-2025` this route would not exist.
 | **Source** | <https://github.com/brunosimon/folio-2025> |
 | **Licence** | MIT |
 | **Copyright** | Copyright (c) 2025 Bruno Simon |
-| **Upstream commit studied** | `main`, September 2026 |
+| **Upstream commit studied** | `41046b57eeed8d156d9c3fd7fa259900baef7816`, September 2026 |
 
 ### Licence
 
@@ -67,7 +67,12 @@ origin.
 | `src/world/view/View.ts` | **Ported and extended.** Upstream's focus-point magnet, spherical offset, speed-reactive zoom and spring "roll" kick. Orbit-on-drag and collision avoidance were added for this project. |
 | `src/world/input/*` | **Ported.** The action-map/category/filter input system, keyboard, pointer, wheel, gamepad and the touch joystick ("nipple") maths. |
 | `src/world/systems/*` | **Adapted.** Achievements, notifications, interactive points, map, zones, respawns, day cycle, weather, tracks and objects follow upstream's architecture with original content, presentation and persistence schema. |
-| `src/world/world/*` | **Original.** Every district, landmark, mini-game, sign, prop and piece of geometry in Alejandro's world is written for this project. |
+| `src/world/world/Ecology.ts` | **Adapted techniques, original implementation/art.** Chunked instances, reactive foliage and pooled leaves informed by upstream Trees, Bushes, Foliage, Grass and Leaves. |
+| `src/world/world/Water.ts` | **Adapted techniques, original GLSL/art.** Terrain-derived shore depth, wind and ripples informed by WaterSurface. |
+| `src/world/world/Playground.ts` | **Adapted mechanics, original content/art.** Bounded dispenser, tipping cabin, radial explosions and reset patterns informed by CookieArea, ToiletArea, AltarArea, Objects and ExplosiveCrates. |
+| `src/world/minigames/Bowling.ts` | **Adapted mechanics, original lane and rules.** Physical ball/pins, latched tilt detection, settling and reset informed by BowlingArea. |
+| `src/world/minigames/CircuitRace.ts` | **Adapted presentation, original track/detection.** Countdown, gate curtain and checkpoint recovery informed by CircuitArea; directional swept checks and the non-crossing layout are original. |
+| Other district geometry, text, signs and challenges | **Original.** Written for Alejandro's projects and island. |
 | `src/world/audio/*` | **Original.** Fully synthesised with the Web Audio API. No upstream sound files are used. |
 | Art, models, textures, fonts, sounds | **Original.** No asset from `folio-2025` is redistributed here. All geometry is procedural; all audio is synthesised; typography is Geist. |
 

@@ -122,6 +122,7 @@ export class Physics {
 
   /** Surface elevation of water; bodies below it get heavy damping. */
   waterElevation = -6
+  waterAt: ((x: number, z: number) => number | null) | null = null
 
   constructor(rapier: typeof RAPIER, private ticker: Ticker, bin: Bin) {
     this.rapier = rapier
@@ -296,6 +297,9 @@ export class Physics {
   /** Puts a body back where it was created and stops it dead. */
   reset(physical: Physical): void {
     const s = physical.initialState
+    physical.body.resetForces(true)
+    physical.body.resetTorques(true)
+    physical.body.setEnabled(true)
     physical.body.setTranslation(s.position, true)
     physical.body.setRotation(s.rotation, true)
     physical.body.setLinvel({ x: 0, y: 0, z: 0 }, true)
@@ -304,6 +308,7 @@ export class Physics {
     physical.current.quaternion.set(s.rotation.x, s.rotation.y, s.rotation.z, s.rotation.w)
     physical.previous.position.copy(physical.current.position)
     physical.previous.quaternion.copy(physical.current.quaternion)
+    if (s.sleeping) physical.body.sleep()
   }
 
   /** Interpolated render transform. `alpha` comes from the Ticker. */
@@ -330,7 +335,8 @@ export class Physics {
 
       // Underwater bodies get heavy damping rather than buoyancy —
       // same trick upstream uses, and it reads correctly at speed.
-      const depth = this.waterElevation - physical.current.position.y
+      const water = this.waterAt?.(physical.current.position.x, physical.current.position.z) ?? this.waterElevation
+      const depth = water - physical.current.position.y
       if (depth > 0) {
         physical.body.setLinearDamping(1)
         physical.body.setAngularDamping(1)
@@ -384,8 +390,11 @@ export class Physics {
   groundAt(x: number, z: number, y = 60, maxDistance = 200): number | null {
     const ray = new this.rapier.Ray({ x, y, z }, { x: 0, y: -1, z: 0 })
     const hit = this.world.castRay(ray, maxDistance, true, undefined, this.queryTerrainOnly)
-    if (!hit) return null
-    return y - hit.timeOfImpact
+    if (hit) return y - hit.timeOfImpact
+    // Rapier 0.17 can miss a perfectly vertical ray exactly on a heightfield
+    // row seam. A 1 mm offset avoids a false "no ground" at authored points.
+    const seam = this.world.castRay(new this.rapier.Ray({ x, y, z: z + .001 }, { x: 0, y: -1, z: 0 }), maxDistance, true, undefined, this.queryTerrainOnly)
+    return seam ? y - seam.timeOfImpact : null
   }
 
   destroy(): void {

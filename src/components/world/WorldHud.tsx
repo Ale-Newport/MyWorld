@@ -134,6 +134,10 @@ export function WorldHud({ store, getGame }: Props) {
               <span style={{ transform: `scaleX(${minigame.progress})` }} />
             </div>
           )}
+          <div className={styles.minigameActions}>
+            <button type="button" onClick={() => { const g = getGame(); if (!g) return; g.minigames.cancel(); g.minigames.start(minigame.id) }}>Restart</button>
+            <button type="button" onClick={() => getGame()?.minigames.cancel()}>Exit game</button>
+          </div>
         </div>
       )}
 

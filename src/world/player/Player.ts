@@ -93,6 +93,8 @@ export class Player {
 
   /** Called before a respawn so the UI can fade to black first. */
   onRespawnTransition: ((commit: () => void) => void) | null = null
+  /** Environment/gameplay routing; never changes driving parameters. */
+  onRespawnRequest: (() => boolean) | null = null
 
   constructor(
     private inputs: Inputs,
@@ -299,6 +301,7 @@ export class Player {
      ======================================================== */
 
   respawn(name: string | null = null): void {
+    if (name === null && this.onRespawnRequest?.()) return
     const commit = () => {
       const target = name
         ? this.respawns.getByName(name) ?? this.respawns.getDefault()

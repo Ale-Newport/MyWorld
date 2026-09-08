@@ -30,6 +30,21 @@ export interface Achievement {
 }
 
 export const achievements: Achievement[] = [
+  { id: 'labPlay', label: 'EXPERIMENTAL', hint: 'Interact with all three live laboratory instruments.', group: 'exploration', target: 3 },
+  { id: 'perfectRun', label: 'CLEAN LAP', hint: 'Finish the circuit without recovering.', group: 'minigames', target: 1 },
+  { id: 'nameDrop', label: 'NAME DROP', hint: 'Topple all sixteen letters, then restore them at the name stand.', group: 'minigames', target: 16 },
+  { id: 'strike', label: 'STRIKE!', hint: 'Knock down all ten bowling pins with your first ball.', group: 'minigames', target: 1 },
+  { id: 'spare', label: 'SPARE CHANGE', hint: 'Clear the remaining pins on your second bowling throw.', group: 'minigames', target: 1 },
+  { id: 'bowling', label: 'LANE LOGIC', hint: 'Finish a frame at the bowling lane.', group: 'minigames', target: 1 },
+  { id: 'debugDash', label: 'ALL GREEN', hint: 'Clear the timed debug dash without hitting a green build.', group: 'minigames', target: 1 },
+  { id: 'riverRun', label: 'BRIDGE BUILDER', hint: 'Complete the river crossing route in order.', group: 'minigames', target: 1 },
+  { id: 'chipRelay', label: 'CACHE HIT', hint: 'Collect three chips and return each to the cache.', group: 'minigames', target: 1 },
+  { id: 'domino', label: 'CHAIN REACTION', hint: 'Detonate every crate in the TNT domino challenge.', group: 'minigames', target: 1 },
+  { id: 'deployment', label: 'DEPLOYED', hint: 'Push the release package onto the deployment altar.', group: 'minigames', target: 1 },
+  { id: 'chips', label: 'SNACK OVERFLOW', hint: 'Collect twelve chips from the dispenser.', group: 'exploration', target: 12 },
+  { id: 'cabin', label: 'OUT OF OFFICE', hint: 'Tip the little forest cabin.', group: 'secrets', target: 1, hidden: true },
+  { id: 'waterfall', label: 'QUIET COMMIT', hint: 'Look behind the waterfall.', group: 'secrets', target: 1, hidden: true },
+  { id: 'timeMachine', label: 'FUTURE COMMIT', hint: 'Start the time machine in the southern garden.', group: 'secrets', target: 1 },
   /* ---- driving ------------------------------------------- */
   { id: 'firstDrive', label: 'FIRST DRIVE', hint: 'Move the car.', group: 'driving', target: 1 },
   { id: 'takeoff', label: 'TAKEOFF', hint: 'Get all four wheels off the ground.', group: 'driving', target: 1 },

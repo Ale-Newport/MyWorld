@@ -260,43 +260,9 @@ const buildBillboard: Builder = (ctx, landmark) => {
 }
 
 /** The hub's name, in physical letters you can drive between. */
-const buildMonumentName: Builder = (ctx, _landmark) => {
-  const group = new THREE.Group()
-  const size = 5.2
-  const material = ctx.materials.tinted(palette.ink, 0.62, 0.08)
-
-  const lines = ['ALEJANDRO', 'NEWPORT']
-  lines.forEach((line, row) => {
-    const { geometry, colliders } = standingText(line, {
-      size,
-      weight: 0.16,
-      depth: 1.5,
-      align: 'center',
-    })
-    const mesh = new THREE.Mesh(geometry, material)
-    mesh.position.set(0, 0, row * -7.5)
-    mesh.castShadow = ctx.quality.settings.shadows
-    mesh.receiveShadow = ctx.quality.settings.shadows
-    group.add(mesh)
-    ctx.bin.add(() => geometry.dispose())
-
-    // One collider per letter, so you can drive into the O and stop.
-    for (const box of colliders) {
-      ctx.physics.add({
-        type: 'fixed',
-        category: 'floor',
-        position: toWorld(ctx, box.x, box.y, row * -7.5),
-        rotation: toWorldRotation(ctx),
-        friction: 0.6,
-        restitution: 0.2,
-        colliders: [
-          { shape: 'cuboid', parameters: [box.halfWidth * 0.82, box.halfHeight, box.halfDepth] },
-        ],
-      })
-    }
-  })
-
-  return { group, anchor: new THREE.Vector3(0, size + 2, 0), radius: 20 }
+const buildMonumentName: Builder = () => {
+  // Individual dynamic glyphs are owned by Playground after the vehicle exists.
+  return { group: new THREE.Group(), anchor: new THREE.Vector3(0, 7.2, 0), radius: 20 }
 }
 
 /** A generic project marker: a plinth, a form, a label, a ring. */
@@ -1134,6 +1100,11 @@ export function buildLandmark(
   // group afterwards is how you get a sign whose post is three
   // metres from its collider.
   const ctx: LandmarkContext = { ...base, at, rotation: landmark.rotation ?? 0 }
+  if (landmark.id === 'circuit-start' || landmark.id === 'teaching-bugs') {
+    // CircuitRace owns the gantry and collision-free starting lane.
+    const group = new THREE.Group(); group.position.copy(at)
+    return { group, anchor: new THREE.Vector3(0, 4, 0), radius: 16 }
+  }
 
   // The hub's name is the one landmark with a bespoke builder,
   // because it is the only one made of letters.

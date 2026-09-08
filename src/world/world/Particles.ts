@@ -29,7 +29,7 @@ import type { Player } from '../player/Player'
    directly.
    ============================================================ */
 
-type ParticleKind = 'dust' | 'debris' | 'boost' | 'spark'
+type ParticleKind = 'dust' | 'debris' | 'boost' | 'spark' | 'confetti' | 'splash' | 'smoke'
 
 interface Particle {
   kind: ParticleKind
@@ -43,6 +43,9 @@ interface Particle {
 }
 
 const KINDS: Record<ParticleKind, { colour: string; drag: number; gravity: number }> = {
+  confetti: { colour: '#e9bd54', drag: .8, gravity: -2.8 },
+  splash: { colour: '#d3f5e7', drag: .8, gravity: -8 },
+  smoke: { colour: '#636559', drag: 1, gravity: 1.7 },
   // Kicked-up ground: slow, floats, fades.
   dust: { colour: palette.paper4, drag: 2.4, gravity: -1.2 },
   // Knocked-off material: heavier, falls properly.
@@ -55,6 +58,7 @@ const KINDS: Record<ParticleKind, { colour: string; drag: number; gravity: numbe
 
 export class Particles {
   readonly group = new THREE.Group()
+  waterLevelAt: ((x: number, z: number) => number) | null = null
 
   private pool: Particle[] = []
   private cursor = 0
@@ -201,7 +205,7 @@ export class Particles {
     this.cursor = (this.cursor + 1) % this.pool.length
 
     particle.kind = kind
-    particle.maxLife = kind === 'boost' ? 0.5 : kind === 'spark' ? 0.35 : 0.9
+    particle.maxLife = kind === 'confetti' ? 3.5 : kind === 'smoke' ? 2 : kind === 'boost' ? 0.5 : kind === 'spark' ? 0.35 : 0.9
     particle.life = particle.maxLife
     particle.size = size * (0.7 + this.rand() * 0.7)
     particle.position.set(at.x, at.y + 0.1, at.z)
@@ -220,7 +224,7 @@ export class Particles {
 
     // Inherit some of the car's motion, or dust hangs behind it in
     // a way that reads as a bug.
-    particle.velocity.addScaledVector(this.vehicle.velocity, 12)
+    if (kind === 'dust' || kind === 'boost') particle.velocity.addScaledVector(this.vehicle.velocity, 12)
   }
 
   private update(): void {
@@ -243,6 +247,7 @@ export class Particles {
         for (const index of [2, 3]) {
           const wheel = this.vehicle.wheels.items[index]
           if (wheel.inContact && wheel.contactPoint) {
+            if (this.waterLevelAt && wheel.contactPoint.y < this.waterLevelAt(wheel.contactPoint.x, wheel.contactPoint.z) + .06) continue
             this.emit('dust', wheel.contactPoint, clamp(speed * 0.06, 0.4, 2.2), 0.3)
           }
         }
@@ -295,6 +300,7 @@ export class Particles {
       this.mesh.setMatrixAt(i, this.matrix)
 
       this.colour.set(spec.colour).multiplyScalar(0.4 + t * 0.6)
+      if (particle.kind === 'confetti') this.colour.setHSL((i * .137) % 1, .7, .6)
       this.colours.setXYZ(i, this.colour.r, this.colour.g, this.colour.b)
     }
 
@@ -310,6 +316,6 @@ export class Particles {
 
   /** Throws a burst at a point. Used by mini-games and achievements. */
   burst(at: THREE.Vector3, count = 12, kind: ParticleKind = 'spark'): void {
-    for (let i = 0; i < count; i++) this.emit(kind, at, 4, 0.3)
+    for (let i = 0; i < count; i++) this.emit(kind, at, kind === 'confetti' ? 8 : kind === 'smoke' ? 2.5 : 4, kind === 'smoke' ? 1.8 : .3)
   }
 }
