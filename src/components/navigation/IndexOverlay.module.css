@@ -151,3 +151,39 @@
 }
 .link:hover { color: var(--text-primary); border-bottom-color: var(--border); }
 .linkValue { color: var(--text-faint); }
+
+/* ============================================================
+   ENTRY TO /WORLD
+   Offered, never insisted on: the world is a second way through
+   the same material, not a prerequisite for any of it.
+   ============================================================ */
+
+.worldLink {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--sp-4);
+  flex-wrap: wrap;
+  padding: var(--sp-4) 0;
+  margin-bottom: var(--sp-4);
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  font-family: var(--font-mono);
+  font-size: var(--fs-micro);
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  color: var(--text-primary);
+  transition: color 200ms var(--ease-out-expo), padding-left 200ms var(--ease-out-expo);
+}
+
+.worldLink:hover {
+  color: var(--accent);
+  padding-left: var(--sp-2);
+}
+
+.worldLinkNote {
+  color: var(--text-muted);
+  text-transform: none;
+  letter-spacing: 0.02em;
+  font-size: var(--fs-tiny);
+}
