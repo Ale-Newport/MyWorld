@@ -12,7 +12,7 @@ import {
   type DistrictId,
 } from '@/content/world'
 import styles from './map.module.css'
-import { LAKES, RIVER, BRIDGES, FOREST_POCKETS, PLAY_SPOTS, WATERFALL } from '@/content/world-environment'
+import { BRIDGES, FOREST_POCKETS, PLAY_SPOTS, WATERFALL, coastRadius } from '@/content/world-environment'
 import type { CircuitRace } from '@/world/minigames/CircuitRace'
 
 /* ============================================================
@@ -25,6 +25,14 @@ import type { CircuitRace } from '@/world/minigames/CircuitRace'
 
    It is the site's design language, not a game minimap — thin
    rules, mono labels, one accent colour, no colour-coded key.
+
+   The ground under those marks is painted from the SAME R/G/B/A mask
+   the world's own materials read: R paving, G grass, B water depth,
+   A height. So the coastline, the water and the paving on the map are
+   the coastline, water and paving you drive on — not a second drawing
+   of them that can quietly disagree. Baked once into an offscreen
+   canvas and blitted, because sampling it per frame would cost more
+   than the rest of the map put together.
 
    Discovery matters. Districts you have not entered are drawn as
    outlines with no name; secrets do not appear at all until
@@ -77,43 +85,95 @@ export function WorldMap({ store, getGame }: Props) {
     const accent = css.getPropertyValue('--accent').trim() || '#d4491f'
     const paper2 = css.getPropertyValue('--paper-2').trim() || '#eceae5'
 
+    /* ---- the ground, painted from the world's own mask ----
+       One pass, cached. `terrain.mask` is the texture the grass and
+       the materials sample; reading it here is what keeps the map and
+       the island the same shape. */
+    const groundLayer = document.createElement('canvas')
+    const GROUND = 320
+    groundLayer.width = GROUND
+    groundLayer.height = GROUND
+    {
+      const gctx = groundLayer.getContext('2d')
+      const mask = game.world.terrain.mask
+      const data = mask.image.data as Uint8Array
+      const maskSize = mask.image.width
+      const extent = game.world.terrain.maskExtent
+      if (gctx) {
+        const out = gctx.createImageData(GROUND, GROUND)
+        for (let j = 0; j < GROUND; j++) {
+          for (let i = 0; i < GROUND; i++) {
+            // Map pixel → world metres → mask texel.
+            const wx = ((i + 0.5) / GROUND) * SPAN - SPAN / 2
+            const wz = ((j + 0.5) / GROUND) * SPAN - SPAN / 2
+            const u = Math.round(((wx + extent) / (extent * 2)) * maskSize)
+            const v = Math.round(((wz + extent) / (extent * 2)) * maskSize)
+            const o = (j * GROUND + i) * 4
+            if (u < 0 || v < 0 || u >= maskSize || v >= maskSize) {
+              out.data[o] = 0x3f; out.data[o + 1] = 0x77; out.data[o + 2] = 0x8b; out.data[o + 3] = 255
+              continue
+            }
+            const m = (v * maskSize + u) * 4
+            const paved = data[m] / 255
+            const grass = data[m + 1] / 255
+            const depth = data[m + 2] / 255
+            const height = (data[m + 3] / 255) * game.world.terrain.maskHeightScale
+              + game.world.terrain.maskHeightBias
+
+            const radius = Math.hypot(wx, wz)
+            const coast = coastRadius(wx, wz, WORLD_RADIUS)
+            let r: number, g: number, b: number
+            if (radius > coast) {
+              // Open sea, shelving away from the shore. The shallows
+              // ring the island the way they do in the world.
+              const off = Math.min(1, (radius - coast) / 40)
+              r = 104 - off * 62; g = 178 - off * 96; b = 190 - off * 74
+            } else if (depth > 0.03) {
+              // Inland water: the lakes and the river, deepening.
+              const d = Math.min(1, depth * 1.4)
+              r = 118 - d * 60; g = 190 - d * 78; b = 184 - d * 58
+            } else {
+              // Land. Green that lightens with elevation, sand at the
+              // shore, warm pale where the ground is paved.
+              const lift = Math.max(0, Math.min(1, (height + 2) / 15))
+              const shore = Math.max(0, 1 - Math.min(1, (coast - radius) / 18))
+              r = 128 + lift * 52; g = 156 + lift * 40; b = 92 + lift * 44
+              r = r * (1 - shore) + 226 * shore
+              g = g * (1 - shore) + 210 * shore
+              b = b * (1 - shore) + 168 * shore
+              r = r * (1 - paved) + 234 * paved
+              g = g * (1 - paved) + 231 * paved
+              b = b * (1 - paved) + 216 * paved
+              // Grass reads a touch cooler and darker than bare ground.
+              r -= grass * 14; g -= grass * 4; b -= grass * 8
+            }
+            out.data[o] = Math.max(0, Math.min(255, r))
+            out.data[o + 1] = Math.max(0, Math.min(255, g))
+            out.data[o + 2] = Math.max(0, Math.min(255, b))
+            out.data[o + 3] = 255
+          }
+        }
+        gctx.putImageData(out, 0, 0)
+      }
+    }
+
     let raf = 0
 
     const draw = () => {
       raf = requestAnimationFrame(draw)
       ctx.clearRect(0, 0, size, size)
-      ctx.fillStyle = '#d0dfd8'
-      ctx.fillRect(0, 0, size, size)
+      // The island, its water and its paving, straight off the mask the
+      // world itself reads.
+      ctx.imageSmoothingEnabled = true
+      ctx.drawImage(groundLayer, 0, 0, size, size)
 
-      /* ---- world disc ---------------------------------- */
-      ctx.beginPath()
-      ctx.arc(px(0), py(0), (WORLD_RADIUS / SPAN) * size, 0, Math.PI * 2)
-      ctx.fillStyle = '#c6ccac'
-      ctx.fill()
-      ctx.strokeStyle = ink4
-      ctx.lineWidth = 1
-      ctx.setLineDash([2, 4])
-      ctx.stroke()
-      ctx.setLineDash([])
-
-      // Woodland masses, open district plates and shoreline use the same
-      // authored geography as the playable island.
+      // Woodland masses sit on top: they are placement data, not ground.
       for (const [x, z, radius] of FOREST_POCKETS) {
         ctx.beginPath(); ctx.ellipse(px(x), py(z), radius / SPAN * size, radius / SPAN * size * .85, -.3, 0, Math.PI * 2)
-        ctx.fillStyle = '#9bac88'; ctx.fill()
-        ctx.beginPath(); ctx.arc(px(x), py(z), radius / SPAN * size * .55, 0, Math.PI * 2); ctx.fillStyle = '#8fA37d'; ctx.fill()
+        ctx.fillStyle = 'rgba(84,112,68,0.30)'; ctx.fill()
+        ctx.beginPath(); ctx.arc(px(x), py(z), radius / SPAN * size * .5, 0, Math.PI * 2)
+        ctx.fillStyle = 'rgba(70,96,58,0.28)'; ctx.fill()
       }
-      for (const district of districts) {
-        if (district.secret && !foundSecrets.has(district.id)) continue
-        ctx.beginPath(); ctx.arc(px(district.x), py(district.z), district.radius / SPAN * size, 0, Math.PI * 2)
-        ctx.fillStyle = '#e2dfcd'; ctx.fill()
-      }
-      for (const lake of LAKES) {
-        ctx.beginPath(); ctx.ellipse(px(lake.x), py(lake.z), lake.rx / SPAN * size, lake.rz / SPAN * size, 0, 0, Math.PI * 2)
-        ctx.fillStyle = '#6fa9a0'; ctx.fill(); ctx.strokeStyle = '#b9d3b0'; ctx.lineWidth = 3; ctx.stroke()
-      }
-      ctx.beginPath(); RIVER.points.forEach(([x,z],i) => { if (i) ctx.lineTo(px(x),py(z)); else ctx.moveTo(px(x),py(z)) })
-      ctx.strokeStyle = '#7bafa4'; ctx.lineWidth = RIVER.width / SPAN * size; ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.stroke()
       ctx.fillStyle = '#e9f3da'; ctx.fillRect(px(WATERFALL.x)-3,py(WATERFALL.z)-2,6,4)
 
       /* ---- roads --------------------------------------- */
@@ -145,35 +205,42 @@ export function WorldMap({ store, getGame }: Props) {
       ctx.textAlign = 'center'
       ctx.textBaseline = 'middle'
 
+      // A district is a MARKER, not a disc. The ground layer already
+      // shows the paving of the ones that have any, and most of them
+      // are clearings with no footprint at all — drawing a ring for
+      // every district was drawing something that is not there, which
+      // is exactly the "circles on a lawn" reading the world itself no
+      // longer has.
       for (const district of districts) {
         if (district.secret && !foundSecrets.has(district.id)) continue
         const seen = visited.has(district.id)
         const x = px(district.x)
         const y = py(district.z)
-        const r = (district.radius / SPAN) * size
+        const here = district.id === currentDistrict
+        const pin = here ? 5.2 : 4
 
+        // A diamond, like the reference's, so a place reads as a place
+        // at any zoom rather than as a circle competing with the ground.
         ctx.beginPath()
-        ctx.arc(x, y, r, 0, Math.PI * 2)
-        if (seen) {
-          ctx.fillStyle = district.id === currentDistrict
-            ? 'rgba(212,73,31,0.14)'
-            : 'rgba(12,12,13,0.05)'
-          ctx.fill()
-        }
-        ctx.strokeStyle = seen ? ink3 : ink4
-        ctx.lineWidth = district.id === currentDistrict ? 1.6 : 1
-        if (!seen) ctx.setLineDash([2, 3])
+        ctx.moveTo(x, y - pin); ctx.lineTo(x + pin, y)
+        ctx.lineTo(x, y + pin); ctx.lineTo(x - pin, y)
+        ctx.closePath()
+        ctx.fillStyle = seen ? (here ? accent : paper2) : 'rgba(255,255,255,0.35)'
+        ctx.fill()
+        ctx.strokeStyle = seen ? (here ? accent : ink) : ink4
+        ctx.lineWidth = here ? 1.6 : 1
         ctx.stroke()
-        ctx.setLineDash([])
 
         if (seen) {
-          ctx.fillStyle = district.id === currentDistrict ? accent : ink
-          // Two lines if the label is long, so it never spills.
           const label = district.short
-          ctx.fillText(label, x, y - 1)
+          const width = ctx.measureText(label).width
+          ctx.fillStyle = 'rgba(250,249,245,0.82)'
+          ctx.fillRect(x - width / 2 - 3, y + pin + 2, width + 6, 11)
+          ctx.fillStyle = here ? accent : ink
+          ctx.fillText(label, x, y + pin + 8)
         } else {
           ctx.fillStyle = ink4
-          ctx.fillText('?', x, y)
+          ctx.fillText('?', x, y + pin + 8)
         }
       }
 
