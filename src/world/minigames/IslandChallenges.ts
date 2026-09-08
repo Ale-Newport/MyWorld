@@ -52,8 +52,14 @@ export class IslandChallenge extends Minigame {
       // the west coast. Beacons sit on the river's own polyline so the
       // course cannot drift away from the water.
       this.limit=95
-      this.startPosition.set(RIVER.points[0][0]+9,this.game.terrain.colliderHeightAt(RIVER.points[0][0]+9,RIVER.points[0][1]+8)+2,RIVER.points[0][1]+8)
-      for(const [x,z] of [[-126,-74],[-132,-60],[-134,-50],[-139,-30],[-141,-10],[-138,16]])this.addTarget(x,z,5)
+      // On the bank, not in the bed. `inlandWater` treats anything
+      // within RIVER.width of the centreline as river, so the start has
+      // to clear that or the car spawns underwater and drowns before
+      // the run begins.
+      const startX = RIVER.points[0][0] + RIVER.width * 2
+      const startZ = RIVER.points[0][1] + 6
+      this.startPosition.set(startX, this.game.terrain.colliderHeightAt(startX, startZ) + 2, startZ)
+      for(const [x,z] of [[-28,-104],[-25,-84],[-24,-62],[-24,-40],[-22,-18],[-20,10]])this.addTarget(x,z,5)
     } else if(this.kind==='chipRelay') {
       this.limit=70
       this.startPosition.set(spot.x,this.game.terrain.colliderHeightAt(spot.x,spot.z)+1.6,spot.z)

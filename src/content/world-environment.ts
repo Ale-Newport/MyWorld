@@ -7,41 +7,46 @@
  * is supposed to contain something, not just distance. */
 
 export const CIRCUIT = {
-  x:105,z:-60,width:12,laps:3,
-  // Its own flank of the island, the way the reference gives a whole
-  // side to its circuit rather than tucking it into a corner.
-  points:[[-5,33],[17,33],[32,22],[35,0],[27,-10],[12,-14],[3,-28],[-9,-30],[-14,-20],[-27,-21],[-35,-6],[-33,16],[-20,30]] as [number,number][],
+  x:-99,z:-1,width:12,laps:2,
+  // A four-lane serpentine filling the western half of the island,
+  // the way the reference gives its whole left side to the track. The
+  // start/finish straight runs beside the content half, so the circuit
+  // is something you come across rather than only visit on purpose.
+  // ~780 m a lap, against the ~300 m loop this replaces.
+  points:[[47,81],[46,45],[45,7],[44,-31],[43,-63],[39,-87],[28,-100],[14,-99],[12,-83],[11,-49],[10,-11],[9,25],[9,51],[5,65],[-5,73],[-15,66],[-18,45],[-19,9],[-20,-25],[-21,-57],[-25,-77],[-33,-87],[-41,-78],[-43,-57],[-45,-25],[-45,7],[-43,35],[-35,53],[-26,64],[-13,75],[7,78],[29,77],[43,79]] as [number,number][],
 }
 export const LAKES = [
-  // In the gap between focus, client and voxel — the causeway crosses it.
-  {id:'mirror-lake',x:46,z:26,rx:20,rz:15,level:-0.7,depth:4.6},
-  // Between gym, archive and the algorithm field.
-  {id:'willow-lake',x:-54,z:98,rx:22,rz:16,level:-0.65,depth:4.8},
-  // The northern tarn, fed by the river's overflow.
-  {id:'cold-tarn',x:-32,z:-108,rx:16,rz:13,level:-0.8,depth:4.2},
+  // Lagoons threaded between the districts, the way the reference
+  // scatters water through its content half rather than pooling it.
+  {id:'mirror-lake',x:78,z:-10,rx:16,rz:12,level:-0.7,depth:4.4},
+  {id:'willow-lake',x:82,z:92,rx:16,rz:12,level:-0.65,depth:4.6},
+  {id:'cold-tarn',x:-28,z:-106,rx:13,rz:10,level:-0.8,depth:4},
 ]
-/** Off the north-west highland and down the western side of the island.
- *  It runs INSIDE the coast, not along it — a river you can only see
- *  from the sea is not a river anybody drives to. */
-export const RIVER = {width:8,level:-0.7,points:[[-112,-80],[-118,-78],[-124,-56],[-128,-32],[-128,-6],[-124,18],[-116,42]] as [number,number][]}
-export const WATERFALL = {x:-112,z:-80,top:9,bottom:-0.7,width:8}
+/** Off the northern highland, down the seam between the track and the
+ *  districts. It is the boundary between the two halves of the island,
+ *  which is why it is worth crossing. */
+export const RIVER = {width:8,level:-0.7,points:[[-40,-118],[-36,-96],[-34,-72],[-33,-48],[-32,-22],[-31,4],[-30,30],[-28,56]] as [number,number][]}
+export const WATERFALL = {x:-40,z:-118,top:10,bottom:-0.7,width:8}
 export const BRIDGES = [
-  {x:-125,z:-52,length:24,width:8,kind:'wood'},
-  {x:46,z:26,length:36,width:8,kind:'modern'},
+  {x:-33,z:-56,length:24,width:8,kind:'wood'},
+  {x:-31,z:12,length:24,width:9,kind:'road'},
+  {x:78,z:-10,length:30,width:8,kind:'modern'},
 ] as const
 export const PLAY_SPOTS = [
-  {id:'bowling',label:'BOWLING',x:-28,z:-48,radius:22},
-  {id:'tnt',label:'TNT QUARRY',x:70,z:-34,radius:16},
-  {id:'deployment',label:'DEPLOYMENT ALTAR',x:-72,z:-96,radius:13},
-  {id:'timeMachine',label:'TIME MACHINE',x:34,z:92,radius:12},
-  {id:'debugDash',label:'DEBUG DASH',x:-64,z:70,radius:15},
-  {id:'riverRun',label:'RIVER RUN',x:-127,z:-14,radius:13},
-  {id:'chipRelay',label:'CHIP RELAY',x:22,z:32,radius:13},
-  {id:'domino',label:'TNT DOMINO',x:70,z:-34,radius:16},
-  {id:'gravityWell',label:'GRAVITY WELL',x:-24,z:-124,radius:11},
-  {id:'particleField',label:'PARTICLE FIELD',x:22,z:-70,radius:11},
-  {id:'procedural',label:'PROCEDURAL TERRAIN',x:106,z:24,radius:12},
-  {id:'cabin',label:'OUT OF OFFICE',x:-112,z:16,radius:11},
+  {id:'bowling',label:'BOWLING',x:76,z:44,radius:20},
+  {id:'tnt',label:'TNT QUARRY',x:92,z:8,radius:16},
+  {id:'deployment',label:'DEPLOYMENT ALTAR',x:58,z:-48,radius:13},
+  {id:'timeMachine',label:'TIME MACHINE',x:62,z:88,radius:12},
+  {id:'debugDash',label:'DEBUG DASH',x:8,z:46,radius:15},
+  {id:'riverRun',label:'RIVER RUN',x:-32,z:-14,radius:13},
+  {id:'chipRelay',label:'CHIP RELAY',x:34,z:40,radius:13},
+  {id:'domino',label:'TNT DOMINO',x:92,z:8,radius:16},
+  {id:'gravityWell',label:'GRAVITY WELL',x:58,z:-118,radius:11},
+  {id:'particleField',label:'PARTICLE FIELD',x:80,z:-54,radius:11},
+  {id:'procedural',label:'PROCEDURAL TERRAIN',x:120,z:50,radius:12},
+  // In the infield between two of the track's lanes: you only find it
+  // by leaving the racing line.
+  {id:'cabin',label:'OUT OF OFFICE',x:-72,z:10,radius:11},
 ] as const
 export const RELAY_POINTS = [[-14,30],[26,14],[44,48]] as const
 /** Wooded masses, not an even scatter: the north-west highland, the
@@ -49,17 +54,16 @@ export const RELAY_POINTS = [[-14,30],[26,14],[44,48]] as const
  *  ring road curves around. `[x, z, radius]`. */
 export const FOREST_POCKETS = [
   // The northern highland — the densest woodland on the island.
-  [-100,-74,26],[-112,-100,24],[-84,-112,26],[-56,-118,24],
-  // River banks.
-  [-120,-40,16],[-126,-6,15],[-114,34,14],
-  // Lake shores.
-  [-70,110,20],[-40,84,15],[62,38,15],[-46,-122,16],
-  // Thickets inside the ring's curves.
-  [34,-14,14],[-34,44,16],[10,96,15],[54,84,16],[100,66,18],
-  // The eastern slope below the circuit.
-  [128,-14,18],[76,-98,20],
+  [-46,-128,26],[-20,-132,22],[-64,-140,20],
+  // River banks, the seam between the track and the districts.
+  [-38,-88,15],[-33,-56,14],[-31,-16,14],[-29,24,14],
+  // The track's infield, which is scenery rather than activity.
+  [-70,-40,20],[-72,42,18],[-104,-8,18],[-106,30,16],[-132,-40,16],[-134,18,15],
+  // Lake shores and the gaps the ring road curves around.
+  [96,-14,14],[96,88,15],[-4,-104,14],
+  [26,-24,13],[74,-90,15],[112,-46,14],[124,14,14],[70,72,14],[16,84,14],
   // South coast scrub.
-  [-84,132,18],[36,128,16],
+  [56,120,15],[-4,110,14],
 ] as const
 /**
  * The coastline, as a radius that varies with bearing. A perfect
@@ -74,6 +78,14 @@ export function coastRadius(x:number,z:number,nominal:number):number {
     +0.075*Math.sin(a*3-1.9)
     +0.045*Math.sin(a*5+2.6))
 }
+/** The circuit spline in world coordinates, closed. Terrain flattens a
+ *  corridor along it and the ecology keeps off it; both need the same
+ *  line, so it lives here with the rest of the geography. */
+export const CIRCUIT_TRACK: [number,number][] = [
+  ...CIRCUIT.points.map(([x,z]) => [CIRCUIT.x + x, CIRCUIT.z + z] as [number,number]),
+  [CIRCUIT.x + CIRCUIT.points[0][0], CIRCUIT.z + CIRCUIT.points[0][1]],
+]
+
 export function lineDistance(x:number,z:number,points:readonly (readonly number[])[]):number {
   let best=Infinity
   for(let i=1;i<points.length;i++) {

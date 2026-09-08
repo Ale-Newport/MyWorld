@@ -171,7 +171,7 @@ export const districts: District[] = [
     id: 'hub',
     label: 'CENTRAL HUB',
     short: 'HOME',
-    x: 0, z: 0, radius: 35, plate: 22,
+    x: 18, z: -2, radius: 32, plate: 30,
     theme: 'light', accent: '#d4491f',
     ground: 'paper',
     blurb: 'Where the name is written large enough to drive on.',
@@ -182,7 +182,7 @@ export const districts: District[] = [
     id: 'lab',
     label: 'AI LAB',
     short: 'AI LAB',
-    x: 4, z: -92, radius: 30, plate: 18,
+    x: 48, z: -96, radius: 26, plate: 18,
     theme: 'dark', accent: '#d4491f',
     ground: 'dark',
     blurb: 'Metaview. Half a million documents, standing up as light.',
@@ -193,7 +193,7 @@ export const districts: District[] = [
     id: 'kcl',
     label: "KING'S COLLEGE LONDON",
     short: 'KCL',
-    x: -62, z: -18, radius: 41,
+    x: -2, z: -40, radius: 32,
     theme: 'light', accent: '#8d8467',
     ground: 'plate',
     blurb: 'Foundations. Five modules, built as five structures.',
@@ -204,7 +204,7 @@ export const districts: District[] = [
     id: 'ucl',
     label: 'UNIVERSITY COLLEGE LONDON',
     short: 'UCL',
-    x: 60, z: -20, radius: 39,
+    x: 90, z: -34, radius: 30,
     theme: 'light', accent: '#5f8490',
     ground: 'plate',
     blurb: 'The next degree. Still under construction, on purpose.',
@@ -215,7 +215,7 @@ export const districts: District[] = [
     id: 'teaching',
     label: 'DEBUG YARD',
     short: 'TEACHING',
-    x: -52, z: 28, radius: 22,
+    x: -4, z: 28, radius: 20,
     theme: 'light', accent: '#2f6f5e',
     ground: 'grid',
     blurb: 'Graduate Teaching Assistant. Knock the failing blocks over.',
@@ -226,7 +226,7 @@ export const districts: District[] = [
     id: 'algorithms',
     label: 'ALGORITHM FIELD',
     short: 'ALGOS',
-    x: -88, z: 56, radius: 29,
+    x: 4, z: 68, radius: 26,
     theme: 'light', accent: '#6f6f76',
     ground: 'grid',
     blurb: 'Search, games and experiments. The things built for the sake of building.',
@@ -237,7 +237,7 @@ export const districts: District[] = [
     id: 'focus',
     label: 'FOCUS',
     short: 'FOCUS',
-    x: 14, z: 56, radius: 26,
+    x: 52, z: 22, radius: 24,
     theme: 'light', accent: '#d4491f',
     ground: 'plate',
     blurb: 'A phone the size of a building, and the pipeline that fills it.',
@@ -248,7 +248,7 @@ export const districts: District[] = [
     id: 'gym',
     label: 'GYM APP',
     short: 'GYM',
-    x: -22, z: 82, radius: 22,
+    x: 48, z: 62, radius: 20,
     theme: 'light', accent: '#2f6f5e',
     ground: 'plate',
     blurb: 'One rigged athlete. Many exercises. Drive the circuit.',
@@ -259,7 +259,7 @@ export const districts: District[] = [
     id: 'client',
     label: 'CLIENT CITY',
     short: 'CLIENTS',
-    x: 68, z: 60, radius: 26,
+    x: 108, z: 32, radius: 24,
     theme: 'light', accent: '#a8683f',
     ground: 'asphalt',
     blurb: 'Pansofía / Grupo Newport. Fourteen sites, shipped as towers.',
@@ -270,7 +270,7 @@ export const districts: District[] = [
     id: 'chess',
     label: 'CHESS TERMINAL',
     short: 'CHESS',
-    x: -46, z: -74, radius: 14, plate: 15,
+    x: -6, z: -80, radius: 14, plate: 13,
     theme: 'dark', accent: '#d4491f',
     ground: 'dark',
     blurb: 'Camera to CNN to FEN to engine. Park and solve one.',
@@ -281,7 +281,7 @@ export const districts: District[] = [
     id: 'stock',
     label: 'EXCHANGE',
     short: 'MARKET',
-    x: 50, z: -72, radius: 26,
+    x: 66, z: -72, radius: 24,
     theme: 'dark', accent: '#2f6f5e',
     ground: 'dark',
     blurb: 'Forty thousand trades, matched between two moving walls.',
@@ -292,7 +292,7 @@ export const districts: District[] = [
     id: 'circuit',
     label: 'RACE CIRCUIT',
     short: 'CIRCUIT',
-    x: 105, z: -60, radius: 34, plate: 26,
+    x: -42, z: 88, radius: 26, plate: 26,
     theme: 'light', accent: '#d4491f',
     ground: 'asphalt',
     blurb: 'Three laps. Your best time lives in this browser.',
@@ -302,7 +302,7 @@ export const districts: District[] = [
     id: 'labyrinth',
     label: 'LABYRINTH',
     short: 'MAZE',
-    x: -96, z: -54, radius: 27, plate: 22,
+    x: 98, z: -66, radius: 22, plate: 24,
     theme: 'light', accent: '#6f6f76',
     ground: 'plate',
     blurb: 'A real maze with a real centre. No shortcuts through the walls.',
@@ -311,7 +311,7 @@ export const districts: District[] = [
     id: 'voxel',
     label: 'SEED CHUNKS',
     short: 'VOXELS',
-    x: 88, z: 12, radius: 21, plate: 19,
+    x: 118, z: -6, radius: 20, plate: 20,
     theme: 'light', accent: '#8d8467',
     ground: 'voxel',
     blurb: 'The terrain gives up and becomes cubes.',
@@ -320,7 +320,7 @@ export const districts: District[] = [
     id: 'network',
     label: 'TUNNEL',
     short: 'VPN',
-    x: -10, z: -130, radius: 22,
+    x: 76, z: -100, radius: 20,
     theme: 'dark', accent: '#5f8490',
     ground: 'dark',
     blurb: 'Two nodes, one hazard, and packets that stop being readable.',
@@ -329,7 +329,7 @@ export const districts: District[] = [
     id: 'studio',
     label: 'KEYFRAMES',
     short: 'STUDIO',
-    x: 88, z: 94, radius: 25, plate: 17,
+    x: 104, z: 74, radius: 22, plate: 17,
     theme: 'light', accent: '#7d7488',
     ground: 'plate',
     blurb: 'An animation studio where the timeline drives the scenery.',
@@ -338,7 +338,7 @@ export const districts: District[] = [
     id: 'orbit',
     label: 'THREE BODIES',
     short: 'ORBIT',
-    x: 30, z: -44, radius: 14,
+    x: 38, z: -46, radius: 14,
     theme: 'light', accent: '#2f6f5e',
     ground: 'plate',
     blurb: 'Three masses overhead, integrated live. Nudge one and watch it fail.',
@@ -350,7 +350,7 @@ export const districts: District[] = [
     // Pulled south and tightened: at radius 70 it reached back over
     // the gym, and two districts claiming the same ground makes the
     // "you have arrived" toast meaningless.
-    x: -8, z: 118, radius: 36, plate: 22,
+    x: 34, z: 104, radius: 30, plate: 22,
     theme: 'light', accent: '#6f6f76',
     ground: 'plate',
     blurb: 'Everything smaller, kept honestly, on its own small island.',
@@ -365,7 +365,7 @@ export const districts: District[] = [
     // and 91 m out from its lip — which is where a boosting car
     // actually comes down. See the island check in
     // scripts/world-qa.mjs; that distance is measured, not chosen.
-    x: 40, z: -238, radius: 30, plate: 14,
+    x: 20, z: -233, radius: 30, plate: 14,
     theme: 'dark', accent: '#d4491f',
     ground: 'water',
     blurb: 'You were not supposed to get here.',
@@ -400,32 +400,32 @@ export interface Respawn {
 }
 
 export const respawns: Respawn[] = [
-  { id: 'hub', x: 0, z: 11.7, rotation: Math.PI, district: 'hub' },
-  { id: 'hub-north', x: 0, z: -20.7, rotation: Math.PI, district: 'hub' },
+  { id: 'hub', x: 18, z: 24, rotation: 1.571, district: 'hub' },
+  { id: 'hub-north', x: 18, z: -30, rotation: 4.712, district: 'hub' },
   // On the road in, facing the campus, and clear of the cipher wall
   // at (-126, -6) which the old point drove straight into.
-  { id: 'kcl', x: -55.7, z: -16.2, rotation: Math.PI * 1.06, district: 'kcl' },
-  { id: 'ucl', x: 45.6, z: -11.9, rotation: 0, district: 'ucl' },
-  { id: 'lab', x: 13.9, z: -73.1, rotation: Math.PI * 1.6, district: 'lab' },
-  { id: 'teaching', x: -59, z: 8, rotation: Math.PI * 1.5, district: 'teaching' },
-  { id: 'algorithms', x: -82, z: 36, rotation: Math.PI * 0.5, district: 'algorithms' },
+  { id: 'kcl', x: 14, z: -40, rotation: 0, district: 'kcl' },
+  { id: 'ucl', x: 99, z: -26, rotation: 5.564, district: 'ucl' },
+  { id: 'lab', x: 58, z: -88, rotation: 2.467, district: 'lab' },
+  { id: 'teaching', x: 2, z: 11, rotation: 1.249, district: 'teaching' },
+  { id: 'algorithms', x: 7, z: 82, rotation: 1.798, district: 'algorithms' },
   // Clear of ramp-focus at (40, 96), which it used to sit on top of.
-  { id: 'focus', x: 3.2, z: 43.4, rotation: Math.PI * 0.5, district: 'focus' },
-  { id: 'gym', x: -32.8, z: 71.2, rotation: Math.PI * 0.35, district: 'gym' },
-  { id: 'client', x: 78, z: 48, rotation: Math.PI * 1.2, district: 'client' },
-  { id: 'chess', x: -46, z: -61.4, rotation: Math.PI * 1.5, district: 'chess' },
-  { id: 'stock', x: 50, z: -60.3, rotation: Math.PI * 1.5, district: 'stock' },
-  { id: 'circuit', x: 105, z: -34.8, rotation: Math.PI * 1.5, district: 'circuit' },
-  { id: 'labyrinth', x: -96, z: -36, rotation: Math.PI * 1.5, district: 'labyrinth' },
+  { id: 'focus', x: 52, z: 38, rotation: 4.712, district: 'focus' },
+  { id: 'gym', x: 42, z: 79, rotation: 4.364, district: 'gym' },
+  { id: 'client', x: 112, z: 20, rotation: 4.391, district: 'client' },
+  { id: 'chess', x: 12, z: -64, rotation: 0.278, district: 'chess' },
+  { id: 'stock', x: 84, z: -92, rotation: 5.498, district: 'stock' },
+  { id: 'circuit', x: -51, z: 81, rotation: 2.467, district: 'circuit' },
+  { id: 'labyrinth', x: 124, z: -66, rotation: 3.142, district: 'labyrinth' },
   // Outside the voxel field's western edge, on open ground.
-  { id: 'voxel', x: 68.2, z: 5.7, rotation: 0, district: 'voxel' },
-  { id: 'network', x: -18.1, z: -118.3, rotation: Math.PI * 1.6, district: 'network' },
-  { id: 'studio', x: 79.9, z: 83.2, rotation: Math.PI * 0.5, district: 'studio' },
-  { id: 'orbit', x: 30, z: -33.2, rotation: Math.PI * 1.5, district: 'orbit' },
-  { id: 'archive', x: -36, z: 114, rotation: 0, district: 'archive' },
-  { id: 'road-west', x: -35.1, z: -9, rotation: Math.PI, district: 'hub' },
-  { id: 'road-east', x: 35.1, z: -9, rotation: 0, district: 'hub' },
-  { id: 'road-south', x: 2.7, z: 33.3, rotation: Math.PI * 0.5, district: 'hub' },
+  { id: 'voxel', x: 110, z: -15, rotation: 2.279, district: 'voxel' },
+  { id: 'network', x: 51, z: -101, rotation: 1.107, district: 'network' },
+  { id: 'studio', x: 104, z: 92, rotation: 4.712, district: 'studio' },
+  { id: 'orbit', x: 32, z: -30, rotation: 1.222, district: 'orbit' },
+  { id: 'archive', x: 50, z: 103, rotation: 3.232, district: 'archive' },
+  { id: 'road-west', x: -13.6, z: -10.1, rotation: Math.PI, district: 'hub' },
+  { id: 'road-east', x: 49.6, z: -10.1, rotation: 0, district: 'hub' },
+  { id: 'road-south', x: 20.4, z: 28, rotation: Math.PI * 0.5, district: 'hub' },
 ]
 
 /* ============================================================
@@ -442,12 +442,12 @@ export const landmarks: Landmark[] = [
   /* ---- HUB ---------------------------------------------- */
   {
     id: 'hub-name', district: 'hub', label: 'ALEJANDRO NEWPORT',
-    x: 0, z: -6.3, visual: 'monument', interaction: 'none', scale: 1,
+    x: 18, z: -7.7, visual: 'monument', interaction: 'none', scale: 1,
   },
   {
     id: 'hub-welcome', district: 'hub', label: 'WELCOME',
     sublabel: 'PRESS ENTER',
-    x: 0, z: 5.4, visual: 'billboard', interaction: 'panel', radius: 7.7,
+    x: 18, z: 2.9, visual: 'billboard', interaction: 'panel', radius: 7.7,
     panel: {
       title: 'WELCOME',
       lines: [
@@ -462,49 +462,49 @@ export const landmarks: Landmark[] = [
   },
   {
     id: 'hub-about', district: 'hub', label: 'ABOUT',
-    x: -13.5, z: 3.6, rotation: Math.PI * 0.25, visual: 'idCard',
+    x: 5.9, z: 1.2, rotation: Math.PI * 0.25, visual: 'idCard',
     interaction: 'panel', radius: 12, ref: { kind: 'profile' },
     achievement: 'about',
   },
   {
     id: 'hub-sign-kcl', district: 'hub', label: 'KCL', sublabel: 'EDUCATION',
-    x: -25, z: -10.2, rotation: Math.PI, visual: 'sign', interaction: 'none',
+    x: -4.5, z: -11.2, rotation: Math.PI, visual: 'sign', interaction: 'none',
   },
   {
     id: 'hub-sign-ucl', district: 'hub', label: 'UCL', sublabel: 'WHAT IS NEXT',
-    x: 25, z: -10.2, rotation: 0, visual: 'sign', interaction: 'none',
+    x: 40.5, z: -11.2, rotation: 0, visual: 'sign', interaction: 'none',
   },
   {
     id: 'hub-sign-lab', district: 'hub', label: 'AI LAB', sublabel: 'METAVIEW',
-    x: -3.6, z: -26.8, rotation: Math.PI * 1.5, visual: 'sign', interaction: 'none',
+    x: 14.8, z: -26.1, rotation: Math.PI * 1.5, visual: 'sign', interaction: 'none',
   },
   {
     id: 'hub-sign-circuit', district: 'hub', label: 'RACE TRACK', sublabel: 'BEST LAP',
-    x: 16.2, z: -21.6, rotation: Math.PI * 1.75, visual: 'sign', interaction: 'none',
+    x: 32.6, z: -21.4, rotation: Math.PI * 1.75, visual: 'sign', interaction: 'none',
   },
   {
     id: 'hub-sign-client', district: 'hub', label: 'CLIENT WORK', sublabel: '14 SITES',
-    x: 19.1, z: 19.1, rotation: Math.PI * 0.75, visual: 'sign', interaction: 'none',
+    x: 35.2, z: 15.2, rotation: Math.PI * 0.75, visual: 'sign', interaction: 'none',
   },
   {
     id: 'hub-sign-projects', district: 'hub', label: 'PROJECTS', sublabel: 'ARCHIVE',
-    x: -9, z: 25.5, rotation: Math.PI * 0.5, visual: 'sign', interaction: 'none',
+    x: 9.9, z: 21, rotation: Math.PI * 0.5, visual: 'sign', interaction: 'none',
   },
   {
     id: 'hub-sign-focus', district: 'hub', label: 'PRODUCTS', sublabel: 'FOCUS · GYM',
-    x: -16.2, z: 21.6, rotation: Math.PI * 0.35, visual: 'sign', interaction: 'none',
+    x: 3.4, z: 17.4, rotation: Math.PI * 0.35, visual: 'sign', interaction: 'none',
   },
 
   /* ---- KCL: five modules as five structures --------------- */
   {
     id: 'kcl-degree', district: 'kcl', label: "KING'S COLLEGE LONDON",
     sublabel: 'BSc COMPUTER SCIENCE',
-    x: -62, z: -30.6, visual: 'billboard', interaction: 'panel', radius: 9.1,
+    x: -2, z: -51.3, visual: 'billboard', interaction: 'panel', radius: 9.1,
     ref: ed('kcl'), achievement: 'kcl',
   },
   {
     id: 'kcl-data-structures', district: 'kcl', label: 'DATA STRUCTURES',
-    x: -77.3, z: -19.8, visual: 'graphSculpture', interaction: 'panel', radius: 7,
+    x: -15.8, z: -41.6, visual: 'graphSculpture', interaction: 'panel', radius: 7,
     panel: {
       title: 'DATA STRUCTURES',
       lines: ['Nodes, edges, invariants, cost.', 'Drive through the graph — the edges are solid.'],
@@ -512,7 +512,7 @@ export const landmarks: Landmark[] = [
   },
   {
     id: 'kcl-databases', district: 'kcl', label: 'DATABASE SYSTEMS',
-    x: -49.4, z: -27, visual: 'databaseTower', interaction: 'panel', radius: 7,
+    x: 9.3, z: -48.1, visual: 'databaseTower', interaction: 'panel', radius: 7,
     panel: {
       title: 'DATABASE SYSTEMS',
       lines: ['Relational algebra, indexing, transactions.', 'The tower is a B-tree. The top page is the root.'],
@@ -520,7 +520,7 @@ export const landmarks: Landmark[] = [
   },
   {
     id: 'kcl-os', district: 'kcl', label: 'OPERATING SYSTEMS',
-    x: -73.7, z: -2.7, visual: 'processBlocks', interaction: 'panel', radius: 7,
+    x: -12.5, z: -26.2, visual: 'processBlocks', interaction: 'panel', radius: 7,
     panel: {
       title: 'OPERATING SYSTEMS',
       lines: ['Processes, scheduling, memory, concurrency.', 'Each block is a process. They are scheduled, not static.'],
@@ -528,7 +528,7 @@ export const landmarks: Landmark[] = [
   },
   {
     id: 'kcl-crypto', district: 'kcl', label: 'CRYPTOGRAPHY',
-    x: -50.3, z: -7.2, visual: 'cipherWall', interaction: 'panel', radius: 7,
+    x: 8.5, z: -30.3, visual: 'cipherWall', interaction: 'panel', radius: 7,
     panel: {
       title: 'CRYPTOGRAPHY',
       lines: ['Transformation, keys, guarantees.', 'The wall re-scrambles every time you look away.'],
@@ -536,7 +536,7 @@ export const landmarks: Landmark[] = [
   },
   {
     id: 'kcl-se', district: 'kcl', label: 'SOFTWARE ENGINEERING',
-    x: -62, z: -0.9, visual: 'moduleStack', interaction: 'panel', radius: 7,
+    x: -2, z: -24.6, visual: 'moduleStack', interaction: 'panel', radius: 7,
     panel: {
       title: 'SOFTWARE ENGINEERING',
       lines: ['Modules assembling into one system.', 'Knock a module out and the stack still stands. Mostly.'],
@@ -544,17 +544,17 @@ export const landmarks: Landmark[] = [
   },
   {
     id: 'kcl-orca', district: 'kcl', label: 'ORCA', sublabel: 'SCHEDULING',
-    x: -81.8, z: -31.5, visual: 'monument', interaction: 'project', radius: 7,
+    x: -19.8, z: -52.1, visual: 'monument', interaction: 'project', radius: 7,
     ref: p('orca'), scale: 0.7,
   },
   {
     id: 'kcl-tappedin', district: 'kcl', label: 'TAPPEDIN', sublabel: 'NLP + WEB',
-    x: -43.1, z: -39.6, visual: 'monument', interaction: 'project', radius: 7,
+    x: 15, z: -59.4, visual: 'monument', interaction: 'project', radius: 7,
     ref: p('tappedin'), scale: 0.7,
   },
   {
     id: 'kcl-library', district: 'kcl', label: 'MY LIBRARY',
-    x: -79.1, z: 9, visual: 'monument', interaction: 'project', radius: 7,
+    x: -17.4, z: -15.7, visual: 'monument', interaction: 'project', radius: 7,
     ref: p('my-library'), scale: 0.6,
   },
 
@@ -562,18 +562,18 @@ export const landmarks: Landmark[] = [
   {
     id: 'teaching-role', district: 'teaching', label: 'GRADUATE TEACHING ASSISTANT',
     sublabel: "KING'S COLLEGE LONDON",
-    x: -52, z: 17.2, visual: 'billboard', interaction: 'panel', radius: 8.4,
+    x: -4, z: 18.3, visual: 'billboard', interaction: 'panel', radius: 8.4,
     ref: xp('kcl-gta'),
   },
   {
     id: 'teaching-bugs', district: 'teaching', label: 'FAIL',
     sublabel: 'KNOCK THEM DOWN',
-    x: -52, z: 32.5, visual: 'processBlocks', interaction: 'none',
+    x: -4, z: 32.1, visual: 'processBlocks', interaction: 'none',
     achievement: 'debugger', scale: 1.2,
   },
   {
     id: 'teaching-duck', district: 'teaching', label: 'RUBBER DUCK',
-    x: -61.9, z: 37, visual: 'duck', interaction: 'note', radius: 7,
+    x: -12.9, z: 36.1, visual: 'duck', interaction: 'note', radius: 7,
     secret: true, achievement: 'duck',
     panel: { title: 'RUBBER DUCK', lines: ['Explain the bug out loud. It usually works.'] },
   },
@@ -582,27 +582,27 @@ export const landmarks: Landmark[] = [
   {
     id: 'algo-cinquillo', district: 'algorithms', label: 'CINQUILLO 2.0',
     sublabel: 'GAME AI RESEARCH',
-    x: -88, z: 44.3, visual: 'monument', interaction: 'project', radius: 7,
+    x: 4, z: 57.5, visual: 'monument', interaction: 'project', radius: 7,
     ref: p('cinquillo-fair-variant'),
   },
   {
     id: 'algo-catan', district: 'algorithms', label: 'CATAN AI',
-    x: -102.4, z: 56.9, visual: 'monument', interaction: 'project', radius: 7,
+    x: -9, z: 68.8, visual: 'monument', interaction: 'project', radius: 7,
     ref: p('catan-ai'), scale: 0.7,
   },
   {
     id: 'algo-dots', district: 'algorithms', label: 'DOTS & BOXES',
-    x: -75.4, z: 59.6, visual: 'monument', interaction: 'project', radius: 7,
+    x: 15.3, z: 71.2, visual: 'monument', interaction: 'project', radius: 7,
     ref: p('dots-and-boxes'), scale: 0.7,
   },
   {
     id: 'algo-cinquillo-web', district: 'algorithms', label: 'CINQUILLO',
-    x: -97.9, z: 69.5, visual: 'monument', interaction: 'project', radius: 7,
+    x: -4.9, z: 80.2, visual: 'monument', interaction: 'project', radius: 7,
     ref: p('cinquillo'), scale: 0.6,
   },
   {
     id: 'algo-primes', district: 'algorithms', label: 'PRIMOS EN CLICK',
-    x: -78.1, z: 73.1, visual: 'monument', interaction: 'project', radius: 7,
+    x: 12.9, z: 83.4, visual: 'monument', interaction: 'project', radius: 7,
     ref: p('primes'), scale: 0.6,
   },
 
@@ -610,37 +610,37 @@ export const landmarks: Landmark[] = [
   {
     id: 'ucl-degree', district: 'ucl', label: 'UNIVERSITY COLLEGE LONDON',
     sublabel: 'MSc AI & DATA ENGINEERING',
-    x: 60, z: -32.6, visual: 'researchShell', interaction: 'panel', radius: 9.8,
+    x: 90, z: -45.3, visual: 'researchShell', interaction: 'panel', radius: 9.8,
     ref: ed('ucl'), achievement: 'ucl',
   },
   {
     id: 'ucl-ml', district: 'ucl', label: 'MACHINE LEARNING',
-    x: 46.5, z: -21.8, visual: 'monument', interaction: 'panel', radius: 7, scale: 0.7,
+    x: 77.9, z: -35.6, visual: 'monument', interaction: 'panel', radius: 7, scale: 0.7,
     panel: { title: 'MACHINE LEARNING', lines: ['Statistical learning, optimisation, generalisation.'] },
   },
   {
     id: 'ucl-dl', district: 'ucl', label: 'APPLIED DEEP LEARNING',
-    x: 73.5, z: -21.8, visual: 'monument', interaction: 'panel', radius: 7, scale: 0.7,
+    x: 102.2, z: -35.6, visual: 'monument', interaction: 'panel', radius: 7, scale: 0.7,
     panel: { title: 'APPLIED DEEP LEARNING', lines: ['Architectures, training regimes, representation.'] },
   },
   {
     id: 'ucl-mining', district: 'ucl', label: 'DATA MINING',
-    x: 49.2, z: -5.6, visual: 'monument', interaction: 'panel', radius: 7, scale: 0.7,
+    x: 80.3, z: -21, visual: 'monument', interaction: 'panel', radius: 7, scale: 0.7,
     panel: { title: 'DATA MINING', lines: ['Pattern discovery at scale.'] },
   },
   {
     id: 'ucl-analysis', district: 'ucl', label: 'DATA ANALYSIS',
-    x: 70.8, z: -5.6, visual: 'monument', interaction: 'panel', radius: 7, scale: 0.7,
+    x: 99.7, z: -21, visual: 'monument', interaction: 'panel', radius: 7, scale: 0.7,
     panel: { title: 'DATA ANALYSIS', lines: ['Inference, experiment design, uncertainty.'] },
   },
   {
     id: 'ucl-vv', district: 'ucl', label: 'VALIDATION & VERIFICATION',
-    x: 60, z: 0.7, visual: 'monument', interaction: 'panel', radius: 7, scale: 0.7,
+    x: 90, z: -15.4, visual: 'monument', interaction: 'panel', radius: 7, scale: 0.7,
     panel: { title: 'VALIDATION & VERIFICATION', lines: ['Proving systems behave as specified.'] },
   },
   {
     id: 'ucl-ml-revision', district: 'ucl', label: 'ML REVISION ENGINE',
-    x: 79.8, z: 2.5, visual: 'monument', interaction: 'project', radius: 7,
+    x: 107.8, z: -13.7, visual: 'monument', interaction: 'project', radius: 7,
     ref: p('ml-revision'), scale: 0.6,
   },
 
@@ -648,24 +648,24 @@ export const landmarks: Landmark[] = [
   {
     id: 'lab-role', district: 'lab', label: 'METAVIEW',
     sublabel: 'AI & DATA ANALYSIS ENGINEER',
-    x: 4, z: -80.3, visual: 'billboard', interaction: 'panel', radius: 9.8,
+    x: 48, z: -85.5, visual: 'billboard', interaction: 'panel', radius: 9.8,
     ref: xp('metaview'), achievement: 'lab',
   },
   {
     id: 'lab-corpus', district: 'lab', label: 'CORPUS',
     sublabel: 'DRIVE INTO IT',
-    x: 4, z: -100.1, visual: 'dataField', interaction: 'none', scale: 1.4,
+    x: 48, z: -103.3, visual: 'dataField', interaction: 'none', scale: 1.4,
   },
   {
     id: 'lab-retrieval', district: 'lab', label: 'RETRIEVAL',
     sublabel: 'QUERY → EMBED → RETRIEVE → GENERATE',
-    x: -11.3, z: -104.6, visual: 'terminal', interaction: 'minigame', radius: 7,
+    x: 34.2, z: -107.3, visual: 'terminal', interaction: 'minigame', radius: 7,
     minigame: 'retrieval', achievement: 'retrieval',
   },
   {
     id: 'lab-vision', district: 'lab', label: 'VISION',
     sublabel: '50K+ IMAGES · 92% ACCURACY',
-    x: 20.2, z: -104.6, visual: 'monument', interaction: 'panel', radius: 7, scale: 0.8,
+    x: 62.6, z: -107.3, visual: 'monument', interaction: 'panel', radius: 7, scale: 0.8,
     panel: {
       title: 'IMAGE CLASSIFICATION',
       lines: [
@@ -679,7 +679,7 @@ export const landmarks: Landmark[] = [
   {
     id: 'chess-board', district: 'chess', label: 'CHESS ASSISTANT',
     sublabel: 'CAMERA → CNN → FEN → STOCKFISH',
-    x: -46, z: -74, visual: 'chessboard', interaction: 'minigame', radius: 9.8,
+    x: -6, z: -80, visual: 'chessboard', interaction: 'minigame', radius: 9.8,
     ref: p('chess-assistant'), minigame: 'chess', achievement: 'checkmate',
   },
 
@@ -687,13 +687,13 @@ export const landmarks: Landmark[] = [
   {
     id: 'stock-book', district: 'stock', label: 'STOCK MARKET SIMULATOR',
     sublabel: '40K+ TRADES',
-    x: 50, z: -72, visual: 'orderBook', interaction: 'minigame', radius: 9.1,
+    x: 66, z: -72, visual: 'orderBook', interaction: 'minigame', radius: 9.1,
     ref: p('stock-market-simulator'), minigame: 'orderRush', achievement: 'orderRush',
   },
   {
     id: 'stock-ticker', district: 'stock', label: 'ANP',
     sublabel: 'FICTIONAL TICKER',
-    x: 62.6, z: -82.8, visual: 'billboard', interaction: 'note', radius: 7,
+    x: 77.3, z: -81.7, visual: 'billboard', interaction: 'note', radius: 7,
     secret: true, achievement: 'ticker', scale: 0.7,
     panel: { title: 'ANP', lines: ['Not investment advice. Not a real security.', 'Purely decorative volatility.'] },
   },
@@ -702,18 +702,18 @@ export const landmarks: Landmark[] = [
   {
     id: 'focus-device', district: 'focus', label: 'FOCUS',
     sublabel: 'DRIVE INSIDE',
-    x: 14, z: 56, visual: 'device', interaction: 'project', radius: 11.2,
+    x: 52, z: 22, visual: 'device', interaction: 'project', radius: 11.2,
     ref: p('focus'), scale: 1,
   },
   {
     id: 'focus-pipeline', district: 'focus', label: 'VIDEO PIPELINE',
     sublabel: 'SCRIPT → VOICE → VISUALS → CAPTIONS → RENDER',
-    x: 14, z: 71.3, visual: 'station', interaction: 'minigame', radius: 8.4,
+    x: 52, z: 35.8, visual: 'station', interaction: 'minigame', radius: 8.4,
     minigame: 'pipeline', achievement: 'contentEngine',
   },
   {
     id: 'focus-role', district: 'focus', label: 'CO-FOUNDER & DEVELOPER',
-    x: 1.4, z: 45.2, visual: 'billboard', interaction: 'panel', radius: 7,
+    x: 40.7, z: 12.3, visual: 'billboard', interaction: 'panel', radius: 7,
     ref: xp('focus'), scale: 0.8,
   },
 
@@ -721,13 +721,13 @@ export const landmarks: Landmark[] = [
   {
     id: 'gym-app', district: 'gym', label: 'GYM APP',
     sublabel: 'ONE MODEL · MANY MOVEMENTS',
-    x: -22, z: 82, visual: 'monument', interaction: 'project', radius: 8.4,
+    x: 48, z: 62, visual: 'monument', interaction: 'project', radius: 8.4,
     ref: p('gym-app'),
   },
   {
     id: 'gym-circuit', district: 'gym', label: 'GYM CIRCUIT',
     sublabel: 'PUSH · PULL · LEGS · CORE',
-    x: -22, z: 94.6, visual: 'gate', interaction: 'minigame', radius: 7.7,
+    x: 48, z: 73.3, visual: 'gate', interaction: 'minigame', radius: 7.7,
     minigame: 'gymCircuit', achievement: 'gymCircuit',
   },
 
@@ -735,7 +735,7 @@ export const landmarks: Landmark[] = [
   {
     id: 'client-count', district: 'client', label: '14',
     sublabel: 'WEBS SHIPPED',
-    x: 68, z: 42.9, visual: 'monument', interaction: 'panel', radius: 9.1,
+    x: 108, z: 16.6, visual: 'monument', interaction: 'panel', radius: 9.1,
     ref: xp('pansofia'), achievement: 'client', scale: 1.3,
   },
 
@@ -743,7 +743,7 @@ export const landmarks: Landmark[] = [
   {
     id: 'circuit-start', district: 'circuit', label: 'START / FINISH',
     sublabel: '3 LAPS',
-    x: 105, z: -34.8, visual: 'gate', interaction: 'minigame', radius: 8.4,
+    x: -42, z: 110.7, visual: 'gate', interaction: 'minigame', radius: 8.4,
     minigame: 'circuit', achievement: 'speedDemon',
   },
 
@@ -751,12 +751,12 @@ export const landmarks: Landmark[] = [
   {
     id: 'labyrinth-entry', district: 'labyrinth', label: 'LABYRINTH',
     sublabel: 'FIND THE CENTRE',
-    x: -96, z: -36, visual: 'gate', interaction: 'project', radius: 7.7,
+    x: 98, z: -49.8, visual: 'gate', interaction: 'project', radius: 7.7,
     ref: p('labyrinth'), minigame: 'labyrinth',
   },
   {
     id: 'labyrinth-prize', district: 'labyrinth', label: 'CENTRE',
-    x: -96, z: -54, visual: 'monument', interaction: 'none', radius: 7,
+    x: 98, z: -66, visual: 'monument', interaction: 'none', radius: 7,
     secret: true, achievement: 'pathFound', scale: 0.5,
   },
 
@@ -764,12 +764,12 @@ export const landmarks: Landmark[] = [
   {
     id: 'voxel-seed', district: 'voxel', label: 'MINECRAFT SEED FINDER',
     sublabel: 'PROCEDURAL SEARCH',
-    x: 78.1, z: 4.8, visual: 'monument', interaction: 'project', radius: 7,
+    x: 109.1, z: -12.5, visual: 'monument', interaction: 'project', radius: 7,
     ref: p('minecraft-seeds'),
   },
   {
     id: 'voxel-room', district: 'voxel', label: 'UNDERGROUND',
-    x: 94.3, z: 20.1, visual: 'terminal', interaction: 'note', radius: 7,
+    x: 123.7, z: 1.3, visual: 'terminal', interaction: 'note', radius: 7,
     secret: true, achievement: 'underground',
     panel: {
       title: 'UNDERGROUND',
@@ -780,13 +780,13 @@ export const landmarks: Landmark[] = [
   /* ---- NETWORK / VPN -------------------------------------- */
   {
     id: 'vpn-node-a', district: 'network', label: 'NODE A',
-    x: -22.6, z: -130, visual: 'monument', interaction: 'project', radius: 7,
+    x: 64.7, z: -100, visual: 'monument', interaction: 'project', radius: 7,
     ref: p('vpn'), scale: 0.8,
   },
   {
     id: 'vpn-node-b', district: 'network', label: 'NODE B',
     sublabel: 'ENCRYPTED TUNNEL',
-    x: 2.6, z: -130, visual: 'monument', interaction: 'minigame', radius: 7,
+    x: 87.3, z: -100, visual: 'monument', interaction: 'minigame', radius: 7,
     minigame: 'packets', scale: 0.8, achievement: 'tunnel',
   },
 
@@ -794,12 +794,12 @@ export const landmarks: Landmark[] = [
   {
     id: 'studio-keyframes', district: 'studio', label: 'KEYFRAMES',
     sublabel: 'PLAY · PAUSE · REVERSE',
-    x: 88, z: 94, visual: 'station', interaction: 'project', radius: 8.4,
+    x: 104, z: 74, visual: 'station', interaction: 'project', radius: 8.4,
     ref: p('keyframes'),
   },
   {
     id: 'studio-video', district: 'studio', label: 'VIDEO PLAYER',
-    x: 99.7, z: 83.2, visual: 'monument', interaction: 'project', radius: 7,
+    x: 114.5, z: 64.3, visual: 'monument', interaction: 'project', radius: 7,
     ref: p('video-player'), scale: 0.6,
   },
 
@@ -807,7 +807,7 @@ export const landmarks: Landmark[] = [
   {
     id: 'orbit-system', district: 'orbit', label: 'THREE BODY PROBLEM',
     sublabel: 'NUDGE ONE',
-    x: 30, z: -44, visual: 'monument', interaction: 'minigame', radius: 8.4,
+    x: 38, z: -46, visual: 'monument', interaction: 'minigame', radius: 8.4,
     ref: p('three-body-problem'), minigame: 'threeBody', achievement: 'chaosTheory',
   },
 
@@ -815,7 +815,7 @@ export const landmarks: Landmark[] = [
   {
     id: 'archive-sign', district: 'archive', label: 'PROJECT ARCHIVE',
     sublabel: 'EVERYTHING ELSE',
-    x: -8, z: 91, visual: 'billboard', interaction: 'panel', radius: 8.4,
+    x: 34, z: 79.7, visual: 'billboard', interaction: 'panel', radius: 8.4,
     panel: {
       title: 'PROJECT ARCHIVE',
       lines: [
@@ -828,7 +828,7 @@ export const landmarks: Landmark[] = [
   /* ---- SECRETS -------------------------------------------- */
   {
     id: 'secret-devroom', district: 'hub', label: 'DEV ROOM',
-    x: 0, z: -2.7, visual: 'terminal', interaction: 'note', radius: 7,
+    x: 4, z: -6, visual: 'terminal', interaction: 'note', radius: 7,
     secret: true, achievement: 'devRoom',
     panel: {
       title: 'DEV ROOM',
@@ -843,7 +843,7 @@ export const landmarks: Landmark[] = [
   },
   {
     id: 'secret-island', district: 'void', label: 'HIDDEN ISLAND',
-    x: 40, z: -238, visual: 'island', interaction: 'note', radius: 11.2,
+    x: 20, z: -233, visual: 'island', interaction: 'note', radius: 11.2,
     secret: true, achievement: 'hiddenIsland',
     panel: {
       title: 'THE VOID',
@@ -853,7 +853,7 @@ export const landmarks: Landmark[] = [
   {
     id: 'secret-brackets', district: 'hub', label: '{ }',
     sublabel: 'JUMP THROUGH',
-    x: 26.1, z: 2.7, rotation: Math.PI * 0.5, visual: 'bracket', interaction: 'none',
+    x: 41.5, z: 0.4, rotation: Math.PI * 0.5, visual: 'bracket', interaction: 'none',
     achievement: 'shipIt',
   },
 ]
@@ -911,43 +911,29 @@ export const archiveIslands = projects
    ============================================================ */
 
 export const roads: { id: string; points: [number, number][]; width: number }[] = [
-  /* ---- the ring ---------------------------------------------
-     One continuous loop through the southern half. Districts sit
-     ON it rather than at the end of spurs off it, so leaving any
-     of them puts the next one ahead rather than back the way you
-     came. This is the single biggest difference from the radial
-     layout it replaces. */
-  { id: 'ring-east', width: 10, points: [[0, 0], [26, -14], [60, -20], [82, -6], [88, 12], [86, 38], [68, 60], [80, 78], [88, 94]] },
-  { id: 'ring-south', width: 10, points: [[88, 94], [54, 112], [20, 122], [-8, 118], [-20, 102], [-22, 82]] },
-  { id: 'ring-west', width: 10, points: [[-22, 82], [-40, 58], [-52, 28], [-60, 4], [-62, -18]] },
-  { id: 'ring-north', width: 10, points: [[-62, -18], [-34, -10], [0, 0]] },
+  /* ---- the ring ----------------------------------------------
+     One loop through the whole eastern half. Every district sits ON
+     it, so leaving one puts the next one ahead rather than back the
+     way you came. */
+  { id: 'ring-north', width: 10, points: [[18, -2], [30, -24], [38, -46], [52, -62], [66, -72], [58, -88], [48, -96], [62, -100], [76, -100]] },
+  { id: 'ring-east', width: 10, points: [[76, -100], [92, -84], [98, -66], [96, -50], [90, -34], [106, -20], [118, -6], [114, 14], [108, 32], [108, 54], [104, 74]] },
+  { id: 'ring-south', width: 10, points: [[104, 74], [78, 92], [56, 102], [34, 104], [10, 94], [4, 68]] },
+  { id: 'ring-west', width: 10, points: [[4, 68], [0, 48], [-4, 28], [2, 10], [18, -2]] },
 
-  /* ---- the north loop ----------------------------------------
-     Shares the hub and KCL with the ring, so the two loops make a
-     figure of eight rather than two separate errands. */
-  { id: 'north-east', width: 9, points: [[0, 0], [16, -24], [30, -44], [44, -60], [50, -72], [30, -86], [4, -92]] },
-  { id: 'north-west', width: 9, points: [[4, -92], [-22, -86], [-46, -74], [-60, -48], [-62, -18]] },
-
-  /* ---- the spine ---------------------------------------------
-     Cuts north to south straight through both loops, which is what
-     makes the junctions crossroads instead of corners. */
-  { id: 'spine', width: 9, points: [[0, 0], [8, 28], [14, 56], [6, 86], [-8, 118]] },
+  /* The spine cuts north to south through the ring, which is what
+     makes its junctions crossroads instead of corners. */
+  { id: 'spine', width: 9, points: [[18, -2], [30, 10], [52, 22], [50, 42], [48, 62], [40, 84], [34, 104]] },
 
   /* ---- branches ---------------------------------------------- */
-  { id: 'lab-network', width: 7, points: [[4, -92], [-2, -112], [-10, -130]] },
-  { id: 'kcl-labyrinth', width: 7, points: [[-62, -18], [-80, -34], [-96, -54]] },
-  { id: 'west-coast', width: 7, points: [[-96, -54], [-118, -52], [-140, -46]] },
-  { id: 'teaching-algorithms', width: 7, points: [[-52, 28], [-70, 42], [-88, 56]] },
-  { id: 'bowling-spur', width: 6, points: [[-55, -56], [-42, -52], [-28, -48]] },
-  { id: 'circuit-approach', width: 9, points: [[50, -72], [78, -70], [105, -60]] },
+  { id: 'hub-chess', width: 8, points: [[18, -2], [6, -20], [-2, -40], [-4, -60], [-6, -80]] },
+  { id: 'lab-spur', width: 7, points: [[48, -96], [56, -112], [58, -118]] },
 
-  /* A causeway over the eastern lake — the shortcut between the
-     east side of the ring and the spine, if you trust the bridge. */
-  { id: 'lake-causeway', width: 8, points: [[88, 12], [66, 20], [46, 26], [28, 40], [14, 56]] },
+  /* Out of the content half and over to the track. */
+  { id: 'circuit-link', width: 9, points: [[-4, 28], [-20, 50], [-32, 70], [-42, 88], [-52, 80]] },
 
   /* Dirt, unlit, and pointed at the stunt ramp. It stops where the
      ground does. */
-  { id: 'void-run', width: 6, points: [[16, -76], [30, -80], [40, -90], [40, -147]] },
+  { id: 'void-run', width: 6, points: [[-4, -60], [6, -62], [20, -66], [20, -142]] },
 ]
 
 /* ============================================================
@@ -968,11 +954,11 @@ export interface Ramp {
 }
 
 export const ramps: Ramp[] = [
-  { id: 'ramp-hub-a', x: 11.7, z: 9.9, rotation: Math.PI * 0.25, length: 10, width: 7, height: 1.8, size: 'small' },
-  { id: 'ramp-hub-b', x: -11.7, z: -13.5, rotation: Math.PI * 1.15, length: 12, width: 7, height: 2.4, size: 'small' },
-  { id: 'ramp-brackets', x: 19.8, z: 2.7, rotation: Math.PI * 0.5, length: 18, width: 9, height: 5.2, size: 'medium', achievement: 'shipIt' },
-  { id: 'ramp-kcl', x: -70, z: 12.7, rotation: Math.PI * 1.5, length: 16, width: 8, height: 4, size: 'medium' },
-  { id: 'ramp-focus', x: 14, z: 39.8, rotation: Math.PI * 1.5, length: 20, width: 9, height: 6, size: 'medium', achievement: 'phoneHop' },
+  { id: 'ramp-hub-a', x: 28.5, z: 6.9, rotation: Math.PI * 0.25, length: 10, width: 7, height: 1.8, size: 'small' },
+  { id: 'ramp-hub-b', x: 7.5, z: -14.1, rotation: Math.PI * 1.15, length: 12, width: 7, height: 2.4, size: 'small' },
+  { id: 'ramp-brackets', x: 35.8, z: 0.4, rotation: Math.PI * 0.5, length: 18, width: 9, height: 5.2, size: 'medium', achievement: 'shipIt' },
+  { id: 'ramp-kcl', x: -20.2, z: 14.2, rotation: Math.PI * 1.5, length: 16, width: 8, height: 4, size: 'medium' },
+  { id: 'ramp-focus', x: 52, z: 7.4, rotation: Math.PI * 1.5, length: 20, width: 9, height: 6, size: 'medium', achievement: 'phoneHop' },
   // Aimed at the void island, 62 m away across the moat. The angle
   // is derived from that line, not chosen: point it anywhere else
   // and the achievement it carries becomes unreachable.
@@ -984,11 +970,11 @@ export const ramps: Ramp[] = [
   // top with room either side. Change either number and the
   // achievement it carries stops being reachable — see the island
   // check in scripts/world-qa.mjs.
-  { id: 'ramp-stunt', x: 40, z: -147, rotation: Math.PI * 0.5, length: 42, width: 13, height: 6.5, size: 'large', achievement: 'hiddenIsland' },
-  { id: 'ramp-circuit', x: 123, z: -60, rotation: 0, length: 16, width: 10, height: 3.2, size: 'medium' },
-  { id: 'ramp-archive', x: -12.1, z: 86.5, rotation: Math.PI * 0.5, length: 14, width: 8, height: 3, size: 'small' },
-  { id: 'ramp-voxel', x: 88, z: -1.5, rotation: Math.PI * 0.5, length: 14, width: 8, height: 3.6, size: 'small' },
-  { id: 'ramp-lab', x: -14, z: -83.9, rotation: Math.PI * 0.9, length: 15, width: 8, height: 3.4, size: 'small' },
+  { id: 'ramp-stunt', x: 20, z: -142, rotation: Math.PI * 0.5, length: 42, width: 13, height: 6.5, size: 'large', achievement: 'hiddenIsland' },
+  { id: 'ramp-circuit', x: -25.8, z: 88, rotation: 0, length: 16, width: 10, height: 3.2, size: 'medium' },
+  { id: 'ramp-archive', x: 56.9, z: 66.1, rotation: Math.PI * 0.5, length: 14, width: 8, height: 3, size: 'small' },
+  { id: 'ramp-voxel', x: 118, z: -18.1, rotation: Math.PI * 0.5, length: 14, width: 8, height: 3.6, size: 'small' },
+  { id: 'ramp-lab', x: 31.8, z: -88.7, rotation: Math.PI * 0.9, length: 15, width: 8, height: 3.4, size: 'small' },
 ]
 
 /* ============================================================
@@ -998,10 +984,10 @@ export const ramps: Ramp[] = [
    ============================================================ */
 
 export const timelinePlates = [
-  { year: '2023', x: -27.7, z: 24.4 },
-  { year: '2024', x: -15.3, z: 30.6 },
-  { year: '2025', x: -8.5, z: 30.8 },
-  { year: '2026', x: 2.3, z: 34.4 },
+  { year: '2023', x: 17.9, z: 24.8 },
+  { year: '2024', x: 4.2, z: 25.5 },
+  { year: '2025', x: 10.4, z: 25.7 },
+  { year: '2026', x: 41.5, z: 2.6 },
 ]
 
 /* ============================================================
@@ -1011,19 +997,19 @@ export const timelinePlates = [
    ============================================================ */
 
 export const devNotes: { id: string; x: number; z: number; text: string }[] = [
-  { id: 'note-1', x: 9.9, z: -15.3, text: 'Built this at 2am. It shows in the commit messages.' },
-  { id: 'note-2', x: -36.8, z: -9.9, text: 'Data Structures was the module that made the rest make sense.' },
-  { id: 'note-3', x: 51, z: -36.2, text: 'Two degrees, one city, no plan to stop.' },
-  { id: 'note-4', x: -33.4, z: -93.8, text: 'Half a million documents. I read approximately none of them.' },
-  { id: 'note-5', x: 23, z: 64.1, text: 'The captions were harder than the video.' },
-  { id: 'note-6', x: 75.2, z: 50.1, text: 'Fourteen sites, six people, two weeks early. Once.' },
-  { id: 'note-7', x: -93.4, z: 61.4, text: 'This bug took longer than the feature.' },
-  { id: 'note-8', x: -85.2, z: -46.8, text: 'The maze has one solution. I checked.' },
-  { id: 'note-9', x: 121.2, z: -45.6, text: 'Do not take the inside line here. Or do.' },
-  { id: 'note-13', x: 40, z: -95, text: 'It is further than it looks. Take a run-up.' },
-  { id: 'note-10', x: -2.6, z: 96.4, text: 'Some of these are scaffolds. They are in the archive anyway.' },
-  { id: 'note-11', x: 34.8, z: -4.7, text: 'Do not hit the red button. There is no red button.' },
-  { id: 'note-12', x: 85.3, z: 20.1, text: 'Every chunk here is one integer away from a different world.' },
+  { id: 'note-1', x: 26.9, z: -15.8, text: 'Built this at 2am. It shows in the commit messages.' },
+  { id: 'note-2', x: 20.7, z: -32.7, text: 'Data Structures was the module that made the rest make sense.' },
+  { id: 'note-3', x: 81.9, z: -48.6, text: 'Two degrees, one city, no plan to stop.' },
+  { id: 'note-4', x: 5.3, z: -97.8, text: 'Half a million documents. I read approximately none of them.' },
+  { id: 'note-5', x: 60.1, z: 29.3, text: 'The captions were harder than the video.' },
+  { id: 'note-6', x: 114.5, z: 23.1, text: 'Fourteen sites, six people, two weeks early. Once.' },
+  { id: 'note-7', x: -0.9, z: 72.9, text: 'This bug took longer than the feature.' },
+  { id: 'note-8', x: 107.7, z: -59.5, text: 'The maze has one solution. I checked.' },
+  { id: 'note-9', x: -27.4, z: 101, text: 'Do not take the inside line here. Or do.' },
+  { id: 'note-13', x: 20, z: -92, text: 'It is further than it looks. Take a run-up.' },
+  { id: 'note-10', x: 38.9, z: 84.6, text: 'Some of these are scaffolds. They are in the archive anyway.' },
+  { id: 'note-11', x: 67.3, z: -20.2, text: 'Do not hit the red button. There is no red button.' },
+  { id: 'note-12', x: 115.6, z: 1.3, text: 'Every chunk here is one integer away from a different world.' },
 ]
 
 /* ============================================================

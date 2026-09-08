@@ -4,8 +4,8 @@ import type { Game } from '../Game'
 import type { Bin } from '../core/Disposal'
 import type { Physical } from '../physics/Physics'
 import { seeded } from '../core/maths'
-import { roads, landmarks, ramps, respawns, districts } from '@/content/world'
-import { FOREST_POCKETS, PLAY_SPOTS, CIRCUIT, RELAY_POINTS, WATERFALL, inlandWater, lineDistance } from '@/content/world-environment'
+import { roads, landmarks, ramps, respawns, districts, WORLD_RADIUS } from '@/content/world'
+import { FOREST_POCKETS, PLAY_SPOTS, CIRCUIT, CIRCUIT_TRACK, RELAY_POINTS, WATERFALL, inlandWater, coastRadius, lineDistance } from '@/content/world-environment'
 
 /** Original, seeded island ecology. Instancing/chunks and reactive foliage are
  * informed by folio-2025 Trees, Foliage, Grass and Leaves (MIT; see notices).
@@ -68,7 +68,12 @@ export class Ecology {
       bucket.data[layer].push({ p: new THREE.Vector3(x, y, z), scale: new THREE.Vector3(sx, sy, sz), yaw, color: new THREE.Color(color).multiplyScalar(.87 + r() * .25) })
     }
     // A tree's family affects silhouette, branching, canopy height and palette.
-    for (let attempt = 0; attempt < 11000 && this.trees.length < 920; attempt++) {
+    // The island is a third of the area it was, so the same tree count
+    // is three times the density — and it still wants more. Trees are
+    // instanced and share one geometry per part; the cost is the
+    // collider pool, which is fixed and follows the nearest trunks.
+    const treeTarget = Math.round(1250 * Math.max(0.34, game.quality.settings.density))
+    for (let attempt = 0; attempt < treeTarget * 14 && this.trees.length < treeTarget; attempt++) {
       const pocket = FOREST_POCKETS[Math.floor(r() * FOREST_POCKETS.length)]
       const a = r() * Math.PI * 2, d = Math.sqrt(r()) * pocket[2]
       const x = pocket[0] + Math.cos(a) * d, z = pocket[1] + Math.sin(a) * d
@@ -98,12 +103,17 @@ export class Ecology {
       }
     }
     // Shuffled positions keep lowering density spatially uniform.
-    for (let i = 0; i < 57000; i++) {
-      const x = (r() - .5) * 670, z = (r() - .5) * 670
+    // Scattered across the island rather than across the old 720 m
+    // square: nine attempts in ten used to land in the sea and be
+    // thrown away, which is why the ground looked bare.
+    const scatterSpan = WORLD_RADIUS * 2.2
+    const scatterCount = Math.round(96000 * Math.max(0.3, game.quality.settings.density))
+    for (let i = 0; i < scatterCount; i++) {
+      const x = (r() - .5) * scatterSpan, z = (r() - .5) * scatterSpan
       if (!this.allowed(x, z, .5)) continue
       const y = game.world.terrain.colliderHeightAt(x, z), water = inlandWater(x, z)
       const forest = FOREST_POCKETS.some(p => Math.hypot(x - p[0], z - p[1]) < p[2] * 1.18)
-      if (i < 2400 && forest) {
+      if (i < scatterCount * 0.075 && forest) {
         const size = .8 + r() * 1.1
         add(3, x, y + size * .5, z, size * 1.25, size * .8, size, '#69864d'); this.stats.bushes++
       } else if (i % 23 === 0) {
@@ -156,9 +166,16 @@ export class Ecology {
   }
 
   private allowed(x: number, z: number, clearance: number): boolean {
-    if (Math.hypot(x, z) > 336) return false
+    // Off the beach and out of the sea.
+    if (Math.hypot(x, z) > coastRadius(x, z, WORLD_RADIUS) - 10) return false
     if (Math.hypot(x-WATERFALL.x,z-WATERFALL.z)<15+clearance) return false
-    if (Math.hypot(x - CIRCUIT.x, z - CIRCUIT.z) < 80) return false
+    // Off the TRACK, not out of a circle drawn around it. The circuit is
+    // a 780 m ribbon; a disc around its centre both misses its ends —
+    // which is how trees came to grow on the racing line — and sterilises
+    // an infield that ought to be scenery.
+    if (lineDistance(x, z, CIRCUIT_TRACK) < CIRCUIT.width * 0.5 + clearance + 5) return false
+    // A district with a built footprint owns its whole plate.
+    if (districts.some(d => d.plate && Math.hypot(x-d.x,z-d.z) < d.plate * 1.5 + clearance)) return false
     if (districts.some(d => ['labyrinth','lab','chess','focus','gym','network','stock'].includes(d.id) && Math.hypot(x-d.x,z-d.z)<d.radius+7)) return false
     const water = inlandWater(x, z)
     if (water && water.edge > -.8) return false
@@ -168,8 +185,6 @@ export class Ecology {
     if (PLAY_SPOTS.some(p => Math.hypot(x - p.x, z - p.z) < p.radius + clearance)) return false
     if (RELAY_POINTS.some(p => Math.hypot(x-p[0],z-p[1])<9+clearance)) return false
     if (ramps.some(p => Math.hypot(x - p.x, z - p.z) < p.length + 14)) return false
-    // Preserve whole arenas, not just their centre markers.
-    if (Math.hypot(x + 206, z - 129) < 66 || Math.hypot(x + 4, z + 176) < 57 || Math.hypot(x, z) < 59) return false
     return true
   }
 

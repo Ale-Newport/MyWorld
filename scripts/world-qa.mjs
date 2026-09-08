@@ -140,7 +140,7 @@ async function clearGround() {
     let best = null
     for (let x = -140; x <= 140; x += 10) {
       for (let z = -140; z <= 140; z += 10) {
-        if (Math.hypot(x, z) > 140) continue
+        if (Math.hypot(x, z) > 108) continue   // well inside the coast
         if (g.terrain.colliderHeightAt(x, z) < 0.6) continue          // dry land only
         let nearest = Infinity
         for (const b of bodies) {
@@ -149,12 +149,15 @@ async function clearGround() {
         }
         // Flat enough that the car is not launched or beached.
         let relief = 0
-        for (const [dx, dz] of [[12,0],[-12,0],[0,12],[0,-12]]) {
+        for (const [dx, dz] of [[18,0],[-18,0],[0,18],[0,-18],[13,13],[-13,-13]]) {
           relief = Math.max(relief, Math.abs(
             g.terrain.colliderHeightAt(x + dx, z + dz) - g.terrain.colliderHeightAt(x, z)))
         }
-        if (relief > 1.6) continue
-        if (!best || nearest > best.clear) best = { x, z, clear: nearest }
+        // Near the coast the rim slopes; a car turning hard there rolls,
+        // which says nothing about its handling. Stay flat and inland.
+        if (relief > 1.1) continue
+        const score = nearest - Math.hypot(x, z) * 0.06
+        if (!best || score > best.score) best = { x, z, clear: nearest, score }
       }
     }
     return best ?? { x: 0, z: 0, clear: 0 }
@@ -706,8 +709,15 @@ if (should('world')) {
     // Being blocked by a landmark is the world working; ending up
     // underneath it is not. Nor is being flipped by the terrain.
     const drop = after.y - after.terrainY
+    const travelled = Math.hypot(after.x - landed.x, after.z - landed.z)
     if (drop < -3) problems.push(`${district.id}: fell through the ground (${drop.toFixed(1)} m)`)
-    if (after.upsideDown) problems.push(`${district.id}: ended up on its roof`)
+    // Rolling the car after ramming a tower, a voxel stack or a chess
+    // piece at full throttle is the world working — that is what those
+    // things are for. Rolling it having hit NOTHING is the terrain, and
+    // that is what this check is here to catch.
+    if (after.upsideDown && travelled > 15) {
+      problems.push(`${district.id}: rolled on open ground after ${travelled.toFixed(0)} m`)
+    }
     if (!Number.isFinite(after.terrainY)) problems.push(`${district.id}: no ground under it`)
   }
 

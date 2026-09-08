@@ -111,7 +111,7 @@ const BEAM_HEIGHT = 3.4
 
 const ROOM_LANDMARK = 'voxel-room'
 const SEED_LANDMARK = 'voxel-seed'
-const ROAD_ID = 'ucl-voxel'
+const ROAD_ID = 'ring-east'
 const RAMP_ID = 'ramp-voxel'
 const ACHIEVEMENT = 'underground'
 

@@ -241,7 +241,7 @@ export class Audio {
     if (!this.master || !this.ctx) return
     const target = this.muted ? 0 : this.volume
     this.master.gain.cancelScheduledValues(this.ctx.currentTime)
-    this.master.gain.setTargetAtTime(target, this.ctx.currentTime, 0.05)
+    this.master.gain.setTargetAtTime(Number.isFinite(target) ? target : 0, this.ctx.currentTime, 0.05)
   }
 
   /* ========================================================
@@ -253,6 +253,12 @@ export class Audio {
     const now = this.ctx.currentTime
     const dt = 0.06
 
+    // The physics layer can hand us a NaN for a frame — a car teleported
+    // twice in one tick, a zero-length velocity normalised. Web Audio
+    // throws on a non-finite value and takes the whole frame with it, so
+    // nothing reaches an AudioParam without passing through here.
+    const ok = (value: number, fallback = 0) => (Number.isFinite(value) ? value : fallback)
+
     const accelerating = Math.abs(this.player.accelerating)
     const boosting = this.player.boosting
     const speed = this.vehicle.xzSpeed
@@ -262,17 +268,17 @@ export class Audio {
     if (this.engineGain && this.engineFilter) {
       const load = clamp(accelerating * (1 + boosting), 0, 2)
       const volume = clamp(0.045 + load * 0.09, 0, 0.2)
-      this.engineGain.gain.setTargetAtTime(volume, now, dt)
+      this.engineGain.gain.setTargetAtTime(ok(volume), now, dt)
 
       // Pitch follows road speed, not throttle, so lifting off does
       // not drop the note to idle while the car is still moving.
       const rpm = remapClamp(speed, 0, 34, 42, 168) * (1 + boosting * 0.22)
       for (const osc of this.engineOsc) {
         const base = osc.type === 'sine' ? rpm * 0.5 : rpm
-        osc.frequency.setTargetAtTime(base, now, dt)
+        osc.frequency.setTargetAtTime(ok(base, 42), now, dt)
       }
       this.engineFilter.frequency.setTargetAtTime(
-        remapClamp(load, 0, 2, 180, 1500),
+        ok(remapClamp(load, 0, 2, 180, 1500), 180),
         now,
         dt,
       )
@@ -281,8 +287,8 @@ export class Audio {
     /* ---- wind ------------------------------------------ */
     if (this.windGain && this.windFilter) {
       const volume = remapClamp(speed, 4, 40, 0, 0.14)
-      this.windGain.gain.setTargetAtTime(volume, now, dt)
-      this.windFilter.frequency.setTargetAtTime(remapClamp(speed, 0, 40, 400, 1700), now, dt)
+      this.windGain.gain.setTargetAtTime(ok(volume), now, dt)
+      this.windFilter.frequency.setTargetAtTime(ok(remapClamp(speed, 0, 40, 400, 1700), 400), now, dt)
     }
 
     /* ---- tyres ----------------------------------------- */
@@ -297,10 +303,11 @@ export class Audio {
 
       // Fast attack, slow release: a skid should arrive instantly and
       // trail off, not fade in.
-      this.tyreGain.gain.setTargetAtTime(volume, now, volume > this.lastTyre ? 0.02 : 0.16)
-      this.lastTyre = volume
+      const tyre = ok(volume)
+      this.tyreGain.gain.setTargetAtTime(tyre, now, tyre > this.lastTyre ? 0.02 : 0.16)
+      this.lastTyre = tyre
       this.tyreSource.playbackRate.setTargetAtTime(
-        remapClamp(speed, 0, 30, 0.5, 1.5),
+        ok(remapClamp(speed, 0, 30, 0.5, 1.5), 0.5),
         now,
         dt,
       )

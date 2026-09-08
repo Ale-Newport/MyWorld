@@ -80,9 +80,14 @@ const VERTEX = /* glsl */`
     vGrass = grass;
     float groundY = ground.a * uHeightScale + uHeightBias;
 
+    // Two scales of variation: broad patches at ~30 m, and tufts at
+    // ~3 m. Without the second the field is an even pile of spikes;
+    // with it the ground reads as grass that grew somewhere.
+    float broad = 0.45 + noise(world * 0.0321) * 0.85;   // 'patch' is reserved in GLSL
+    float tuft  = 0.55 + noise(world * 0.34) * 0.9;
     float height = uBladeHeight
       * (0.4 + 0.6 * aHeightRandom)
-      * (0.5 + noise(world * 0.0321))
+      * broad * tuft
       * grass;
     float width = uBladeWidth * grass;
 

@@ -6,7 +6,7 @@ import type { Quality } from '../core/Quality'
 import type { Physics } from '../physics/Physics'
 import type { Materials } from './materials'
 import { districts, ramps, roads, WORLD_RADIUS, type District } from '@/content/world'
-import { inlandWater, coastRadius, FOREST_POCKETS, BRIDGES } from '@/content/world-environment'
+import { inlandWater, coastRadius, CIRCUIT, CIRCUIT_TRACK, FOREST_POCKETS, BRIDGES } from '@/content/world-environment'
 
 /* ============================================================
    TERRAIN
@@ -108,15 +108,40 @@ function landform(x: number, z: number): number {
   let h = 0
   // The north-west highland. The island's high ground and the head of
   // the river: the waterfall needs something real to fall off.
-  h += 14 * bump(x, z, -108, -104, 58)
+  h += 12 * bump(x, z, -46, -128, 52)
   // A long rise north of the lab, so the northern half is not a plain.
-  h += 5 * bump(x, z, 40, -110, 52)
+  h += 5 * bump(x, z, 20, -104, 48)
   // The eastern shoulder the circuit is cut into.
-  h += 4 * bump(x, z, 132, -20, 55)
+  h += 4 * bump(x, z, 116, -50, 52)
   // A shallow basin under the southern ring, so the road has a dip
   // and the lakes have somewhere to sit.
-  h -= 2.5 * bump(x, z, 6, 46, 55)
+  h -= 2.5 * bump(x, z, 48, 40, 52)
   return h
+}
+
+/**
+ * Nearest point on a polyline, not just the distance to it. A road has
+ * to be level ACROSS its width — a corridor that follows the terrain's
+ * cross-slope is a camber the car slides down, which is how a straight
+ * run-up quietly steers itself off a ramp.
+ */
+function closestOnPolyline(x: number, z: number, points: [number, number][]): { distance: number; px: number; pz: number } {
+  let best = Infinity
+  let bx = points[0][0]
+  let bz = points[0][1]
+  for (let i = 0; i < points.length - 1; i++) {
+    const [ax, az] = points[i]
+    const [cx, cz] = points[i + 1]
+    const dx = cx - ax
+    const dz = cz - az
+    const lengthSq = dx * dx + dz * dz || 1e-6
+    const t = clamp(((x - ax) * dx + (z - az) * dz) / lengthSq, 0, 1)
+    const px = ax + dx * t
+    const pz = az + dz * t
+    const distance = Math.hypot(x - px, z - pz)
+    if (distance < best) { best = distance; bx = px; bz = pz }
+  }
+  return { distance: best, px: bx, pz: bz }
 }
 
 /** Distance from a point to a polyline, and the segment parameter. */
@@ -143,7 +168,7 @@ function distanceToPolyline(x: number, z: number, points: [number, number][]): n
  * is shaved off by the drop and a jump that lands two metres long
  * lands in the sea. Being outside the world is the point of it.
  */
-const VOID_ISLAND = { x: 40, z: -238, radius: 40 }
+const VOID_ISLAND = { x: 20, z: -233, radius: 40 }
 
 /** Elevation of each district's plate. Most sit at zero. */
 const DISTRICT_ELEVATION: Partial<Record<string, number>> = {
@@ -258,9 +283,17 @@ export class Terrain {
     for (const district of districts) {
       if (!district.plate) continue
       const distance = Math.hypot(x - district.x, z - district.z)
-      if (distance > district.plate * 1.55) continue
-      const inside = 1 - smoothstep(distance, district.plate * 0.72, district.plate * 1.5)
-      const target = DISTRICT_ELEVATION[district.id] ?? 0
+      if (distance > district.plate * 2.45) continue
+      const inside = 1 - smoothstep(distance, district.plate * 0.8, district.plate * 2.4)
+      // Flatten to the ground the district actually stands on, not to
+      // an absolute height. A plate pinned to zero beside raised
+      // landform is a cliff, and the car slides off it.
+      const target =
+        landform(district.x, district.z) +
+        (fbm(district.x * 0.0042, district.z * 0.0042) - 0.5) * 2.8 +
+        smoothstep(Math.hypot(district.x, district.z), coastRadius(district.x, district.z, WORLD_RADIUS) - 42,
+                   coastRadius(district.x, district.z, WORLD_RADIUS)) * 3.2 +
+        (DISTRICT_ELEVATION[district.id] ?? 0)
       height = height * (1 - inside) + target * inside
     }
 
@@ -298,23 +331,50 @@ export class Terrain {
       height = height * (1 - inside) + pad * inside
     }
 
+    // The circuit gets the same treatment as a road: a corridor of its
+    // own, flattened to the ground it runs over minus the small noise.
+    // A racing line that climbs a hill mid-corner is not a racing line.
+    {
+      const near = closestOnPolyline(x, z, CIRCUIT_TRACK)
+      const half = CIRCUIT.width * 0.5
+      if (near.distance < half * 3.2) {
+        const on = 1 - smoothstep(near.distance, half * 1.15, half * 3)
+        if (on > 0) {
+          // Sampled on the centreline, so the track is flat across.
+          const smooth = landform(near.px, near.pz) + (fbm(near.px * 0.0042, near.pz * 0.0042) - 0.5) * 2.8
+          const rim = smoothstep(Math.hypot(near.px, near.pz),
+            coastRadius(near.px, near.pz, WORLD_RADIUS) - 42, coastRadius(near.px, near.pz, WORLD_RADIUS)) * 3.2
+          height = height * (1 - on) + (smooth + rim) * on
+        }
+      }
+    }
+
     // Roads flatten a corridor between whatever they connect.
     for (const road of roads) {
-      const distance = distanceToPolyline(x, z, road.points)
+      const near = closestOnPolyline(x, z, road.points)
       const half = road.width * 0.5
-      if (distance > half * 3) continue
-      const on = 1 - smoothstep(distance, half, half * 2.6)
+      if (near.distance > half * 3) continue
+      const on = 1 - smoothstep(near.distance, half, half * 2.6)
       if (on <= 0) continue
       // The road surface follows the terrain it was flattened onto,
       // just without the small noise, so hills stay but ruts do not.
-      const smooth = landform(x, z) + (fbm(x * 0.0042, z * 0.0042) - 0.5) * 2.8
-      let roadHeight = smooth + smoothstep(radius, coast - 42, coast) * 3.2
+      // Sampled on the centreline: the surface follows the land along
+      // the road but stays level across it.
+      const smooth = landform(near.px, near.pz) + (fbm(near.px * 0.0042, near.pz * 0.0042) - 0.5) * 2.8
+      let roadHeight = smooth + smoothstep(Math.hypot(near.px, near.pz),
+        coastRadius(near.px, near.pz, WORLD_RADIUS) - 42, coastRadius(near.px, near.pz, WORLD_RADIUS)) * 3.2
       for (const district of districts) {
         if (!district.plate) continue
-        const dd = Math.hypot(x - district.x, z - district.z)
-        if (dd > district.plate * 1.55) continue
-        const inside = 1 - smoothstep(dd, district.plate * 0.72, district.plate * 1.5)
-        roadHeight = roadHeight * (1 - inside) + (DISTRICT_ELEVATION[district.id] ?? 0) * inside
+        const dd = Math.hypot(near.px - district.x, near.pz - district.z)
+        if (dd > district.plate * 2.45) continue
+        const inside = 1 - smoothstep(dd, district.plate * 0.8, district.plate * 2.4)
+        const target =
+          landform(district.x, district.z) +
+          (fbm(district.x * 0.0042, district.z * 0.0042) - 0.5) * 2.8 +
+          smoothstep(Math.hypot(district.x, district.z), coastRadius(district.x, district.z, WORLD_RADIUS) - 42,
+                     coastRadius(district.x, district.z, WORLD_RADIUS)) * 3.2 +
+          (DISTRICT_ELEVATION[district.id] ?? 0)
+        roadHeight = roadHeight * (1 - inside) + target * inside
       }
       height = height * (1 - on) + roadHeight * on
     }
@@ -330,8 +390,8 @@ export class Terrain {
       height = height * (1 - bank) + (water.level - depth) * bank
     }
     // A dry, gently joined grotto behind the waterfall curtain.
-    if (z < -81 && z > -94 && Math.abs(x + 112) < 8) {
-      const dry=(1-smoothstep(Math.abs(x+112),4,8))*(1-smoothstep(Math.abs(z+87.5),3,7))
+    if (z < -119 && z > -132 && Math.abs(x + 40) < 8) {
+      const dry=(1-smoothstep(Math.abs(x+40),4,8))*(1-smoothstep(Math.abs(z+125.5),3,7))
       height=height*(1-dry)+.2*dry
     }
     // Gradual bridge approaches; the deck is a separate physical surface.
@@ -364,7 +424,10 @@ export class Terrain {
         for (const district of districts) {
           if (!district.plate) continue
           const distance = Math.hypot(x - district.x, z - district.z)
-          paved = Math.max(paved, 1 - smoothstep(distance, district.plate * 0.72, district.plate * 1.02))
+          // Paving covers the flattened plate, not a smaller disc inside
+          // it. Otherwise grass grows across the landing apron and the
+          // player spawns in a field instead of on a forecourt.
+          paved = Math.max(paved, 1 - smoothstep(distance, district.plate * 1.0, district.plate * 1.55))
         }
 
         const water = inlandWater(x, z)
