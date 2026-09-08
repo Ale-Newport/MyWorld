@@ -3,6 +3,7 @@ import type RAPIER from '@dimforge/rapier3d-compat'
 import type { Ticker } from '../core/Ticker'
 import { OCEAN_LEVEL } from '@/content/world-environment'
 import type { Bin } from '../core/Disposal'
+import { clamp } from '../core/maths'
 
 /* ============================================================
    PORTED FROM: sources/Game/Physics/Physics.js
@@ -347,13 +348,23 @@ export class Physics {
       physical.previous.position.copy(physical.current.position)
       physical.previous.quaternion.copy(physical.current.quaternion)
 
-      // Underwater bodies get heavy damping rather than buoyancy —
-      // same trick upstream uses, and it reads correctly at speed.
+      /*
+        Underwater bodies get damping rather than buoyancy — the same
+        trick upstream uses, and it reads correctly at speed. What it
+        must NOT be is a step: the old version snapped from the body's
+        own damping to 1.0 the instant the origin crossed the
+        waterline, so a car that put one wheel in the shallows lurched
+        as though it had hit something. Now the drag comes on over the
+        first metre, which is exactly the depth the beaches and the
+        river are authored to.
+      */
       const water = this.waterAt?.(physical.current.position.x, physical.current.position.z) ?? this.waterElevation
       const depth = water - physical.current.position.y
-      if (depth > 0) {
-        physical.body.setLinearDamping(1)
-        physical.body.setAngularDamping(1)
+      if (depth > -0.35) {
+        const wet = clamp((depth + 0.35) / 1.35, 0, 1)
+        const drag = wet * wet
+        physical.body.setLinearDamping(physical.linearDamping + (1 - physical.linearDamping) * drag)
+        physical.body.setAngularDamping(physical.angularDamping + (1 - physical.angularDamping) * drag)
       } else {
         physical.body.setLinearDamping(physical.linearDamping)
         physical.body.setAngularDamping(physical.angularDamping)

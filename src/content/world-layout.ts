@@ -156,7 +156,18 @@ export function zones(): Zone[] {
   out.push({ id: 'water-waterfall', kind: 'water', x: WATERFALL.x, z: WATERFALL.z, radius: 15, label: 'the waterfall' })
 
   for (const b of BRIDGES) {
-    out.push({ id: `bridge-${b.x}-${b.z}`, kind: 'bridge', x: b.x, z: b.z, radius: Math.max(b.length, b.width) * 0.5 + 3, label: `${b.kind} bridge` })
+    // A corridor, not a disc. A forty-metre deck modelled as a
+    // twenty-five-metre circle claims a thousand square metres of
+    // ground it does not stand on, and reported every venue within
+    // reach of its middle as a collision.
+    const dx = Math.cos(b.rotation) * b.length * 0.5
+    const dz = Math.sin(b.rotation) * b.length * 0.5
+    out.push({
+      id: `bridge-${b.road}`, kind: 'bridge', x: b.x, z: b.z,
+      radius: b.width * 0.5 + 2,
+      points: [[b.x - dx, b.z - dz], [b.x + dx, b.z + dz]],
+      label: `${b.kind} bridge`,
+    })
   }
 
   for (const r of ramps) {
@@ -406,8 +417,18 @@ export function validateLayout(): LayoutConflict[] {
     const both = new Set([a.kind, b.kind])
     // Everything a district's own paving is paved FOR.
     if (both.has('plate') && !both.has('water')) return true
+    // The waterfall is the head of the river; RIVER RUN is played in it.
+    if (a.kind === 'water' && b.kind === 'water') return true
+    if (both.has('water') && both.has('play')) return true
     // A bridge is the crossing: it is on the water and on the road.
     if (both.has('bridge') && (both.has('water') || both.has('road') || both.has('ramp'))) return true
+    // …and a road may cross water WHERE A BRIDGE CARRIES IT. Anywhere
+    // else, a road in the water is exactly the defect this reports.
+    if (both.has('road') && both.has('water')) {
+      const road = a.kind === 'road' ? a : b
+      const id = road.id.replace(/^road-/, '')
+      return BRIDGES.some((br) => br.road === id)
+    }
     // Roads meet roads, carry ramps, and cross the circuit at the link.
     if (kinds === 'road+road' || kinds === 'ramp+road' || kinds === 'circuit+road') return true
     // The circuit's own ramp and kerb furniture stand on it.

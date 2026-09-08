@@ -42,18 +42,54 @@ export const LAKES = [
 /** Off the northern highland, down the seam between the track and the
  *  districts. It is the boundary between the two halves of the island,
  *  which is why it is worth crossing. */
-export const RIVER = {width:8,level:-0.7,points:[[-40,-118],[-36,-96],[-34,-72],[-33,-48],[-32,-22],[-31,4],[-30,30],[-28,56]] as [number,number][]}
+/**
+ * How wide a bank is, in metres, on every piece of inland water.
+ *
+ * This is also the distance the water's influence REACHES past its
+ * mapped edge, and the two have to be the same number. They were not:
+ * the blend ran over 3.5 m but `inlandWater` stopped answering at
+ * 1.18 lake radii — about 2 m out — so the bank was truncated a third
+ * of the way down and every lake wore a ring cliff up to 5.7 m high.
+ */
+export const BANK_WIDTH = 7
+
+export const RIVER = {
+  width:8,level:-0.7,
+  // Extended fourteen metres south, so the road that crosses it
+  // crosses a river rather than clipping its last four metres and
+  // dropping into a trench nobody had authored a bridge for.
+  points:[[-40,-118],[-36,-96],[-34,-72],[-33,-48],[-32,-22],[-31,4],[-30,30],[-28,56],[-27,70]] as [number,number][],
+}
 export const WATERFALL = {x:-40,z:-118,top:10,bottom:-0.7,width:8}
+/**
+ * CROSSINGS, not decorations.
+ *
+ * All three bridges used to stand in open country: the nearest tarmac
+ * to any of them was 26–31 m away, including the one literally typed
+ * `kind: 'road'`. They were also hard-locked to the world X axis —
+ * there was no rotation field, so a crossing on any other bearing was
+ * not expressible — and the modern one spanned a lake no road went
+ * near while its approach pads punched two sheer plateaus into it.
+ *
+ * Each one is now on a road, at the point where that road meets the
+ * water, lying along the road's own tangent. `road` is the id in
+ * `world.ts`; `rotation` is the yaw of the deck's long axis.
+ */
 export const BRIDGES = [
-  {x:-33,z:-56,length:24,width:8,kind:'wood'},
-  {x:-31,z:12,length:24,width:9,kind:'road'},
-  {x:78,z:-10,length:30,width:8,kind:'modern'},
+  // The north link, carrying the loop back off the circuit's top end.
+  {x:-33.3,z:-56,length:28,width:8,kind:'wood',rotation:2.678,road:'north-link',level:0.9},
+  // The circuit link, over the river's lower reach.
+  {x:-28.2,z:56,length:28,width:9,kind:'road',rotation:2.199,road:'circuit-link',level:0.9},
+  // The lake shortcut: forty metres of deck straight across Mirror
+  // Lake, which is a real saving between UCL and the spine and is
+  // meant to be found rather than signposted.
+  {x:78,z:-10,length:44,width:8,kind:'modern',rotation:2.099,road:'lake-shortcut',level:1.2},
 ] as const
 /** `flat` is the radius of ground a spot levels under itself, for the
  *  venues that build one continuous surface — a bowling lane laid over
  *  rolling ground has its pins underground at one end. */
 export const PLAY_SPOTS = [
-  {id:'bowling',label:'BOWLING',x:76,z:44,radius:20,flat:24},
+  {id:'bowling',label:'BOWLING',x:76,z:44,radius:20,flat:15},
   // One venue, two things to do in it: the quarry is the place and
   // TNT DOMINO is the challenge played there. It used to be listed
   // twice at identical coordinates, which the map worked around by
@@ -124,14 +160,20 @@ export function inlandWater(x:number,z:number):{level:number;depth:number;edge:n
   let region:{level:number;depth:number;edge:number;flow:number}|null=null
   for(const lake of LAKES) {
     const radius=Math.hypot((x-lake.x)/lake.rx,(z-lake.z)/lake.rz)
-    if(radius<1.18)region={level:lake.level,depth:lake.depth,edge:(1-radius)*Math.min(lake.rx,lake.rz),flow:0.16}
+    // Reach exactly one bank width past the mapped edge, so the blend
+    // has room to finish and the shore meets the land at zero.
+    const reach=1+BANK_WIDTH/Math.min(lake.rx,lake.rz)
+    if(radius<reach)region={level:lake.level,depth:lake.depth,edge:(1-radius)*Math.min(lake.rx,lake.rz),flow:0.16}
   }
   const distance=lineDistance(x,z,RIVER.points)
-  if(distance<RIVER.width) {
-    const river={level:RIVER.level,depth:2.6,edge:RIVER.width/2-distance,flow:1}
+  if(distance<RIVER.width/2+BANK_WIDTH) {
+    // 1.6 m at the deepest, not 2.6: a river you can FORD. At 2.6 the
+    // car's origin sat a metre under the surface mid-stream and the
+    // drowning timer started, so the only way across was a bridge.
+    const river={level:RIVER.level,depth:1.6,edge:RIVER.width/2-distance,flow:1}
     // Unite the beds at confluences. A lake's outer bank must not dam a river
     // whose centreline continues through it.
-    const depth=(w:typeof river)=>{const t=Math.max(0,Math.min(1,w.edge/(w.flow>.9?4.5:7)));return w.edge<0?w.edge:w.depth*t*t*(3-2*t)}
+    const depth=(w:typeof river)=>{const t=Math.max(0,Math.min(1,w.edge/(w.flow>.9?6:11)));return w.edge<0?w.edge:w.depth*Math.pow(t*t*(3-2*t),1.9)}
     if(!region||depth(river)>depth(region))region=river
   }
   return region

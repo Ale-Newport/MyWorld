@@ -5,7 +5,7 @@ import type { Bin } from '../core/Disposal'
 import { roads, districts, WORLD_RADIUS } from '@/content/world'
 import { isFree } from '@/content/world-layout'
 import {
-  LAKES, RIVER, BRIDGES, FOREST_POCKETS, CIRCUIT, CIRCUIT_TRACK,
+  LAKES, RIVER, FOREST_POCKETS, CIRCUIT, CIRCUIT_TRACK,
   coastRadius, inlandWater,
 } from '@/content/world-environment'
 
@@ -174,13 +174,11 @@ export function buildSceneryDetails(game: Game, bin: Bin): void {
      Where the ground stops. Along the seaward edge of the coast
      road and either side of both bridges. */
   const rails: { x: number; z: number; angle: number }[] = []
-  for (const bridge of BRIDGES) {
-    for (const s of [-1, 1]) {
-      for (let d = -bridge.length * 0.5; d <= bridge.length * 0.5; d += 2.6) {
-        rails.push({ x: bridge.x + d, z: bridge.z + s * (bridge.width * 0.5 + 0.4), angle: 0 })
-      }
-    }
-  }
+  // Bridge railings are built by `Water.buildBridges`, in the deck's
+  // own rotated frame and at the deck's own height. This used to build
+  // a SECOND set, planted at terrain height and world-X aligned, so
+  // every bridge wore two rails — one of them submerged mid-span and
+  // at ninety degrees to the crossing.
   for (const rail of rails) {
     const y = ground(rail.x, rail.z)
     box(wood, rail.x, y + 1.0, rail.z, 0.18, 2, 0.18)

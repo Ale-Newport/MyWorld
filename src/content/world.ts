@@ -937,8 +937,24 @@ export const roads: { id: string; points: [number, number][]; width: number }[] 
   { id: 'hub-chess', width: 8, points: [[18, -2], [6, -20], [-2, -40], [-4, -60], [-6, -80]] },
   { id: 'lab-spur', width: 7, points: [[48, -96], [56, -112], [58, -118]] },
 
-  /* Out of the content half and over to the track. */
-  { id: 'circuit-link', width: 9, points: [[-4, 28], [-20, 50], [-32, 70], [-42, 88], [-52, 80]] },
+  /* Out of the content half and over to the track. Re-cut so it
+     crosses the river SQUARELY at (-28, 55.5), where the road bridge
+     is, instead of running down its west bank clipping the last four
+     metres of it. */
+  { id: 'circuit-link', width: 9, points: [[-4, 28], [-14, 40], [-24, 50], [-31, 60], [-40, 72], [-48, 82], [-52, 80]] },
+
+  /* THE RETURN LEG. The circuit used to hang off `circuit-link` as an
+     84 m dead-end spur: you reached the largest feature on the island
+     by driving one road, and left by driving the same road backwards.
+     This closes the loop across the top — off the track's north-east
+     corner, over the river on the wood bridge, and into the chess
+     terminal, where `hub-chess` picks it up. */
+  { id: 'north-link', width: 8, points: [[-6, -80], [-18, -70], [-33.3, -56], [-46, -56], [-57, -62]] },
+
+  /* A shortcut, not a route: forty metres of bridge straight across
+     Mirror Lake between UCL and the spine, saving most of the eastern
+     ring. Nothing signposts it. */
+  { id: 'lake-shortcut', width: 8, points: [[90, -34], [84, -22], [78, -10], [70, 2], [58, 14], [52, 22]] },
 
   /* Dirt, unlit, and pointed at the stunt ramp. It stops where the
      ground does. */

@@ -6,7 +6,7 @@ import type { Quality } from '../core/Quality'
 import type { Physics } from '../physics/Physics'
 import type { Materials } from './materials'
 import { districts, ramps, roads, WORLD_RADIUS, type District } from '@/content/world'
-import { inlandWater, coastRadius, CIRCUIT, CIRCUIT_TRACK, FOREST_POCKETS, BRIDGES, PLAY_SPOTS } from '@/content/world-environment'
+import { inlandWater, coastRadius, CIRCUIT, CIRCUIT_TRACK, FOREST_POCKETS, BRIDGES, PLAY_SPOTS, OCEAN_LEVEL, BANK_WIDTH, LAKES } from '@/content/world-environment'
 
 /* ============================================================
    TERRAIN
@@ -117,6 +117,81 @@ function landform(x: number, z: number): number {
   // and the lakes have somewhere to sit.
   h -= 2.5 * bump(x, z, 48, 40, 52)
   return h
+}
+
+/* ============================================================
+   THE SHORE
+
+   The island used to end in a wall. Inland of the coastline the
+   ground was lifted 3.2 m by a rim term; one metre further out it
+   dropped to -0.5 by a separate formula that knew nothing about
+   the rim — so the "beach" was a 3.7 m step at every bearing, and
+   at the high north-west it was fifteen. You could not drive onto
+   the sand, let alone into the sea.
+
+   These two functions are now the only description of the coast,
+   and they meet. `coastalRim` is a DUNE: it rises inland and
+   falls back to nothing before the sand starts, which is what
+   gives the island a horizon without giving it a parapet.
+   `shoreHeight` then takes over and runs, continuously, from dry
+   sand through the waterline to the shelf and the drop-off.
+
+   The numbers are chosen so the car can drive it. Dry sand is
+   about four degrees, wet sand and the shallows about eleven; the
+   shelf sits 0.9 m under the surface, which is wading depth, and
+   the bottom does not fall away properly until sixteen metres
+   past the waterline. Driving into the sea is meant to be
+   something you do on purpose and can reverse out of.
+   ============================================================ */
+
+/** Metres inland the coastal dune peaks, and how high. */
+const DUNE = { from: 78, peak: 40, fade: 13, height: 3.4 }
+/**
+ * The beach, as three stages measured from the mapped coastline.
+ * `sand` is dry beach; `wade` is the run from the top of the sand down
+ * to the waterline; `shelf` is the long shallow shelf beyond it, and
+ * `shelfDepth` is how deep the water gets before the bottom falls
+ * away. A car floats out of its depth at about 1.1 m, so a shelf of
+ * 0.6 is comfortably drivable and the drop past it is not.
+ */
+const BEACH = { sand: 15, wade: 8, shelf: 15, shelfDepth: 0.6 }
+
+/**
+ * The coastal dune, as a function of position. Extracted because
+ * SEVEN places in this file re-derived it inline to work out what
+ * height a district, a play spot or a ramp should flatten to, and
+ * every one of them had to be kept in step by hand.
+ */
+function coastalRim(x: number, z: number): number {
+  const radius = Math.hypot(x, z)
+  const coast = coastRadius(x, z, WORLD_RADIUS)
+  const rise = smoothstep(radius, coast - DUNE.from, coast - DUNE.peak)
+  const fall = 1 - smoothstep(radius, coast - DUNE.peak, coast - DUNE.fade)
+  return rise * fall * DUNE.height
+}
+
+/**
+ * Ground height as a function of distance PAST the coastline —
+ * negative inland. Continuous everywhere, including at zero.
+ */
+function shoreHeight(over: number): number {
+  if (over <= 0) {
+    // Dry sand, rising gently back towards the land it joins.
+    return 0.3 + 1.0 * smoothstep(-over, 0, BEACH.sand)
+  }
+  const shelf = OCEAN_LEVEL - BEACH.shelfDepth
+  if (over < BEACH.wade) {
+    // Down to the waterline: 2.8 m over 8, about 19 degrees.
+    return 0.3 + (OCEAN_LEVEL - 0.3) * smoothstep(over, 0, BEACH.wade)
+  }
+  const past = over - BEACH.wade
+  if (past < BEACH.shelf) {
+    // The shelf. Barely a slope — 0.6 m over fifteen metres — so
+    // driving INTO the sea is something you do, and can reverse out of.
+    return OCEAN_LEVEL - BEACH.shelfDepth * smoothstep(past, 0, BEACH.shelf)
+  }
+  // Then away, and quickly enough that going further is a decision.
+  return shelf - Math.pow((past - BEACH.shelf) * 0.17, 1.8)
 }
 
 /**
@@ -249,14 +324,6 @@ export class Terrain {
     const voidDistance = Math.hypot(x - VOID_ISLAND.x, z - VOID_ISLAND.z)
     const onVoidIsland = voidDistance < VOID_ISLAND.radius * 1.2
 
-    // Past the edge, the ground falls away. Not a wall: driving off
-    // is allowed, and is its own achievement. The void island is the
-    // one exception — a slab of ground where there should not be any.
-    if (radius > coast && !onVoidIsland) {
-      const over = radius - coast
-      return -Math.pow(over * 0.12, 1.7) - 0.5
-    }
-
     if (onVoidIsland) {
       // Flat on top, then a cliff. The cliff IS the moat: there is no
       // walkable slope from the mainland onto this, which is the only
@@ -271,9 +338,15 @@ export class Terrain {
     height += (fbm(x * 0.0042, z * 0.0042) - 0.5) * 2.8
     height += (fbm(x * 0.017, z * 0.017) - 0.5) * 0.55
 
-    // A soft rim so the world reads as an island rather than a
-    // rectangle that stops.
-    height += smoothstep(radius, coast - 42, coast) * 3.2
+    // A dune inland of the sand, so the world reads as an island
+    // rather than as a rectangle that stops.
+    height += coastalRim(x, z)
+
+    // The shore takes over near the edge, and the two are blended
+    // across twenty metres so the join is a slope and not a step.
+    const over = radius - coast
+    const onShore = smoothstep(over, -BEACH.sand - 12, -BEACH.sand + 4)
+    if (onShore > 0) height = height * (1 - onShore) + shoreHeight(over) * onShore
 
     // District plates. Each flattens its BUILT footprint towards its
     // own elevation, with a shoulder so the transition is drivable.
@@ -292,8 +365,7 @@ export class Terrain {
       const target =
         landform(district.x, district.z) +
         (fbm(district.x * 0.0042, district.z * 0.0042) - 0.5) * 2.8 +
-        smoothstep(Math.hypot(district.x, district.z), coastRadius(district.x, district.z, WORLD_RADIUS) - 42,
-                   coastRadius(district.x, district.z, WORLD_RADIUS)) * 3.2 +
+        coastalRim(district.x, district.z) +
         (DISTRICT_ELEVATION[district.id] ?? 0)
       height = height * (1 - inside) + target * inside
     }
@@ -309,8 +381,7 @@ export class Terrain {
       const target =
         landform(spot.x, spot.z) +
         (fbm(spot.x * 0.0042, spot.z * 0.0042) - 0.5) * 2.8 +
-        smoothstep(Math.hypot(spot.x, spot.z), coastRadius(spot.x, spot.z, WORLD_RADIUS) - 42,
-                   coastRadius(spot.x, spot.z, WORLD_RADIUS)) * 3.2
+        coastalRim(spot.x, spot.z)
       height = height * (1 - inside) + target * inside
     }
 
@@ -344,7 +415,7 @@ export class Terrain {
       const pad =
         landform(ramp.x, ramp.z) +
         (fbm(ramp.x * 0.0042, ramp.z * 0.0042) - 0.5) * 2.8 +
-        smoothstep(Math.hypot(ramp.x, ramp.z), coastRadius(ramp.x, ramp.z, WORLD_RADIUS) - 42, coastRadius(ramp.x, ramp.z, WORLD_RADIUS)) * 3.2
+        coastalRim(ramp.x, ramp.z)
       height = height * (1 - inside) + pad * inside
     }
 
@@ -359,9 +430,7 @@ export class Terrain {
         if (on > 0) {
           // Sampled on the centreline, so the track is flat across.
           const smooth = landform(near.px, near.pz) + (fbm(near.px * 0.0042, near.pz * 0.0042) - 0.5) * 2.8
-          const rim = smoothstep(Math.hypot(near.px, near.pz),
-            coastRadius(near.px, near.pz, WORLD_RADIUS) - 42, coastRadius(near.px, near.pz, WORLD_RADIUS)) * 3.2
-          height = height * (1 - on) + (smooth + rim) * on
+          height = height * (1 - on) + (smooth + coastalRim(near.px, near.pz)) * on
         }
       }
     }
@@ -378,8 +447,7 @@ export class Terrain {
       // Sampled on the centreline: the surface follows the land along
       // the road but stays level across it.
       const smooth = landform(near.px, near.pz) + (fbm(near.px * 0.0042, near.pz * 0.0042) - 0.5) * 2.8
-      let roadHeight = smooth + smoothstep(Math.hypot(near.px, near.pz),
-        coastRadius(near.px, near.pz, WORLD_RADIUS) - 42, coastRadius(near.px, near.pz, WORLD_RADIUS)) * 3.2
+      let roadHeight = smooth + coastalRim(near.px, near.pz)
       for (const district of districts) {
         if (!district.plate) continue
         const dd = Math.hypot(near.px - district.x, near.pz - district.z)
@@ -389,8 +457,7 @@ export class Terrain {
         const target =
           landform(district.x, district.z) +
           (fbm(district.x * 0.0042, district.z * 0.0042) - 0.5) * 2.8 +
-          smoothstep(Math.hypot(district.x, district.z), coastRadius(district.x, district.z, WORLD_RADIUS) - 42,
-                     coastRadius(district.x, district.z, WORLD_RADIUS)) * 3.2 +
+          coastalRim(district.x, district.z) +
           (DISTRICT_ELEVATION[district.id] ?? 0)
         roadHeight = roadHeight * (1 - inside) + target * inside
       }
@@ -398,13 +465,40 @@ export class Terrain {
     }
 
     // Banks are part of the same heightfield as the rest of the island.
+    /*
+      LAKE APRONS. A lake carved straight into a hillside gets a bank
+      that is as steep as the hill: Cold Tarn sits in the north-west
+      highland and every one of its four approaches was between 43 and
+      65 degrees, which is a bowl the car falls into and cannot climb
+      out of. Each lake now eases the ground around itself down towards
+      its own waterline over twelve metres before the bank starts, so
+      it reads as a tarn in a hollow rather than a hole in a slope.
+    */
+    for (const lake of LAKES) {
+      const normalised = Math.hypot((x - lake.x) / lake.rx, (z - lake.z) / lake.rz)
+      const scale = Math.min(lake.rx, lake.rz)
+      const reach = 1 + BANK_WIDTH / scale
+      const apron = reach + 13 / scale
+      if (normalised > apron) continue
+      const inside = 1 - smoothstep(normalised, reach, apron)
+      height = height * (1 - inside) + (lake.level + 1.5) * inside
+    }
+
     const water = inlandWater(x, z)
+    const waterHere = water
     if (water) {
-      // The mapped edge meets the water level; a shallow shelf then descends
-      // into the bed. Blending straight to the deep floor here would make even
-      // the apparent shoreline immediately dangerous to the car.
-      const bank = smoothstep(water.edge, -3.5, 0)
-      const depth = water.depth * smoothstep(water.edge, 0, water.flow > .9 ? 4.5 : 7)
+      // The bank runs a full BANK_WIDTH — the same distance
+      // `inlandWater` reaches — so it finishes instead of being cut
+      // off a third of the way down, which is what left every lake
+      // wearing a ring cliff.
+      const bank = smoothstep(water.edge, -BANK_WIDTH, 0)
+      // Then a WADEABLE SHELF: the depth curve is raised to a power,
+      // so the first few metres of water are ankle-deep and only the
+      // middle is anything to worry about. At 4 m in a lake is 0.4 m
+      // deep; the car drives in and drives out again.
+      const reach = water.flow > .9 ? 6 : 11
+      const t = smoothstep(water.edge, 0, reach)
+      const depth = water.depth * Math.pow(t, 1.9)
       height = height * (1 - bank) + (water.level - depth) * bank
     }
     // A dry, gently joined grotto behind the waterfall curtain.
@@ -413,12 +507,35 @@ export class Terrain {
       height=height*(1-dry)+.2*dry
     }
     // Gradual bridge approaches; the deck is a separate physical surface.
+    /*
+      BRIDGE APPROACHES.
+
+      Two things were wrong here. The test was written in world X and Z
+      — `Math.abs(x - bridge.x)` — so a bridge on any bearing other
+      than due east had its approach pads at ninety degrees to itself;
+      and the pads blended toward an absolute y = 0.5 wherever they
+      landed, INCLUDING inside the water, which is how the modern
+      bridge came to punch two sheer 2.93 m plateaus into the middle of
+      Mirror Lake.
+
+      Now: measured along the deck's own axis, and faded out over
+      water, so an approach ramps the LAND up to the deck and stops at
+      the shore.
+    */
     for (const bridge of BRIDGES) {
-      const end = Math.abs(x - bridge.x) - bridge.length / 2
-      if (end > -3 && end < 18 && Math.abs(z - bridge.z) < bridge.width / 2 + 3) {
-        const blend = (1 - smoothstep(end, 0, 18)) * (1 - smoothstep(Math.abs(z - bridge.z), bridge.width / 2, bridge.width / 2 + 3))
-        height = height * (1 - blend) + 0.5 * blend
-      }
+      const cos = Math.cos(bridge.rotation)
+      const sin = Math.sin(bridge.rotation)
+      const dx = x - bridge.x
+      const dz = z - bridge.z
+      const along = Math.abs(dx * cos + dz * sin) - bridge.length / 2
+      const across = Math.abs(-dx * sin + dz * cos)
+      if (along <= -3 || along >= 20 || across >= bridge.width / 2 + 3) continue
+      const dry = 1 - smoothstep(waterHere ? waterHere.edge : -99, -BANK_WIDTH, 0)
+      if (dry <= 0) continue
+      const blend = (1 - smoothstep(along, 0, 20))
+        * (1 - smoothstep(across, bridge.width / 2, bridge.width / 2 + 3))
+        * dry
+      height = height * (1 - blend) + bridge.level * blend
     }
     return height
   }
@@ -461,9 +578,13 @@ export class Terrain {
         }
 
         const water = inlandWater(x, z)
-        const depth = water && water.edge > 0
-          ? Math.min(1, (water.depth * smoothstep(water.edge, 0, 5)) / 5)
+        // Normalised against a QUARTER of a metre, not five: grass was
+        // surviving in water up to 1.25 m deep, which is where the
+        // "lawn growing out of the lake" came from.
+        const waterDepth = water && water.edge > 0
+          ? water.depth * Math.pow(smoothstep(water.edge, 0, water.flow > .9 ? 6 : 11), 1.9)
           : 0
+        const depth = Math.min(1, waterDepth / 0.25)
 
         // Nothing grows past the shore, on paving, or in water. The
         // taper at the coast keeps the beach clear of blades.
@@ -695,24 +816,47 @@ export class Terrain {
     ctx.fillStyle = palette.paper2
     ctx.fillRect(0, 0, size, size)
 
-    // The island: everything outside it is off the map.
+    /* ---- the island and its beach ------------------------
+       The clip used to stop exactly at the coastline, so every metre
+       of sand and shallow water past it was painted in the off-map
+       backdrop colour — which is why the beach read as the edge of
+       the texture rather than as a beach. It now runs out to the
+       shelf, with a band of sand either side of the waterline.
+    */
+    const coastPath = (grow: number) => {
+      ctx.beginPath()
+      for (let i = 0; i <= 360; i++) {
+        const a = (i / 360) * Math.PI * 2
+        const r = coastRadius(Math.cos(a), Math.sin(a), WORLD_RADIUS) + grow
+        const px = toPx(Math.cos(a) * r)
+        const py = toPx(Math.sin(a) * r)
+        if (i === 0) ctx.moveTo(px, py)
+        else ctx.lineTo(px, py)
+      }
+      ctx.closePath()
+    }
+
+    // Wet sand and the shallow shelf, out past the waterline.
+    coastPath(26)
+    ctx.fillStyle = '#a9a789'
+    ctx.fill()
+    coastPath(9)
+    ctx.fillStyle = '#c9c2a0'
+    ctx.fill()
+
     ctx.save()
-    ctx.beginPath()
     // The same coastline the heightfield uses, so the painted island
     // and the ground you can actually drive on are one shape.
-    for (let i = 0; i <= 360; i++) {
-      const a = (i / 360) * Math.PI * 2
-      const r = coastRadius(Math.cos(a), Math.sin(a), WORLD_RADIUS)
-      const px = toPx(Math.cos(a) * r)
-      const py = toPx(Math.sin(a) * r)
-      if (i === 0) ctx.moveTo(px, py)
-      else ctx.lineTo(px, py)
-    }
-    ctx.closePath()
+    coastPath(0)
     ctx.clip()
 
-    ctx.fillStyle = '#b6be88'
+    // Dry sand under the grass, so the beach shows through where the
+    // grass mask tapers out along the shore.
+    ctx.fillStyle = '#ded4ae'
     ctx.fillRect(0, 0, size, size)
+    coastPath(-16)
+    ctx.fillStyle = '#b6be88'
+    ctx.fill()
 
     for (const [x, z, r] of FOREST_POCKETS) {
       const gradient = ctx.createRadialGradient(toPx(x), toPx(z), 0, toPx(x), toPx(z), r * scale * 1.4)

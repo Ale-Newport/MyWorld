@@ -112,24 +112,58 @@ export class Water {
   }
 
   private buildBridges():void {
+    /*
+      Built along the bridge's own axis and then yawed into place, so a
+      crossing on any bearing works. Everything here used to be written
+      in world X — deck, railings, planks and colliders — which is why
+      BRIDGES had no rotation field: a bridge that was not due east had
+      no way to be expressed.
+    */
     for(const bridge of BRIDGES) {
       const wood = new THREE.MeshStandardMaterial({color:bridge.kind==='modern'?'#d8d9c8':'#a8895c',roughness:.85})
       const railing = new THREE.MeshStandardMaterial({color:bridge.kind==='modern'?'#49675a':'#6d6250',roughness:.75})
       const beams:THREE.BufferGeometry[]=[]
       const box=(w:number,h:number,d:number,x:number,y:number,z:number)=>{const g=new THREE.BoxGeometry(w,h,d);g.translate(x,y,z);beams.push(g)}
+      const group=new THREE.Group()
+      group.position.set(bridge.x,0,bridge.z)
+      group.rotation.y=-bridge.rotation
+      this.group.add(group)
+      const quaternion=new THREE.Quaternion().setFromEuler(new THREE.Euler(0,-bridge.rotation,0))
+      /** Deck-local (along, across) to world. */
+      const toWorld=(along:number,across:number)=>({
+        x:bridge.x+Math.cos(bridge.rotation)*along-Math.sin(bridge.rotation)*across,
+        z:bridge.z+Math.sin(bridge.rotation)*along+Math.cos(bridge.rotation)*across,
+      })
+
       const deck=new THREE.Mesh(new THREE.BoxGeometry(bridge.length,.45,bridge.width),wood)
-      deck.position.set(bridge.x,.275,bridge.z);deck.receiveShadow=true;this.group.add(deck)
-      this.game.physics.add({type:'fixed',category:'floor',position:deck.position,friction:1,colliders:[{shape:'cuboid',parameters:[bridge.length/2,.225,bridge.width/2]}]})
+      deck.position.set(0,bridge.level-.225,0);deck.receiveShadow=true;group.add(deck)
+      this.game.physics.add({
+        type:'fixed',category:'floor',friction:1,
+        position:{x:bridge.x,y:bridge.level-.225,z:bridge.z},
+        rotation:quaternion,
+        colliders:[{shape:'cuboid',parameters:[bridge.length/2,.225,bridge.width/2]}],
+      })
       for(const sign of [-1,1]) {
-        const z=bridge.z+sign*(bridge.width/2+.1)
-        box(bridge.length,.2,.25,bridge.x,2,z)
-        for(let x=-bridge.length/2+1;x<bridge.length/2;x+=3) box(.24,2,.24,bridge.x+x,1,z)
-        this.game.physics.add({type:'fixed',category:'object',position:{x:bridge.x,y:1.2,z},colliders:[{shape:'cuboid',parameters:[bridge.length/2,1,.15]}]})
+        const across=sign*(bridge.width/2+.1)
+        box(bridge.length,.2,.25,0,bridge.level+1.7,across)
+        for(let a=-bridge.length/2+1;a<bridge.length/2;a+=3) box(.24,2,.24,a,bridge.level+.7,across)
+        const at=toWorld(0,across)
+        this.game.physics.add({
+          type:'fixed',category:'object',
+          position:{x:at.x,y:bridge.level+.9,z:at.z},
+          rotation:quaternion,
+          colliders:[{shape:'cuboid',parameters:[bridge.length/2,1,.15]}],
+        })
       }
-      if(bridge.kind==='wood') for(let x=-bridge.length/2;x<bridge.length/2;x+=.8)box(.055,.012,bridge.width,bridge.x+x,.507,bridge.z)
-      const mesh=new THREE.Mesh(mergeGeometries(beams),railing);beams.forEach(g=>g.dispose());mesh.castShadow=true;this.group.add(mesh)
+      if(bridge.kind==='wood') for(let a=-bridge.length/2;a<bridge.length/2;a+=.8)box(.055,.012,bridge.width,a,bridge.level+.207,0)
+      // Piers, so a forty-metre deck is not floating over open water.
+      if(bridge.length>26) for(const a of [-bridge.length*.28,bridge.length*.28]) {
+        box(1.4,bridge.level+7,1.4,a,(bridge.level-7)/2,0)
+      }
+      const mesh=new THREE.Mesh(mergeGeometries(beams),railing);beams.forEach(g=>g.dispose());mesh.castShadow=true;group.add(mesh)
     }
   }
+
 
   private buildWaterfall():void {
     const f=WATERFALL
@@ -157,8 +191,13 @@ export class Water {
       if(!wetWheels.length)game.particles.burst(new THREE.Vector3(p.x,level+.15,p.z),4,'splash')
       game.audio.environment('splash',Math.min(.5,game.vehicle.xzSpeed*.04))
     }
-    if(p.y<level-.45) this.submerged+=dt;else this.submerged=0
-    if(this.submerged>1.2) {
+    // SWAMPED, not merely wet. The old threshold was 0.45 m under the
+    // surface for 1.2 s, which fired in water the car could plainly
+    // drive out of — including everywhere in the river. A metre under
+    // for two seconds means the car is actually in trouble, and the
+    // shallows are somewhere you can play.
+    if(p.y<level-1.1) this.submerged+=dt;else this.submerged=Math.max(0,this.submerged-dt*2)
+    if(this.submerged>2) {
       this.submerged=0
       if(game.minigames.current?.id==='circuit')game.minigames.current.recover()
       else {game.player.respawn();game.audio.play('land',.5)}
