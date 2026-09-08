@@ -548,8 +548,9 @@ every setting. A phone and a desktop are playing the same game.
 ### Testing
 
 ```bash
-npm run world:qa     # drives the car and asserts on it
-npm run world:tour   # screenshots every district
+npm run world:qa        # drives the car and asserts on it
+npm run world:tour      # screenshots every district
+npm run world:browsers  # boots and drives it in Chromium, Firefox and WebKit
 ```
 
 `scripts/world-qa.mjs` is not a screenshot test. It presses keys, waits, and
@@ -629,6 +630,7 @@ What was actually checked, and how:
 | `/world` — physics, recovery, mini-games, world, touch, teardown | `npm run world:qa` — Playwright drives the car and reads engine telemetry | All pass. 83 landmarks, 346 props, 920 bodies, 1,645 colliders. |
 | `/world` — every district | `npm run world:tour` | Photographed from each district's respawn point. |
 | `/world` — leaving and returning | five mounts in one session | Fifth world renders; no WebGL context leak. |
+| `/world` — Chromium, Firefox, WebKit | `npm run world:browsers` | All three boot, settle on four wheels and drive the same distance (33.1 / 33.4 / 33.1 m), which is also the fixed timestep doing its job. Firefox and WebKit auto-select MEDIUM. WebKit here is Playwright's build, not Safari. |
 
 ```bash
 npm run qa     # visual + functional sweep (needs a server running)
