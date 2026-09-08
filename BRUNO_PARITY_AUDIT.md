@@ -543,6 +543,61 @@ PLACEHOLDER
 
 ---
 
+## Progress since the audit
+
+The tables above are the audit **as taken**, and they are left that way on
+purpose: they are the measurement, not a running to-do list. What follows is
+what has actually changed since, with the evidence.
+
+Everything below was verified by `node scripts/world-qa.mjs`, which passes in
+full, and by driving — not by inspecting code.
+
+### Resolved
+
+| Row | Was | Now |
+| --- | --- | --- |
+| World extent vs. content density | 11× upstream's area | ~2.2× upstream's area, carrying ~2.1× the activities — the *ratio* now matches |
+| Macro relief amplitude | ±1.4 m over 720 m | authored landform: highland, ridges, a basin, and an irregular coastline |
+| District plates | 123,176 m² of flattened disc | 9 districts with a built footprint; the rest sit on natural ground |
+| Camera-following grass | absent | ported: 22.3 blades/m² against upstream's 20.8, wind, and vehicle flattening |
+| Terrain as a data layer | CPU height queries only | R/G/B/A mask (paving, grass, water depth, height), read by the grass and by the map |
+| Heightfield collider resolution | 2.5 m cells | 1.51 m, against upstream's 1.5 m |
+| Road topology | radial spokes from the hub | two loops in a figure of eight, a spine crossing both, branches |
+| Circuit length and shape | ~300 m loop in a corner | 780 m four-lane serpentine filling one flank; two laps; driven end to end at 1:34.656 |
+| Set dressing | benches and signs at coordinates that had fallen into the sea | derived from the road network, lakes, river and clearings: lanterns, benches, rails, tables, signs, reeds |
+| Map UI correspondence | island drawn as a circle; a ring per district | painted from the world's own mask; districts are markers |
+| Leaves react to the vehicle | no | yes; pool 160 → 420 at high |
+| Shoreline | sea level -6, a 24 m dead sand ring | one shared constant at -2.5, ~10 m of beach |
+
+### Defects the work exposed
+
+None of these were in the audit; they surfaced while implementing it.
+
+- Roads followed the terrain's cross-slope, so every corridor was cambered and
+  a straight 62 m run-up steered itself 27 m off its ramp.
+- District plates flattened to an absolute elevation, so a plate beside raised
+  landform was a cliff.
+- Prop clearance guarded a 30 m disc around every ramp; three small ramps near
+  the hub between them sterilised the whole landing area.
+- `FIELD_HALF` no longer reached the void island, so the stunt jump flew
+  through where the island renders and fell into nothing.
+- `Playground`, `IslandChallenges`, `SceneryDetails` and `VoxelField` all
+  referenced world positions or road ids that the relayout had moved.
+- The bowling lane was laid on rolling ground with its pins 1.1 m underground,
+  and two client towers stood through it.
+- Audio passed physics values straight to Web Audio; one NaN frame threw.
+
+### Still unresolved
+
+Most of the 113. In rough order of what would move the experience most:
+foliage as alpha cards rather than solid clumps; wind response on trees and
+bushes; the TNT chain reaction and its explosion effects; collectibles;
+the remaining interactive areas (cookie/altar/toilet/time-machine equivalents
+beyond their current placeholders); weather integration with vegetation; and
+the day/year cycles.
+
+---
+
 ## Status summary
 
 Across 178 audited features:
