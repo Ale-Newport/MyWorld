@@ -59,6 +59,59 @@
 }
 .linkArrow { grid-column: 2; grid-row: 1 / span 2; align-self: center; font-size: var(--fs-tiny); }
 
+.worldCta {
+  position: absolute;
+  left: var(--gutter);
+  bottom: clamp(7.5rem, 17vh, 10rem);
+  display: grid;
+  grid-template-columns: auto auto;
+  align-items: center;
+  gap: 2px var(--sp-4);
+  padding: var(--sp-4) var(--sp-5);
+  border: 1px solid var(--border-strong);
+  transition: border-color 260ms var(--ease-out-expo), background 260ms var(--ease-out-expo);
+}
+
+.worldCta:hover {
+  border-color: var(--accent);
+  background: color-mix(in oklab, var(--accent) 8%, transparent);
+}
+
+.worldCtaLabel {
+  grid-column: 1;
+  font-family: var(--font-mono);
+  font-size: var(--fs-micro);
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  color: var(--text-primary);
+}
+
+.worldCtaNote {
+  grid-column: 1;
+  grid-row: 2;
+  font-size: var(--fs-tiny);
+  color: var(--text-muted);
+}
+
+.worldCtaArrow {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  font-size: var(--fs-lead);
+  color: var(--accent);
+  transition: transform 260ms var(--ease-out-expo);
+}
+
+.worldCta:hover .worldCtaArrow {
+  transform: translateX(4px);
+}
+
+@media (max-width: 700px) {
+  .worldCta {
+    right: var(--gutter);
+    bottom: 11.5rem;
+  }
+}
+
 .colophon {
   position: absolute;
   left: var(--gutter); right: var(--gutter);

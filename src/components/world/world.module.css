@@ -1,0 +1,928 @@
+/* ============================================================
+   /WORLD — INTERFACE
+
+   Same tokens as the rest of the site (`src/styles/tokens.css`),
+   different medium. The portfolio is editorial and lets the page
+   breathe; this is a game HUD, so it lives in the corners, sits
+   on the canvas rather than in a column, and never covers the
+   thing you are driving.
+   ============================================================ */
+
+.route {
+  position: fixed;
+  inset: 0;
+  background: var(--paper);
+  overflow: hidden;
+  /* The world owns the viewport; the page behind it must not scroll. */
+  overscroll-behavior: none;
+  touch-action: none;
+}
+
+.experience {
+  position: absolute;
+  inset: 0;
+}
+
+.canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  touch-action: none;
+  outline: none;
+}
+
+/* ============================================================
+   BOOT — before the engine chunk has even arrived
+   ============================================================ */
+
+.boot {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: var(--paper);
+  color: var(--ink);
+}
+
+.bootInner {
+  width: min(320px, 70vw);
+  text-align: center;
+}
+
+.bootLabel {
+  font-family: var(--font-mono);
+  font-size: var(--fs-nano);
+  letter-spacing: var(--tracking-wide);
+  text-transform: uppercase;
+  color: var(--ink-3);
+  margin-bottom: var(--sp-4);
+}
+
+.bootBar {
+  height: 1px;
+  background: color-mix(in oklab, var(--ink) 14%, transparent);
+  overflow: hidden;
+}
+
+.bootBarFill {
+  display: block;
+  height: 100%;
+  width: 40%;
+  background: var(--accent);
+  animation: bootSlide 1.4s var(--ease-in-out) infinite;
+}
+
+@keyframes bootSlide {
+  0% { transform: translateX(-120%); }
+  100% { transform: translateX(320%); }
+}
+
+/* ============================================================
+   LOADER
+   ============================================================ */
+
+.loader {
+  position: absolute;
+  inset: 0;
+  z-index: 40;
+  display: grid;
+  place-items: center;
+  background: var(--paper);
+  padding: var(--gutter);
+  transition: opacity 500ms var(--ease-out-expo), transform 500ms var(--ease-out-expo);
+}
+
+.loader[data-leaving='true'] {
+  opacity: 0;
+  transform: scale(1.02);
+  pointer-events: none;
+}
+
+.loaderInner {
+  width: min(560px, 100%);
+}
+
+.loaderEyebrow {
+  font-family: var(--font-mono);
+  font-size: var(--fs-nano);
+  letter-spacing: var(--tracking-wide);
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+
+.loaderTitle {
+  font-size: clamp(3rem, 1rem + 9vw, 7rem);
+  font-weight: 500;
+  letter-spacing: var(--tracking-mega);
+  line-height: 0.84;
+  text-transform: uppercase;
+  margin: var(--sp-3) 0 var(--sp-7);
+}
+
+.loaderSteps {
+  display: grid;
+  gap: 2px;
+  margin-bottom: var(--sp-7);
+}
+
+.loaderStep {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: baseline;
+  gap: var(--sp-3);
+  font-family: var(--font-mono);
+  font-size: var(--fs-micro);
+  letter-spacing: var(--tracking-label);
+  color: var(--ink-4);
+  transition: color 300ms var(--ease-out-expo);
+}
+
+.loaderStep[data-done='true'] {
+  color: var(--ink-2);
+}
+
+.loaderStepName {
+  text-transform: uppercase;
+}
+
+.loaderStepDots {
+  border-bottom: 1px dotted color-mix(in oklab, var(--ink) 22%, transparent);
+  transform: translateY(-3px);
+}
+
+.loaderStep[data-done='true'] .loaderStepState {
+  color: var(--accent);
+}
+
+.loaderControls {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+  gap: var(--sp-4) var(--sp-5);
+  padding: var(--sp-5) 0;
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  margin-bottom: var(--sp-6);
+}
+
+.loaderControl dt {
+  font-family: var(--font-mono);
+  font-size: var(--fs-nano);
+  letter-spacing: var(--tracking-label);
+  color: var(--ink);
+  margin-bottom: 2px;
+}
+
+.loaderControl dd {
+  margin: 0;
+  font-size: var(--fs-tiny);
+  color: var(--ink-3);
+}
+
+.loaderEnter {
+  display: block;
+  width: 100%;
+  padding: var(--sp-4);
+  background: var(--ink);
+  color: var(--paper);
+  font-family: var(--font-mono);
+  font-size: var(--fs-micro);
+  letter-spacing: var(--tracking-wide);
+  text-transform: uppercase;
+  transition: background 200ms var(--ease-out-expo), opacity 200ms;
+}
+
+.loaderEnter:hover:not(:disabled) {
+  background: var(--accent);
+}
+
+.loaderEnter:disabled {
+  opacity: 0.35;
+  cursor: progress;
+}
+
+.loaderExit {
+  display: inline-block;
+  margin-top: var(--sp-5);
+  font-size: var(--fs-tiny);
+  color: var(--ink-3);
+  border-bottom: 1px solid transparent;
+  transition: color 200ms, border-color 200ms;
+}
+
+.loaderExit:hover {
+  color: var(--ink);
+  border-bottom-color: var(--accent);
+}
+
+.loaderFatal {
+  padding: var(--sp-5);
+  border: 1px solid var(--border-strong);
+  font-size: var(--fs-small);
+  color: var(--ink-2);
+  line-height: var(--lh-body);
+}
+
+/* ============================================================
+   HUD
+   ============================================================ */
+
+.hud {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 20;
+  color: var(--ink);
+  transition: opacity 260ms var(--ease-out-expo);
+  padding: clamp(0.9rem, 2.2vw, 1.75rem);
+  /* Keep clear of notches and the iOS home indicator. */
+  padding-top: max(clamp(0.9rem, 2.2vw, 1.75rem), env(safe-area-inset-top));
+  padding-bottom: max(clamp(0.9rem, 2.2vw, 1.75rem), env(safe-area-inset-bottom));
+}
+
+.hud[data-dimmed='true'] {
+  opacity: 0.15;
+}
+
+.hudTopLeft,
+.hudTopRight,
+.hudBottomLeft,
+.hudBottomRight {
+  position: absolute;
+  pointer-events: auto;
+}
+
+.hudTopLeft { top: inherit; left: inherit; }
+.hudTopRight { top: inherit; right: inherit; text-align: right; }
+.hudBottomLeft {
+  bottom: inherit;
+  left: inherit;
+  /* Clear of the brand mark, which sits in the same corner on
+     narrow screens. */
+  padding-left: 2.6rem;
+}
+.hudBottomRight { bottom: inherit; right: inherit; text-align: right; }
+
+.hudBrand {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  font-family: var(--font-mono);
+  font-size: var(--fs-nano);
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  color: var(--ink-2);
+  mix-blend-mode: multiply;
+}
+
+.hudMark {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border: 1px solid var(--border-strong);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+}
+
+.hudBrandName {
+  display: none;
+}
+
+.hudEsc {
+  padding: 3px 6px;
+  border: 1px solid var(--border);
+  color: var(--ink-3);
+}
+
+.hudBrand:hover .hudEsc {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+.hudDistrict {
+  animation: districtIn 600ms var(--ease-out-expo);
+  /* On a phone the touch buttons own the right-hand column, so the
+     district blurb has to give way rather than run under them. */
+  max-width: min(34ch, 52vw);
+}
+
+@keyframes districtIn {
+  from { opacity: 0; transform: translateY(-6px); }
+  to { opacity: 1; transform: none; }
+}
+
+.hudDistrictLabel {
+  display: block;
+  font-family: var(--font-mono);
+  font-size: var(--fs-micro);
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  color: var(--ink);
+}
+
+.hudDistrictBlurb {
+  display: block;
+  margin-top: 4px;
+  font-size: var(--fs-tiny);
+  color: var(--ink-3);
+  text-wrap: balance;
+}
+
+.hudSpeed {
+  display: flex;
+  align-items: baseline;
+  gap: var(--sp-2);
+  font-family: var(--font-mono);
+  mix-blend-mode: multiply;
+}
+
+.hudSpeedValue {
+  font-size: clamp(1.3rem, 4vw, 2.6rem);
+  font-weight: 500;
+  letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+}
+
+.hudSpeedUnit {
+  font-size: var(--fs-nano);
+  letter-spacing: var(--tracking-label);
+  color: var(--ink-3);
+}
+
+.hudKeys {
+  display: grid;
+  gap: 3px;
+  font-family: var(--font-mono);
+  font-size: var(--fs-nano);
+  letter-spacing: 0.1em;
+  color: var(--ink-4);
+}
+
+.hudKeys b {
+  color: var(--ink-2);
+  font-weight: 500;
+  margin-right: 5px;
+}
+
+/* ---- interact prompt ------------------------------------- */
+
+.prompt {
+  position: absolute;
+  transform: translate(-50%, -140%);
+  display: grid;
+  justify-items: center;
+  gap: 4px;
+  padding: var(--sp-2) var(--sp-4);
+  background: color-mix(in oklab, var(--paper) 92%, transparent);
+  border: 1px solid var(--border-strong);
+  backdrop-filter: blur(6px);
+  animation: promptIn 220ms var(--ease-out-expo);
+  pointer-events: none;
+  white-space: nowrap;
+}
+
+@keyframes promptIn {
+  from { opacity: 0; transform: translate(-50%, -120%); }
+  to { opacity: 1; transform: translate(-50%, -140%); }
+}
+
+.promptKey {
+  font-family: var(--font-mono);
+  font-size: var(--fs-nano);
+  letter-spacing: var(--tracking-label);
+  color: var(--accent);
+}
+
+.promptLabel {
+  font-family: var(--font-mono);
+  font-size: var(--fs-micro);
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  color: var(--ink);
+}
+
+.promptSub {
+  font-size: var(--fs-nano);
+  color: var(--ink-3);
+}
+
+/* ---- mini-game readout ----------------------------------- */
+
+.minigame {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  top: clamp(4.5rem, 12vh, 8rem);
+  display: grid;
+  justify-items: center;
+  gap: 3px;
+  text-align: center;
+  pointer-events: none;
+}
+
+.minigameTitle {
+  font-family: var(--font-mono);
+  font-size: var(--fs-nano);
+  letter-spacing: var(--tracking-wide);
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+
+.minigameLine {
+  font-family: var(--font-mono);
+  font-size: clamp(1.1rem, 3vw, 1.8rem);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+  color: var(--ink);
+}
+
+.minigameBar {
+  width: min(280px, 60vw);
+  height: 2px;
+  background: color-mix(in oklab, var(--ink) 12%, transparent);
+  margin-top: var(--sp-2);
+}
+
+.minigameBar span {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+  transform-origin: left;
+  transition: transform 160ms linear;
+}
+
+/* ---- notifications --------------------------------------- */
+
+.notifications {
+  position: absolute;
+  left: 50%;
+  bottom: clamp(4.5rem, 12vh, 7rem);
+  transform: translateX(-50%);
+  display: grid;
+  gap: var(--sp-2);
+  justify-items: center;
+  width: min(420px, 84vw);
+}
+
+.notification {
+  width: 100%;
+  display: grid;
+  gap: 2px;
+  padding: var(--sp-3) var(--sp-4);
+  background: var(--ink);
+  color: var(--paper);
+  animation: notificationIn 420ms var(--ease-out-expo);
+}
+
+@keyframes notificationIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: none; }
+}
+
+.notificationKind {
+  font-family: var(--font-mono);
+  font-size: var(--fs-nano);
+  letter-spacing: var(--tracking-wide);
+  color: var(--accent-soft);
+}
+
+.notificationTitle {
+  font-family: var(--font-mono);
+  font-size: var(--fs-micro);
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+}
+
+.notificationBody {
+  font-size: var(--fs-tiny);
+  color: var(--chalk-2);
+}
+
+/* ---- onboarding ------------------------------------------ */
+
+.onboarding {
+  position: absolute;
+  left: 50%;
+  bottom: clamp(2rem, 6vh, 3.5rem);
+  transform: translateX(-50%);
+  font-family: var(--font-mono);
+  font-size: var(--fs-micro);
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  color: var(--ink-3);
+  animation: onboardingPulse 2.6s var(--ease-in-out) infinite;
+}
+
+@keyframes onboardingPulse {
+  0%, 100% { opacity: 0.35; }
+  50% { opacity: 0.9; }
+}
+
+/* ============================================================
+   OVERLAYS
+   ============================================================ */
+
+.overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 60;
+  display: grid;
+  place-items: center;
+  padding: var(--gutter);
+}
+
+.overlayScrim {
+  position: absolute;
+  inset: 0;
+  background: color-mix(in oklab, var(--paper) 78%, transparent);
+  backdrop-filter: blur(10px);
+  animation: fadeIn 260ms var(--ease-out-expo);
+  cursor: default;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.overlayPanel {
+  position: relative;
+  width: min(720px, 100%);
+  max-height: min(82vh, 780px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  background: var(--paper);
+  border: 1px solid var(--border-strong);
+  padding: clamp(1.5rem, 4vw, 3rem);
+  animation: panelIn 320ms var(--ease-out-expo);
+}
+
+@keyframes panelIn {
+  from { opacity: 0; transform: translateY(14px); }
+  to { opacity: 1; transform: none; }
+}
+
+.overlayClose {
+  position: absolute;
+  top: var(--sp-4);
+  right: var(--sp-4);
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--border);
+  color: var(--ink-3);
+  transition: color 180ms, border-color 180ms;
+}
+
+.overlayClose:hover {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+.overlayTitle {
+  font-size: var(--fs-h3);
+  font-weight: 500;
+  letter-spacing: var(--tracking-tight);
+  line-height: var(--lh-snug);
+  margin: var(--sp-2) 0 var(--sp-5);
+  text-transform: uppercase;
+}
+
+/* ---- pause ----------------------------------------------- */
+
+.pauseList {
+  display: grid;
+  gap: 1px;
+  border-top: 1px solid var(--border);
+}
+
+.pauseItem {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: var(--sp-4) 0;
+  border-bottom: 1px solid var(--border);
+  font-family: var(--font-mono);
+  font-size: var(--fs-micro);
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  color: var(--ink-2);
+  transition: color 180ms, padding-left 180ms;
+}
+
+.pauseItem:hover {
+  color: var(--accent);
+  padding-left: var(--sp-3);
+}
+
+.pauseItem[data-exit='true'] {
+  color: var(--ink);
+}
+
+/* ---- project panel --------------------------------------- */
+
+.panelEyebrow {
+  font-family: var(--font-mono);
+  font-size: var(--fs-nano);
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+
+.panelBody {
+  display: grid;
+  gap: var(--sp-3);
+  font-size: var(--fs-small);
+  line-height: var(--lh-body);
+  color: var(--ink-2);
+  max-width: var(--measure-wide);
+}
+
+.panelMetrics {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: var(--sp-4);
+  margin: var(--sp-6) 0;
+  padding: var(--sp-5) 0;
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+}
+
+.panelMetricValue {
+  display: block;
+  font-size: var(--fs-h3);
+  font-weight: 500;
+  letter-spacing: var(--tracking-tight);
+  color: var(--ink);
+}
+
+.panelMetricLabel {
+  display: block;
+  margin-top: 4px;
+  font-family: var(--font-mono);
+  font-size: var(--fs-nano);
+  letter-spacing: 0.08em;
+  color: var(--ink-3);
+}
+
+.panelChips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+  margin-bottom: var(--sp-6);
+}
+
+.panelChips li {
+  padding: 4px 9px;
+  border: 1px solid var(--border);
+  font-family: var(--font-mono);
+  font-size: var(--fs-nano);
+  letter-spacing: 0.06em;
+  color: var(--ink-3);
+}
+
+.panelLinks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-5);
+}
+
+.panelLink {
+  font-family: var(--font-mono);
+  font-size: var(--fs-micro);
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  color: var(--ink);
+  border-bottom: 1px solid var(--accent);
+  padding-bottom: 2px;
+  transition: color 180ms;
+}
+
+.panelLink:hover {
+  color: var(--accent);
+}
+
+/* ---- achievements ---------------------------------------- */
+
+.achievementGroup {
+  margin-bottom: var(--sp-6);
+}
+
+.achievementGroup ul {
+  display: grid;
+  gap: 1px;
+  margin-top: var(--sp-3);
+}
+
+.achievementGroup li {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 2px var(--sp-4);
+  padding: var(--sp-3) 0;
+  border-bottom: 1px solid var(--border);
+  opacity: 0.42;
+  transition: opacity 200ms;
+}
+
+.achievementGroup li[data-unlocked='true'] {
+  opacity: 1;
+}
+
+.achievementLabel {
+  font-family: var(--font-mono);
+  font-size: var(--fs-micro);
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  color: var(--ink);
+}
+
+.achievementGroup li[data-unlocked='true'] .achievementLabel {
+  color: var(--accent);
+}
+
+.achievementHint {
+  grid-column: 1 / -1;
+  font-size: var(--fs-tiny);
+  color: var(--ink-3);
+}
+
+.achievementProgress {
+  font-family: var(--font-mono);
+  font-size: var(--fs-nano);
+  color: var(--ink-3);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---- options --------------------------------------------- */
+
+.optionRow {
+  border: none;
+  padding: 0 0 var(--sp-6);
+  margin: 0;
+}
+
+.optionButtons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1px;
+  margin: var(--sp-3) 0;
+}
+
+.optionButtons button {
+  padding: var(--sp-3) var(--sp-5);
+  border: 1px solid var(--border);
+  font-family: var(--font-mono);
+  font-size: var(--fs-nano);
+  letter-spacing: var(--tracking-label);
+  color: var(--ink-3);
+  transition: color 180ms, border-color 180ms, background 180ms;
+}
+
+.optionButtons button[data-on='true'] {
+  color: var(--paper);
+  background: var(--ink);
+  border-color: var(--ink);
+}
+
+.optionSlider {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  margin-bottom: var(--sp-3);
+}
+
+.optionSlider input {
+  flex: 1;
+  max-width: 220px;
+  accent-color: var(--accent);
+}
+
+.optionValue {
+  font-family: var(--font-mono);
+  font-size: var(--fs-nano);
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+  min-width: 3.5ch;
+}
+
+.optionNote {
+  font-size: var(--fs-tiny);
+  color: var(--ink-3);
+  max-width: var(--measure-wide);
+  line-height: var(--lh-body);
+}
+
+/* ============================================================
+   RESPONSIVE
+   ============================================================ */
+
+@media (min-width: 720px) {
+  .hudBrandName {
+    display: inline;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bootBarFill { animation: none; width: 100%; }
+  .onboarding { animation: none; opacity: 0.7; }
+  .hudDistrict,
+  .notification,
+  .overlayPanel,
+  .prompt { animation: none; }
+}
+
+/* ============================================================
+   KEY BINDINGS
+   ============================================================ */
+
+.controls {
+  display: grid;
+  gap: var(--sp-3);
+}
+
+.bindingList {
+  display: grid;
+  gap: 1px;
+  border-top: 1px solid var(--border);
+  margin-top: var(--sp-4);
+}
+
+.bindingList li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-4);
+  flex-wrap: wrap;
+  padding: var(--sp-3) 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.bindingName {
+  font-size: var(--fs-small);
+  color: var(--text-secondary);
+}
+
+.bindingKeys {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+}
+
+.bindingKey {
+  padding: 5px var(--sp-3);
+  min-width: 6ch;
+  border: 1px solid var(--border-strong);
+  font-family: var(--font-mono);
+  font-size: var(--fs-nano);
+  letter-spacing: var(--tracking-label);
+  color: var(--text-primary);
+  transition: color 160ms, border-color 160ms, background 160ms;
+}
+
+.bindingKey:hover {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+.bindingKey[data-capturing='true'] {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--paper);
+}
+
+.bindingFixed {
+  font-family: var(--font-mono);
+  font-size: var(--fs-nano);
+  letter-spacing: 0.06em;
+  color: var(--text-faint);
+}
+
+.bindingReset {
+  justify-self: start;
+  margin-top: var(--sp-4);
+  padding: var(--sp-3) var(--sp-5);
+  border: 1px solid var(--border);
+  font-family: var(--font-mono);
+  font-size: var(--fs-nano);
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  color: var(--text-muted);
+  transition: color 160ms, border-color 160ms;
+}
+
+.bindingReset:hover {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+/* On a phone the key hints duplicate the on-screen buttons. */
+@media (max-width: 620px) {
+  .hudKeys { display: none; }
+  .hudDistrictBlurb { display: none; }
+  .notifications { bottom: 9rem; width: min(320px, 78vw); }
+}

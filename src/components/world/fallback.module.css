@@ -1,0 +1,78 @@
+/* ============================================================
+   THE TEXT VERSION OF THE WORLD
+
+   Present in the DOM at all times. Off-screen for sighted
+   visitors — not `display: none`, which would take it out of the
+   accessibility tree along with everything else — and fully
+   readable to a screen reader, a crawler and anyone browsing with
+   CSS disabled.
+   ============================================================ */
+
+.fallback {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* If a keyboard visitor tabs into it, bring it back into view and
+   let it behave like an ordinary document. */
+.fallback:focus-within {
+  position: fixed;
+  inset: 0;
+  width: auto;
+  height: auto;
+  margin: 0;
+  clip-path: none;
+  white-space: normal;
+  overflow-y: auto;
+  z-index: 200;
+  background: var(--paper);
+  color: var(--ink);
+  padding: var(--gutter);
+}
+
+.fallback:focus-within h1 {
+  font-size: var(--fs-h2);
+  letter-spacing: var(--tracking-tight);
+  margin-bottom: var(--sp-4);
+}
+
+.fallback:focus-within h2 {
+  font-size: var(--fs-h3);
+  margin: var(--sp-7) 0 var(--sp-4);
+}
+
+.fallback:focus-within h3 {
+  font-size: var(--fs-lead);
+  margin: var(--sp-5) 0 var(--sp-2);
+}
+
+.fallback:focus-within p,
+.fallback:focus-within li,
+.fallback:focus-within dd {
+  max-width: var(--measure-wide);
+  color: var(--ink-2);
+  margin-bottom: var(--sp-2);
+}
+
+.fallback:focus-within dt {
+  font-family: var(--font-mono);
+  font-size: var(--fs-micro);
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  margin-top: var(--sp-4);
+}
+
+.fallback:focus-within a {
+  border-bottom: 1px solid var(--accent);
+}
+
+.head {
+  margin-bottom: var(--sp-6);
+}
