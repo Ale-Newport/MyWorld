@@ -798,8 +798,10 @@ export class VoxelField {
 
     const chosen: Column[] = []
     for (let k = 0; k < SEQUENCE; k++) {
-      // Start on the road side and work round: the first marker has
-      // to be somewhere a visitor drives past without looking for it.
+      // Five aiming points spread evenly round a ring inside the
+      // field, so the trail is a lap of the district rather than a
+      // line across it. Each marker is the nearest column that
+      // passes every test below.
       const angle = Math.PI + (k * Math.PI * 2) / SEQUENCE
       const targetX = p.centreX + Math.cos(angle) * p.radius * 0.6
       const targetZ = p.centreZ + Math.sin(angle) * p.radius * 0.6
@@ -845,8 +847,8 @@ export class VoxelField {
       this.markers.push({ x: column.x, z: column.z, topY: column.topY, material })
     }
 
-    // One beacon, moved to whichever marker is next — twelve markers
-    // would cost twelve draw calls and eleven of them would be off.
+    // One beacon, moved to whichever marker is next — a beam each
+    // would cost five draw calls with four of them switched off.
     const beamGeometry = new THREE.CylinderGeometry(0.55, 0.55, BEAM_HEIGHT, 10, 1, true)
     this.bin.add(() => beamGeometry.dispose())
     this.beam = new THREE.Mesh(
@@ -991,9 +993,14 @@ export class VoxelField {
         body: 'The dead end at the bottom of the canyon has sunk into the ground.',
         duration: 5.5,
       })
+
+      // Recorded on the path that earned it, and only there. The
+      // instant path is either a replay of a visit that already
+      // unlocked this or the degenerate safety net in `build`, and
+      // handing out a hidden achievement for either is a lie.
+      this.game.achievements.set(ACHIEVEMENT, 1)
     }
 
-    this.game.achievements.set(ACHIEVEMENT, 1)
     // Only meaningful once the interaction point exists; on the build
     // path `primed` picks it up on the first frame instead.
     if (this.primed) this.game.interactions.setEnabled(ROOM_LANDMARK, true)
@@ -1001,10 +1008,12 @@ export class VoxelField {
 
   /* ========================================================
      RESET
-     Bound to nothing by default. It clears an unfinished
-     sequence and never closes a hatch that has been opened —
-     taking a secret back off somebody is not a reset, it is a
-     bug with a polite name.
+     Nothing calls this yet — the Game builds the district and
+     drops the reference — so it is here to match the other
+     district set piece and to keep the rule written down: a
+     reset clears an unfinished sequence and never closes a hatch
+     that has been opened. Taking a secret back off somebody is
+     not a reset.
      ======================================================== */
 
   reset(): void {

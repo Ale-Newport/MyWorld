@@ -322,6 +322,17 @@ export class Game {
     this.bindNotes()
     this.bindFrameLoopSystems()
 
+    // Respawn points are authored before the things that end up
+    // standing on them exist, so they check themselves against the
+    // finished world and step aside where they have to.
+    const moved = this.respawns.validate(
+      (x, z) => this.world.terrain.colliderHeightAt(x, z),
+      (x, z) => this.physics.groundAt(x, z, 90, 220),
+    )
+    if (process.env.NODE_ENV === 'development' && moved.length > 0) {
+      console.info('[world] respawn points adjusted:\n  ' + moved.join('\n  '))
+    }
+
     // Secrets last: it reaches into landmarks, zones and the vehicle,
     // all of which have to exist first.
     this.secrets = new Secrets(this, this.bin)

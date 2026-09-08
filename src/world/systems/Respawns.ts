@@ -58,6 +58,74 @@ export class Respawns {
     return item
   }
 
+  /**
+   * Moves any respawn that would drop the car onto a structure.
+   *
+   * Respawn coordinates are authored in `src/content/world.ts` before
+   * the thing that ends up standing there exists — a ramp, a gate, a
+   * voxel field, a mini-game's scenery. Six of them landed the car on
+   * top of something the first time this ran. Rather than hand-tuning
+   * numbers that drift the moment a district is edited, each point
+   * checks itself against the FINISHED world and takes a step
+   * sideways if it needs to.
+   *
+   * Call once, after everything is built.
+   */
+  validate(
+    terrainHeightAt: (x: number, z: number) => number,
+    surfaceHeightAt: (x: number, z: number) => number | null,
+  ): string[] {
+    const moved: string[] = []
+    // A respawn on a low plinth is fine — the car lands on it and
+    // drives off. What has to be avoided is arriving several metres
+    // up on a wall, a ramp or a voxel stack.
+    const TOLERANCE = 2.5
+    const STEP = 7
+    const RINGS = 8
+
+    for (const point of this.items.values()) {
+      const clear = (x: number, z: number) => {
+        const surface = surfaceHeightAt(x, z)
+        // No hit at all means a hole, not open ground.
+        if (surface === null) return false
+        return Math.abs(surface - terrainHeightAt(x, z)) < TOLERANCE
+      }
+
+      if (clear(point.position.x, point.position.z)) continue
+
+      // Spiral outward. Eight bearings per ring, so a point boxed in
+      // on three sides still finds the fourth.
+      let found: { x: number; z: number } | null = null
+      for (let ring = 1; ring <= RINGS && !found; ring++) {
+        for (let i = 0; i < 8; i++) {
+          const angle = (i / 8) * Math.PI * 2 + ring * 0.4
+          const x = point.position.x + Math.cos(angle) * ring * STEP
+          const z = point.position.z + Math.sin(angle) * ring * STEP
+          if (clear(x, z)) {
+            found = { x, z }
+            break
+          }
+        }
+      }
+
+      if (!found) {
+        // Leave it where it is. A respawn on a structure still works;
+        // one teleported somewhere arbitrary to satisfy a check does
+        // not. Worth knowing about in development, not worth breaking.
+        moved.push(`${point.name}: no clear ground within ${RINGS * STEP} m, left in place`)
+        continue
+      }
+
+      const distance = Math.hypot(found.x - point.position.x, found.z - point.position.z)
+      point.position.x = found.x
+      point.position.z = found.z
+      point.position.y = terrainHeightAt(found.x, found.z) + 4
+      moved.push(`${point.name}: moved ${distance.toFixed(0)} m to clear ground`)
+    }
+
+    return moved
+  }
+
   getClosest(position: { x: number; z: number }): RespawnPoint {
     let closest: RespawnPoint | null = null
     let closestDistance = Infinity
