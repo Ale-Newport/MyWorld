@@ -255,7 +255,13 @@
 
 .hudTopLeft { top: inherit; left: inherit; }
 .hudTopRight { top: inherit; right: inherit; text-align: right; }
-.hudBottomLeft { bottom: inherit; left: inherit; }
+.hudBottomLeft {
+  bottom: inherit;
+  left: inherit;
+  /* Clear of the brand mark, which sits in the same corner on
+     narrow screens. */
+  padding-left: 2.6rem;
+}
 .hudBottomRight { bottom: inherit; right: inherit; text-align: right; }
 
 .hudBrand {
@@ -297,7 +303,9 @@
 
 .hudDistrict {
   animation: districtIn 600ms var(--ease-out-expo);
-  max-width: min(38ch, 46vw);
+  /* On a phone the touch buttons own the right-hand column, so the
+     district blurb has to give way rather than run under them. */
+  max-width: min(34ch, 52vw);
 }
 
 @keyframes districtIn {
@@ -331,7 +339,7 @@
 }
 
 .hudSpeedValue {
-  font-size: clamp(1.6rem, 4vw, 2.6rem);
+  font-size: clamp(1.3rem, 4vw, 2.6rem);
   font-weight: 500;
   letter-spacing: -0.03em;
   font-variant-numeric: tabular-nums;
@@ -826,4 +834,95 @@
   .notification,
   .overlayPanel,
   .prompt { animation: none; }
+}
+
+/* ============================================================
+   KEY BINDINGS
+   ============================================================ */
+
+.controls {
+  display: grid;
+  gap: var(--sp-3);
+}
+
+.bindingList {
+  display: grid;
+  gap: 1px;
+  border-top: 1px solid var(--border);
+  margin-top: var(--sp-4);
+}
+
+.bindingList li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-4);
+  flex-wrap: wrap;
+  padding: var(--sp-3) 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.bindingName {
+  font-size: var(--fs-small);
+  color: var(--text-secondary);
+}
+
+.bindingKeys {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+}
+
+.bindingKey {
+  padding: 5px var(--sp-3);
+  min-width: 6ch;
+  border: 1px solid var(--border-strong);
+  font-family: var(--font-mono);
+  font-size: var(--fs-nano);
+  letter-spacing: var(--tracking-label);
+  color: var(--text-primary);
+  transition: color 160ms, border-color 160ms, background 160ms;
+}
+
+.bindingKey:hover {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+.bindingKey[data-capturing='true'] {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--paper);
+}
+
+.bindingFixed {
+  font-family: var(--font-mono);
+  font-size: var(--fs-nano);
+  letter-spacing: 0.06em;
+  color: var(--text-faint);
+}
+
+.bindingReset {
+  justify-self: start;
+  margin-top: var(--sp-4);
+  padding: var(--sp-3) var(--sp-5);
+  border: 1px solid var(--border);
+  font-family: var(--font-mono);
+  font-size: var(--fs-nano);
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  color: var(--text-muted);
+  transition: color 160ms, border-color 160ms;
+}
+
+.bindingReset:hover {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+/* On a phone the key hints duplicate the on-screen buttons. */
+@media (max-width: 620px) {
+  .hudKeys { display: none; }
+  .hudDistrictBlurb { display: none; }
+  .notifications { bottom: 9rem; width: min(320px, 78vw); }
 }

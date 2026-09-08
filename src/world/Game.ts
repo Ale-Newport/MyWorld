@@ -19,6 +19,7 @@ import { Lighting } from './world/Lighting'
 import { VisualVehicle } from './world/VisualVehicle'
 import { World } from './world/World'
 import { Tracks } from './world/Tracks'
+import { Particles } from './world/Particles'
 import { Respawns } from './systems/Respawns'
 import { Zones } from './systems/Zones'
 import { Achievements } from './systems/Achievements'
@@ -94,6 +95,7 @@ export class Game {
   weather!: Weather
   secrets!: Secrets
   tracks!: Tracks
+  particles!: Particles
   minigames!: Minigames
   nipple!: Nipple
 
@@ -259,6 +261,12 @@ export class Game {
     this.tracks = new Tracks(this.vehicle, this.ticker, this.quality, this.bin)
     this.renderer.scene.add(this.tracks.group)
 
+    this.particles = new Particles(
+      this.vehicle, this.player, this.ticker, this.quality, this.bin,
+    )
+    this.particles.boostEmitters = this.visualVehicle.trailEmitters
+    this.renderer.scene.add(this.particles.group)
+
     this.weather = new Weather(
       this.ticker, this.view, this.renderer, this.lighting, this.quality, this.bin,
     )
@@ -346,6 +354,12 @@ export class Game {
       this.store.getState().setInputMode(mode as never)
     }
     this.inputs.events.on('modeChange', onModeChange as never)
+
+    // The mode may already have been decided in the constructor, from
+    // the device probe, long before this listener existed. Push it
+    // once so the touch controls appear without waiting for the
+    // visitor to change input device.
+    this.store.getState().setInputMode(this.inputs.mode)
 
     // Landing shake, scaled by how hard the impact was.
     const onLand = (airtime: number, wheels: number) => {
