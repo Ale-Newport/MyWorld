@@ -29,6 +29,16 @@ import { Weather } from './systems/Weather'
 import { Secrets } from './systems/Secrets'
 import { Minigames } from './minigames/Minigame'
 import { CircuitRace } from './minigames/CircuitRace'
+import { Labyrinth } from './minigames/Labyrinth'
+import { ChessPuzzle } from './minigames/ChessPuzzle'
+import { VideoPipeline } from './minigames/VideoPipeline'
+import { Retrieval } from './minigames/Retrieval'
+import { OrderRush } from './minigames/OrderRush'
+import { GymCircuit } from './minigames/GymCircuit'
+import { ThreeBody } from './minigames/ThreeBody'
+import { PacketRun } from './minigames/PacketRun'
+import { AnimationStudio } from './world/districts/AnimationStudio'
+import { VoxelField } from './world/districts/VoxelField'
 import { Save } from './systems/Save'
 import type { Terrain } from './world/Terrain'
 import type { WorldStore } from './state/store'
@@ -272,8 +282,24 @@ export class Game {
     )
 
     this.minigames = new Minigames(this, this.bin)
+    // Registration order is display order in nothing, but build order
+    // in everything: each one raises its geometry here, on the world
+    // that already exists.
     this.minigames.register(new CircuitRace(this, this.bin))
+    this.minigames.register(new Labyrinth(this, this.bin))
+    this.minigames.register(new ChessPuzzle(this, this.bin))
+    this.minigames.register(new VideoPipeline(this, this.bin))
+    this.minigames.register(new Retrieval(this, this.bin))
+    this.minigames.register(new OrderRush(this, this.bin))
+    this.minigames.register(new GymCircuit(this, this.bin))
+    this.minigames.register(new ThreeBody(this, this.bin))
+    this.minigames.register(new PacketRun(this, this.bin))
     this.startMinigame = (id) => this.minigames.start(id)
+
+    // District set pieces: places rather than games. They have no
+    // completion state and nothing to cancel.
+    new AnimationStudio(this, this.bin).build()
+    new VoxelField(this, this.bin).build()
 
     // A timed run has to be comparable with the last one, so the
     // weather is held still for its duration.
@@ -621,6 +647,20 @@ export class Game {
     this.inputs.events.on('pause', onPause as never)
     this.inputs.events.on('mute', onMute as never)
     this.inputs.events.on('help', onHelp as never)
+
+    // Being stuck is worth telling the player about: the car will
+    // hop itself out, but they should know that is what is happening
+    // and that R is faster.
+    const onStuck = () => {
+      this.store.getState().notify({
+        kind: 'info',
+        title: 'STUCK',
+        body: 'Hopping it loose. Press R to respawn instead.',
+        duration: 3,
+      })
+    }
+    this.player.events.on('stuck', onStuck as never)
+    this.bin.add(() => this.player.events.off('stuck', onStuck as never))
 
     const onInteractSound = () => this.audio?.play('interact')
     this.interactions.events.on('interact', onInteractSound as never)

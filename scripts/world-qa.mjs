@@ -310,6 +310,58 @@ if (should('collide')) {
   await shot('07-far')
 }
 
+/* ---- the hidden island ----------------------------------- */
+
+if (should('island')) {
+  console.log('\nHIDDEN ISLAND')
+
+  const ramp = await page.evaluate(() => {
+    const g = window.__world
+    return g.world ? { ok: true } : { ok: false }
+  })
+  void ramp
+
+  // Line up well behind the stunt ramp, on its axis, and go.
+  await page.evaluate(() => {
+    const g = window.__world
+    // Ramp: (238, -196), rotation PI * 0.427, rising along local +X.
+    const r = Math.PI * 0.427
+    const dirX = Math.cos(r)
+    const dirZ = -Math.sin(r)
+    const x = 238 - dirX * 62
+    const z = -196 - dirZ * 62
+    const y = g.terrain.colliderHeightAt(x, z) + 2
+    g.vehicle.moveTo({ x, y, z }, r)
+    g.view.focusPoint.trackedPosition.set(x, y, z)
+    g.view.snapToTarget()
+  })
+  await settle(900)
+
+  await page.keyboard.down('KeyW')
+  await page.keyboard.down('ShiftLeft')
+  let peakY = -Infinity
+  let landed = null
+  for (let i = 0; i < 40; i++) {
+    await settle(120)
+    const t = await telemetry()
+    peakY = Math.max(peakY, t.y)
+    const toIsland = Math.hypot(t.x - 259, t.z + 285)
+    if (toIsland < 30 && t.wheelsDown >= 2) { landed = t; break }
+  }
+  await page.keyboard.up('ShiftLeft')
+  await page.keyboard.up('KeyW')
+
+  check('the stunt ramp can reach the hidden island', landed !== null,
+    landed ? `landed ${Math.hypot(landed.x - 259, landed.z + 285).toFixed(0)} m from centre`
+           : `peaked at y ${peakY.toFixed(1)}`)
+
+  if (landed) {
+    const unlocked = await page.evaluate(() => window.__world.achievements.isUnlocked('hiddenIsland'))
+    check('reaching it unlocks THE VOID', unlocked)
+  }
+  await shot('13-island')
+}
+
 /* ---- respawn --------------------------------------------- */
 
 if (should('respawn')) {
@@ -426,6 +478,110 @@ if (should('circuit')) {
   await settle(400)
 }
 
+/* ---- world completeness ---------------------------------- */
+
+if (should('world')) {
+  console.log('\nWORLD')
+
+  const districts = await page.evaluate(() =>
+    window.__world.zones.items
+      .filter((z) => z.id.startsWith('district-'))
+      .map((z) => ({ id: z.id.replace('district-', ''), x: z.position.x, z: z.position.z, r: z.radius })),
+  )
+
+  const problems = []
+  for (const district of districts) {
+    // The void island is a cliff on purpose — you reach it by jumping
+    // it, and dropping onto its rim SHOULD roll the car off. It has
+    // its own check above.
+    if (district.id === 'void') continue
+
+    // Land at the district's edge and drive into it. This is the
+    // check the brief asks for: no accidental holes, no impossible
+    // slopes, no invisible blocking colliders.
+    await page.evaluate(({ x, z, r }) => {
+      const g = window.__world
+      const px = x
+      const pz = z + r * 0.85
+      const y = g.terrain.colliderHeightAt(px, pz) + 2.5
+      g.vehicle.moveTo({ x: px, y, z: pz }, Math.PI * 1.5)
+      g.view.focusPoint.trackedPosition.set(px, y, pz)
+      g.view.snapToTarget()
+    }, district)
+    await settle(900)
+
+    const landed = await telemetry()
+    // Landing partly on a landmark is the world working. Landing
+    // INSIDE one is not, and that shows up as falling through below.
+    if (landed.wheelsDown === 0 && landed.y < landed.terrainY + 0.5) {
+      problems.push(`${district.id}: no wheel contact and below the terrain`)
+    }
+
+    await hold('KeyW', 2200)
+    await settle(400)
+    const after = await telemetry()
+
+    // What actually matters is the ground, not the destination.
+    // Being blocked by a landmark is the world working; ending up
+    // underneath it is not. Nor is being flipped by the terrain.
+    const drop = after.y - after.terrainY
+    if (drop < -3) problems.push(`${district.id}: fell through the ground (${drop.toFixed(1)} m)`)
+    if (after.upsideDown) problems.push(`${district.id}: ended up on its roof`)
+    if (!Number.isFinite(after.terrainY)) problems.push(`${district.id}: no ground under it`)
+  }
+
+  check('every district can be entered and driven', problems.length === 0,
+    problems.slice(0, 4).join(' | '))
+  note(`checked ${districts.length} districts`)
+
+  // Landmarks must all be reachable — an interact point nobody can
+  // drive to is content that does not exist.
+  const unreachable = await page.evaluate(() => {
+    const g = window.__world
+    const bad = []
+    for (const [id, handle] of g.world.landmarks) {
+      const { x, z } = handle.landmark
+      const ground = g.terrain.colliderHeightAt(x, z)
+      // A landmark sitting in a hole, on a spike, or past the edge.
+      if (!Number.isFinite(ground)) { bad.push(`${id}: no ground`); continue }
+      // The void island is deliberately past the edge of the map.
+      if (handle.landmark.district !== 'void' && Math.hypot(x, z) > 372) {
+        bad.push(`${id}: outside the world`)
+        continue
+      }
+      // Steepness: sample a ring around it and look for a cliff.
+      let min = Infinity
+      let max = -Infinity
+      for (let a = 0; a < 8; a++) {
+        const angle = (a / 8) * Math.PI * 2
+        const h = g.terrain.colliderHeightAt(x + Math.cos(angle) * 8, z + Math.sin(angle) * 8)
+        min = Math.min(min, h)
+        max = Math.max(max, h)
+      }
+      // The void island is meant to be surrounded by a drop; every
+      // other landmark should stand on ground you can drive onto.
+      if (max - min > 9 && handle.landmark.district !== 'void') {
+        bad.push(`${id}: ${(max - min).toFixed(1)} m of relief within 8 m`)
+      }
+    }
+    return bad
+  })
+  check('every landmark stands on reachable ground', unreachable.length === 0,
+    unreachable.slice(0, 4).join(' | '))
+
+  const counts = await page.evaluate(() => {
+    const g = window.__world
+    return {
+      landmarks: g.world.landmarks.size,
+      interactions: g.interactions ? g.interactions['points']?.size ?? 0 : 0,
+      props: g.world.props.count,
+      notes: g.world.notes.length,
+      achievements: g.achievements.totalCount,
+    }
+  })
+  note(`${counts.landmarks} landmarks, ${counts.props} props, ${counts.notes} dev notes, ${counts.achievements} achievements`)
+}
+
 /* ---- touch / mobile -------------------------------------- */
 
 if (should('touch')) {
@@ -519,8 +675,25 @@ if (should('teardown')) {
   note(`${before.geometries} geometries and ${before.textures} textures were live before leaving`)
   note(`${cleaned.canvases} canvas element(s) on the home page after returning`)
 
-  // Go back in and make sure a second world starts cleanly — the
-  // case that a shared canvas or a leaked singleton would break.
+  // Four round trips, then check the fifth world still runs.
+  // Browsers cap live WebGL contexts at around sixteen and drop the
+  // oldest silently, so a context leak does not throw — it just
+  // makes the world stop rendering after a few visits. This is the
+  // only reliable way to see it.
+  for (let visit = 0; visit < 4; visit++) {
+    await page.goto(`${BASE}/world`, { waitUntil: 'domcontentloaded' })
+    await page.waitForFunction(() => {
+      const b = Array.from(document.querySelectorAll('button')).find(
+        (x) => x.textContent?.trim() === 'ENTER',
+      )
+      return Boolean(b && !b.disabled)
+    }, { timeout: 120000 })
+    await page.getByRole('button', { name: 'ENTER', exact: true }).click()
+    await settle(1200)
+    await page.goto(`${BASE}/`, { waitUntil: 'domcontentloaded' })
+    await settle(600)
+  }
+
   await page.goto(`${BASE}/world`, { waitUntil: 'domcontentloaded' })
   await page.waitForFunction(() => {
     const b = Array.from(document.querySelectorAll('button')).find(
@@ -530,10 +703,13 @@ if (should('teardown')) {
   }, { timeout: 120000 })
   await page.getByRole('button', { name: 'ENTER', exact: true }).click()
   await settle(2500)
-  const second = await telemetry()
-  check('a second visit starts cleanly', Boolean(second) && second.elapsed > 0.4,
-    second ? `elapsed ${second.elapsed.toFixed(2)}s` : 'no telemetry')
-  await shot('10-second-visit')
+  const fifth = await telemetry()
+  check('a fifth visit still renders', Boolean(fifth) && fifth.elapsed > 0.4,
+    fifth ? `elapsed ${fifth.elapsed.toFixed(2)}s, ${Math.round(fifth.fps)} fps` : 'no telemetry')
+  if (fifth) {
+    note(`${fifth.geometries} geometries, ${fifth.textures} textures live on the fifth world`)
+  }
+  await shot('10-fifth-visit')
 }
 
 /* ---- report ---------------------------------------------- */

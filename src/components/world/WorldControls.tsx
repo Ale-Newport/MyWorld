@@ -99,12 +99,18 @@ export function WorldControls({ getGame }: Props) {
 
   const actions = Array.from(game.inputs.actions.values()).filter((a) => a.label)
 
+  // Reads the engine inside the handler rather than closing over the
+  // `game` captured during render: the React Compiler forbids an
+  // event handler mutating a render-local, and it is right to — the
+  // instance can be replaced between render and click.
   const reset = () => {
-    game.save.data.settings.bindings = {}
-    game.save.flush()
-    // Bindings are applied at construction, so a reset needs a
-    // reload to take effect. Saying so is better than a UI that
-    // appears to do nothing.
+    const current = getGame()
+    if (!current) return
+    current.save.data.settings.bindings = {}
+    current.save.flush()
+    // Bindings are read at construction, so a reset needs a reload to
+    // take effect. Doing it is better than a button that appears to
+    // do nothing.
     window.location.reload()
   }
 

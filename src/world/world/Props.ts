@@ -81,7 +81,10 @@ const SPECS: Record<PropKind, PropSpec> = {
   barrier: {
     geometry: () => chamferedBox(2.4, 1.0, 0.28, 0.05),
     color: palette.chalk, roughness: 0.72, metalness: 0,
-    mass: 9, friction: 0.6, restitution: 0.08,
+    // Lighter than it looks on purpose. At 9 kg — heavier than the
+    // 2.5 kg car — a barrier is something the car climbs onto and
+    // beaches on rather than something it scatters.
+    mass: 4, friction: 0.55, restitution: 0.1,
     linearDamping: 0.3, angularDamping: 0.5,
     collider: () => ({ shape: 'cuboid', parameters: [1.2, 0.5, 0.14] }),
     contactThreshold: 12, castShadow: true,

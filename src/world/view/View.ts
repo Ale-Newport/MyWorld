@@ -451,7 +451,10 @@ export class View {
       .setFromSphericalCoords(1, this.spherical.phi, this.spherical.theta)
       .normalize()
 
-    const origin = { x: focus.x, y: focus.y + 1.2, z: focus.z }
+    // Start above the car's roof. From the focus point itself the ray
+    // grazes whatever the car is parked against and the camera dives
+    // to arm's length for no reason.
+    const origin = { x: focus.x, y: focus.y + 2.4, z: focus.z }
     const hit = this.physics.world.castRay(
       new this.physics.rapier.Ray(origin, this.rayDirection),
       wantedRadius,
@@ -461,10 +464,18 @@ export class View {
     )
     if (!hit) return wantedRadius
 
-    // Stay a little short of the surface so the near plane never
-    // clips through it, and never closer than 4 m or the car fills
-    // the frame.
-    return Math.max(4, hit.timeOfImpact - 0.9)
+    // A hit inside CLOSE_IGNORE means the car is under or inside
+    // something. Pulling the camera to arm's length there is worse
+    // than letting the geometry pass through the near plane for a
+    // moment, so that case is ignored outright.
+    const CLOSE_IGNORE = 7
+    const MINIMUM = 12
+    if (hit.timeOfImpact < CLOSE_IGNORE) return wantedRadius
+
+    // Otherwise stop short of the surface so the near plane never
+    // clips it, and never closer than MINIMUM or the car fills the
+    // frame and the world stops being legible.
+    return Math.max(MINIMUM, hit.timeOfImpact - 1.2)
   }
 
   /** Projects a world position into 0..1 screen space. */

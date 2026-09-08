@@ -69,6 +69,8 @@ export class Particles {
 
   private dustTimer = 0
   private boostTimer = 0
+  /** Emissions left this frame. Reset in `update`. */
+  private budget = 0
 
   constructor(
     private vehicle: PhysicsVehicle,
@@ -147,7 +149,10 @@ export class Particles {
     bin.add(() => this.ticker.events.off('tick', update))
 
     const onCollision = (force: number, at: { x: number; y: number; z: number }) => {
-      if (force < 14) return
+      // A car simply resting on something reports a contact force of
+      // roughly its own weight, every step. Debris is for hitting
+      // things, so the bar sits well above that.
+      if (force < 26) return
       const count = Math.round(clamp(force / 18, 1, 8))
       for (let i = 0; i < count; i++) {
         this.emit('debris', at, 2.2 + force * 0.02, 0.22)
@@ -159,7 +164,9 @@ export class Particles {
     this.vehicle.events.on('collision', onCollision as never)
 
     const onLand = (airtime: number) => {
-      if (airtime < 0.22) return
+      // A car settling on uneven ground can raise `land` repeatedly.
+      // A real landing has real air under it.
+      if (airtime < 0.35) return
       const strength = clamp(airtime, 0.2, 1.2)
       for (const wheel of this.vehicle.wheels.items) {
         if (!wheel.contactPoint) continue
@@ -183,6 +190,13 @@ export class Particles {
     speed: number,
     size: number,
   ): void {
+    // A per-frame budget. Without one, a car resting against a
+    // structure generates a contact event every step and fills the
+    // entire pool within a second — which looks like the world has
+    // exploded, and is what it did.
+    if (this.budget <= 0) return
+    this.budget--
+
     const particle = this.pool[this.cursor]
     this.cursor = (this.cursor + 1) % this.pool.length
 
@@ -212,6 +226,9 @@ export class Particles {
   private update(): void {
     const dt = Math.min(0.05, this.ticker.delta)
     const scaled = dt * this.ticker.scale
+    // Roughly a fifth of the pool per frame: enough for a heavy
+    // impact, nowhere near enough to fill it.
+    this.budget = Math.max(6, Math.round(this.pool.length * 0.18))
 
     /* ---- continuous emitters --------------------------- */
 
