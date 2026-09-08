@@ -9,204 +9,250 @@ import type { PhysicsVehicle } from '../physics/PhysicsVehicle'
 /* ============================================================
    TYRE TRACKS
 
-   Ported from sources/Game/Tracks.js + Trails.js (folio-2025,
-   MIT — Copyright (c) 2025 Bruno Simon). See THIRD_PARTY_NOTICES.md.
+   Adapted from sources/Game/Tracks.js (folio-2025, MIT —
+   Copyright (c) 2025 Bruno Simon). See THIRD_PARTY_NOTICES.md.
 
-   Each track is a ring buffer of 128 samples — position plus a
-   "was the wheel touching" flag — uploaded as a float DataTexture
-   and read in the vertex shader. The ribbon geometry is a
-   128-segment strip whose vertices are pushed sideways from the
-   path by the shader, perpendicular to the direction of travel.
-   So the CPU writes four floats a frame and the GPU builds the
-   whole ribbon; there is no per-frame geometry rebuild.
+   The ring buffer is upstream's, and so is the double throttle
+   that fills it: a sample is only taken when at least 1/30 s AND
+   0.2 m have passed. Time alone fills the buffer while parked;
+   distance alone samples densely at speed and sparsely when
+   crawling. Both together give an even 25 m of remembered track
+   whatever the speed. Keeping the contact flag per sample is also
+   upstream's, and it is what lets a wheel leaving the ground fade
+   its mark out instead of cutting it off.
 
-   The double throttle is upstream's and matters: a sample is only
-   taken when at least 1/30 s AND 0.2 m have passed. Time alone
-   fills the buffer while parked; distance alone samples densely
-   at speed and sparsely when crawling. Both together give an
-   even 25 m of remembered track at any speed.
-
-   One upstream detail worth keeping: the touching flag is
-   interpolated along the ribbon, so a wheel leaving the ground
-   fades its mark out rather than cutting it off.
-
-   Upstream renders these into a 512² render target that the
-   ground, grass and snow shaders all sample. This draws them
-   straight into the scene instead: without grass or snow to feed,
-   the render target is a pass and a texture for no benefit.
+   The RIBBON, though, is built on the CPU rather than in a vertex
+   shader reading the buffer as a float texture. Upstream's shader
+   approach is elegant and it went wrong here in a specific way
+   worth recording: when a segment has to be dropped — the car
+   teleported, or the buffer is not full yet — a vertex shader can
+   only push its vertices outside the clip volume, and the
+   rasteriser then CLIPS the quad rather than discarding it,
+   leaving triangular slivers across the ground. Collapsing the
+   segment on the CPU is unambiguous, and at 128 samples across
+   five ribbons the per-frame cost is a few thousand floats.
    ============================================================ */
 
-const SUBDIVISIONS = 128
+const SAMPLES = 128
 const TIME_THROTTLE = 1 / 30
 const DISTANCE_THROTTLE = 0.2
+/** Beyond this, two consecutive samples mean a teleport, not a drive. */
+const MAX_SEGMENT = 6
 
-const VERTEX = /* glsl */ `
-  uniform sampler2D uData;
-  uniform float uSubdivisions;
-  uniform float uThickness;
-
-  varying vec4 vTrackData;
-  varying vec2 vTrackUv;
-
-  void main() {
-    vTrackUv = uv;
-
-    float fragmentSize = 1.0 / uSubdivisions;
-    // The half-texel offset lands exactly on texel centres, which is
-    // why NEAREST filtering here is identical to LINEAR — and why
-    // this does not need the float-linear extension.
-    float ratio = uv.x - fragmentSize * 0.5;
-
-    vec4 current  = texture2D(uData, vec2(ratio, 0.5));
-    vec4 previous = texture2D(uData, vec2(ratio - fragmentSize, 0.5));
-
-    vTrackData = current;
-
-    float angle = atan(current.z - previous.z, current.x - previous.x);
-    float side = -sign(position.y);
-    float a = angle + side * 1.5707963267948966;
-    vec2 offset = vec2(cos(a), sin(a)) * uThickness;
-
-    vec3 world = vec3(current.x + offset.x, current.y, current.z + offset.y);
-    gl_Position = projectionMatrix * modelViewMatrix * vec4(world, 1.0);
-  }
-`
-
-const FRAGMENT = /* glsl */ `
-  precision highp float;
-
-  varying vec4 vTrackData;
-  varying vec2 vTrackUv;
-
-  uniform vec3 uColor;
-  uniform float uOpacity;
-
-  void main() {
-    // Fade out along the length: the far end of the buffer is the
-    // oldest sample and should already be gone.
-    float endAlpha   = 1.0 - smoothstep(0.45, 1.0, vTrackUv.x);
-    float startAlpha = smoothstep(0.0, 0.05, vTrackUv.x);
-    // Interpolated contact flag: a wheel lifting fades its mark.
-    float contact    = clamp(vTrackData.a, 0.0, 1.0);
-    // Soften the ribbon's own edges so it is a smear, not a decal.
-    float edgeAlpha  = 1.0 - abs(vTrackUv.y - 0.5) * 2.0;
-    edgeAlpha = smoothstep(0.0, 0.55, edgeAlpha);
-
-    float alpha = endAlpha * startAlpha * contact * edgeAlpha * uOpacity;
-    if (alpha < 0.004) discard;
-
-    gl_FragColor = vec4(uColor, alpha);
-    #include <colorspace_fragment>
-  }
-`
+interface Sample {
+  x: number
+  y: number
+  z: number
+  contact: number
+}
 
 class Track {
   readonly mesh: THREE.Mesh
-  private data: Float32Array
-  private texture: THREE.DataTexture
+
+  private samples: Sample[] = []
+  /** Index of the newest sample in the ring. */
+  private head = 0
+  private filled = 0
+
+  private positions: Float32Array
+  private fades: Float32Array
+  private positionAttribute: THREE.BufferAttribute
+  private fadeAttribute: THREE.BufferAttribute
   private material: THREE.ShaderMaterial
 
   private lastTime = 0
-  private readonly lastPosition = new THREE.Vector3()
-  private readonly scratch = new THREE.Vector3()
+  private lastX = 0
+  private lastZ = 0
 
-  constructor(thickness: number, color: string, opacity: number, bin: Bin) {
-    this.data = new Float32Array(SUBDIVISIONS * 4)
-    this.texture = new THREE.DataTexture(
-      this.data, SUBDIVISIONS, 1, THREE.RGBAFormat, THREE.FloatType,
-    )
-    this.texture.minFilter = THREE.NearestFilter
-    this.texture.magFilter = THREE.NearestFilter
-    this.texture.wrapS = THREE.ClampToEdgeWrapping
-    this.texture.wrapT = THREE.ClampToEdgeWrapping
-    this.texture.generateMipmaps = false
-    this.texture.needsUpdate = true
+  constructor(
+    private thickness: number,
+    colour: string,
+    private baseOpacity: number,
+    bin: Bin,
+  ) {
+    for (let i = 0; i < SAMPLES; i++) {
+      this.samples.push({ x: 0, y: 0, z: 0, contact: 0 })
+    }
 
-    const geometry = new THREE.PlaneGeometry(1, 1, SUBDIVISIONS, 1)
-    geometry.translate(0.5, 0, 0)
+    // Two vertices per sample, one strip.
+    this.positions = new Float32Array(SAMPLES * 2 * 3)
+    this.fades = new Float32Array(SAMPLES * 2)
+
+    const geometry = new THREE.BufferGeometry()
+    this.positionAttribute = new THREE.BufferAttribute(this.positions, 3)
+    this.positionAttribute.setUsage(THREE.DynamicDrawUsage)
+    this.fadeAttribute = new THREE.BufferAttribute(this.fades, 1)
+    this.fadeAttribute.setUsage(THREE.DynamicDrawUsage)
+    geometry.setAttribute('position', this.positionAttribute)
+    geometry.setAttribute('aFade', this.fadeAttribute)
+
+    const indices: number[] = []
+    for (let i = 0; i < SAMPLES - 1; i++) {
+      const a = i * 2
+      indices.push(a, a + 1, a + 2, a + 1, a + 3, a + 2)
+    }
+    geometry.setIndex(indices)
 
     this.material = new THREE.ShaderMaterial({
-      vertexShader: VERTEX,
-      fragmentShader: FRAGMENT,
       transparent: true,
       depthWrite: false,
-      // Marks are darker than the ground, so this is ordinary alpha
-      // blending rather than upstream's additive — that only makes
-      // sense when the result is being sampled to subtract elsewhere.
-      blending: THREE.NormalBlending,
       side: THREE.DoubleSide,
       uniforms: {
-        uData: { value: this.texture },
-        uSubdivisions: { value: SUBDIVISIONS },
-        uThickness: { value: thickness },
-        uColor: { value: new THREE.Color(color) },
-        uOpacity: { value: opacity },
+        uColor: { value: new THREE.Color(colour) },
+        uOpacity: { value: baseOpacity },
       },
+      vertexShader: /* glsl */ `
+        attribute float aFade;
+        varying float vFade;
+        void main() {
+          vFade = aFade;
+          gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+        }
+      `,
+      fragmentShader: /* glsl */ `
+        precision highp float;
+        varying float vFade;
+        uniform vec3 uColor;
+        uniform float uOpacity;
+        void main() {
+          float alpha = vFade * uOpacity;
+          if (alpha < 0.004) discard;
+          gl_FragColor = vec4(uColor, alpha);
+          #include <colorspace_fragment>
+        }
+      `,
     })
 
     this.mesh = new THREE.Mesh(geometry, this.material)
     this.mesh.frustumCulled = false
     this.mesh.renderOrder = 3
     this.mesh.matrixAutoUpdate = false
+    this.mesh.updateMatrix()
 
     bin.add(() => {
       geometry.dispose()
       this.material.dispose()
-      this.texture.dispose()
     })
   }
 
-  /** Records the head sample and, when both throttles pass, shifts. */
-  update(position: { x: number; y: number; z: number } | null, touching: boolean, elapsed: number): void {
-    if (!position) {
-      this.data[3] = 0
-      this.texture.needsUpdate = true
+  /** Records a sample when both throttles allow, then rebuilds. */
+  update(
+    position: { x: number; y: number; z: number } | null,
+    touching: boolean,
+    elapsed: number,
+  ): void {
+    if (position) {
+      const moved = Math.hypot(position.x - this.lastX, position.z - this.lastZ)
+      if (elapsed - this.lastTime > TIME_THROTTLE && moved > DISTANCE_THROTTLE) {
+        this.head = (this.head + 1) % SAMPLES
+        this.filled = Math.min(SAMPLES, this.filled + 1)
+        this.lastTime = elapsed
+        this.lastX = position.x
+        this.lastZ = position.z
+      }
+
+      const sample = this.samples[this.head]
+      sample.x = position.x
+      // Lifted so the ribbon never z-fights the ground it lies on.
+      sample.y = position.y + 0.03
+      sample.z = position.z
+      sample.contact = touching ? 1 : 0
+    } else if (this.filled > 0) {
+      this.samples[this.head].contact = 0
+    }
+
+    this.rebuild()
+  }
+
+  private rebuild(): void {
+    // Below three samples there is no direction to be perpendicular
+    // to, so there is nothing to draw.
+    if (this.filled < 3) {
+      this.fades.fill(0)
+      this.fadeAttribute.needsUpdate = true
+      this.mesh.visible = false
       return
     }
+    this.mesh.visible = true
 
-    if (elapsed - this.lastTime > TIME_THROTTLE) {
-      this.scratch.set(position.x, position.y, position.z)
-      if (this.lastPosition.distanceTo(this.scratch) > DISTANCE_THROTTLE) {
-        // Shift by one texel. Stops at 1: index 0 is the head and is
-        // written unconditionally below, and reading index -4 (which
-        // upstream does) is only harmless by accident.
-        for (let i = SUBDIVISIONS - 1; i >= 1; i--) {
-          const to = i * 4
-          const from = to - 4
-          this.data[to] = this.data[from]
-          this.data[to + 1] = this.data[from + 1]
-          this.data[to + 2] = this.data[from + 2]
-          this.data[to + 3] = this.data[from + 3]
+    for (let i = 0; i < SAMPLES; i++) {
+      // i = 0 is the newest sample, walking backwards through the ring.
+      const index = (this.head - i + SAMPLES * 2) % SAMPLES
+      const previousIndex = (index - 1 + SAMPLES) % SAMPLES
+      const current = this.samples[index]
+      const previous = this.samples[previousIndex]
+
+      const vertex = i * 2
+      const alive = i < this.filled - 1
+
+      let dx = current.x - previous.x
+      let dz = current.z - previous.z
+      const length = Math.hypot(dx, dz)
+
+      // Either end of the ring, a teleport, or a stationary pair:
+      // collapse the segment to a point with zero alpha. Collapsing
+      // rather than clipping is the whole reason this is on the CPU.
+      if (!alive || length < 1e-4 || length > MAX_SEGMENT) {
+        for (const side of [0, 1]) {
+          const o = (vertex + side) * 3
+          this.positions[o] = current.x
+          this.positions[o + 1] = current.y
+          this.positions[o + 2] = current.z
+          this.fades[vertex + side] = 0
         }
-        this.lastTime = elapsed
-        this.lastPosition.copy(this.scratch)
+        continue
       }
+
+      dx /= length
+      dz /= length
+      // Perpendicular in the ground plane.
+      const px = -dz * this.thickness
+      const pz = dx * this.thickness
+
+      const left = vertex * 3
+      this.positions[left] = current.x + px
+      this.positions[left + 1] = current.y
+      this.positions[left + 2] = current.z + pz
+
+      const right = (vertex + 1) * 3
+      this.positions[right] = current.x - px
+      this.positions[right + 1] = current.y
+      this.positions[right + 2] = current.z - pz
+
+      // Fade with age, and with whether the wheel was down.
+      const age = 1 - i / (this.filled - 1)
+      const fade = current.contact * age * age
+      this.fades[vertex] = fade
+      this.fades[vertex + 1] = fade
     }
 
-    this.data[0] = position.x
-    // Lifted a little so the ribbon never z-fights the ground it
-    // is drawn on.
-    this.data[1] = position.y + 0.035
-    this.data[2] = position.z
-    this.data[3] = touching ? 1 : 0
-    this.texture.needsUpdate = true
+    this.positionAttribute.needsUpdate = true
+    this.fadeAttribute.needsUpdate = true
   }
 
   setOpacity(value: number): void {
     this.material.uniforms.uOpacity.value = value
   }
 
-  /** Clears the buffer. Used on respawn so no ribbon spans the map. */
+  get opacity(): number {
+    return this.baseOpacity
+  }
+
+  /** Collapses the whole ribbon. Called after any teleport. */
   clear(position: { x: number; y: number; z: number }): void {
-    for (let i = 0; i < SUBDIVISIONS; i++) {
-      const i4 = i * 4
-      this.data[i4] = position.x
-      this.data[i4 + 1] = position.y
-      this.data[i4 + 2] = position.z
-      this.data[i4 + 3] = 0
+    for (const sample of this.samples) {
+      sample.x = position.x
+      sample.y = position.y
+      sample.z = position.z
+      sample.contact = 0
     }
-    this.lastPosition.set(position.x, position.y, position.z)
-    this.texture.needsUpdate = true
+    this.filled = 0
+    this.head = 0
+    this.lastX = position.x
+    this.lastZ = position.z
+    this.fades.fill(0)
+    this.fadeAttribute.needsUpdate = true
+    this.mesh.visible = false
   }
 }
 
@@ -222,23 +268,23 @@ export class Tracks {
     quality: Quality,
     bin: Bin,
   ) {
-    // Tracks are the first thing to go at LOW: they are five extra
-    // transparent draws for something a phone screen barely resolves.
+    // Tracks are the first thing to go at LOW: five extra transparent
+    // draws for something a phone screen barely resolves.
     this.enabled = quality.settings.trackResolution > 0
 
     if (this.enabled) {
       for (let i = 0; i < 4; i++) {
-        // 0.5 half-width — a one-metre ribbon, upstream's value.
-        const track = new Track(0.5, palette.ink2, 0.4, bin)
+        const track = new Track(0.34, palette.ink3, 0.22, bin)
         this.wheels.push(track)
         this.group.add(track.mesh)
       }
 
-      // A wider, fainter mark under the body. Upstream uses it to
-      // carve snow; here it is the shadow a car leaves on dust.
-      this.chassis = new Track(1.5, palette.ink3, 0.14, bin)
+      // A wider, much fainter smear under the body.
+      this.chassis = new Track(1.1, palette.ink4, 0.06, bin)
       this.group.add(this.chassis.mesh)
     }
+
+    this.reset()
 
     const update = () => this.update()
     // Order 10, as upstream: after the vehicle's post-physics pass.
@@ -254,21 +300,27 @@ export class Tracks {
 
     for (let i = 0; i < 4; i++) {
       const wheel = this.vehicle.wheels.items[i]
-      // Only mark the ground when the tyre is actually loaded. A
-      // wheel dangling in mid-air over tarmac should leave nothing.
+      // Only mark the ground when the tyre is actually loaded. A wheel
+      // dangling in mid-air over tarmac should leave nothing.
       this.wheels[i].update(wheel.contactPoint, wheel.inContact, elapsed)
     }
 
-    // The body mark only appears when the car is low enough for it
-    // to make sense — airborne, there is nothing under it.
+    // The body smear needs the ground, not the chassis origin, or it
+    // floats a metre above its own tyre marks.
     const position = this.vehicle.position
-    this.chassis?.update(position, position.y < 2.2, elapsed)
+    const wheel = this.vehicle.wheels.items[0]
+    const groundY = wheel.contactPoint?.y ?? position.y - 1.1
+    this.chassis?.update(
+      { x: position.x, y: groundY, z: position.z },
+      this.vehicle.wheels.inContactCount > 2,
+      elapsed,
+    )
 
-    // Fade everything out at very low speed so a parked car does not
-    // sit on top of a smear it made while arriving.
-    const fade = clamp(this.vehicle.xzSpeed / 3, 0, 1)
-    for (const track of this.wheels) track.setOpacity(0.4 * fade)
-    this.chassis?.setOpacity(0.14 * fade)
+    // Fade out at very low speed so a parked car does not sit on top
+    // of the smear it made while arriving.
+    const fade = clamp(this.vehicle.xzSpeed / 4, 0, 1)
+    for (const track of this.wheels) track.setOpacity(track.opacity * fade)
+    if (this.chassis) this.chassis.setOpacity(this.chassis.opacity * fade)
   }
 
   /** Called after a teleport, so no ribbon stretches across the map. */

@@ -7,6 +7,7 @@ import type { WorldStore } from '@/world/state/store'
 import type { Game } from '@/world/Game'
 import { landmarkById, resolvePanel } from '@/content/world'
 import { WorldMap } from './WorldMap'
+import { WorldControls } from './WorldControls'
 import { achievementGroups } from '@/content/achievements'
 import styles from './world.module.css'
 
@@ -66,6 +67,7 @@ export function WorldOverlays({ store, getGame }: Props) {
         {overlay === 'achievements' && <AchievementList getGame={getGame} />}
         {overlay === 'options' && <Options store={store} getGame={getGame} />}
         {overlay === 'map' && <WorldMap store={store} getGame={getGame} />}
+        {overlay === 'controls' && <WorldControls store={store} getGame={getGame} />}
       </div>
     </div>
   )
@@ -79,6 +81,7 @@ function PauseMenu({ store, getGame }: Props) {
     { label: 'Map', action: () => store.getState().setOverlay('map') },
     { label: 'Achievements', action: () => store.getState().setOverlay('achievements') },
     { label: 'Options', action: () => store.getState().setOverlay('options') },
+    { label: 'Controls', action: () => store.getState().setOverlay('controls') },
     {
       label: 'Respawn',
       action: () => {

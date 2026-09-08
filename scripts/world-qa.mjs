@@ -201,19 +201,28 @@ if (should('drive')) {
 if (should('boost')) {
   console.log('\nBOOST')
   await teleport(0, 60, Math.PI)
-  const before = await telemetry()
   await page.keyboard.down('KeyW')
-  await settle(700)
+  await settle(900)
   const cruise = (await telemetry()).speed
+
+  // PEAK speed, not final speed. The world is full of props and the
+  // boost run will eventually hit one; that is the world working, not
+  // the boost failing. What is being asserted is that boost raises
+  // the top speed, so sample across the window and take the maximum.
   await page.keyboard.down('ShiftLeft')
-  await settle(2200)
-  const boosted = await telemetry()
+  let peak = 0
+  let peakKmh = 0
+  for (let i = 0; i < 14; i++) {
+    await settle(160)
+    const t = await telemetry()
+    if (t.speed > peak) { peak = t.speed; peakKmh = t.speedKmh }
+  }
   await page.keyboard.up('ShiftLeft')
   await page.keyboard.up('KeyW')
-  check('boost increases speed', boosted.speed > cruise * 1.6,
-    `${cruise.toFixed(2)} → ${boosted.speed.toFixed(2)}`)
-  note(`boosted ${boosted.speedKmh.toFixed(0)} km/h`)
-  void before
+
+  check('boost increases speed', peak > cruise * 1.6,
+    `cruise ${cruise.toFixed(2)} → peak ${peak.toFixed(2)}`)
+  note(`boosted ${peakKmh.toFixed(0)} km/h`)
   await shot('04-boost')
 }
 
@@ -415,6 +424,77 @@ if (should('circuit')) {
 
   await page.keyboard.press('Escape')
   await settle(400)
+}
+
+/* ---- touch / mobile -------------------------------------- */
+
+if (should('touch')) {
+  console.log('\nTOUCH')
+  const mobile = await browser.newContext({
+    viewport: { width: 390, height: 844 },
+    deviceScaleFactor: 2,
+    hasTouch: true,
+    isMobile: true,
+    userAgent:
+      'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 ' +
+      '(KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1',
+  })
+  const phone = await mobile.newPage()
+  const phoneErrors = []
+  phone.on('pageerror', (e) => phoneErrors.push(String(e).slice(0, 200)))
+
+  await phone.goto(`${BASE}/world`, { waitUntil: 'domcontentloaded', timeout: 90000 })
+  await phone.waitForFunction(() => {
+    const b = [...document.querySelectorAll('button')].find((x) => x.textContent?.trim() === 'ENTER')
+    return b && !b.disabled
+  }, { timeout: 120000 })
+
+  const quality = await phone.evaluate(() => window.__world?.quality.level ?? null)
+  check('mobile picks a reduced quality tier', quality === 'low' || quality === 'medium',
+    `tier ${quality}`)
+
+  await phone.getByRole('button', { name: 'ENTER', exact: true }).click()
+  await phone.waitForTimeout(2200)
+
+  const mode = await phone.evaluate(() => window.__world?.inputs.mode)
+  check('input mode is touch on a phone', mode === 'touch', `mode ${mode}`)
+
+  const buttons = await phone.locator('button', { hasText: 'BOOST' }).count()
+  check('touch action buttons are present', buttons > 0)
+
+  // Drag to drive: the world-space joystick, one finger.
+  const before = await phone.evaluate(() => ({ ...window.__world.player.position }))
+  await phone.touchscreen.tap(200, 500)
+  await phone.evaluate(async () => {
+    const el = document.querySelector('canvas')
+    const send = (type, x, y) => {
+      const t = new Touch({ identifier: 1, target: el, clientX: x, clientY: y })
+      el.dispatchEvent(new TouchEvent(type, {
+        touches: type === 'touchend' ? [] : [t],
+        targetTouches: type === 'touchend' ? [] : [t],
+        changedTouches: [t], bubbles: true, cancelable: true,
+      }))
+    }
+    send('touchstart', 195, 430)
+    for (let i = 0; i < 30; i++) {
+      await new Promise((r) => setTimeout(r, 40))
+      send('touchmove', 195, 250 - i)
+    }
+  })
+  await settle(1800)
+  const after = await phone.evaluate(() => ({ ...window.__world.player.position }))
+  const moved = Math.hypot(after.x - before.x, after.z - before.z)
+  check('one finger drives the car', moved > 2, `moved ${moved.toFixed(1)} m`)
+
+  await phone.screenshot({ path: path.join(OUT, '12-mobile.png') })
+
+  const overflow = await phone.evaluate(
+    () => document.documentElement.scrollWidth > window.innerWidth + 1,
+  )
+  check('no horizontal overflow on a phone', !overflow)
+  check('no page errors on mobile', phoneErrors.length === 0, phoneErrors.slice(0, 2).join(' | '))
+
+  await mobile.close()
 }
 
 /* ---- teardown -------------------------------------------- */
