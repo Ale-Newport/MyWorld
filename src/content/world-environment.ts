@@ -19,6 +19,14 @@ export const CIRCUIT = {
   // ~780 m a lap, against the ~300 m loop this replaces.
   points:[[47,81],[46,45],[45,7],[44,-31],[43,-63],[39,-87],[28,-100],[14,-99],[12,-83],[11,-49],[10,-11],[9,25],[9,51],[5,65],[-5,73],[-15,66],[-18,45],[-19,9],[-20,-25],[-21,-57],[-25,-77],[-33,-87],[-41,-78],[-43,-57],[-45,-25],[-45,7],[-43,35],[-35,53],[-26,64],[-13,75],[7,78],[29,77],[43,79]] as [number,number][],
 }
+/**
+ * Sea level. The ground falls away past the coast as -(over*0.12)^1.7,
+ * so this number decides how wide the beach is: at -6 the waterline sat
+ * twenty-four metres out and the island wore a dead sandy ring. At -2.5
+ * the shore is about ten metres, which is a beach rather than a margin.
+ */
+export const OCEAN_LEVEL = -2.5
+
 export const LAKES = [
   // Lagoons threaded between the districts, the way the reference
   // scatters water through its content half rather than pooling it.

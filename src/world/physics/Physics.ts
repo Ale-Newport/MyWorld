@@ -121,7 +121,9 @@ export class Physics {
   private frictionRules: Record<string, RAPIER.CoefficientCombineRule>
 
   /** Surface elevation of water; bodies below it get heavy damping. */
-  waterElevation = -6
+  /** Sea level for buoyancy on anything not over inland water. Kept in
+   *  step with OCEAN_LEVEL in the geography; the world sets it at boot. */
+  waterElevation = -2.5
   waterAt: ((x: number, z: number) => number | null) | null = null
 
   constructor(rapier: typeof RAPIER, private ticker: Ticker, bin: Bin) {

@@ -2,7 +2,7 @@ import * as THREE from 'three'
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js'
 import type { Game } from '../Game'
 import type { Bin } from '../core/Disposal'
-import { LAKES, RIVER, WATERFALL, BRIDGES, inlandWater } from '@/content/world-environment'
+import { LAKES, RIVER, WATERFALL, BRIDGES, OCEAN_LEVEL, inlandWater } from '@/content/world-environment'
 
 /** WebGL water using world-space waves and terrain depth. The shore-depth and
  * wind ideas come from folio-2025 WaterSurface (MIT); GLSL and geometry are
@@ -71,8 +71,8 @@ export class Water {
       })
       const mesh = new THREE.Mesh(geometry, material); this.group.add(mesh); this.surfaces.push(mesh)
     }
-    const ocean = new THREE.PlaneGeometry(1600, 1600, 128, 128); ocean.rotateX(-Math.PI / 2); ocean.translate(0, -6, 0)
-    surface(ocean, -6, .3)
+    const ocean = new THREE.PlaneGeometry(1600, 1600, 128, 128); ocean.rotateX(-Math.PI / 2); ocean.translate(0, OCEAN_LEVEL, 0)
+    surface(ocean, OCEAN_LEVEL, .3)
     // Lake grids and river quads share the same terrain depth calculation.
     for (const lake of LAKES) {
       const geometry = new THREE.PlaneGeometry(lake.rx * 2.3, lake.rz * 2.3, 48, 40)
@@ -105,7 +105,7 @@ export class Water {
     this.buildBridges()
     this.buildWaterfall()
     game.physics.waterAt = (x,z) => { const w=inlandWater(x,z); return w && w.edge>0 ? w.level : null }
-    game.particles.waterLevelAt=(x,z)=>game.physics.waterAt?.(x,z)??-6
+    game.particles.waterLevelAt=(x,z)=>game.physics.waterAt?.(x,z)??OCEAN_LEVEL
     game.renderer.scene.add(this.group); bin.object3D(this.group)
     const tick=()=>this.update(); game.ticker.events.on('tick',tick,12)
     bin.add(()=>{game.ticker.events.off('tick',tick);game.physics.waterAt=null;game.particles.waterLevelAt=null})
@@ -148,7 +148,7 @@ export class Water {
     const game=this.game,p=game.player.position,now=game.ticker.elapsed,dt=Math.min(.05,game.ticker.delta)
     this.time.value=now;this.wind.value=game.weather.windStrength;this.night.value=game.lighting.nightFactor
     this.detail.value=game.quality.level==='low'?0:1;this.rain.value=game.weather.rain
-    const water=inlandWater(p.x,p.z),level=water&&water.edge>0?water.level:-6
+    const water=inlandWater(p.x,p.z),level=water&&water.edge>0?water.level:OCEAN_LEVEL
     const immersed=p.y<level+.45||game.vehicle.wheels.items.some(w=>w.inContact&&w.contactPoint&&w.contactPoint.y<level+.06)
     if(immersed && game.vehicle.xzSpeed>.8 && now>this.splashAt) {
       this.splashAt=now+.13;this.wake.value.set(p.x,p.z,now,1)

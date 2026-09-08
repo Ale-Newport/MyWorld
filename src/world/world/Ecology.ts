@@ -150,9 +150,13 @@ export class Ecology {
     }
     this.stats.trees = this.trees.length
     const leaf = new THREE.PlaneGeometry(.35, .18)
-    this.leafMesh = new THREE.InstancedMesh(leaf, new THREE.MeshStandardMaterial({ color: '#adb85f', side: THREE.DoubleSide, roughness: 1 }), 160)
+    // Upstream runs 4096 leaves on a compute shader. This is a CPU pool,
+    // so it is smaller — but 160 was few enough that a gust read as a
+    // handful of specks rather than as weather.
+    const leafPool = game.quality.count(420, 120)
+    this.leafMesh = new THREE.InstancedMesh(leaf, new THREE.MeshStandardMaterial({ color: '#adb85f', side: THREE.DoubleSide, roughness: 1 }), leafPool)
     this.leafMesh.frustumCulled = false; this.group.add(this.leafMesh)
-    for (let i = 0; i < 160; i++) {
+    for (let i = 0; i < leafPool; i++) {
       this.leaves.push({ p: new THREE.Vector3(), v: new THREE.Vector3(), life: 0, spin: 0 })
       this.leafMesh.setColorAt(i,new THREE.Color(['#adb85f','#c5a368','#8f9a57','#d0bc83'][i%4]))
     }
@@ -276,6 +280,21 @@ export class Ecology {
       if (leaf.life > 0) {
         leaf.v.y -= dt * 1.8; leaf.v.x += Math.sin(now * 2 + i) * dt; leaf.p.addScaledVector(leaf.v, dt)
         leaf.p.x += this.wind.value.x * dt; leaf.p.z += this.wind.value.y * dt
+
+        // The car's wake. A leaf a car drives through should lift and
+        // spin away from it, not sit there while the world moves past.
+        const carDx = leaf.p.x - this.car.value.x
+        const carDz = leaf.p.z - this.car.value.z
+        const carDistance = Math.hypot(carDx, carDz)
+        if (carDistance < 7 && Math.abs(leaf.p.y - this.car.value.y) < 4) {
+          const push = (1 - carDistance / 7) * Math.min(1, game.vehicle.xzSpeed / 9)
+          const inverse = 1 / (carDistance || 1)
+          leaf.v.x += carDx * inverse * push * 13 * dt
+          leaf.v.z += carDz * inverse * push * 13 * dt
+          leaf.v.y += push * 9 * dt
+          leaf.spin += push * 7 * dt
+          leaf.life = Math.max(leaf.life, 1.6)
+        }
         leaf.p.y = Math.max(game.world.terrain.colliderHeightAt(leaf.p.x, leaf.p.z) + .1, leaf.p.y)
         leaf.spin += dt * 2; this.scratch.position.copy(leaf.p); this.scratch.rotation.set(leaf.spin, leaf.spin * .3, leaf.spin * .8)
       }
