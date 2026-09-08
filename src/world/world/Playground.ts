@@ -1,5 +1,6 @@
 import * as THREE from 'three'
 import type { Game } from '../Game'
+import { DAYLIGHT_RANGE } from './Lighting'
 import type { Bin } from '../core/Disposal'
 import type { Physical, ColliderDescription } from '../physics/Physics'
 import { textGeometry } from './Type3D'
@@ -207,7 +208,13 @@ export class Playground {
     this.label('TIME MACHINE',group,new THREE.Vector3(0,10,0),12,2)
     this.game.interactions.add({id:'time-machine',position:group.position.clone(),radius:7,label:'JUMP TO THE NEXT COMMIT',sublabel:'Watch the island move through time.',onInteract:()=>{
       if(this.timeActive)return
-      this.machineUntil=this.game.ticker.elapsed+5;this.machinePhase=this.game.lighting.phase;this.machineDuration=this.game.lighting.duration;this.machineTarget=(this.machinePhase+.35)%1;this.timeActive=true;this.game.lighting.duration=0;this.game.audio.play('interact')
+      this.machineUntil=this.game.ticker.elapsed+5;this.machinePhase=this.game.lighting.phase;this.machineDuration=this.game.lighting.duration
+      // Sweeps the sun from one end of the daylight range to the
+      // other and back. It used to jump the clock forward through
+      // dusk, which was the one thing on the island that could still
+      // turn the lights off.
+      this.machineTarget=this.machinePhase<=(DAYLIGHT_RANGE.from+DAYLIGHT_RANGE.to)/2?DAYLIGHT_RANGE.to:DAYLIGHT_RANGE.from
+      this.timeActive=true;this.game.lighting.duration=0;this.game.audio.play('interact')
       this.game.achievements.set('timeMachine',1)
       this.game.recordSecret('timeMachine')
     }})
@@ -247,7 +254,7 @@ export class Playground {
     if(1-2*(q.x*q.x+q.z*q.z)<.4){this.game.achievements.set('cabin',1);this.game.recordSecret('cabin')}
     if(this.timeActive) {
       const t=Math.max(0,Math.min(1,1-(this.machineUntil-now)/5)),ease=t*t*(3-2*t)
-      this.game.lighting.phase=(this.machinePhase+ease*.35)%1
+      this.game.lighting.phase=this.machinePhase+(this.machineTarget-this.machinePhase)*ease
       this.machine.children.slice(1,4).forEach((ring,i)=>{ring.rotation.x=now*(i+1);ring.rotation.y=now*.7+i})
       if(t>=1){this.timeActive=false;this.game.lighting.phase=this.machineTarget;this.game.lighting.duration=this.machineDuration;this.game.particles.burst(this.machine.position.clone().add(new THREE.Vector3(0,4,0)),30,'confetti')}
     }

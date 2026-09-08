@@ -439,6 +439,18 @@ export class Terrain {
           const distance = distanceToPolyline(x, z, road.points)
           paved = Math.max(paved, 1 - smoothstep(distance, road.width * 0.42, road.width * 0.72))
         }
+        // THE RACING SURFACE. It was missing from this mask entirely,
+        // which is why grass grew down the middle of the circuit: the
+        // terrain flattened a corridor for it (see `heightAt`) and the
+        // ecology kept its scatter off it, but the GPU grass field —
+        // the dense one, the one you actually see — had never been
+        // told the track was there. Its shoulders are paved a little
+        // wider than the tarmac so the kerbs are clear too.
+        {
+          const distance = distanceToPolyline(x, z, CIRCUIT_TRACK)
+          const half = CIRCUIT.width * 0.5
+          paved = Math.max(paved, 1 - smoothstep(distance, half + 1.4, half + 3.4))
+        }
         for (const district of districts) {
           if (!district.plate) continue
           const distance = Math.hypot(x - district.x, z - district.z)
@@ -658,6 +670,28 @@ export class Terrain {
     const toPx = (v: number) => ((v + FIELD_HALF) / (FIELD_HALF * 2)) * size
     const scale = size / (FIELD_HALF * 2)
 
+    // Chippings, as a tileable stroke pattern. One 48 px tile of
+    // two-tone noise at roughly a metre per 1.2 px, so a road carries
+    // visible aggregate instead of a flat fill.
+    const grit = document.createElement('canvas')
+    grit.width = grit.height = 48
+    const gritCtx = grit.getContext('2d')
+    const aggregate = (() => {
+      if (!gritCtx) return palette.roadDark
+      const noise = seeded(9931)
+      const image = gritCtx.createImageData(48, 48)
+      for (let i = 0; i < image.data.length; i += 4) {
+        const n = noise()
+        const value = n < 0.42 ? 58 : n < 0.86 ? 78 : 104
+        image.data[i] = value + 2
+        image.data[i + 1] = value + 1
+        image.data[i + 2] = value + 6
+        image.data[i + 3] = 255
+      }
+      gritCtx.putImageData(image, 0, 0)
+      return ctx.createPattern(grit, 'repeat') ?? palette.roadDark
+    })()
+
     ctx.fillStyle = palette.paper2
     ctx.fillRect(0, 0, size, size)
 
@@ -747,33 +781,158 @@ export class Terrain {
       ctx.restore()
     }
 
-    /* ---- roads ------------------------------------------ */
-    ctx.lineCap = 'round'
-    ctx.lineJoin = 'round'
+    /* ---- the circuit -------------------------------------
+       Painted BEFORE the roads, so the link road crosses it rather
+       than being cut by it. The track had no painted surface at all:
+       terrain flattened a corridor and the checkered flag stood at
+       one end of it, but the racing line itself was the same
+       yellow-green as the field around it. From the car you could
+       not see where the track went.
 
-    for (const pass of ['edge', 'surface', 'centre'] as const) {
-      for (const road of roads) {
+       Run-off, then tarmac, then aggregate, then a racing line worn
+       into it, then red-and-white kerbing on both edges. */
+    {
+      const traceTrack = (inset: number) => {
         ctx.beginPath()
-        road.points.forEach(([x, z], i) => {
-          const px = toPx(x)
-          const py = toPx(z)
+        CIRCUIT_TRACK.forEach(([x, z], i) => {
+          const a = CIRCUIT_TRACK[Math.max(0, i - 1)]
+          const b = CIRCUIT_TRACK[Math.min(CIRCUIT_TRACK.length - 1, i + 1)]
+          const dx = b[0] - a[0], dz = b[1] - a[1]
+          const len = Math.hypot(dx, dz) || 1
+          const px = toPx(x + (-dz / len) * inset)
+          const py = toPx(z + (dx / len) * inset)
           if (i === 0) ctx.moveTo(px, py)
           else ctx.lineTo(px, py)
         })
+      }
+      const W = CIRCUIT.width
 
-        if (pass === 'edge') {
-          ctx.strokeStyle = palette.paper4
-          ctx.lineWidth = (road.width + 1.6) * scale
+      ctx.lineCap = 'round'
+      ctx.lineJoin = 'round'
+
+      traceTrack(0)
+      ctx.strokeStyle = '#b3a985'          // gravel run-off
+      ctx.lineWidth = (W + 7) * scale
+      ctx.stroke()
+
+      traceTrack(0)
+      ctx.strokeStyle = palette.roadDark
+      ctx.lineWidth = W * scale
+      ctx.stroke()
+
+      traceTrack(0)
+      ctx.strokeStyle = aggregate
+      ctx.globalAlpha = 0.45
+      ctx.lineWidth = W * scale
+      ctx.stroke()
+      ctx.globalAlpha = 1
+
+      // The racing line: a polished band a little inside the middle.
+      traceTrack(0)
+      ctx.strokeStyle = palette.roadLight
+      ctx.globalAlpha = 0.26
+      ctx.lineWidth = W * 0.5 * scale
+      ctx.stroke()
+      ctx.globalAlpha = 1
+
+      // Kerbs. Dashed twice with the phases offset gives the
+      // red-white-red-white alternation without two more passes.
+      for (const side of [-1, 1]) {
+        for (const [colour, offset] of [['#c9412a', 0], ['#eeeae0', 2.6 * scale]] as const) {
+          traceTrack(side * (W * 0.5 + 0.75))
+          ctx.strokeStyle = colour
+          ctx.lineWidth = 1.5 * scale
+          ctx.setLineDash([2.6 * scale, 2.6 * scale])
+          ctx.lineDashOffset = offset
+          ctx.stroke()
+        }
+      }
+      ctx.setLineDash([])
+      ctx.lineDashOffset = 0
+    }
+
+    /* ---- roads ------------------------------------------
+       Six passes, outside in. The road has to read as a surface from
+       a thirty-metre camera, which means it needs an EDGE — the old
+       two-tone concrete ribbon dissolved into the paving it crossed.
+       Shoulder, then tarmac, then aggregate, then wear down the
+       wheel tracks, then markings.
+
+       `void-run` is unsurfaced on purpose: it is the dirt track out
+       to the stunt ramp, and a lane-marked highway to a jump would
+       be a worse joke than no road at all. */
+    ctx.lineCap = 'round'
+    ctx.lineJoin = 'round'
+
+    const trace = (road: (typeof roads)[number]) => {
+      ctx.beginPath()
+      road.points.forEach(([x, z], i) => {
+        const px = toPx(x)
+        const py = toPx(z)
+        if (i === 0) ctx.moveTo(px, py)
+        else ctx.lineTo(px, py)
+      })
+    }
+    const dirt = (road: (typeof roads)[number]) => road.id === 'void-run'
+
+    for (const pass of ['shoulder', 'surface', 'aggregate', 'wear', 'edgeLine', 'centre'] as const) {
+      for (const road of roads) {
+        if (dirt(road) && (pass === 'edgeLine' || pass === 'centre' || pass === 'wear')) continue
+        trace(road)
+        ctx.globalAlpha = 1
+
+        if (pass === 'shoulder') {
+          ctx.strokeStyle = palette.roadShoulder
+          ctx.lineWidth = (road.width + 2.4) * scale
+          ctx.globalAlpha = dirt(road) ? 0.55 : 0.9
         } else if (pass === 'surface') {
-          ctx.strokeStyle = palette.concrete
+          ctx.strokeStyle = dirt(road) ? palette.roadDirt : palette.road
           ctx.lineWidth = road.width * scale
+        } else if (pass === 'aggregate') {
+          // Coarse chippings, so tarmac is not a flat fill under a
+          // directional light. The pattern is scaled to ~1 m.
+          ctx.strokeStyle = aggregate
+          ctx.lineWidth = road.width * scale
+          ctx.globalAlpha = dirt(road) ? 0.18 : 0.5
+        } else if (pass === 'wear') {
+          // Two polished wheel tracks. Roads are lighter where they
+          // are driven and darker in the middle, not the reverse.
+          ctx.strokeStyle = palette.roadLight
+          ctx.globalAlpha = 0.3
+          ctx.lineWidth = road.width * 0.62 * scale
+        } else if (pass === 'edgeLine') {
+          ctx.strokeStyle = palette.roadLine
+          ctx.globalAlpha = 0.5
+          ctx.lineWidth = Math.max(1, 0.35 * scale)
+          // Drawn twice, offset either side by half the carriageway.
+          ctx.save()
+          for (const side of [-1, 1]) {
+            ctx.beginPath()
+            road.points.forEach(([x, z], i) => {
+              const a = road.points[Math.max(0, i - 1)]
+              const b = road.points[Math.min(road.points.length - 1, i + 1)]
+              const dx = b[0] - a[0], dz = b[1] - a[1]
+              const len = Math.hypot(dx, dz) || 1
+              const nx = (-dz / len) * road.width * 0.42 * side
+              const nz = (dx / len) * road.width * 0.42 * side
+              const px = toPx(x + nx), py = toPx(z + nz)
+              if (i === 0) ctx.moveTo(px, py)
+              else ctx.lineTo(px, py)
+            })
+            ctx.stroke()
+          }
+          ctx.restore()
+          ctx.globalAlpha = 1
+          continue
         } else {
-          ctx.strokeStyle = palette.paper2
-          ctx.lineWidth = Math.max(1, 0.45 * scale)
+          ctx.strokeStyle = palette.roadLine
+          ctx.globalAlpha = 0.62
+          ctx.lineWidth = Math.max(1, 0.4 * scale)
           ctx.setLineDash([3.5 * scale, 3.5 * scale])
         }
         ctx.stroke()
         ctx.setLineDash([])
+        ctx.globalAlpha = 1
       }
     }
 

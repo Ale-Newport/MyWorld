@@ -271,7 +271,7 @@ export class Secrets {
       `Every model, sound and texture here is generated in the browser —\n` +
       `there is not one asset file in this route.\n\n` +
       `window.__world is live in development. Try:\n` +
-      `  __world.lighting.setPhase(0.05)   // night\n` +
+      `  __world.lighting.setPhase(0.5)    // high noon\n` +
       `  __world.minigames.start('circuit')\n` +
       `  __world.world.props.reset()\n\n` +
       `Source: ${github}`,
@@ -313,11 +313,14 @@ export class Secrets {
       this.phoneHopPeak = Math.max(this.phoneHopPeak, position.y - ground)
     }
 
-    // A tiny thing: the dev-room terminal only appears at night, so
-    // there is a reason to still be driving when the lights go out.
+    // A tiny thing: the dev-room terminal only appears in bad weather.
+    // It used to appear at night — but the island is locked to daylight
+    // now, and a secret that waits for something that never happens is
+    // not a secret, it is a bug. Rain is frequent enough to be found and
+    // rare enough to be worth finding.
     const devRoom = this.game.world.landmarks.get('secret-devroom')
     if (devRoom) {
-      const visible = this.game.lighting.nightFactor > 0.45
+      const visible = this.game.weather.rain > 0.35 || this.game.lighting.nightFactor > 0.45
       if (devRoom.group.visible !== visible) devRoom.group.visible = visible
       this.game.interactions.setEnabled('secret-devroom', visible)
     }

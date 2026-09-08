@@ -148,7 +148,10 @@ export class Renderer {
     this.instance.toneMapping = THREE.NeutralToneMapping
     this.instance.toneMappingExposure = 1.12
     this.instance.shadowMap.enabled = quality.settings.shadows
-    this.instance.shadowMap.type = THREE.PCFShadowMap
+    // Soft PCF: with the day locked open the sun is always high and
+    // always casting, so shadow EDGES are visible all the time. Hard
+    // PCF put a staircase on every tree.
+    this.instance.shadowMap.type = THREE.PCFSoftShadowMap
 
     this.scene.fog = new THREE.Fog(palette.paper, 120, 460)
 

@@ -17,6 +17,34 @@ export type TreeKind = 'oak' | 'birch' | 'pine' | 'cedar' | 'willow' | 'olive' |
 type Tree = { p: THREE.Vector3; radius: number; height: number; kind: TreeKind }
 const KINDS: TreeKind[] = ['oak', 'birch', 'pine', 'cedar', 'willow', 'olive', 'young', 'landmark']
 
+/** Chunk edge, metres. Chunks are square and axis-aligned. */
+const CHUNK = 64
+
+/**
+ * Where each detail layer shrinks away, in metres FROM THE CAMERA.
+ *
+ * These used to be hard `mesh.visible` switches at 80 / 105 / 150 m
+ * measured to the chunk's CENTRE — so a whole 64 m chunk of grass
+ * appeared at once, and the boundary between the chunks that were on
+ * and the chunks that were off swept around the car as a visible ring.
+ * A shrink-to-nothing band plus a cull measured to the chunk's nearest
+ * corner removes both halves of that: nothing switches, and what does
+ * eventually switch is already invisible.
+ */
+const FADE = {
+  grass: [86, 122] as [number, number],
+  bush: [118, 168] as [number, number],
+  flower: [64, 96] as [number, number],
+  rock: [140, 190] as [number, number],
+}
+/** Per-layer cull distance: the end of the fade, plus a chunk's reach. */
+const CULL: Record<number, number> = {
+  3: FADE.bush[1] + 8,
+  4: FADE.grass[1] + 8,
+  5: FADE.flower[1] + 8,
+  6: FADE.rock[1] + 8,
+}
+
 export class Ecology {
   readonly group = new THREE.Group()
   readonly trees: Tree[] = []
@@ -27,6 +55,7 @@ export class Ecology {
   private time = { value: 0 }
   private wind = { value: new THREE.Vector2() }
   private car = { value: new THREE.Vector3() }
+  private cam = { value: new THREE.Vector3() }
   private blast = { value: new THREE.Vector4(0, -100, 0, 0) }
   private scratch = new THREE.Object3D()
   private rand = seeded(904127)
@@ -55,16 +84,21 @@ export class Ecology {
     const grass = mergeGeometries(blades); blades.forEach(g => g.dispose())
     const flower = new THREE.IcosahedronGeometry(.22, 0)
     const rock = new THREE.IcosahedronGeometry(1, 0)
+    // Trunks never fade: a tree is a silhouette on the skyline, and
+    // its chunk is the only thing that ever switches it off.
     const solid = new THREE.MeshStandardMaterial({ roughness: .95 })
     const canopy = this.material(.085, .10)
-    const flexible = this.material(.38, 1.3)
-    const grassMaterial = this.material(.55, 2.3)
+    const bushMaterial = this.material(.38, .92, -1, .16, FADE.bush)
+    const flowerMaterial = this.material(.38, 1.10, -1, 0, FADE.flower)
+    const rockMaterial = this.material(0, 0, 0, 0, FADE.rock)
+    rockMaterial.roughness = .95
+    const grassMaterial = this.material(.55, 1.18, 0, 0, FADE.grass)
     grassMaterial.side = THREE.DoubleSide
     const buckets = new Map<string, { centre: THREE.Vector3; data: Instance[][] }>()
     const add = (layer: number, x: number, y: number, z: number, sx: number, sy: number, sz: number, color: string, yaw = r() * 6.28) => {
-      const key = `${Math.floor(x / 64)},${Math.floor(z / 64)}`
+      const key = `${Math.floor(x / CHUNK)},${Math.floor(z / CHUNK)}`
       let bucket = buckets.get(key)
-      if (!bucket) { bucket = { centre: new THREE.Vector3(Math.floor(x / 64) * 64 + 32, 0, Math.floor(z / 64) * 64 + 32), data: Array.from({ length: 7 }, () => []) }; buckets.set(key, bucket) }
+      if (!bucket) { bucket = { centre: new THREE.Vector3(Math.floor(x / CHUNK) * CHUNK + CHUNK / 2, 0, Math.floor(z / CHUNK) * CHUNK + CHUNK / 2), data: Array.from({ length: 7 }, () => []) }; buckets.set(key, bucket) }
       bucket.data[layer].push({ p: new THREE.Vector3(x, y, z), scale: new THREE.Vector3(sx, sy, sz), yaw, color: new THREE.Color(color).multiplyScalar(.87 + r() * .25) })
     }
     // A tree's family affects silhouette, branching, canopy height and palette.
@@ -128,7 +162,7 @@ export class Ecology {
       }
     }
     const geometries = [trunk, crown, cone, crown, grass, flower, rock]
-    const materials = [solid, canopy, canopy, flexible, grassMaterial, flexible, solid]
+    const materials = [solid, canopy, canopy, bushMaterial, grassMaterial, flowerMaterial, rockMaterial]
     for (const bucket of buckets.values()) {
       const group = new THREE.Group(), detail: THREE.InstancedMesh[] = []
       for (let layer = 0; layer < bucket.data.length; layer++) {
@@ -192,32 +226,118 @@ export class Ecology {
     return true
   }
 
-  private material(sway: number, bend: number): THREE.MeshStandardMaterial {
+  /**
+   * @param sway   wind amplitude, world metres per unit of blade height
+   * @param bend   how far the plant lays over for a car on top of it,
+   *               in RADIANS about its own root. Never a length.
+   * @param pivot  local Y of the root. 0 for geometry that grows from
+   *               its origin (blades); -1 for a centred ball (a bush,
+   *               a flower head), which pivots about the bottom of the
+   *               unit sphere instead of about its middle.
+   * @param squash how much the canopy compresses as it leans, 0..1.
+   * @param fade   [start, end] metres from the camera over which the
+   *               instance shrinks away. Reaches past anything the
+   *               chunk culler will hide, so a plant is always already
+   *               gone before its chunk switches off.
+   */
+  private material(
+    sway: number, bend: number, pivot = 0, squash = 0,
+    fade: [number, number] = [1e5, 2e5],
+  ): THREE.MeshStandardMaterial {
     const material = new THREE.MeshStandardMaterial({ roughness: .92 })
+    const ecoFade = { value: new THREE.Vector2(fade[0], fade[1]) }
     material.onBeforeCompile = shader => {
-      Object.assign(shader.uniforms, { ecoTime: this.time, ecoWind: this.wind, ecoCar: this.car, ecoBlast: this.blast })
-      shader.vertexShader = `varying vec3 vEcoWorld; uniform float ecoTime; uniform vec2 ecoWind; uniform vec3 ecoCar; uniform vec4 ecoBlast;\n${shader.vertexShader}`
+      Object.assign(shader.uniforms, {
+        ecoTime: this.time, ecoWind: this.wind, ecoCar: this.car,
+        ecoBlast: this.blast, ecoCam: this.cam, ecoFade,
+      })
+      shader.vertexShader = `varying vec3 vEcoWorld; uniform float ecoTime; uniform vec2 ecoWind; uniform vec3 ecoCar; uniform vec4 ecoBlast; uniform vec3 ecoCam; uniform vec2 ecoFade;\n${shader.vertexShader}`
       shader.fragmentShader = `varying vec3 vEcoWorld; uniform vec3 ecoCar;\n${shader.fragmentShader}`
       if(bend<.2)shader.fragmentShader=shader.fragmentShader.replace('#include <alphatest_fragment>',`#include <alphatest_fragment>
         float veil=(1.-smoothstep(3.,7.,length(vEcoWorld.xz-ecoCar.xz)))*step(ecoCar.y+2.,vEcoWorld.y);
         if(fract(sin(dot(gl_FragCoord.xy,vec2(12.9898,78.233)))*43758.5453)<veil*.85)discard;
       `)
+      /*
+        A plant hit by the car ROTATES ABOUT ITS ROOT. It does not
+        stretch, and it does not scale: a vertex h above the root ends
+        up at (h·sinθ, h·cosθ), which is the same h from the root that
+        it started at. The previous version pushed the tip sideways by
+        a fixed multiple of its height and only dropped it a little,
+        which lengthened a 0.9 m blade to 2.2 m — the starburst of long
+        spikes that appeared around a parked car.
+
+        The height is measured in WORLD metres and the displacement is
+        converted back through the instance's own scale, because these
+        instances are scaled anisotropically (a tuft is up to twice as
+        wide as it is tall). Rotating in local space and letting the
+        instance matrix stretch the result afterwards is the same bug
+        one level down.
+      */
+      /* The lean is worked out at `beginnormal_vertex`, which three.js
+         runs FIRST, so the same angle can turn the normal as well as
+         the position. Bending a blade without turning its normal is
+         what made the flattened patch under the car go dark: a blade
+         lying face-up was still being lit as though it stood on edge. */
+      shader.vertexShader = shader.vertexShader.replace('#include <beginnormal_vertex>', `
+        #include <beginnormal_vertex>
+        vec3 ecoRoot = (instanceMatrix * vec4(0.,${pivot.toFixed(1)},0.,1.)).xyz;
+        // Instance scale, as world metres per local unit.
+        float ecoSxz = max(1e-4, length(instanceMatrix[0].xyz));
+        float ecoSy  = max(1e-4, length(instanceMatrix[1].xyz));
+        // Local axes in world XZ, so a world direction can be expressed
+        // in the instance's own frame (the instances only ever yaw).
+        vec2 ecoAx = normalize(instanceMatrix[0].xz + vec2(1e-6, 0.));
+        vec2 ecoAz = normalize(instanceMatrix[2].xz + vec2(0., 1e-6));
+
+        vec2 ecoAway = ecoRoot.xz - ecoCar.xz;
+        // Only what the car is actually standing among, and only what
+        // is on its own level: a bush under a bridge does not flatten
+        // because a car crosses above it.
+        float ecoReach = 1. - smoothstep(.75, 2.5, length(ecoAway));
+        float ecoNear = ecoReach * step(abs(ecoRoot.y - ecoCar.y), 2.6);
+        vec2 ecoFromBlast = ecoRoot.xz - ecoBlast.xz;
+        float ecoBoom = (1.-smoothstep(0.,20.,length(ecoFromBlast))) * ecoBlast.w;
+
+        // One combined lean: the strongest influence wins the direction.
+        vec2 ecoPush = normalize(ecoAway+vec2(.001)) * ecoNear
+                     + normalize(ecoFromBlast+vec2(.001)) * ecoBoom * .55;
+        float ecoAngle = min(${bend.toFixed(2)}, length(ecoPush) * ${bend.toFixed(2)});
+        vec2 ecoDirW = normalize(ecoPush + vec2(1e-5));
+        vec2 ecoDirL = vec2(dot(ecoDirW, ecoAx), dot(ecoDirW, ecoAz));
+
+        // Rodrigues about the horizontal axis perpendicular to the lean,
+        // so the normal follows the geometry exactly.
+        vec3 ecoAxis = vec3(ecoDirL.y, 0., -ecoDirL.x);
+        objectNormal = objectNormal * cos(ecoAngle)
+                     + cross(ecoAxis, objectNormal) * sin(ecoAngle)
+                     + ecoAxis * dot(ecoAxis, objectNormal) * (1. - cos(ecoAngle));
+      `)
       shader.vertexShader = shader.vertexShader.replace('#include <begin_vertex>', `
         #include <begin_vertex>
-        vec3 root = (instanceMatrix * vec4(0.,0.,0.,1.)).xyz;
+        vec3 root = ecoRoot;
         float wave = sin(ecoTime*1.4 + root.x*.23 + root.z*.17);
-        float tip = max(0., position.y);
+        float tip = max(0., position.y - ${pivot.toFixed(1)});
         transformed.xz += ecoWind * wave * ${sway.toFixed(2)} * (tip+.15);
-        vec2 away = root.xz - ecoCar.xz;
-        float nearCar = 1. - smoothstep(1.,5.,length(away));
-        transformed.xz += normalize(away+vec2(.001)) * nearCar * ${bend.toFixed(2)} * tip;
-        transformed.y -= nearCar * tip * ${Math.min(.55, bend * .15).toFixed(2)};
-        vec2 fromBlast = root.xz - ecoBlast.xz;
-        transformed.xz += normalize(fromBlast+vec2(.001)) * (1.-smoothstep(0.,20.,length(fromBlast))) * ecoBlast.w * tip * .5;
+
+        // World height of this vertex above the root.
+        float ecoH = max(0., transformed.y - ${pivot.toFixed(1)}) * ecoSy;
+        transformed.xz += ecoDirL * (ecoH * sin(ecoAngle)) / ecoSxz;
+        transformed.y  -= (ecoH * (1. - cos(ecoAngle))) / ecoSy;
+        ${squash > 0 ? `
+        // A volumetric plant also compresses and its leaves shake.
+        transformed.xz *= 1. - ${squash.toFixed(2)} * ecoNear;
+        transformed.xz += vec2(sin(ecoTime*21.+root.x*3.1), cos(ecoTime*17.+root.z*2.7))
+                          * ecoNear * .05 * tip;` : ''}
+
+        // Distance fade. Instances shrink into the ground long before
+        // the chunk they live in is culled, so nothing ever pops.
+        float ecoFar = distance(root, ecoCam);
+        transformed *= 1. - smoothstep(ecoFade.x, ecoFade.y, ecoFar);
+
         vEcoWorld=(modelMatrix*instanceMatrix*vec4(transformed,1.)).xyz;
       `)
     }
-    material.customProgramCacheKey = () => `ecology-${sway}-${bend}`
+    material.customProgramCacheKey = () => `ecology-${sway}-${bend}-${pivot}-${squash}-${fade[0]}`
     return material
   }
 
@@ -233,18 +353,31 @@ export class Ecology {
   private update(): void {
     const { game } = this, dt = Math.min(.05, game.ticker.delta), now = game.ticker.elapsed
     this.time.value = now; this.car.value.copy(game.player.position)
+    // Vegetation fades against the CAMERA, not the car: at maximum
+    // zoom-out the camera is thirty metres behind, and fading against
+    // the car puts the boundary inside the frame.
+    this.cam.value.copy(game.view.position)
     this.wind.value.copy(game.weather.windDirection).multiplyScalar(.3 + game.weather.windStrength)
     this.blast.value.w *= Math.exp(-dt * 3)
     if (now > this.nextChunks) {
-      this.nextChunks = now + .35; this.stats.visibleChunks = 0
+      // Faster than the old 0.35 s: a boosting car covers twelve metres
+      // in that time, which was enough to outrun the cull update.
+      this.nextChunks = now + .12; this.stats.visibleChunks = 0
       const distance = game.quality.settings.drawDistance
+      const eye = game.view.position
       for (const patch of this.patches) {
-        const d = patch.centre.distanceTo(game.player.position)
+        // Distance to the NEAREST POINT of the chunk, not to its
+        // centre. A 64 m chunk measured from its middle is wrong by up
+        // to 45 m at the corners, which is what quantised the boundary
+        // into something the eye could follow.
+        const dx = Math.max(0, Math.abs(eye.x - patch.centre.x) - CHUNK / 2)
+        const dz = Math.max(0, Math.abs(eye.z - patch.centre.z) - CHUNK / 2)
+        const d = Math.hypot(dx, dz)
         patch.group.visible = d < distance + 46
         if (patch.group.visible) this.stats.visibleChunks++
         for (const mesh of patch.detail) {
           const layer = mesh.userData.layer as number
-          mesh.visible = d < (layer === 4 ? 80 : layer === 3 ? 150 : 105)
+          mesh.visible = d < CULL[layer]
           mesh.count = Math.round(mesh.userData.capacity * (layer === 4 ? Math.max(.2, game.quality.settings.density) : Math.max(.45, game.quality.settings.density)))
         }
       }

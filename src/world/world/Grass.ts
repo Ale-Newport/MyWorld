@@ -45,6 +45,8 @@ const VERTEX = /* glsl */`
   uniform float uMaskExtent;
   uniform float uHeightBias;
   uniform float uHeightScale;
+  /** Radial band this ring covers: fade in over .xy, out over .zw. */
+  uniform vec4  uBand;
 
   attribute vec2  aBlade;
   attribute float aCorner;
@@ -53,6 +55,7 @@ const VERTEX = /* glsl */`
   varying float vTipness;
   varying float vGrass;
   varying float vDepth;
+  varying float vCrushed;
 
   float hash(vec2 p) {
     return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453123);
@@ -85,11 +88,20 @@ const VERTEX = /* glsl */`
     // with it the ground reads as grass that grew somewhere.
     float broad = 0.45 + noise(world * 0.0321) * 0.85;   // 'patch' is reserved in GLSL
     float tuft  = 0.55 + noise(world * 0.34) * 0.9;
+
+    // This ring's radial band. Blades grow in over the inner edge and
+    // shrink away over the outer one, so a ring never has a boundary:
+    // its blades are already zero-height where it stops. The near ring
+    // hands over to the far ring inside the band they share.
+    float fromEye = length(looped);
+    float band = smoothstep(uBand.x, uBand.y, fromEye)
+               * (1.0 - smoothstep(uBand.z, uBand.w, fromEye));
+
     float height = uBladeHeight
       * (0.4 + 0.6 * aHeightRandom)
       * broad * tuft
-      * grass;
-    float width = uBladeWidth * grass;
+      * grass * band;
+    float width = uBladeWidth * grass * mix(0.55, 1.0, band);
 
     // Blade shape in its own plane: tip up, two corners at the root.
     vec2 shape = aCorner < 0.5 ? vec2(0.0, height)
@@ -110,20 +122,27 @@ const VERTEX = /* glsl */`
     float gust = noise(world * 0.02 + uWind * uTime * 0.06) - 0.5;
     position.xz += uWind * gust * vTipness * height * 2.0;
 
-    // The car flattens what it drives through. Blades spring back as
-    // it leaves, because nothing here remembers being crushed.
+    // The car flattens what it drives through: the blade ROTATES about
+    // its root by up to ~72°, which moves the tip a long way without
+    // ever making the blade longer than it was. Pushing the tip out by
+    // a multiple of the height — which is what this did — grew a 0.6 m
+    // blade into a metre-long spike, and a parked car sat in a
+    // starburst of them.
     vec2 fromCar = world - uCar.xz;
     float reach = length(fromCar);
-    float crushed = (1.0 - smoothstep(1.2, 3.6, reach)) * step(abs(groundY - uCar.y), 3.0);
-    position.xz += normalize(fromCar + vec2(1e-4)) * crushed * vTipness * height * 0.9;
-    position.y -= crushed * vTipness * height * 0.8;
+    float crushed = (1.0 - smoothstep(1.0, 2.9, reach)) * step(abs(groundY - uCar.y), 2.4);
+    float lay = crushed * 1.26;
+    position.xz += normalize(fromCar + vec2(1e-4)) * (height * sin(lay)) * vTipness;
+    position.y -= height * (1.0 - cos(lay)) * vTipness;
+    vCrushed = crushed;
 
     vec4 view = viewMatrix * vec4(position, 1.0);
     vDepth = -view.z;
 
-    // A blade with no grass under it is pushed out of the frustum
-    // rather than degenerated, so the triangle count stays static.
-    view.y += step(grass, 0.02) * 10000.0;
+    // A blade with no grass under it — or none left after the radial
+    // band — is pushed out of the frustum rather than degenerated, so
+    // the triangle count stays static.
+    view.y += step(grass * band, 0.02) * 10000.0;
     gl_Position = projectionMatrix * view;
   }
 `
@@ -140,41 +159,48 @@ const FRAGMENT = /* glsl */`
   varying float vTipness;
   varying float vGrass;
   varying float vDepth;
+  varying float vCrushed;
 
   void main() {
     // Darker at the root: a free ambient-occlusion cue that stops the
     // field reading as a flat green sheet from above.
     vec3 colour = mix(uRoot, uTip, vTipness * 0.85 + 0.15);
     colour *= 0.84 + 0.16 * vGrass;
+    // A blade laid flat is showing its face to the sky, so it reads
+    // LIGHTER, not darker. Without this the flattened patch under the
+    // car looked like a scorch mark rather than like trodden grass.
+    colour = mix(colour, uTip * 1.06, vCrushed * 0.55);
 
     float fog = smoothstep(uFogNear, uFogFar, vDepth);
     gl_FragColor = vec4(mix(colour, uFogColor, fog), 1.0);
   }
 `
 
-export class Grass {
+/** One toroidal ring of the clipmap. */
+interface RingSpec {
+  /** Square edge, metres. Must be at least twice `bandOut`. */
+  size: number
+  /** Blades along one edge. */
+  subdivisions: number
+  /** Blade width and height multipliers. */
+  scale: number
+  /** [fadeInStart, fadeInEnd, fadeOutStart, fadeOutEnd] radii, metres. */
+  band: [number, number, number, number]
+}
+
+class Ring {
   readonly mesh: THREE.Mesh
   readonly bladeCount: number
-  private readonly material: THREE.ShaderMaterial
+  readonly material: THREE.ShaderMaterial
   private readonly geometry: THREE.BufferGeometry
   private readonly size: number
 
-  constructor(terrain: Terrain, quality: Quality, bin: Bin) {
-    // Upstream's field is ~61 m across carrying 280² blades, which is
-    // ~21 per m². Matching the RATIO matters more than matching either
-    // number: a bigger field at the same count is a thinner lawn.
-    this.size = Math.round(46 + 26 * quality.settings.density)
-    const subdivisions = quality.count(340, 110)
+  constructor(terrain: Terrain, quality: Quality, bin: Bin, spec: RingSpec) {
+    this.size = spec.size
+    const subdivisions = spec.subdivisions
     const count = subdivisions * subdivisions
     this.bladeCount = count
     const fragment = this.size / subdivisions
-
-    // Upstream grows the blades as the visible area grows, so a
-    // sparser field still covers the ground rather than pin-cushioning.
-    const ideal = 2000
-    // Capped: past a point, growing the blades to cover a thinner field
-    // stops reading as grass and starts reading as a field of spikes.
-    const overflow = Math.min(1, Math.max(0, this.size * this.size - ideal) / ideal)
 
     const blade = new Float32Array(count * 3 * 2)
     const corner = new Float32Array(count * 3)
@@ -214,8 +240,9 @@ export class Grass {
       uniforms: {
         uCenter: { value: new THREE.Vector2() },
         uSize: { value: this.size },
-        uBladeWidth: { value: 0.1 * (1 + overflow * 0.5) },
-        uBladeHeight: { value: 0.6 * (1 + overflow * 0.5) },
+        uBand: { value: new THREE.Vector4(...spec.band) },
+        uBladeWidth: { value: 0.1 * spec.scale },
+        uBladeHeight: { value: 0.6 * spec.scale },
         uTime: { value: 0 },
         uWind: { value: new THREE.Vector2(1, 0.35) },
         uCar: { value: new THREE.Vector3() },
@@ -254,5 +281,80 @@ export class Grass {
     this.material.uniforms.uFogColor.value.copy(color)
     this.material.uniforms.uFogNear.value = near
     this.material.uniforms.uFogFar.value = far
+  }
+}
+
+/* ============================================================
+   THE CLIPMAP
+
+   One ring is upstream's design and it is right up to about
+   thirty metres, which is as far as upstream's camera looks.
+   This camera pulls back to a thirty-metre boom on a
+   twenty-five-degree lens, so the ground is still legible at
+   eighty — and a single 72 m field put its own corner inside
+   the frame. That corner is the "circle of grass around the
+   car" the brief describes.
+
+   So: nested rings, like a shadow clipmap. Each is a toroidal
+   field of its own — nothing is ever allocated, streamed or
+   respawned, which is the property worth keeping — and each
+   covers a radial BAND, growing in at its inner edge and
+   shrinking away at its outer one. The near ring is dense and
+   fine; the far ring is a quarter of the density with blades
+   twice the size, which at sixty metres is indistinguishable
+   and costs a third of the vertices.
+
+   Because the bands overlap and every blade goes to zero
+   height at both ends of its own band, there is no boundary
+   anywhere: not between the rings, and not at the outside,
+   where the last blades shrink into terrain that is already
+   painted green.
+   ============================================================ */
+
+export class Grass {
+  readonly group = new THREE.Group()
+  readonly rings: Ring[] = []
+  readonly bladeCount: number
+  /** Kept for the QA harness, which reads the near ring's extent. */
+  readonly size: number
+
+  constructor(terrain: Terrain, quality: Quality, bin: Bin) {
+    const density = quality.settings.density
+
+    // Upstream's ratio is ~21 blades/m². The near ring holds it; the
+    // far ring trades density for reach and grows its blades to match.
+    const near: RingSpec = {
+      size: 64,
+      subdivisions: quality.count(330, 132),
+      scale: 1,
+      band: [-1, 0, 24, 31],
+    }
+    const far: RingSpec = {
+      size: 190,
+      subdivisions: quality.count(300, 0),
+      scale: 2.35,
+      band: [22, 30, 74, 92],
+    }
+
+    this.rings.push(new Ring(terrain, quality, bin, near))
+    // The far ring is the first thing to go on a weak machine: without
+    // it the near ring simply reaches its own edge, which is where it
+    // was before, and a low-quality device is not running a 30 m boom
+    // over open country anyway.
+    if (density > 0.55) this.rings.push(new Ring(terrain, quality, bin, far))
+
+    for (const ring of this.rings) this.group.add(ring.mesh)
+    this.bladeCount = this.rings.reduce((n, r) => n + r.bladeCount, 0)
+    this.size = near.size
+    bin.add(() => this.group.removeFromParent())
+  }
+
+  /** Recentre every ring on the camera. Two uniform writes. */
+  update(camera: THREE.Vector3, car: THREE.Vector3, wind: THREE.Vector2, elapsed: number): void {
+    for (const ring of this.rings) ring.update(camera, car, wind, elapsed)
+  }
+
+  setFog(color: THREE.Color, near: number, far: number): void {
+    for (const ring of this.rings) ring.setFog(color, near, far)
   }
 }

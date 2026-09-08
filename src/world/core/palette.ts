@@ -63,6 +63,27 @@ export const palette = {
   metal: '#8a8a92',
   glass: '#9fb4c9',
 
+  /* ---- ROAD SURFACES ------------------------------------------
+     Roads used to be painted in `concrete` (#cfcbc2), which is two
+     shades off the paper the districts are paved with and lighter
+     than the grass either side. From the driving camera the network
+     simply did not read: you could not tell where the road went
+     without looking at the map.
+
+     This is deliberately not black. A charcoal ribbon across a
+     pale-green island reads as a scar; these are the warm, slightly
+     blue-grey greys of worn asphalt, dark enough to hold their own
+     against #b6be88 grass and light enough to take a shadow. */
+  road: '#5d5c5f',
+  roadDark: '#4b4a4e',
+  roadLight: '#6e6d70',
+  /** Compacted dirt and gravel where the tarmac ends. */
+  roadShoulder: '#9c9276',
+  /** Lane and edge markings. Bone, not white — white flares. */
+  roadLine: '#d8d4c6',
+  /** Unsurfaced tracks: the dirt run out to the stunt ramp. */
+  roadDirt: '#a08d6f',
+
   /* Sky and light. */
   skyDay: '#dfe4e8',
   skyDusk: '#c69a7e',

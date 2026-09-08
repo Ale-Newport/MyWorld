@@ -315,8 +315,9 @@ export class Game {
     // view exists and updated in the same slot as the rest of the
     // vegetation (upstream runs Grass at tick order 10 too).
     this.grass = new Grass(this.world.terrain, this.quality, this.bin)
-    this.renderer.scene.add(this.grass.mesh)
+    this.renderer.scene.add(this.grass.group)
     {
+      const fogColour = new THREE.Color()
       const follow = () => {
         this.grass.update(
           this.view.camera.position,
@@ -324,6 +325,14 @@ export class Game {
           this.weather.windDirection.clone().multiplyScalar(0.35 + this.weather.windStrength),
           this.ticker.elapsed,
         )
+        // The grass runs its own fog — it is not a lit material — so it
+        // has to be told what the sky is doing, or the far ring stays
+        // the colour of a clear noon through a rainstorm.
+        const fog = this.renderer.scene.fog as THREE.Fog | null
+        if (fog) {
+          fogColour.copy(fog.color).lerp(this.lighting.ambient.color, 0.18)
+          this.grass.setFog(fogColour, fog.near * 0.55, fog.far * 0.92)
+        }
       }
       this.ticker.events.on('tick', follow, 10)
       this.bin.add(() => this.ticker.events.off('tick', follow))
@@ -448,10 +457,15 @@ export class Game {
     }
     this.vehicle.events.on('collision', onCollision as never)
 
-    // Night factor drives headlights and a few secrets.
+    // The world is locked to daylight, so `nightFactor` now only ever
+    // rises under heavy weather — which is exactly when headlights are
+    // worth having, and what STORM SHIFT is now awarded for.
     const syncNight = () => {
-      this.visualVehicle.nightFactor = this.lighting.nightFactor
-      if (this.lighting.nightFactor > 0.6 && this.vehicle.speed > 1) {
+      this.visualVehicle.nightFactor = Math.max(
+        this.lighting.nightFactor,
+        this.weather.rain * 0.75 + this.weather.snow * 0.5,
+      )
+      if (this.weather.rain > 0.45 && this.vehicle.speed > 1) {
         this.achievements.set('nightDrive', 1)
       }
     }

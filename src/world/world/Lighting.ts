@@ -26,13 +26,32 @@ import type { World } from './World'
    world beyond the box simply has none, which nobody notices at
    this camera angle.
 
-   A full day is DAY_DURATION seconds. It is deliberately long
-   enough that a visitor is not strobed between noon and midnight,
-   and short enough that someone who stays fifteen minutes sees
-   the world go dark once.
+   THE WORLD IS ALWAYS DAY. The clock still runs — weather, the
+   sky dome, the secrets and the headlights all read `phase`, and
+   removing it would mean unpicking all of them — but it runs
+   BETWEEN `DAYLIGHT_RANGE`, which is late morning to early
+   afternoon and nothing else. The sun climbs and falls, shadows
+   swing across the island, the light warms and cools, and it
+   never once gets dark.
+
+   A portfolio is read, not lived in. Someone who arrives while
+   the island happens to be at midnight sees a black screen and
+   leaves, and no amount of lantern-lighting fixes that. The
+   keyframes outside the range are kept because `setPhase` is
+   still allowed to scrub anywhere — the TIME MACHINE uses it —
+   and because a cycle that only exists between two numbers is
+   harder to read than one that is clamped at the edge.
    ============================================================ */
 
 export const DAY_DURATION = 600
+
+/**
+ * The only phases the clock is allowed to reach on its own.
+ * 0.38 is mid-morning, 0.5 is noon, 0.62 is early afternoon; all
+ * three have the sun high, the sky bright and the shadows long
+ * enough to model the ground without swallowing it.
+ */
+export const DAYLIGHT_RANGE = { from: 0.38, to: 0.62 } as const
 
 interface Keyframe {
   /** Day phase, 0..1. 0 = midnight, 0.25 = dawn, 0.5 = noon. */
@@ -66,11 +85,13 @@ export class Lighting {
   readonly ambient: THREE.HemisphereLight
   readonly sunTarget = new THREE.Object3D()
 
-  /** 0..1 day phase. */
-  phase = 0.42
+  /** 0..1 day phase. Driven from `daylight`; never leaves daytime. */
+  phase = 0.46
+  /** 0..2 sweep position: 0→1 climbs to `to`, 1→2 falls back. */
+  private daylight = (0.46 - DAYLIGHT_RANGE.from) / (DAYLIGHT_RANGE.to - DAYLIGHT_RANGE.from)
   /** 0..1, how dark it is. Read by headlights, signs and secrets. */
   nightFactor = 0
-  /** Seconds per full day. Set to 0 to freeze time. */
+  /** Seconds per full sweep. Set to 0 to freeze time. */
   duration = DAY_DURATION
 
   private readonly skyColor = new THREE.Color()
@@ -132,22 +153,38 @@ export class Lighting {
     this.sun.shadow.mapSize.set(size, size)
     // ~90 m box around the player: big enough to hold the car, its
     // district's landmarks and anything it is about to drive into.
-    this.shadowExtent = this.quality.level === 'high' ? 52 : 40
+    // With the day locked open, shadows are the main thing modelling
+    // the ground, so the box is sized to the texel budget rather than
+    // to a round number: 2048 over 58 m is 3.5 cm a texel, which holds
+    // a kerb edge; 1024 over 44 m is 4.3 cm, which holds a tree.
+    this.shadowExtent = this.quality.level === 'high' ? 58 : 44
     const camera = this.sun.shadow.camera
     camera.left = -this.shadowExtent
     camera.right = this.shadowExtent
     camera.top = this.shadowExtent
     camera.bottom = -this.shadowExtent
     camera.near = 1
-    camera.far = 260
+    // The sun never drops below ~35 degrees now, so it never needs the
+    // 260 m slant it used at dusk. A tighter range is more depth
+    // precision for the same buffer.
+    camera.far = 210
     camera.updateProjectionMatrix()
-    this.sun.shadow.bias = -0.0012
-    this.sun.shadow.normalBias = 0.045
+    // Acne showed on the long shallow slopes of the coast at the old
+    // bias; normalBias does the work instead, because it scales with
+    // the surface angle rather than pushing everything back equally.
+    this.sun.shadow.bias = -0.0006
+    this.sun.shadow.normalBias = size >= 2048 ? 0.032 : 0.055
+    this.sun.shadow.radius = size >= 2048 ? 2.4 : 1.6
   }
 
-  /** Jumps the clock. `phase` is 0..1 across a full day. */
+  /** Jumps the clock. `phase` is 0..1 across a full day.
+   *  A phase inside the daylight range also moves the sweep, so it
+   *  sticks instead of being overwritten on the next tick. */
   setPhase(phase: number): void {
     this.phase = ((phase % 1) + 1) % 1
+    const span = DAYLIGHT_RANGE.to - DAYLIGHT_RANGE.from
+    const t = (this.phase - DAYLIGHT_RANGE.from) / span
+    if (t >= 0 && t <= 1) this.daylight = t
     this.apply()
   }
 
@@ -241,7 +278,13 @@ export class Lighting {
 
   private update(): void {
     if (this.duration > 0) {
-      this.phase = (this.phase + this.ticker.delta / this.duration) % 1
+      // Ping-pong across the daylight range instead of running round
+      // the clock. A full sweep out and back takes DAY_DURATION, so
+      // the light still moves at a pace you can notice over a visit
+      // without ever leaving the afternoon.
+      this.daylight = (this.daylight + (this.ticker.delta * 2) / this.duration) % 2
+      const t = this.daylight < 1 ? this.daylight : 2 - this.daylight
+      this.phase = lerp(DAYLIGHT_RANGE.from, DAYLIGHT_RANGE.to, t * t * (3 - 2 * t))
     }
     this.apply()
 

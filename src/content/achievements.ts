@@ -68,7 +68,9 @@ export const achievements: Achievement[] = [
   { id: 'explorer', label: 'EXPLORER', hint: 'Enter every signposted district.', group: 'exploration', target: 13 },
   { id: 'sea', label: 'OUT OF BOUNDS', hint: 'Drive past the edge of the world.', group: 'exploration', target: 1 },
   { id: 'notes', label: 'MARGINALIA', hint: 'Find six dev notes.', group: 'exploration', target: 6 },
-  { id: 'nightDrive', label: 'NIGHT SHIFT', hint: 'Drive after dark.', group: 'exploration', target: 1 },
+  // The island no longer has a night, so this is the weather instead:
+  // it rains often enough to be found and rarely enough to be a find.
+  { id: 'nightDrive', label: 'STORM SHIFT', hint: 'Drive through the rain.', group: 'exploration', target: 1 },
 
   /* ---- projects ------------------------------------------ */
   { id: 'projects', label: 'READING UP', hint: 'Open ten project panels.', group: 'projects', target: 10 },
