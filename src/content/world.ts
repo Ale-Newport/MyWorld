@@ -418,8 +418,19 @@ export const respawns: Respawn[] = [
     sixteen metres of a road so there is a way out, inside its own
     district, and facing that district's centre — which is the thing
     you came to look at.
+
+    Three of them — hub, voxel and network — carry a further nudge that
+    only the finished world could find: a static registry knows where a
+    voxel field is declared, not how tall the stack it generates turns
+    out to be. `Respawns.validate()` still runs as a net (and now
+    actually works — it used to compare the heightfield with itself and
+    so had never moved a point in its life), but with these baked in it
+    finds nothing to do.
   */
-  { id: 'hub', x: 25.6, z: -20.3, rotation: 1.964, district: 'hub' },
+  // On the ring road where it leaves the hub, facing back at the
+  // name. Clear of the signpost cluster at (32.6, -21.4) that the
+  // point inside the plate kept landing on.
+  { id: 'hub', x: 30, z: -24, rotation: 2.07, district: 'hub' },
   // The whole north side of the hub plate is the physical name, so the
   // second hub point is on the forecourt south of it rather than behind
   // the letters, where it used to spawn the car inside an A.
@@ -436,8 +447,8 @@ export const respawns: Respawn[] = [
   { id: 'stock', x: 80.8, z: -73.9, rotation: 3.014, district: 'stock' },
   { id: 'circuit', x: -54.7, z: 78.1, rotation: 0.662, district: 'circuit' },
   { id: 'labyrinth', x: 111.6, z: -66, rotation: 3.142, district: 'labyrinth' },
-  { id: 'voxel', x: 130.4, z: -5.3, rotation: -3.085, district: 'voxel' },
-  { id: 'network', x: 85.9, z: -92.5, rotation: -2.493, district: 'network' },
+  { id: 'voxel', x: 136.8, z: -2.6, rotation: -3.085, district: 'voxel' },
+  { id: 'network', x: 92.3, z: -89.8, rotation: -2.493, district: 'network' },
   { id: 'studio', x: 104, z: 87.6, rotation: -1.571, district: 'studio' },
   { id: 'orbit', x: 33.7, z: -53.6, rotation: 1.056, district: 'orbit' },
   { id: 'archive', x: 52.6, z: 102.8, rotation: 3.077, district: 'archive' },

@@ -372,9 +372,12 @@ export class Game {
     // Respawn points are authored before the things that end up
     // standing on them exist, so they check themselves against the
     // finished world and step aside where they have to.
+    // The query pipeline is built by `step()`, and nothing has stepped
+    // yet — without this every ray below returns null.
+    this.physics.refreshQueries()
     const moved = this.respawns.validate(
       (x, z) => this.world.terrain.colliderHeightAt(x, z),
-      (x, z) => this.physics.groundAt(x, z, 90, 220),
+      (x, z) => this.physics.obstacleAt(x, z, 90, 220),
     )
     if (process.env.NODE_ENV === 'development' && moved.length > 0) {
       console.info('[world] respawn points adjusted:\n  ' + moved.join('\n  '))

@@ -1,6 +1,7 @@
 import * as THREE from 'three'
 import type RAPIER from '@dimforge/rapier3d-compat'
 import type { Ticker } from '../core/Ticker'
+import { OCEAN_LEVEL } from '@/content/world-environment'
 import type { Bin } from '../core/Disposal'
 
 /* ============================================================
@@ -118,12 +119,21 @@ export class Physics {
   readonly categories: Record<PhysicsCategory, number>
   /** InteractionGroups for a raycast that should only see solid world. */
   readonly queryTerrainOnly: number
+  readonly queryObjectsOnly: number
   private frictionRules: Record<string, RAPIER.CoefficientCombineRule>
 
-  /** Surface elevation of water; bodies below it get heavy damping. */
-  /** Sea level for buoyancy on anything not over inland water. Kept in
-   *  step with OCEAN_LEVEL in the geography; the world sets it at boot. */
-  waterElevation = -2.5
+  /**
+   * Sea level for damping on anything not over inland water.
+   *
+   * Read straight from the geography rather than duplicated. The
+   * comment here used to claim "the world sets it at boot"; nothing
+   * did, so this was a second, silently divergent copy of
+   * OCEAN_LEVEL sitting in the middle of the physics step. Changing
+   * the beach would have moved the waterline without moving the
+   * damping threshold, and the resulting "the car goes heavy on dry
+   * sand" would have looked like a vehicle bug.
+   */
+  waterElevation = OCEAN_LEVEL
   waterAt: ((x: number, z: number) => number | null) | null = null
 
   constructor(rapier: typeof RAPIER, private ticker: Ticker, bin: Bin) {
@@ -142,6 +152,8 @@ export class Physics {
 
     // Query mask that matches the floor category and nothing else.
     this.queryTerrainOnly = (terrain << 16) | terrain
+    // …and one that matches everything BUILT, and no terrain at all.
+    this.queryObjectsOnly = ((all | object) << 16) | (all | object)
 
     this.frictionRules = {
       average: rapier.CoefficientCombineRule.Average,
@@ -397,6 +409,40 @@ export class Physics {
     // row seam. A 1 mm offset avoids a false "no ground" at authored points.
     const seam = this.world.castRay(new this.rapier.Ray({ x, y, z: z + .001 }, { x: 0, y: -1, z: 0 }), maxDistance, true, undefined, this.queryTerrainOnly)
     return seam ? y - seam.timeOfImpact : null
+  }
+
+  /**
+   * The top of whatever is BUILT at this column — a wall, a ramp, a
+   * gate, a voxel stack — or null for open ground.
+   *
+   * `groundAt` filters to the terrain group, so asking it whether a
+   * respawn point is clear of a structure compared the heightfield
+   * with itself and always said yes. That is why `Respawns.validate`
+   * has never moved a point in its life.
+   */
+  obstacleAt(x: number, z: number, y = 60, maxDistance = 200): number | null {
+    const ray = new this.rapier.Ray({ x, y, z }, { x: 0, y: -1, z: 0 })
+    // Fixed bodies only. A crate is not a reason to move a respawn —
+    // you push it out of the way — and asking this question during
+    // world construction, before anything has fallen, saw every
+    // dynamic prop still sitting at its spawn height and read a stack
+    // of settling boxes as a three-metre wall.
+    const hit = this.world.castRay(
+      ray, maxDistance, true,
+      this.rapier.QueryFilterFlags.EXCLUDE_DYNAMIC | this.rapier.QueryFilterFlags.EXCLUDE_KINEMATIC,
+      this.queryObjectsOnly,
+    )
+    return hit ? y - hit.timeOfImpact : null
+  }
+
+  /**
+   * Rebuilds the broad phase so raycasts work before the first step.
+   * `castRay` reads the query pipeline, which `step()` maintains — so
+   * anything that raycasts during world construction, as the respawn
+   * audit does, gets null from every ray until this is called.
+   */
+  refreshQueries(): void {
+    this.world.updateSceneQueries?.()
   }
 
   destroy(): void {

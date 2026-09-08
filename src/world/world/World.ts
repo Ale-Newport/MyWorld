@@ -65,9 +65,19 @@ export interface DevNoteHandle {
   found: boolean
 }
 
-const rand = seeded(88121)
 
 export class World {
+  /*
+    Per-instance, not module-level. A `const rand = seeded(...)` at
+    module scope keeps its position across mounts, so the SECOND time
+    the world was built in a tab — after a route change, a quality
+    switch or a hot reload — every scattered prop landed somewhere
+    else. That makes screenshot comparison meaningless and made the
+    'the manifest is the source of truth' claim untrue for half the
+    island.
+  */
+  private readonly rand = seeded(88121)
+
   readonly group = new THREE.Group()
   readonly terrain: Terrain
   readonly props: Props
@@ -523,8 +533,8 @@ export class World {
     // A cone field, offset south so it sits between the spawn and the
     // name rather than on top of either.
     for (let i = 0; i < 44; i++) {
-      const angle = rand() * Math.PI * 2
-      const radius = 11 + rand() * 20
+      const angle = this.rand() * Math.PI * 2
+      const radius = 11 + this.rand() * 20
       const [x, z] = at(Math.cos(angle) * radius, Math.sin(angle) * radius + 16)
       place('cone', x, z, { tag: 'cones' })
     }
@@ -580,9 +590,9 @@ export class World {
       for (const entry of list) {
         const count = q.count(entry.count, Math.ceil(entry.count * 0.35))
         for (let i = 0; i < count; i++) {
-          const angle = rand() * Math.PI * 2
+          const angle = this.rand() * Math.PI * 2
           // Kept off the exact centre, where the landmark stands.
-          const radius = district.radius * (0.35 + rand() * 0.55)
+          const radius = district.radius * (0.35 + this.rand() * 0.55)
           place(
             entry.kind,
             district.x + Math.cos(angle) * radius,

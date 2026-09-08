@@ -68,7 +68,26 @@ function toWorldRotation(ctx: LandmarkContext, extra = 0): THREE.Quaternion {
   return new THREE.Quaternion().setFromEuler(new THREE.Euler(0, ctx.rotation + extra, 0))
 }
 
-const rand = seeded(31337)
+/*
+  Reseeded per landmark by `buildLandmark`, not shared across the
+  build. A module-level stream keeps its position between mounts, so
+  the second time the world was built in a tab every landmark's
+  random details came out different — and it also made a landmark's
+  appearance depend on how many landmarks happened to be built before
+  it. Seeding from the landmark's own id makes each one identical
+  every time, and independent of the order they are built in.
+*/
+let rand = seeded(31337)
+
+/** FNV-1a. A stable 32-bit seed from a landmark id. */
+function seedFor(id: string): number {
+  let h = 0x811c9dc5
+  for (let i = 0; i < id.length; i++) {
+    h ^= id.charCodeAt(i)
+    h = Math.imul(h, 0x01000193) >>> 0
+  }
+  return h || 1
+}
 
 /* ---- shared helpers -------------------------------------- */
 
@@ -1099,6 +1118,7 @@ export function buildLandmark(
   // before a single one is created. Building first and rotating the
   // group afterwards is how you get a sign whose post is three
   // metres from its collider.
+  rand = seeded(seedFor(landmark.id))
   const ctx: LandmarkContext = { ...base, at, rotation: landmark.rotation ?? 0 }
   if (landmark.id === 'circuit-start' || landmark.id === 'teaching-bugs') {
     // CircuitRace owns the gantry and collision-free starting lane.

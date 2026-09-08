@@ -31,6 +31,11 @@ export class Respawns {
     for (const item of data) {
       this.items.set(item.id, {
         name: item.id,
+        // Y is a placeholder until `validate()` reads the terrain. It
+        // used to stay at this literal 4 forever for every point that
+        // validate() did not relocate — so a respawn on the UCL plateau
+        // (terrain 2.2 m) dropped the car 1.8 m and one in a hollow
+        // dropped it five. Both read as a suspension bug.
         position: new THREE.Vector3(item.x, 4, item.z),
         rotation: item.rotation,
         district: item.district,
@@ -80,15 +85,25 @@ export class Respawns {
     // drives off. What has to be avoided is arriving several metres
     // up on a wall, a ramp or a voxel stack.
     const TOLERANCE = 2.5
+    /** How far above the ground the car is let go. */
+    const DROP = 2.2
     const STEP = 7
     const RINGS = 8
 
     for (const point of this.items.values()) {
+      // Every point gets its height from the ground, not just the ones
+      // that have to move.
+      point.position.y = terrainHeightAt(point.position.x, point.position.z) + DROP
+
       const clear = (x: number, z: number) => {
-        const surface = surfaceHeightAt(x, z)
-        // No hit at all means a hole, not open ground.
-        if (surface === null) return false
-        return Math.abs(surface - terrainHeightAt(x, z)) < TOLERANCE
+        // `surfaceHeightAt` reports the top of anything BUILT here, or
+        // null for open ground — so null is the good answer. It used to
+        // be handed a terrain-only raycast, which meant this compared
+        // the heightfield against itself, always agreed, and never
+        // moved anything.
+        const structure = surfaceHeightAt(x, z)
+        if (structure === null) return true
+        return structure - terrainHeightAt(x, z) < TOLERANCE
       }
 
       if (clear(point.position.x, point.position.z)) continue
@@ -119,7 +134,7 @@ export class Respawns {
       const distance = Math.hypot(found.x - point.position.x, found.z - point.position.z)
       point.position.x = found.x
       point.position.z = found.z
-      point.position.y = terrainHeightAt(found.x, found.z) + 4
+      point.position.y = terrainHeightAt(found.x, found.z) + DROP
       moved.push(`${point.name}: moved ${distance.toFixed(0)} m to clear ground`)
     }
 
