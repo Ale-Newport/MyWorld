@@ -8,6 +8,10 @@
 
 export const CIRCUIT = {
   x:-99,z:-1,width:12,laps:2,
+  /** What a good lap looks like, in seconds — the SPEED DEMON bar. At
+   *  ~780 m a lap that is an average of about 20 m/s, which is quick
+   *  without being unreachable. */
+  targetLapSeconds:44,
   // A four-lane serpentine filling the western half of the island,
   // the way the reference gives its whole left side to the track. The
   // start/finish straight runs beside the content half, so the circuit

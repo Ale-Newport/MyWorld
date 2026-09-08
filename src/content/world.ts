@@ -296,7 +296,7 @@ export const districts: District[] = [
     x: -42, z: 88, radius: 26, plate: 26,
     theme: 'light', accent: '#d4491f',
     ground: 'asphalt',
-    blurb: 'Three laps. Your best time lives in this browser.',
+    blurb: 'Two laps of the long way round. Your best time lives in this browser.',
     signposted: true,
   },
   {

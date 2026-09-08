@@ -249,7 +249,7 @@ export class CircuitRace extends Minigame {
     this.target.visible=false
     const newBest=this.bestTime===null||this.elapsed<this.bestTime
     this.game.achievements.set('circuit',1)
-    if(this.elapsed<60)this.game.achievements.set('speedDemon',1)
+    if(this.elapsed<CIRCUIT.laps*CIRCUIT.targetLapSeconds)this.game.achievements.set('speedDemon',1)
     if(this.recoveries===0)this.game.achievements.set('perfectRun',1)
     const progress=this.game.save.data.progress
     progress.raceHistory=[...progress.raceHistory,this.elapsed].sort((a,b)=>a-b).slice(0,5)
@@ -265,7 +265,7 @@ export class CircuitRace extends Minigame {
   protected lines():string[] {
     if(this.state===RaceState.COUNTDOWN)return [String(Math.ceil(this.countdown)),'3 LAPS · FOLLOW THE GREEN GATE']
     return [this.elapsed<0.9?'GO':raceTime(this.elapsed),
-      'LAP '+Math.min(3,Math.floor(Math.max(0,this.reached-1)/12)+1)+'/3 · '+(this.reached%12===0?'FINISH LINE':'CHECKPOINT '+this.reached%12+'/11'),
+      'LAP '+Math.min(CIRCUIT.laps,Math.floor(Math.max(0,this.reached-1)/12)+1)+'/'+CIRCUIT.laps+' · '+(this.reached%12===0?'FINISH LINE':'CHECKPOINT '+this.reached%12+'/11'),
       this.bestTime===null?'SET YOUR FIRST TIME':'BEST '+raceTime(this.bestTime),'R · LAST CHECKPOINT']
   }
   protected progress():number{return this.reached/(CIRCUIT.laps*12+1)}
