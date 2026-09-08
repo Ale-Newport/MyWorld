@@ -400,14 +400,14 @@ export interface Respawn {
 }
 
 export const respawns: Respawn[] = [
-  { id: 'hub', x: 18, z: 24, rotation: 1.571, district: 'hub' },
+  { id: 'hub', x: 18, z: 10, rotation: 1.571, district: 'hub' },
   { id: 'hub-north', x: 18, z: -30, rotation: 4.712, district: 'hub' },
   // On the road in, facing the campus, and clear of the cipher wall
   // at (-126, -6) which the old point drove straight into.
   { id: 'kcl', x: 14, z: -40, rotation: 0, district: 'kcl' },
   { id: 'ucl', x: 99, z: -26, rotation: 5.564, district: 'ucl' },
-  { id: 'lab', x: 58, z: -88, rotation: 2.467, district: 'lab' },
-  { id: 'teaching', x: 2, z: 11, rotation: 1.249, district: 'teaching' },
+  { id: 'lab', x: 52, z: -80, rotation: 3.142, district: 'lab' },
+  { id: 'teaching', x: -15, z: 43, rotation: 4.084, district: 'teaching' },
   { id: 'algorithms', x: 7, z: 82, rotation: 1.798, district: 'algorithms' },
   // Clear of ramp-focus at (40, 96), which it used to sit on top of.
   { id: 'focus', x: 52, z: 38, rotation: 4.712, district: 'focus' },

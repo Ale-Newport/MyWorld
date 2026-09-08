@@ -229,6 +229,14 @@ if (should('settle')) {
 
 if (should('drive')) {
   console.log('\nDRIVE')
+  // The landing area is deliberately full — cones, crates and the name
+  // are all within twenty metres of where the player starts, which is
+  // the point of it. Acceleration and cruising speed are properties of
+  // the car, so they are measured with room, like braking and steering.
+  // That the spawn itself is drivable is covered by the respawn checks.
+  const driveSpot = await clearGround()
+  note(`driving tested at ${driveSpot.x}, ${driveSpot.z} — nearest object ${driveSpot.clear.toFixed(0)} m`)
+  await teleport(driveSpot.x, driveSpot.z, 0)
   const before = await telemetry()
   await hold('KeyW', 2500)
   const after = await telemetry()

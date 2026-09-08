@@ -16,16 +16,16 @@ import {
   archiveIslands,
   clientTowers,
   devNotes,
+  districtById,
   districts,
   landmarks,
   ramps,
+  respawns,
   timelinePlates,
   projectsBySlugForWorld,
   type Landmark,
 } from '@/content/world'
 
-/** No prop may be scattered this close to a ramp itself. */
-const RAMP_CLEARANCE = 30
 /** How far back down a ramp's approach the run-up is kept clear. A big
  *  jump needs the whole run-up, not just the ground beside the lip. */
 const RAMP_RUNUP = 74
@@ -473,42 +473,83 @@ export class World {
 
     const place = (kind: PropKind, x: number, z: number, options?: { tag?: string; rotation?: number }) => {
       if (PLAY_SPOTS.some(p => Math.hypot(x - p.x, z - p.z) < p.radius)) return
+      // Never ON a respawn — R is the key people press when they are
+      // stuck, and it should not drop them inside a stack of crates.
+      // Kept tight: a wide exclusion clears a visible bare circle around
+      // the one spot every visitor is guaranteed to look at.
+      if (respawns.some(p => Math.hypot(x - p.x, z - p.z) < 6)) return
       // Never on or in front of a ramp. A barrier lying across a
       // run-up is the difference between a jump that works and one
       // the player is convinced is broken — and the car is lighter
       // than most props, so it beaches rather than shoves.
       for (const ramp of ramps) {
-        if (Math.hypot(x - ramp.x, z - ramp.z) < RAMP_CLEARANCE) return
-        // The run-up too. A ramp rises along its local +X, so the
-        // approach runs back along -X from its centre; anything within
-        // a lane's width of that line is in the way.
+        // A ramp rises along its local +X, so its approach runs back
+        // along -X and its landing carries on past the lip. Keep those
+        // clear, and the ramp's own footprint — but nothing else.
+        //
+        // This used to be a 30 m disc around every ramp, which in a
+        // world this size is enormous: three small ramps near the hub
+        // between them sterilised the whole landing area, and the
+        // opening frame ended up as bare paving.
         const cos = Math.cos(ramp.rotation)
         const sin = -Math.sin(ramp.rotation)
         const along = (x - ramp.x) * cos + (z - ramp.z) * sin
         const across = Math.abs(-(x - ramp.x) * sin + (z - ramp.z) * cos)
-        if (along < 12 && along > -RAMP_RUNUP && across < ramp.width * 0.9) return
+        const half = ramp.length * 0.5
+        // The deck itself, plus a margin.
+        if (Math.abs(along) < half + 5 && across < ramp.width * 0.5 + 4) return
+        // The run-up behind it.
+        if (along < -half && along > -RAMP_RUNUP && across < ramp.width * 0.9) return
+        // And where the car comes down: further for a bigger ramp.
+        const landing = half + 6 + ramp.height * 7
+        if (along > half && along < landing && across < ramp.width * 0.85) return
       }
       const y = this.terrain.colliderHeightAt(x, z)
       this.props.add(kind, x, y + 0.6, z, options)
     }
 
-    /* ---- hub: a cone field to play in -------------------- */
-    for (let i = 0; i < 34; i++) {
-      const angle = rand() * Math.PI * 2
-      const radius = 14 + rand() * 26
-      place('cone', Math.cos(angle) * radius + 18, Math.sin(angle) * radius + 18, { tag: 'cones' })
-    }
-    for (let i = 0; i < 8; i++) place('crate', -34 + i * 2.6, 30 + (i % 2) * 2.4)
-    for (let i = 0; i < 5; i++) place('ball', -12 + i * 5, -34)
-    place('bench', 24, -8)
-    place('bench', -24, -8)
+    /* ---- the landing area -------------------------------
+       Everything here is placed RELATIVE TO THE HUB, because the
+       hub moves. Written as absolute coordinates, this whole
+       arrangement stayed behind the last time the island was
+       rebuilt and the spawn ended up on bare paving.
 
-    /* ---- a domino run near the hub ----------------------- */
+       The arrangement itself follows the reference's landing area:
+       the name to drive at, something to knock over immediately,
+       and enough clutter that the opening frame is full. */
+    const hub = districtById.hub
+    const at = (dx: number, dz: number) => [hub.x + dx, hub.z + dz] as const
+
+    // A cone field, offset south so it sits between the spawn and the
+    // name rather than on top of either.
+    for (let i = 0; i < 44; i++) {
+      const angle = rand() * Math.PI * 2
+      const radius = 11 + rand() * 20
+      const [x, z] = at(Math.cos(angle) * radius, Math.sin(angle) * radius + 16)
+      place('cone', x, z, { tag: 'cones' })
+    }
+    // Crates stacked either side of the approach, to be scattered.
+    for (let i = 0; i < 12; i++) {
+      const [x, z] = at(-20 + (i % 4) * 2.7, 12 + Math.floor(i / 4) * 2.7)
+      place('crate', x, z)
+    }
+    for (let i = 0; i < 8; i++) {
+      const [x, z] = at(22 + (i % 4) * 2.8, 14 + Math.floor(i / 4) * 2.8)
+      place('crate', x, z)
+    }
+    for (let i = 0; i < 6; i++) { const [x, z] = at(-14 + i * 5, -26); place('ball', x, z) }
+    for (const [dx, dz] of [[26, 4], [-26, 4], [0, 30]]) { const [x, z] = at(dx, dz); place('bench', x, z) }
+    for (let i = 0; i < 10; i++) {
+      const [x, z] = at(-30 + i * 6.6, 30 + (i % 2) * 3)
+      place('barrier', x, z, { rotation: 0.1 })
+    }
+    for (let i = 0; i < 8; i++) { const [x, z] = at(30 + (i % 2) * 3, -18 + Math.floor(i / 2) * 4); place('drum', x, z) }
+
+    /* ---- a domino run out of the hub --------------------- */
     for (let i = 0; i < 26; i++) {
       const t = i / 25
-      const x = -60 + t * 46
-      const z = -52 + Math.sin(t * 3.2) * 9
-      place('domino', x, z, { rotation: Math.atan2(Math.cos(t * 3.2) * 3.2, 46 / 25), tag: 'dominoes' })
+      const [x, z] = at(-42 + t * 40, 40 + Math.sin(t * 3.2) * 8)
+      place('domino', x, z, { rotation: Math.atan2(Math.cos(t * 3.2) * 3.2, 40 / 25), tag: 'dominoes' })
     }
 
     /* ---- per-district scatter --------------------------- */
