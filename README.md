@@ -554,12 +554,25 @@ npm run world:tour   # screenshots every district
 
 `scripts/world-qa.mjs` is not a screenshot test. It presses keys, waits, and
 reads telemetry back out of the running engine through `window.__world` (exposed
-in development only): that the car settles on four wheels at the right ride
-height, that it accelerates and coasts to a stop, that boost roughly triples top
-speed, that steering turns it, that jumping leaves the ground and lands upright,
-that it never falls through the world, that respawning works, that it rights
-itself when flipped, that Escape always escapes, and that leaving the route and
-coming back starts a genuinely clean second world.
+in development only). What it asserts:
+
+| | |
+| --- | --- |
+| **Physics** | Settles on four wheels at 1.10 m. 72 km/h cruising, 315 km/h boosted. Steering turns it. Braking sheds speed. Jumping leaves the ground by 1.8 m and lands upright. It never falls through the world. |
+| **Recovery** | Respawn puts it on solid ground. Flipped on its roof, it rights itself with no input. After a heavy boost run it is still upright and still driveable. |
+| **Mini-games** | All nine start, run, and give the controls back on Escape — no HUD left behind, no camera left in cinematic mode, no collider left disabled, no input filter left set. |
+| **World** | Every district can be entered and driven. Every one of the 22 respawn points can be driven away from. Every landmark stands on ground the car can reach. The stunt ramp actually reaches the hidden island and unlocks it. |
+| **Touch** | A phone gets a reduced quality tier, touch input mode, on-screen buttons, and one-finger driving. No horizontal overflow. |
+| **Teardown** | Four round trips through the route, then the fifth world still renders. Browsers cap live WebGL contexts and drop the oldest silently, so a leak does not throw — it just stops rendering after a few visits, and this is the only way to see it. |
+
+Several of those checks exist because they failed first. The stunt ramp was
+rebuilt three times before it reached the island; the hidden island's far half
+was being shaved off by the world-edge falloff; a barrier weighed more than the
+car and beached it with no recovery; the particle pool filled within a second of
+the car resting against a wall. None of that is visible in a screenshot.
+
+`scripts/world-tour.mjs` photographs every district from its own respawn point at
+a fixed framing, so the whole world can be reviewed at once.
 
 ---
 
@@ -613,6 +626,9 @@ What was actually checked, and how:
 | Reduced motion | separate context with `reducedMotion: 'reduce'` | Renders a designed static state. |
 | First load | `node scripts/perf-check.mjs` | FCP ~56 ms, ~611 KB transferred including fonts and the client captures. |
 | Frame rate | same script, scrubbing the entire journey | Holds up under software rendering (headless SwiftShader); real GPUs are far above it. |
+| `/world` — physics, recovery, mini-games, world, touch, teardown | `npm run world:qa` — Playwright drives the car and reads engine telemetry | All pass. 83 landmarks, 346 props, 920 bodies, 1,645 colliders. |
+| `/world` — every district | `npm run world:tour` | Photographed from each district's respawn point. |
+| `/world` — leaving and returning | five mounts in one session | Fifth world renders; no WebGL context leak. |
 
 ```bash
 npm run qa     # visual + functional sweep (needs a server running)

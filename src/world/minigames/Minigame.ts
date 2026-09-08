@@ -77,7 +77,10 @@ export abstract class Minigame {
   }
 
   cancel(reason: 'player' | 'strayed' | 'respawn' = 'player'): void {
-    if (!this.running) return
+    // Also clears a finish or fail card. Those linger for a few
+    // seconds on purpose, but Escape has to mean "get this off my
+    // screen" in every state, not only while a run is live.
+    if (this.state === 'idle') return
     this.state = 'idle'
     this.reset()
     this.game.store.getState().setMinigame(null)
