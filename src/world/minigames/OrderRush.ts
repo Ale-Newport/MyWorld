@@ -169,7 +169,10 @@ export class OrderRush extends Minigame {
     this.buildRamps(cx, cz, baseY)
     this.buildGates(cx, cz, deckY)
 
-    this.startPosition.set(cx, baseY + 2, cz + DECK_HALF_LENGTH + RAMP_LENGTH + 4)
+    // Kept inside the district's levelled plate: four metres further
+    // out put the car on the slope beyond it, where the ramp foot is
+    // above the ground and there is no way up onto the deck at all.
+    this.startPosition.set(cx, baseY + 2, cz + DECK_HALF_LENGTH + RAMP_LENGTH + 1)
 
     this.game.renderer.scene.add(this.group)
     this.bin.object3D(this.group)

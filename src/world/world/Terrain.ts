@@ -283,8 +283,9 @@ export class Terrain {
     for (const district of districts) {
       if (!district.plate) continue
       const distance = Math.hypot(x - district.x, z - district.z)
-      if (distance > district.plate * 2.45) continue
-      const inside = 1 - smoothstep(distance, district.plate * 0.8, district.plate * 2.4)
+      const shoulder = district.plate * 0.8 + 22
+      if (distance > shoulder) continue
+      const inside = 1 - smoothstep(distance, district.plate * 0.8, shoulder)
       // Flatten to the ground the district actually stands on, not to
       // an absolute height. A plate pinned to zero beside raised
       // landform is a cliff, and the car slides off it.
@@ -382,8 +383,9 @@ export class Terrain {
       for (const district of districts) {
         if (!district.plate) continue
         const dd = Math.hypot(near.px - district.x, near.pz - district.z)
-        if (dd > district.plate * 2.45) continue
-        const inside = 1 - smoothstep(dd, district.plate * 0.8, district.plate * 2.4)
+        const shoulder = district.plate * 0.8 + 22
+        if (dd > shoulder) continue
+        const inside = 1 - smoothstep(dd, district.plate * 0.8, shoulder)
         const target =
           landform(district.x, district.z) +
           (fbm(district.x * 0.0042, district.z * 0.0042) - 0.5) * 2.8 +
