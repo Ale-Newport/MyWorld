@@ -13,7 +13,8 @@
     "qa": "node scripts/visual-qa.mjs",
     "perf": "node scripts/perf-check.mjs",
     "world:qa": "node scripts/world-qa.mjs",
-    "world:tour": "node scripts/world-tour.mjs"
+    "world:tour": "node scripts/world-tour.mjs",
+    "world:browsers": "node scripts/world-browsers.mjs"
   },
   "dependencies": {
     "@dimforge/rapier3d-compat": "^0.17.3",
