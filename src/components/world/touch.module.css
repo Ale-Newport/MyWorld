@@ -1,0 +1,107 @@
+/* ============================================================
+   TOUCH CONTROLS
+
+   Only the actions with no gesture. Sized for a thumb at speed
+   (44px is the floor; these are larger), kept off the centre of
+   the screen where the car is, and clear of the iOS home
+   indicator.
+   ============================================================ */
+
+.touch {
+  position: absolute;
+  inset: 0;
+  z-index: 30;
+  pointer-events: none;
+}
+
+.cluster {
+  position: absolute;
+  right: max(0.9rem, env(safe-area-inset-right));
+  bottom: max(1.4rem, env(safe-area-inset-bottom));
+  display: grid;
+  grid-template-columns: repeat(2, auto);
+  gap: var(--sp-2);
+  pointer-events: auto;
+}
+
+.corner {
+  position: absolute;
+  right: max(0.9rem, env(safe-area-inset-right));
+  top: max(3.4rem, calc(env(safe-area-inset-top) + 2.6rem));
+  display: grid;
+  gap: var(--sp-2);
+  pointer-events: auto;
+}
+
+.button {
+  min-width: 62px;
+  min-height: 52px;
+  padding: var(--sp-3) var(--sp-4);
+  background: color-mix(in oklab, var(--paper) 82%, transparent);
+  border: 1px solid var(--border-strong);
+  backdrop-filter: blur(8px);
+  font-family: var(--font-mono);
+  font-size: var(--fs-nano);
+  letter-spacing: var(--tracking-label);
+  color: var(--ink-2);
+  /* A held button must not also select text or fire a long-press
+     menu — both of which cancel the pointer and stick the input. */
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+  touch-action: none;
+  transition: background 120ms var(--ease-out-expo), color 120ms;
+}
+
+.button:active {
+  background: var(--ink);
+  color: var(--paper);
+  border-color: var(--ink);
+}
+
+.button[data-accent='true'] {
+  color: var(--accent);
+  border-color: color-mix(in oklab, var(--accent) 45%, transparent);
+}
+
+.button[data-accent='true']:active {
+  background: var(--accent);
+  color: var(--paper);
+}
+
+.interact {
+  position: absolute;
+  transform: translate(-50%, -140%);
+  display: grid;
+  justify-items: center;
+  gap: 2px;
+  padding: var(--sp-3) var(--sp-5);
+  min-height: 52px;
+  background: var(--ink);
+  color: var(--paper);
+  border: none;
+  pointer-events: auto;
+  touch-action: none;
+  white-space: nowrap;
+  animation: interactIn 200ms var(--ease-out-expo);
+}
+
+@keyframes interactIn {
+  from { opacity: 0; transform: translate(-50%, -110%); }
+  to { opacity: 1; transform: translate(-50%, -140%); }
+}
+
+.interactLabel {
+  font-family: var(--font-mono);
+  font-size: var(--fs-micro);
+  letter-spacing: var(--tracking-label);
+}
+
+.interactSub {
+  font-size: var(--fs-nano);
+  color: var(--chalk-2);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .interact { animation: none; }
+}

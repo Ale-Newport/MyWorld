@@ -7,6 +7,7 @@ import type { Game } from '@/world/Game'
 import { WorldLoader } from './WorldLoader'
 import { WorldHud } from './WorldHud'
 import { WorldOverlays } from './WorldOverlays'
+import { WorldTouchControls } from './WorldTouchControls'
 import styles from './world.module.css'
 
 /* ============================================================
@@ -109,6 +110,7 @@ export function WorldExperience() {
     <div className={styles.experience} ref={hostRef} data-entered={entered ? 'true' : 'false'}>
       <WorldLoader store={store} getGame={getGame} />
       {entered && !fatal && <WorldHud store={store} getGame={getGame} />}
+      {entered && !fatal && <WorldTouchControls store={store} getGame={getGame} />}
       {entered && !fatal && <WorldOverlays store={store} getGame={getGame} />}
     </div>
   )

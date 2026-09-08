@@ -1,5 +1,6 @@
 'use client'
 
+import Link from 'next/link'
 import { useEffect, useRef } from 'react'
 import { chapters } from '@/content/chapters'
 import { profile, contact } from '@/content/profile'
@@ -117,6 +118,11 @@ export function IndexOverlay({ open, onClose }: { open: boolean; onClose: () => 
                 : 'Short on time? Quick View condenses the journey to roughly 90 seconds.'}
             </p>
           </div>
+
+          <Link href="/world" className={styles.worldLink} data-cursor="link" data-cursor-text="DRIVE">
+            <span>Enter my world</span>
+            <span className={styles.worldLinkNote}>An interactive version · WASD</span>
+          </Link>
 
           <ul className={styles.links}>
             {contact.map((c) => {

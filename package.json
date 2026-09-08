@@ -11,7 +11,9 @@
     "content:status": "node scripts/content-status.mjs",
     "capture:clients": "node scripts/capture-clients.mjs",
     "qa": "node scripts/visual-qa.mjs",
-    "perf": "node scripts/perf-check.mjs"
+    "perf": "node scripts/perf-check.mjs",
+    "world:qa": "node scripts/world-qa.mjs",
+    "world:tour": "node scripts/world-tour.mjs"
   },
   "dependencies": {
     "@dimforge/rapier3d-compat": "^0.17.3",

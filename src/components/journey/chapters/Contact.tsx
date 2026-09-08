@@ -1,5 +1,7 @@
 'use client'
 
+import Link from 'next/link'
+
 import { useRef } from 'react'
 import { Chapter } from '@/components/journey/Chapter'
 import { Reveal } from '@/components/typography/Reveal'
@@ -109,6 +111,22 @@ export function Contact() {
             )
           })}
         </ul>
+
+        {/* The world is an optional second way through the same
+            material, so it sits after the contact links rather than
+            competing with them. */}
+        <Link
+          href="/world"
+          className={styles.worldCta}
+          data-cursor="link"
+          data-cursor-text="DRIVE"
+        >
+          <span className={styles.worldCtaLabel}>Enter my world</span>
+          <span className={styles.worldCtaNote}>
+            The same work, as a place you drive through · WASD
+          </span>
+          <span className={styles.worldCtaArrow} aria-hidden="true">→</span>
+        </Link>
 
         <footer className={styles.colophon}>
           <span>{profile.name} · Portfolio {profile.year}</span>

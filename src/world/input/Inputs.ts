@@ -252,6 +252,20 @@ export class Inputs {
     this.setMode('touch')
   }
 
+  /**
+   * On-screen buttons drive actions through a synthetic key, so a
+   * touch BOOST and a keyboard Shift are the same action with the
+   * same lifecycle — nothing downstream has to know which it was.
+   */
+  pressTouchAction(name: string): void {
+    this.setMode('touch')
+    this.start(`Touch.${name}`, 1)
+  }
+
+  releaseTouchAction(name: string): void {
+    this.end(`Touch.${name}`)
+  }
+
   /** Frame-level poll. Order 0 on the ticker's `frame` channel. */
   update(): void {
     this.pointer.update()
@@ -293,12 +307,12 @@ export const ACTION_DEFINITIONS: ActionDefinition[] = [
   { name: 'backward', label: 'Reverse', categories: ['driving'], keys: ['Keyboard.ArrowDown', 'Keyboard.KeyS', 'Gamepad.down', 'Gamepad.l2'] },
   { name: 'left', label: 'Steer left', categories: ['driving'], keys: ['Keyboard.ArrowLeft', 'Keyboard.KeyA', 'Gamepad.left'] },
   { name: 'right', label: 'Steer right', categories: ['driving'], keys: ['Keyboard.ArrowRight', 'Keyboard.KeyD', 'Gamepad.right'] },
-  { name: 'boost', label: 'Boost', categories: ['driving'], keys: ['Keyboard.ShiftLeft', 'Keyboard.ShiftRight', 'Gamepad.circle'] },
-  { name: 'brake', label: 'Brake', categories: ['driving'], keys: ['Keyboard.KeyB', 'Keyboard.ControlLeft', 'Gamepad.square'] },
-  { name: 'jump', label: 'Jump', categories: ['driving'], keys: ['Keyboard.Space', 'Keyboard.Numpad5', 'Gamepad.triangle'] },
-  { name: 'respawn', label: 'Respawn', categories: ['driving'], keys: ['Keyboard.KeyR', 'Gamepad.select'] },
-  { name: 'horn', label: 'Horn', categories: ['driving'], keys: ['Keyboard.KeyH', 'Gamepad.l3'] },
-  { name: 'interact', label: 'Interact', categories: ['driving', 'minigame'], keys: ['Keyboard.Enter', 'Keyboard.KeyE', 'Gamepad.cross'] },
+  { name: 'boost', label: 'Boost', categories: ['driving'], keys: ['Keyboard.ShiftLeft', 'Keyboard.ShiftRight', 'Gamepad.circle', 'Touch.boost'] },
+  { name: 'brake', label: 'Brake', categories: ['driving'], keys: ['Keyboard.KeyB', 'Keyboard.ControlLeft', 'Gamepad.square', 'Touch.brake'] },
+  { name: 'jump', label: 'Jump', categories: ['driving'], keys: ['Keyboard.Space', 'Keyboard.Numpad5', 'Gamepad.triangle', 'Touch.jump'] },
+  { name: 'respawn', label: 'Respawn', categories: ['driving'], keys: ['Keyboard.KeyR', 'Gamepad.select', 'Touch.respawn'] },
+  { name: 'horn', label: 'Horn', categories: ['driving'], keys: ['Keyboard.KeyH', 'Gamepad.l3', 'Touch.horn'] },
+  { name: 'interact', label: 'Interact', categories: ['driving', 'minigame'], keys: ['Keyboard.Enter', 'Keyboard.KeyE', 'Gamepad.cross', 'Touch.interact'] },
 
   /* Hydraulics — one corner at a time, then pairs, then all four. */
   { name: 'hydraulicsAll', label: 'Hydraulics: all', categories: ['driving'], keys: ['Keyboard.Numpad0'] },
@@ -318,7 +332,7 @@ export const ACTION_DEFINITIONS: ActionDefinition[] = [
   { name: 'cameraReset', label: 'Reset camera', categories: ['camera'], keys: ['Keyboard.KeyC'] },
 
   /* UI — deliberately outside every category so they survive filters. */
-  { name: 'map', label: 'Map', categories: [], keys: ['Keyboard.KeyM', 'Gamepad.start'] },
+  { name: 'map', label: 'Map', categories: [], keys: ['Keyboard.KeyM', 'Gamepad.start', 'Touch.map'] },
   { name: 'mute', label: 'Mute', categories: [], keys: ['Keyboard.KeyL'] },
   { name: 'pause', label: 'Pause', categories: [], keys: ['Keyboard.Escape'] },
   { name: 'achievements', label: 'Achievements', categories: [], keys: ['Keyboard.KeyK'] },

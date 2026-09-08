@@ -83,6 +83,11 @@ export class Lighting {
 
   /** Set by the Game so the sky dome follows the same clock. */
   world: World | null = null
+
+  /** 0..1, written by Weather. Pulls light out of the sky. */
+  weatherDim = 0
+  /** 0..1, written by Weather. Draws the fog in. */
+  weatherFog = 0
   private readonly zenith = new THREE.Color()
 
   constructor(
@@ -191,14 +196,24 @@ export class Lighting {
   private apply(): void {
     const frame = this.sampleKeyframes()
 
+    // Weather leans on the day cycle rather than replacing it: the
+    // colours stay the clock's, the amount of light does not.
+    const dim = 1 - this.weatherDim * 0.68
+
     this.sun.color.copy(this.sunColor)
-    this.sun.intensity = frame.sunIntensity
+    this.sun.intensity = frame.sunIntensity * dim
     this.ambient.color.copy(this.ambientColor)
     this.ambient.groundColor.copy(this.skyColor).multiplyScalar(0.65)
-    this.ambient.intensity = frame.ambientIntensity
+    // Ambient falls less than the sun: an overcast sky is dimmer but
+    // also flatter, so the fill has to hold up as the key drops.
+    this.ambient.intensity = frame.ambientIntensity * (1 - this.weatherDim * 0.24)
 
+    this.skyColor.multiplyScalar(1 - this.weatherDim * 0.3)
     this.renderer.setBackground(this.skyColor)
-    this.renderer.setFogRange(frame.fogNear, frame.fogFar)
+    this.renderer.setFogRange(
+      frame.fogNear * (1 - this.weatherFog * 0.55),
+      frame.fogFar * (1 - this.weatherFog * 0.5),
+    )
 
     // The dome runs a little deeper than the horizon so the sky has
     // somewhere to go; at night the difference is what stops it
