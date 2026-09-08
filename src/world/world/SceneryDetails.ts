@@ -3,9 +3,10 @@ import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js'
 import type { Game } from '../Game'
 import type { Bin } from '../core/Disposal'
 import { roads, districts, WORLD_RADIUS } from '@/content/world'
+import { isFree } from '@/content/world-layout'
 import {
-  LAKES, RIVER, BRIDGES, PLAY_SPOTS, FOREST_POCKETS, CIRCUIT, CIRCUIT_TRACK,
-  coastRadius, lineDistance, inlandWater,
+  LAKES, RIVER, BRIDGES, FOREST_POCKETS, CIRCUIT, CIRCUIT_TRACK,
+  coastRadius, inlandWater,
 } from '@/content/world-environment'
 
 /* ============================================================
@@ -79,16 +80,21 @@ export function buildSceneryDetails(game: Game, bin: Bin): void {
    * `onPaving` is for furniture that belongs on a forecourt — lanterns
    * light paving, and rejecting them from it was leaving every plate in
    * the world unlit.
+   *
+   * One call into `world-layout`, like the ecology scatter. The two used
+   * to carry near-identical hand-written rules with different numbers
+   * (coast margin 6 against 10, track clearance 0 against 5), which is
+   * how a bench came to stand on the racing line while a tree three
+   * metres away was correctly rejected.
    */
   const usable = (x: number, z: number, clear = 6, onPaving = false) => {
-    if (Math.hypot(x, z) > coastRadius(x, z, WORLD_RADIUS) - 6) return false
     if (ground(x, z) < 0.2) return false
-    const water = inlandWater(x, z)
-    if (water && water.edge > -2) return false
-    if (lineDistance(x, z, CIRCUIT_TRACK) < CIRCUIT.width * 0.5 + clear) return false
-    if (!onPaving && districts.some((d) => d.plate && Math.hypot(x - d.x, z - d.z) < d.plate * 1.1)) return false
-    if (PLAY_SPOTS.some((p) => Math.hypot(x - p.x, z - p.z) < p.radius)) return false
-    return true
+    return isFree(x, z, {
+      clearance: clear,
+      coastMargin: 8,
+      allow: onPaving ? ['plate'] : [],
+      margin: { circuit: 5, ramp: 6, water: 1.5 },
+    })
   }
 
   /* ---- lanterns -------------------------------------------

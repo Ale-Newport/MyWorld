@@ -2,7 +2,7 @@ import type { ChapterId, Theme } from './types'
 import { projects, projectBySlug } from './projects'
 import { experience } from './experience'
 import { education } from './education'
-import { PLAY_SPOTS } from './world-environment'
+import { findNear, type Zone } from './world-layout'
 
 /* ============================================================
    ALEJANDRO'S WORLD — SPATIAL PRESENTATION LAYER
@@ -382,8 +382,12 @@ export const districtById = Object.fromEntries(districts.map((d) => [d.id, d])) 
 /** Radius of the drivable world. Beyond this the ground stops. */
 export const WORLD_RADIUS = 160
 
-/** Where a fresh visitor starts, facing the hub sign. */
-export const SPAWN = { x: 0, y: 4, z: 26, rotation: Math.PI }
+/** Where a fresh visitor starts. This is the `hub` respawn, and it is
+ *  the one place the id matters: `Respawns.getDefault()` looks it up by
+ *  name. The old free-standing `SPAWN` constant was exported, documented
+ *  as "where a fresh visitor starts" and imported by nothing — and would
+ *  have put them 4.5 m inside the DEBUG YARD if it had been. */
+export const SPAWN_RESPAWN = 'hub'
 
 /* ============================================================
    RESPAWN POINTS
@@ -401,32 +405,48 @@ export interface Respawn {
 }
 
 export const respawns: Respawn[] = [
-  { id: 'hub', x: 18, z: 10, rotation: 1.571, district: 'hub' },
-  { id: 'hub-north', x: 18, z: -30, rotation: 4.712, district: 'hub' },
-  // On the road in, facing the campus, and clear of the cipher wall
-  // at (-126, -6) which the old point drove straight into.
-  { id: 'kcl', x: -3, z: -52, rotation: 4.812, district: 'kcl' },
-  { id: 'ucl', x: 99, z: -26, rotation: 5.564, district: 'ucl' },
-  { id: 'lab', x: 62, z: -100, rotation: 0, district: 'lab' },
-  { id: 'teaching', x: -15, z: 43, rotation: 4.084, district: 'teaching' },
-  { id: 'algorithms', x: 7, z: 82, rotation: 1.798, district: 'algorithms' },
-  // Clear of ramp-focus at (40, 96), which it used to sit on top of.
-  { id: 'focus', x: 48, z: 60, rotation: 1.471, district: 'focus' },
-  { id: 'gym', x: 40, z: 84, rotation: 0, district: 'gym' },
-  { id: 'client', x: 112, z: 20, rotation: 4.391, district: 'client' },
-  { id: 'chess', x: 12, z: -64, rotation: 0.278, district: 'chess' },
-  { id: 'stock', x: 80, z: -96, rotation: 2.356, district: 'stock' },
-  { id: 'circuit', x: -51, z: 81, rotation: 2.467, district: 'circuit' },
-  { id: 'labyrinth', x: 124, z: -66, rotation: 3.142, district: 'labyrinth' },
-  // Outside the voxel field's western edge, on open ground.
-  { id: 'voxel', x: 110, z: -15, rotation: 2.279, district: 'voxel' },
-  { id: 'network', x: 63, z: -77, rotation: 5.176, district: 'network' },
-  { id: 'studio', x: 104, z: 94, rotation: 4.712, district: 'studio' },
-  { id: 'orbit', x: 20, z: -78, rotation: 1.571, district: 'orbit' },
-  { id: 'archive', x: 50, z: 103, rotation: 3.232, district: 'archive' },
-  { id: 'road-west', x: -13.6, z: -10.1, rotation: Math.PI, district: 'hub' },
-  { id: 'road-east', x: 49.6, z: -10.1, rotation: 0, district: 'hub' },
-  { id: 'road-south', x: 20.4, z: 28, rotation: Math.PI * 0.5, district: 'hub' },
+  /*
+    Authored, not nudged. These used to be written by hand and then
+    quietly relocated at load by `Respawns.validate()`, so the numbers
+    in this file were not the numbers the game used — and six of them
+    sat outside the district they claim to serve while several put the
+    car down inside a wall.
+
+    They are now generated against the occupancy registry
+    (`scripts/world-layout-check.mjs` proves it, and re-derived by
+    `scripts/_respawn-fix.mjs`): every one is on free ground, within
+    sixteen metres of a road so there is a way out, inside its own
+    district, and facing that district's centre — which is the thing
+    you came to look at.
+  */
+  { id: 'hub', x: 25.6, z: -20.3, rotation: 1.964, district: 'hub' },
+  // The whole north side of the hub plate is the physical name, so the
+  // second hub point is on the forecourt south of it rather than behind
+  // the letters, where it used to spawn the car inside an A.
+  { id: 'hub-plaza', x: 8.3, z: 10.7, rotation: -0.919, district: 'hub' },
+  { id: 'kcl', x: -8.7, z: -58.7, rotation: 1.227, district: 'kcl' },
+  { id: 'ucl', x: 108.6, z: -35.1, rotation: 3.083, district: 'ucl' },
+  { id: 'lab', x: 63.5, z: -100.4, rotation: 2.865, district: 'lab' },
+  { id: 'teaching', x: -12.3, z: 43.1, rotation: -1.068, district: 'teaching' },
+  { id: 'algorithms', x: 5.3, z: 84.1, rotation: -1.651, district: 'algorithms' },
+  { id: 'focus', x: 37.1, z: 22.4, rotation: -0.027, district: 'focus' },
+  { id: 'gym', x: 36.2, z: 65.7, rotation: -0.304, district: 'gym' },
+  { id: 'client', x: 116.2, z: 19.6, rotation: 2.155, district: 'client' },
+  { id: 'chess', x: 12, z: -64, rotation: -2.415, district: 'chess' },
+  { id: 'stock', x: 80.8, z: -73.9, rotation: 3.014, district: 'stock' },
+  { id: 'circuit', x: -54.7, z: 78.1, rotation: 0.662, district: 'circuit' },
+  { id: 'labyrinth', x: 111.6, z: -66, rotation: 3.142, district: 'labyrinth' },
+  { id: 'voxel', x: 130.4, z: -5.3, rotation: -3.085, district: 'voxel' },
+  { id: 'network', x: 85.9, z: -92.5, rotation: -2.493, district: 'network' },
+  { id: 'studio', x: 104, z: 87.6, rotation: -1.571, district: 'studio' },
+  { id: 'orbit', x: 33.7, z: -53.6, rotation: 1.056, district: 'orbit' },
+  { id: 'archive', x: 52.6, z: 102.8, rotation: 3.077, district: 'archive' },
+  { id: 'road-west', x: -5.7, z: -1.7, rotation: -0.013, district: 'hub' },
+  { id: 'road-east', x: 49.6, z: -10.1, rotation: 2.891, district: 'hub' },
+  // Just south of the 2023 timeline plate: landing on a plate fires
+  // the TIME TRAVELLER sequence, and respawning onto one made that
+  // secret go off every time you pressed R.
+  { id: 'road-south', x: 20.4, z: 33, rotation: -1.651, district: 'hub' },
 ]
 
 /* ============================================================
@@ -882,63 +902,6 @@ const PLACED = new Set(
  * the middle of the bowling lane. Deterministic, so the layout stays
  * stable between loads.
  */
-function clearOfPlaySpots(x: number, z: number, cx: number, cz: number): { x: number; z: number } {
-  let px = x
-  let pz = z
-  for (let pass = 0; pass < 12; pass++) {
-    const hit = PLAY_SPOTS.find((s) => Math.hypot(px - s.x, pz - s.z) < s.radius + 9)
-    if (!hit) break
-    const dx = px - cx
-    const dz = pz - cz
-    const length = Math.hypot(dx, dz) || 1
-    px += (dx / length) * 6
-    pz += (dz / length) * 6
-  }
-  return { x: px, z: pz }
-}
-
-export const clientTowers = projects
-  .filter((p) => p.source === 'client')
-  .map((project, i, all) => {
-    const angle = (i / all.length) * Math.PI * 2 + 0.4
-    const radius = 20 + (i % 3) * 12
-    const spot = clearOfPlaySpots(
-      districtById.client.x + Math.cos(angle) * radius,
-      districtById.client.z + Math.sin(angle) * radius,
-      districtById.client.x, districtById.client.z,
-    )
-    return {
-      id: `client-tower-${project.slug}`,
-      project: project.slug,
-      x: spot.x,
-      z: spot.z,
-      rotation: -angle + Math.PI * 0.5,
-      height: project.importance === 'featured' ? 16 : 11,
-      accent: project.accent ?? '#a8683f',
-    }
-  })
-
-/** Everything not otherwise placed becomes an island in the archive ring. */
-export const archiveIslands = projects
-  .filter((p) => p.source !== 'client' && !PLACED.has(p.slug))
-  .map((project, i, all) => {
-    const angle = (i / all.length) * Math.PI * 2
-    const radius = 34 + ((i * 7) % 3) * 13
-    const spot = clearOfPlaySpots(
-      districtById.archive.x + Math.cos(angle) * radius,
-      districtById.archive.z + Math.sin(angle) * radius,
-      districtById.archive.x, districtById.archive.z,
-    )
-    return {
-      id: `archive-${project.slug}`,
-      project: project.slug,
-      x: spot.x,
-      z: districtById.archive.z + Math.sin(angle) * radius * 0.78,
-      rotation: -angle,
-      scale: project.importance === 'featured' ? 0.85 : 0.62,
-    }
-  })
-
 /* ============================================================
    ROADS
    Polylines the terrain builder paints and the map draws. They
@@ -1158,4 +1121,110 @@ if (process.env.NODE_ENV === 'development') {
       console.warn(`[world] landmark "${landmark.id}" has an unresolvable ref`, landmark.ref)
     }
   }
+}
+
+/* ============================================================
+   GENERATED PLACEMENTS
+
+   These run LAST on purpose. They ask `world-layout` where there is
+   free ground, and the registry it builds reads roads, ramps,
+   respawns and the timeline plates — all of which are declared
+   above. Move this block up the file and the generators run against
+   half an island.
+   ============================================================ */
+
+function towerRing(index: number, total: number): { angle: number; radius: number } {
+  return { angle: (index / total) * Math.PI * 2 + 0.4, radius: 17 + (index % 3) * 10 }
+}
+
+/**
+ * CLIENT CITY's towers, arranged in three rings around the district.
+ *
+ * The placement used to be `centre + polar(angle, radius)` with a
+ * twelve-pass radial nudge that only knew about PLAY_SPOTS — so
+ * `aula-impulsa` was generated four metres under Mirror Lake,
+ * `fpe-europea` shared 1.2 m of ground with the FOCUS phone, and six
+ * of the fifteen ended up 50–92 m from the city they belong to.
+ *
+ * `findNear` sweeps either side of the authored bearing and grows the
+ * ring only as far as it must, asking the one occupancy registry about
+ * water, roads, plates, ramps, landmarks and everything else. Towers
+ * stay near where they were authored, and none of them stands in a lake.
+ */
+export interface ClientTower {
+  id: string; project: string; x: number; z: number
+  rotation: number; height: number; accent: string
+}
+let clientTowerCache: ClientTower[] | null = null
+
+/**
+ * LAZY, and it has to be: `world-layout` imports this module, so
+ * running the generators at module-evaluation time would call into a
+ * half-initialised registry. Computing them on first use puts the call
+ * safely after both modules have finished loading. Memoised, so the
+ * layout is identical every time it is asked for.
+ */
+export function clientTowers(): ClientTower[] {
+  if (clientTowerCache) return clientTowerCache
+  const placedTowers: Zone[] = []
+  clientTowerCache = projects
+  .filter((p) => p.source === 'client')
+  .map((project, i, all) => {
+    const { angle, radius } = towerRing(i, all.length)
+    const spot = findNear(
+      districtById.client.x, districtById.client.z, radius, angle,
+      { clearance: 3.5, allow: ['respawn'], margin: { water: 6, road: 1.5 }, extra: placedTowers },
+    )
+    // A tower is 8 m across the face, so 6.5 m of footprint plus 3.5 m
+    // of clearance leaves a car's width of street between two of them.
+    // Tighter than it was, because a client CITY wants to read as one.
+    placedTowers.push({ id: project.slug, kind: 'landmark', x: spot.x, z: spot.z, radius: 6.5 })
+    return {
+      id: `client-tower-${project.slug}`,
+      project: project.slug,
+      x: spot.x,
+      z: spot.z,
+      rotation: -angle + Math.PI * 0.5,
+      height: project.importance === 'featured' ? 16 : 11,
+      accent: project.accent ?? '#a8683f',
+    }
+  })
+  return clientTowerCache
+}
+
+/** Everything not otherwise placed becomes an island in the archive ring.
+ *
+ *  The old version computed an avoided X and then threw it away, writing
+ *  `z` straight back from the un-avoided polar coordinate — up to 62 m of
+ *  correction discarded on one axis, which is how two islands came to
+ *  stand in the middle of other districts. */
+export interface ArchiveIsland {
+  id: string; project: string; x: number; z: number; rotation: number; scale: number
+}
+let archiveIslandCache: ArchiveIsland[] | null = null
+
+/** Lazy and memoised, for the same reason as `clientTowers`. */
+export function archiveIslands(): ArchiveIsland[] {
+  if (archiveIslandCache) return archiveIslandCache
+  const placedIslands: Zone[] = []
+  archiveIslandCache = projects
+  .filter((p) => p.source !== 'client' && !PLACED.has(p.slug))
+  .map((project, i, all) => {
+    const angle = (i / all.length) * Math.PI * 2
+    const radius = 30 + ((i * 7) % 3) * 12
+    const spot = findNear(
+      districtById.archive.x, districtById.archive.z, radius, angle,
+      { clearance: 4, allow: ['respawn'], margin: { water: 5 }, extra: placedIslands },
+    )
+    placedIslands.push({ id: project.slug, kind: 'landmark', x: spot.x, z: spot.z, radius: 10 })
+    return {
+      id: `archive-${project.slug}`,
+      project: project.slug,
+      x: spot.x,
+      z: spot.z,
+      rotation: -angle,
+      scale: project.importance === 'featured' ? 0.85 : 0.62,
+    }
+  })
+  return archiveIslandCache
 }

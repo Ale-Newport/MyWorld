@@ -198,7 +198,7 @@ export class World {
       quality: this.quality, bin: this.bin, groundY: 0,
     }
 
-    for (const tower of clientTowers) {
+    for (const tower of clientTowers()) {
       const project = projectsBySlugForWorld[tower.project]
       if (!project) continue
       const y = this.terrain.colliderHeightAt(tower.x, tower.z)
@@ -242,7 +242,7 @@ export class World {
       quality: this.quality, bin: this.bin, groundY: 0,
     }
 
-    for (const island of archiveIslands) {
+    for (const island of archiveIslands()) {
       const project = projectsBySlugForWorld[island.project]
       if (!project) continue
       const y = this.terrain.colliderHeightAt(island.x, island.z)

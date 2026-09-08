@@ -253,7 +253,7 @@ export function WorldMap({ store, getGame }: Props) {
         ctx.arc(px(landmark.x), py(landmark.z), 1.6, 0, Math.PI * 2)
         ctx.fill()
       }
-      for (const spot of PLAY_SPOTS.filter(p => p.id !== 'tnt')) {
+      for (const spot of PLAY_SPOTS) {
         const complete = game.save.data.progress.completedGames.includes(spot.id)
         const discovered = game.save.data.progress.landmarks.includes(`play-${spot.id}`)
         ctx.beginPath(); ctx.arc(px(spot.x),py(spot.z),4,0,Math.PI*2)

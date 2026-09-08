@@ -33,7 +33,10 @@ export class IslandChallenge extends Minigame {
 
   constructor(game:Game,bin:Bin,private kind:ChallengeId){super(game,bin);this.id=kind;this.title=TITLES[kind];this.abandonRadius=kind==='riverRun'?170:90}
   build():void {
-    const spot=PLAY_SPOTS.find(p=>p.id===this.kind)!
+    // TNT DOMINO is played at the TNT QUARRY: the venue and the
+    // challenge have different names, and the quarry declares which
+    // challenge it hosts rather than being listed twice.
+    const spot=PLAY_SPOTS.find(p=>p.id===this.kind||('game' in p&&p.game===this.kind))!
     this.startPosition.set(spot.x,this.game.terrain.colliderHeightAt(spot.x,spot.z)+1.6,spot.z+spot.radius*.65)
     if(this.kind==='debugDash') {
       this.limit=45

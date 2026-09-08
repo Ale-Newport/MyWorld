@@ -31,7 +31,12 @@ export const LAKES = [
   // Lagoons threaded between the districts, the way the reference
   // scatters water through its content half rather than pooling it.
   {id:'mirror-lake',x:78,z:-10,rx:16,rz:12,level:-0.7,depth:4.4},
-  {id:'willow-lake',x:82,z:92,rx:16,rz:12,level:-0.65,depth:4.6},
+  // South of the ring road, not under it. At (82, 92) the road's
+  // south leg ran straight through the middle of this lake with no
+  // bridge and no ford — you drove into four metres of water on the
+  // main loop. It now sits in the bay between the road and the
+  // coast, with the TIME MACHINE on its western shore.
+  {id:'willow-lake',x:90,z:108,rx:13,rz:9,level:-0.65,depth:4.6},
   {id:'cold-tarn',x:-28,z:-106,rx:13,rz:10,level:-0.8,depth:4},
 ]
 /** Off the northern highland, down the seam between the track and the
@@ -49,13 +54,16 @@ export const BRIDGES = [
  *  rolling ground has its pins underground at one end. */
 export const PLAY_SPOTS = [
   {id:'bowling',label:'BOWLING',x:76,z:44,radius:20,flat:24},
-  {id:'tnt',label:'TNT QUARRY',x:92,z:8,radius:16,flat:16},
+  // One venue, two things to do in it: the quarry is the place and
+  // TNT DOMINO is the challenge played there. It used to be listed
+  // twice at identical coordinates, which the map worked around by
+  // filtering one out by id.
+  {id:'tnt',label:'TNT QUARRY',x:92,z:8,radius:16,flat:16,game:'domino'},
   {id:'deployment',label:'DEPLOYMENT ALTAR',x:58,z:-48,radius:13,flat:12},
   {id:'timeMachine',label:'TIME MACHINE',x:62,z:88,radius:12,flat:10},
   {id:'debugDash',label:'DEBUG DASH',x:8,z:46,radius:15},
   {id:'riverRun',label:'RIVER RUN',x:-32,z:-14,radius:13},
   {id:'chipRelay',label:'CHIP RELAY',x:34,z:40,radius:13,flat:11},
-  {id:'domino',label:'TNT DOMINO',x:92,z:8,radius:16},
   {id:'gravityWell',label:'GRAVITY WELL',x:58,z:-118,radius:11},
   {id:'particleField',label:'PARTICLE FIELD',x:80,z:-54,radius:11},
   {id:'procedural',label:'PROCEDURAL TERRAIN',x:120,z:50,radius:12},
@@ -75,7 +83,7 @@ export const FOREST_POCKETS = [
   // The track's infield, which is scenery rather than activity.
   [-70,-40,20],[-72,42,18],[-104,-8,18],[-106,30,16],[-132,-40,16],[-134,18,15],
   // Lake shores and the gaps the ring road curves around.
-  [96,-14,14],[96,88,15],[-4,-104,14],
+  [96,-14,14],[100,101,13],[-4,-104,14],
   [26,-24,13],[74,-90,15],[112,-46,14],[124,14,14],[70,72,14],[16,84,14],
   // South coast scrub.
   [56,120,15],[-4,110,14],

@@ -4,8 +4,9 @@ import type { Game } from '../Game'
 import type { Bin } from '../core/Disposal'
 import type { Physical } from '../physics/Physics'
 import { seeded } from '../core/maths'
-import { roads, landmarks, ramps, respawns, districts, WORLD_RADIUS } from '@/content/world'
-import { FOREST_POCKETS, PLAY_SPOTS, CIRCUIT, CIRCUIT_TRACK, RELAY_POINTS, WATERFALL, inlandWater, coastRadius, lineDistance } from '@/content/world-environment'
+import { isFree } from '@/content/world-layout'
+import { WORLD_RADIUS } from '@/content/world'
+import { FOREST_POCKETS, inlandWater } from '@/content/world-environment'
 
 /** Original, seeded island ecology. Instancing/chunks and reactive foliage are
  * informed by folio-2025 Trees, Foliage, Grass and Leaves (MIT; see notices).
@@ -203,27 +204,34 @@ export class Ecology {
     game.ticker.events.on('tick', tick, 10); bin.add(() => game.ticker.events.off('tick', tick))
   }
 
+  /**
+   * May something grow here?
+   *
+   * This used to be twenty lines of hand-written geometry that
+   * disagreed with the near-identical twenty lines in
+   * SceneryDetails.ts and the third set in world.ts. It is now one
+   * call into `world-layout`, which is also what the tower and island
+   * generators, the respawn audit and `scripts/world-layout-check.mjs`
+   * ask — so a rule fixed there is fixed everywhere, and grass can no
+   * longer grow on the racing line because one of three copies of the
+   * track test was missing a term.
+   */
   private allowed(x: number, z: number, clearance: number): boolean {
-    // Off the beach and out of the sea.
-    if (Math.hypot(x, z) > coastRadius(x, z, WORLD_RADIUS) - 10) return false
-    if (Math.hypot(x-WATERFALL.x,z-WATERFALL.z)<15+clearance) return false
-    // Off the TRACK, not out of a circle drawn around it. The circuit is
-    // a 780 m ribbon; a disc around its centre both misses its ends —
-    // which is how trees came to grow on the racing line — and sterilises
-    // an infield that ought to be scenery.
-    if (lineDistance(x, z, CIRCUIT_TRACK) < CIRCUIT.width * 0.5 + clearance + 5) return false
-    // A district with a built footprint owns its whole plate.
-    if (districts.some(d => d.plate && Math.hypot(x-d.x,z-d.z) < d.plate * 1.5 + clearance)) return false
-    if (districts.some(d => ['labyrinth','lab','chess','focus','gym','network','stock'].includes(d.id) && Math.hypot(x-d.x,z-d.z)<d.radius+7)) return false
-    const water = inlandWater(x, z)
-    if (water && water.edge > -.8) return false
-    if (roads.some(road => lineDistance(x, z, road.points) < road.width / 2 + clearance + 1.5)) return false
-    if (landmarks.some(p => Math.hypot(x - p.x, z - p.z) < Math.max(9, p.radius ?? 12) + clearance + 3)) return false
-    if (respawns.some(p => Math.hypot(x - p.x, z - p.z) < 9 + clearance)) return false
-    if (PLAY_SPOTS.some(p => Math.hypot(x - p.x, z - p.z) < p.radius + clearance)) return false
-    if (RELAY_POINTS.some(p => Math.hypot(x-p[0],z-p[1])<9+clearance)) return false
-    if (ramps.some(p => Math.hypot(x - p.x, z - p.z) < p.length + 14)) return false
-    return true
+    return isFree(x, z, {
+      clearance,
+      coastMargin: 10,
+      margin: {
+        // Vegetation frames a road, it does not grow in it.
+        road: 2.5,
+        circuit: 6,
+        // A ramp needs its whole run-up clear, not just its lip.
+        ramp: 8,
+        // Undergrowth against a wall is fine; a tree through one is not.
+        landmark: 1.5,
+        plate: 1,
+        water: 0.8,
+      },
+    })
   }
 
   /**
