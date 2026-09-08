@@ -5,7 +5,7 @@ import type { Bin } from '../core/Disposal'
 import type { Quality } from '../core/Quality'
 import type { Physics } from '../physics/Physics'
 import type { Materials } from './materials'
-import { districts, roads, WORLD_RADIUS, type District } from '@/content/world'
+import { districts, ramps, roads, WORLD_RADIUS, type District } from '@/content/world'
 
 /* ============================================================
    TERRAIN
@@ -98,6 +98,14 @@ function distanceToPolyline(x: number, z: number, points: [number, number][]): n
   return best
 }
 
+/**
+ * The void island itself. It sits PAST `WORLD_RADIUS`, so the edge
+ * falloff has to be told to leave it alone — otherwise its far half
+ * is shaved off by the drop and a jump that lands two metres long
+ * lands in the sea. Being outside the world is the point of it.
+ */
+const VOID_ISLAND = { x: 259, z: -285, radius: 40 }
+
 /** Elevation of each district's plate. Most sit at zero. */
 const DISTRICT_ELEVATION: Partial<Record<string, number>> = {
   lab: -1.4,
@@ -108,7 +116,6 @@ const DISTRICT_ELEVATION: Partial<Record<string, number>> = {
   labyrinth: 0.4,
   network: -0.8,
   archive: -0.4,
-  void: -14,
 }
 
 export interface TerrainSample {
@@ -148,11 +155,23 @@ export class Terrain {
   heightAt(x: number, z: number): number {
     const radius = Math.hypot(x, z)
 
+    const voidDistance = Math.hypot(x - VOID_ISLAND.x, z - VOID_ISLAND.z)
+    const onVoidIsland = voidDistance < VOID_ISLAND.radius * 1.2
+
     // Past the edge, the ground falls away. Not a wall: driving off
-    // is allowed, and is its own achievement.
-    if (radius > WORLD_RADIUS) {
+    // is allowed, and is its own achievement. The void island is the
+    // one exception — a slab of ground where there should not be any.
+    if (radius > WORLD_RADIUS && !onVoidIsland) {
       const over = radius - WORLD_RADIUS
       return -Math.pow(over * 0.12, 1.7) - 0.5
+    }
+
+    if (onVoidIsland) {
+      // Flat on top, then a cliff. The cliff IS the moat: there is no
+      // walkable slope from the mainland onto this, which is the only
+      // reason it stays a secret.
+      const edge = 1 - smoothstep(voidDistance, VOID_ISLAND.radius * 0.8, VOID_ISLAND.radius * 1.2)
+      return 5 * edge - (1 - edge) * 26
     }
 
     // Rolling base. Deliberately gentle — the suspension should have
@@ -172,6 +191,34 @@ export class Terrain {
       const inside = 1 - smoothstep(distance, district.radius * 0.72, district.radius * 1.5)
       const target = DISTRICT_ELEVATION[district.id] ?? 0
       height = height * (1 - inside) + target * inside
+    }
+
+    // Ramps flatten their own footprint. A forty-metre ramp laid on
+    // rolling ground has its low end buried and its lip in the air,
+    // and the car hits a step instead of a slope — which is exactly
+    // how the jump to the void island failed the first time.
+    for (const ramp of ramps) {
+      const dx = x - ramp.x
+      const dz = z - ramp.z
+      // Into the ramp's own frame: +X runs up the slope.
+      const cos = Math.cos(ramp.rotation)
+      const sin = Math.sin(ramp.rotation)
+      const localX = dx * cos - dz * sin
+      const localZ = dx * sin + dz * cos
+
+      const halfLength = ramp.length / 2 + 6
+      const halfWidth = ramp.width / 2 + 4
+      if (Math.abs(localX) > halfLength || Math.abs(localZ) > halfWidth) continue
+
+      const inside =
+        (1 - smoothstep(Math.abs(localX), halfLength - 7, halfLength)) *
+        (1 - smoothstep(Math.abs(localZ), halfWidth - 4, halfWidth))
+      if (inside <= 0) continue
+
+      // The pad sits at the height of the ramp's own centre, which is
+      // what its mesh and collider were built against.
+      const pad = (fbm(ramp.x * 0.0042, ramp.z * 0.0042) - 0.5) * 2.8
+      height = height * (1 - inside) + pad * inside
     }
 
     // Roads flatten a corridor between whatever they connect.

@@ -61,17 +61,26 @@ const list = await page.evaluate(() => {
 console.log(`touring ${list.length} districts\n`)
 
 for (const district of list) {
-  await page.evaluate(({ x, z, r }) => {
+  await page.evaluate(({ id, x, z }) => {
     const g = window.__world
-    // Park at the district's southern edge, looking in.
-    const px = x
-    const pz = z + r * 0.62
+    // Use the district's own respawn point where it has one: a
+    // position a player would actually occupy, rather than a drop
+    // onto whatever happens to be at the edge.
+    const respawn = g.respawns.getByName(id)
+    const px = respawn ? respawn.position.x : x
+    const pz = respawn ? respawn.position.z : z
     const y = g.terrain.colliderHeightAt(px, pz) + 2
-    g.vehicle.moveTo({ x: px, y, z: pz }, Math.PI * 1.5)
+    g.vehicle.moveTo({ x: px, y, z: pz }, respawn ? respawn.rotation : 0)
     g.view.focusPoint.trackedPosition.set(px, y, pz)
-    g.view.zoom.baseRatio = 0.05
-    g.view.zoom.ratio = 0.05
-    g.view.zoom.smoothedRatio = 0.05
+
+    // A fixed, wide framing so districts are comparable with one
+    // another rather than each shot being whatever the camera's
+    // obstruction avoidance decided.
+    g.view.spherical.radius.edges.min = 78
+    g.view.spherical.radius.edges.max = 78
+    g.view.zoom.baseRatio = 0.5
+    g.view.zoom.ratio = 0.5
+    g.view.zoom.smoothedRatio = 0.5
     g.view.snapToTarget()
   }, district)
   await page.waitForTimeout(900)

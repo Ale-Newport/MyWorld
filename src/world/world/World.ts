@@ -23,6 +23,9 @@ import {
   type Landmark,
 } from '@/content/world'
 
+/** No prop may be scattered this close to a ramp's approach. */
+const RAMP_CLEARANCE = 30
+
 /* ============================================================
    THE WORLD
 
@@ -273,6 +276,8 @@ export class World {
 
   private buildRamps(): void {
     for (const ramp of ramps) {
+      // The terrain flattens a pad under every ramp, so its centre
+      // height is also the height of its whole footprint.
       const y = this.terrain.colliderHeightAt(ramp.x, ramp.z)
       const { geometry, hull } = rampGeometry(ramp.length, ramp.width, ramp.height)
 
@@ -463,6 +468,13 @@ export class World {
     this.props.reserve('panel', q.count(30, 12))
 
     const place = (kind: PropKind, x: number, z: number, options?: { tag?: string; rotation?: number }) => {
+      // Never on or in front of a ramp. A barrier lying across a
+      // run-up is the difference between a jump that works and one
+      // the player is convinced is broken — and the car is lighter
+      // than most props, so it beaches rather than shoves.
+      for (const ramp of ramps) {
+        if (Math.hypot(x - ramp.x, z - ramp.z) < RAMP_CLEARANCE) return
+      }
       const y = this.terrain.colliderHeightAt(x, z)
       this.props.add(kind, x, y + 0.6, z, options)
     }

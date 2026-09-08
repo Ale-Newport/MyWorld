@@ -331,7 +331,10 @@ export const districts: District[] = [
     id: 'archive',
     label: 'PROJECT ARCHIVE',
     short: 'ARCHIVE',
-    x: -20, z: 244, radius: 70,
+    // Pulled south and tightened: at radius 70 it reached back over
+    // the gym, and two districts claiming the same ground makes the
+    // "you have arrived" toast meaningless.
+    x: -20, z: 262, radius: 58,
     theme: 'light', accent: '#6f6f76',
     ground: 'plate',
     blurb: 'Everything smaller, kept honestly, on its own small island.',
@@ -342,7 +345,11 @@ export const districts: District[] = [
     id: 'void',
     label: '404',
     short: '404',
-    x: 292, z: -262, radius: 40,
+    // Past the edge of the world, on the bearing of the stunt ramp
+    // and 91 m out from its lip — which is where a boosting car
+    // actually comes down. See the island check in
+    // scripts/world-qa.mjs; that distance is measured, not chosen.
+    x: 259, z: -285, radius: 40,
     theme: 'dark', accent: '#d4491f',
     ground: 'water',
     blurb: 'You were not supposed to get here.',
@@ -816,7 +823,7 @@ export const landmarks: Landmark[] = [
   },
   {
     id: 'secret-island', district: 'void', label: 'HIDDEN ISLAND',
-    x: 292, z: -262, visual: 'island', interaction: 'note', radius: 14,
+    x: 259, z: -285, visual: 'island', interaction: 'note', radius: 16,
     secret: true, achievement: 'hiddenIsland',
     panel: {
       title: 'THE VOID',
@@ -924,7 +931,18 @@ export const ramps: Ramp[] = [
   { id: 'ramp-brackets', x: 44, z: 6, rotation: Math.PI * 0.5, length: 18, width: 9, height: 5.2, size: 'medium', achievement: 'shipIt' },
   { id: 'ramp-kcl', x: -152, z: 34, rotation: Math.PI * 1.5, length: 16, width: 8, height: 4, size: 'medium' },
   { id: 'ramp-focus', x: 40, z: 96, rotation: Math.PI * 1.5, length: 20, width: 9, height: 6, size: 'medium', achievement: 'phoneHop' },
-  { id: 'ramp-stunt', x: 246, z: -200, rotation: Math.PI * 1.28, length: 40, width: 12, height: 17, size: 'large', achievement: 'hiddenIsland' },
+  // Aimed at the void island, 62 m away across the moat. The angle
+  // is derived from that line, not chosen: point it anywhere else
+  // and the achievement it carries becomes unreachable.
+  // The stunt ramp, sized by measurement rather than by eye. At
+  // 17 m over 40 m (23 degrees) the car spent its speed climbing and
+  // barely left the lip; at 12 over 48 it cleared the island
+  // entirely and landed in the sea beyond. 6.5 over 42 is about
+  // 8.8 degrees, which puts a boosting car down on the island's flat
+  // top with room either side. Change either number and the
+  // achievement it carries stops being reachable — see the island
+  // check in scripts/world-qa.mjs.
+  { id: 'ramp-stunt', x: 238, z: -196, rotation: Math.PI * 0.427, length: 42, width: 13, height: 6.5, size: 'large', achievement: 'hiddenIsland' },
   { id: 'ramp-circuit', x: 236, z: -142, rotation: 0, length: 16, width: 10, height: 3.2, size: 'medium' },
   { id: 'ramp-archive', x: -20, z: 168, rotation: Math.PI * 0.5, length: 14, width: 8, height: 3, size: 'small' },
   { id: 'ramp-voxel', x: 212, z: 6, rotation: Math.PI * 0.5, length: 14, width: 8, height: 3.6, size: 'small' },
@@ -960,6 +978,7 @@ export const devNotes: { id: string; x: number; z: number; text: string }[] = [
   { id: 'note-7', x: -180, z: 160, text: 'This bug took longer than the feature.' },
   { id: 'note-8', x: -190, z: -100, text: 'The maze has one solution. I checked.' },
   { id: 'note-9', x: 232, z: -110, text: 'Do not take the inside line here. Or do.' },
+  { id: 'note-13', x: 236, z: -178, text: 'It is further than it looks. Take a run-up.' },
   { id: 'note-10', x: -8, z: 214, text: 'Some of these are scaffolds. They are in the archive anyway.' },
   { id: 'note-11', x: 96, z: 4, text: 'Do not hit the red button. There is no red button.' },
   { id: 'note-12', x: 206, z: 54, text: 'Every chunk here is one integer away from a different world.' },

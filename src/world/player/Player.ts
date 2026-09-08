@@ -43,6 +43,9 @@ export type PlayerEvent =
   | 'jump'
   | 'stateChange'
   | 'distance'
+  | 'stuck'
+  | 'unstuck'
+  | 'unstuckFailed'
 
 const HYDRAULICS_ACTIONS = [
   'hydraulicsAll',
@@ -84,6 +87,7 @@ export class Player {
   elevation = 0
 
   private unstuckDelay: TweenHandle | null = null
+  private unstuckHop: TweenHandle | null = null
   private hornCooldown = 0
   private nippleJumpTimer: TweenHandle | null = null
 
@@ -231,12 +235,62 @@ export class Player {
       waitAndTest()
     }
 
+    /* ---- beached, not flipped -------------------------- */
+
+    // Being on your roof is not the only way to be immobile. Landing
+    // belly-down on a barrier leaves the car upright, level and with
+    // no wheel touching anything, which the upside-down test cannot
+    // see. The recovery is the same hop, and it has to exist: a
+    // world with several hundred props in it WILL beach the car, and
+    // "press R" is a worse answer than getting yourself out.
+    let hops = 0
+    const tryHop = () => {
+      this.unstuckHop = this.tweens.delay(2, () => {
+        this.unstuckHop = null
+        if (this.state !== 'default' || !this.vehicle.stuck.active) {
+          hops = 0
+          return
+        }
+
+        hops++
+        this.vehicle.jump()
+        this.events.trigger('hydraulics', [4, 'high'])
+
+        // Three hops is enough to tell the difference between wedged
+        // and genuinely trapped. After that, put it back on a road.
+        if (hops >= 3) {
+          hops = 0
+          this.events.trigger('unstuckFailed')
+          this.respawn()
+          return
+        }
+        tryHop()
+      })
+    }
+
+    const onStuck = () => {
+      if (this.vehicle.upsideDown.active) return
+      this.events.trigger('stuck')
+      tryHop()
+    }
+    const onUnstuck = () => {
+      this.unstuckHop?.kill()
+      this.unstuckHop = null
+      hops = 0
+      this.events.trigger('unstuck')
+    }
+
     this.vehicle.events.on('rightSideUp', onRightSideUp as never)
     this.vehicle.events.on('upsideDown', onUpsideDown as never)
+    this.vehicle.events.on('stuck', onStuck as never)
+    this.vehicle.events.on('unstuck', onUnstuck as never)
 
     bin.add(() => {
       this.vehicle.events.off('rightSideUp', onRightSideUp as never)
       this.vehicle.events.off('upsideDown', onUpsideDown as never)
+      this.vehicle.events.off('stuck', onStuck as never)
+      this.vehicle.events.off('unstuck', onUnstuck as never)
+      this.unstuckHop?.kill()
     })
   }
 
