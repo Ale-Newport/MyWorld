@@ -2,6 +2,7 @@ import type { ChapterId, Theme } from './types'
 import { projects, projectBySlug } from './projects'
 import { experience } from './experience'
 import { education } from './education'
+import { PLAY_SPOTS } from './world-environment'
 
 /* ============================================================
    ALEJANDRO'S WORLD — SPATIAL PRESENTATION LAYER
@@ -411,7 +412,7 @@ export const respawns: Respawn[] = [
   { id: 'algorithms', x: 7, z: 82, rotation: 1.798, district: 'algorithms' },
   // Clear of ramp-focus at (40, 96), which it used to sit on top of.
   { id: 'focus', x: 52, z: 38, rotation: 4.712, district: 'focus' },
-  { id: 'gym', x: 42, z: 79, rotation: 4.364, district: 'gym' },
+  { id: 'gym', x: 38, z: 90, rotation: 4.421, district: 'gym' },
   { id: 'client', x: 112, z: 20, rotation: 4.391, district: 'client' },
   { id: 'chess', x: 12, z: -64, rotation: 0.278, district: 'chess' },
   { id: 'stock', x: 84, z: -92, rotation: 5.498, district: 'stock' },
@@ -447,7 +448,7 @@ export const landmarks: Landmark[] = [
   {
     id: 'hub-welcome', district: 'hub', label: 'WELCOME',
     sublabel: 'PRESS ENTER',
-    x: 18, z: 2.9, visual: 'billboard', interaction: 'panel', radius: 7.7,
+    x: 36, z: 4, visual: 'billboard', interaction: 'panel', radius: 7.7,
     panel: {
       title: 'WELCOME',
       lines: [
@@ -872,16 +873,45 @@ const PLACED = new Set(
 )
 
 /** Client sites get their own towers in Client City, laid out on a spiral. */
+/**
+ * Push a generated position radially clear of every play spot.
+ *
+ * Towers and islands are laid out on rings around their district, and a
+ * ring of the wrong radius drops them straight through whatever venue
+ * happens to sit at that distance — two client towers were standing in
+ * the middle of the bowling lane. Deterministic, so the layout stays
+ * stable between loads.
+ */
+function clearOfPlaySpots(x: number, z: number, cx: number, cz: number): { x: number; z: number } {
+  let px = x
+  let pz = z
+  for (let pass = 0; pass < 12; pass++) {
+    const hit = PLAY_SPOTS.find((s) => Math.hypot(px - s.x, pz - s.z) < s.radius + 9)
+    if (!hit) break
+    const dx = px - cx
+    const dz = pz - cz
+    const length = Math.hypot(dx, dz) || 1
+    px += (dx / length) * 6
+    pz += (dz / length) * 6
+  }
+  return { x: px, z: pz }
+}
+
 export const clientTowers = projects
   .filter((p) => p.source === 'client')
   .map((project, i, all) => {
     const angle = (i / all.length) * Math.PI * 2 + 0.4
     const radius = 20 + (i % 3) * 12
+    const spot = clearOfPlaySpots(
+      districtById.client.x + Math.cos(angle) * radius,
+      districtById.client.z + Math.sin(angle) * radius,
+      districtById.client.x, districtById.client.z,
+    )
     return {
       id: `client-tower-${project.slug}`,
       project: project.slug,
-      x: districtById.client.x + Math.cos(angle) * radius,
-      z: districtById.client.z + Math.sin(angle) * radius,
+      x: spot.x,
+      z: spot.z,
       rotation: -angle + Math.PI * 0.5,
       height: project.importance === 'featured' ? 16 : 11,
       accent: project.accent ?? '#a8683f',
@@ -894,10 +924,15 @@ export const archiveIslands = projects
   .map((project, i, all) => {
     const angle = (i / all.length) * Math.PI * 2
     const radius = 34 + ((i * 7) % 3) * 13
+    const spot = clearOfPlaySpots(
+      districtById.archive.x + Math.cos(angle) * radius,
+      districtById.archive.z + Math.sin(angle) * radius,
+      districtById.archive.x, districtById.archive.z,
+    )
     return {
       id: `archive-${project.slug}`,
       project: project.slug,
-      x: districtById.archive.x + Math.cos(angle) * radius,
+      x: spot.x,
       z: districtById.archive.z + Math.sin(angle) * radius * 0.78,
       rotation: -angle,
       scale: project.importance === 'featured' ? 0.85 : 0.62,

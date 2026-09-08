@@ -6,7 +6,7 @@ import type { Quality } from '../core/Quality'
 import type { Physics } from '../physics/Physics'
 import type { Materials } from './materials'
 import { districts, ramps, roads, WORLD_RADIUS, type District } from '@/content/world'
-import { inlandWater, coastRadius, CIRCUIT, CIRCUIT_TRACK, FOREST_POCKETS, BRIDGES } from '@/content/world-environment'
+import { inlandWater, coastRadius, CIRCUIT, CIRCUIT_TRACK, FOREST_POCKETS, BRIDGES, PLAY_SPOTS } from '@/content/world-environment'
 
 /* ============================================================
    TERRAIN
@@ -294,6 +294,22 @@ export class Terrain {
         smoothstep(Math.hypot(district.x, district.z), coastRadius(district.x, district.z, WORLD_RADIUS) - 42,
                    coastRadius(district.x, district.z, WORLD_RADIUS)) * 3.2 +
         (DISTRICT_ELEVATION[district.id] ?? 0)
+      height = height * (1 - inside) + target * inside
+    }
+
+    // Play spots that build one continuous surface level their own
+    // ground, the same way a district plate does.
+    for (const spot of PLAY_SPOTS) {
+      if (!('flat' in spot) || !spot.flat) continue
+      const distance = Math.hypot(x - spot.x, z - spot.z)
+      if (distance > spot.flat * 2.2) continue
+      const inside = 1 - smoothstep(distance, spot.flat * 0.85, spot.flat * 2.1)
+      if (inside <= 0) continue
+      const target =
+        landform(spot.x, spot.z) +
+        (fbm(spot.x * 0.0042, spot.z * 0.0042) - 0.5) * 2.8 +
+        smoothstep(Math.hypot(spot.x, spot.z), coastRadius(spot.x, spot.z, WORLD_RADIUS) - 42,
+                   coastRadius(spot.x, spot.z, WORLD_RADIUS)) * 3.2
       height = height * (1 - inside) + target * inside
     }
 

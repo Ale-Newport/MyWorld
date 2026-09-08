@@ -32,14 +32,17 @@ export const BRIDGES = [
   {x:-31,z:12,length:24,width:9,kind:'road'},
   {x:78,z:-10,length:30,width:8,kind:'modern'},
 ] as const
+/** `flat` is the radius of ground a spot levels under itself, for the
+ *  venues that build one continuous surface — a bowling lane laid over
+ *  rolling ground has its pins underground at one end. */
 export const PLAY_SPOTS = [
-  {id:'bowling',label:'BOWLING',x:76,z:44,radius:20},
-  {id:'tnt',label:'TNT QUARRY',x:92,z:8,radius:16},
-  {id:'deployment',label:'DEPLOYMENT ALTAR',x:58,z:-48,radius:13},
-  {id:'timeMachine',label:'TIME MACHINE',x:62,z:88,radius:12},
+  {id:'bowling',label:'BOWLING',x:76,z:44,radius:20,flat:24},
+  {id:'tnt',label:'TNT QUARRY',x:92,z:8,radius:16,flat:16},
+  {id:'deployment',label:'DEPLOYMENT ALTAR',x:58,z:-48,radius:13,flat:12},
+  {id:'timeMachine',label:'TIME MACHINE',x:62,z:88,radius:12,flat:10},
   {id:'debugDash',label:'DEBUG DASH',x:8,z:46,radius:15},
   {id:'riverRun',label:'RIVER RUN',x:-32,z:-14,radius:13},
-  {id:'chipRelay',label:'CHIP RELAY',x:34,z:40,radius:13},
+  {id:'chipRelay',label:'CHIP RELAY',x:34,z:40,radius:13,flat:11},
   {id:'domino',label:'TNT DOMINO',x:92,z:8,radius:16},
   {id:'gravityWell',label:'GRAVITY WELL',x:58,z:-118,radius:11},
   {id:'particleField',label:'PARTICLE FIELD',x:80,z:-54,radius:11},
