@@ -781,13 +781,13 @@ export const landmarks: Landmark[] = [
   /* ---- NETWORK / VPN -------------------------------------- */
   {
     id: 'vpn-node-a', district: 'network', label: 'NODE A',
-    x: 64.7, z: -100, visual: 'monument', interaction: 'project', radius: 7,
+    x: 36, z: -122, visual: 'monument', interaction: 'project', radius: 7,
     ref: p('vpn'), scale: 0.8,
   },
   {
     id: 'vpn-node-b', district: 'network', label: 'NODE B',
     sublabel: 'ENCRYPTED TUNNEL',
-    x: 87.3, z: -100, visual: 'monument', interaction: 'minigame', radius: 7,
+    x: 82, z: -122, visual: 'monument', interaction: 'minigame', radius: 7,
     minigame: 'packets', scale: 0.8, achievement: 'tunnel',
   },
 

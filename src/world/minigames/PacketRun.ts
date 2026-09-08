@@ -61,6 +61,8 @@ const DECK_HALF = 5
  * climbs it rather than launching off the lip.
  */
 const RAMP_RUN = 12
+/** The shortest deck worth having between the two ramps. */
+const MIN_DECK = 8
 /** How far the ramp feet stop short of the node monuments. */
 const NODE_CLEARANCE = 6
 
@@ -163,8 +165,17 @@ export class PacketRun extends Minigame {
 
     this.rampAFoot = this.nodeAx + NODE_CLEARANCE
     this.rampBFoot = this.nodeBx - NODE_CLEARANCE
-    this.deckX0 = this.rampAFoot + RAMP_RUN
-    this.deckX1 = this.rampBFoot - RAMP_RUN
+
+    // The causeway is clearance + ramp + deck + ramp + clearance. If the
+    // two nodes are closer together than that, the deck inverts and the
+    // whole link builds inside out — which is what happened when the
+    // relayout brought them to twenty-two metres apart and left this
+    // game with no course at all. Shorten the ramps to fit rather than
+    // build something impossible.
+    const span = this.rampBFoot - this.rampAFoot
+    const ramp = Math.min(RAMP_RUN, Math.max(3, (span - MIN_DECK) * 0.5))
+    this.deckX0 = this.rampAFoot + ramp
+    this.deckX1 = this.rampBFoot - ramp
     this.wireX0 = this.nodeAx + 4
     this.wireX1 = this.nodeBx - 4
 
