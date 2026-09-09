@@ -21,7 +21,10 @@ for(const mode of modes) {
   await sleep(2250)
   let lastReached=-1,lastLog=0,maxOff=0,stalled=0
   const began=Date.now()
-  while(Date.now()-began<180000) {
+  // 300 s, not 180: the circuit is 546 m and this controller drives it
+  // cautiously at 7-12 m/s, so two laps take about 170 s on a good run
+  // and the old budget cut every attempt off mid-lap.
+  while(Date.now()-began<300000) {
     const s=await page.evaluate(mode=>{
       const g=window.__world,m=g.minigames.get('circuit'),p=g.player.position
       const samples=m.curve.getSpacedPoints(480);let closest=0,dist=Infinity
@@ -55,8 +58,9 @@ for(const mode of modes) {
   if(!results.some(r=>r.mode===mode)){results.push({mode,ok:false,reason:'timeout'});console.log('TIMEOUT',mode)}
   await page.screenshot({path:`${OUT}/${mode}.png`})
 }
-const saved=await page.evaluate(()=>{const g=window.__world;g.save.flush();return {best:g.minigames.get('circuit').bestTime,history:g.save.data.progress.raceHistory}})
+const saved=await page.evaluate(()=>{const g=window.__world;g.save.flush();return {best:g.minigames.get('circuit').bestTime,history:g.save.data.progress.raceHistory,board:g.save.data.progress.raceBoard}})
 await page.reload();await page.getByRole('button',{name:'ENTER',exact:true}).click({timeout:120000});await page.waitForFunction(()=>window.__world?.player?.state==='default')
-const persistence=await page.evaluate(saved=>{const g=window.__world;return {ok:saved.best!==null&&g.minigames.get('circuit').bestTime===saved.best&&JSON.stringify(g.save.data.progress.raceHistory)===JSON.stringify(saved.history),best:g.minigames.get('circuit').bestTime,history:g.save.data.progress.raceHistory}},saved)
+// The LEADERBOARD has to survive a reload too, not just the best time.
+const persistence=await page.evaluate(saved=>{const g=window.__world;const p=g.save.data.progress;return {ok:saved.best!==null&&g.minigames.get('circuit').bestTime===saved.best&&JSON.stringify(p.raceHistory)===JSON.stringify(saved.history)&&JSON.stringify(p.raceBoard)===JSON.stringify(saved.board)&&p.raceBoard.length>0&&p.raceBoard.every(e=>typeof e.time==='number'&&typeof e.at==='number'),best:g.minigames.get('circuit').bestTime,history:p.raceHistory,board:p.raceBoard}},saved)
 console.log('PERSISTENCE',persistence)
 await writeFile(`${OUT}/continuous.json`,JSON.stringify({results,persistence,errors},null,2));await browser.close();process.exitCode=results.every(r=>r.ok)&&persistence.ok&&!errors.length?0:1

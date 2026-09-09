@@ -927,13 +927,13 @@ export class Terrain {
       const r = district.plate * scale
       ctx.beginPath()
       ctx.arc(x, y, r, 0, Math.PI * 2)
-      ctx.fillStyle = dark ? palette.voidDark3 : palette.paper
+      ctx.fillStyle = dark ? palette.voidDark3 : '#dfdbcf'
       ctx.fill()
 
       // An inner plate, so the plate has an edge rather than a fade.
       ctx.beginPath()
       ctx.arc(x, y, r * 0.94, 0, Math.PI * 2)
-      ctx.fillStyle = dark ? palette.voidDark2 : palette.paper2
+      ctx.fillStyle = dark ? palette.voidDark2 : '#e9e5da'
       ctx.fill()
 
       ctx.beginPath()
@@ -961,6 +961,39 @@ export class Terrain {
       }
       ctx.restore()
     }
+
+    /* ---- road shoulders ----------------------------------
+       Before the district plates, and the rest of the road after them:
+       a lane crossing a paved forecourt should not carry a gravel
+       verge across it, and at the hub — where four roads meet on one
+       plate — four sets of verges made the junction look like
+       roadworks. On grass the shoulder still shows, because the
+       plates are only their own discs.
+    */
+    const ROAD_PASSES = ['surface', 'aggregate', 'wear', 'edgeLine', 'centre'] as const
+
+    const trace = (road: (typeof roads)[number]) => {
+      ctx.beginPath()
+      road.points.forEach(([x, z], i) => {
+        const px = toPx(x)
+        const py = toPx(z)
+        if (i === 0) ctx.moveTo(px, py)
+        else ctx.lineTo(px, py)
+      })
+    }
+    const dirt = (road: (typeof roads)[number]) => road.id === 'void-run'
+
+    ctx.lineCap = 'round'
+    ctx.lineJoin = 'round'
+    for (const road of roads) {
+      trace(road)
+      ctx.strokeStyle = palette.roadShoulder
+      ctx.lineWidth = (road.width + 2.4) * scale
+      ctx.globalAlpha = dirt(road) ? 0.55 : 0.9
+      ctx.stroke()
+      ctx.globalAlpha = 1
+    }
+
 
     /* ---- the circuit -------------------------------------
        Painted BEFORE the roads, so the link road crosses it rather
@@ -1045,28 +1078,13 @@ export class Terrain {
     ctx.lineCap = 'round'
     ctx.lineJoin = 'round'
 
-    const trace = (road: (typeof roads)[number]) => {
-      ctx.beginPath()
-      road.points.forEach(([x, z], i) => {
-        const px = toPx(x)
-        const py = toPx(z)
-        if (i === 0) ctx.moveTo(px, py)
-        else ctx.lineTo(px, py)
-      })
-    }
-    const dirt = (road: (typeof roads)[number]) => road.id === 'void-run'
-
-    for (const pass of ['shoulder', 'surface', 'aggregate', 'wear', 'edgeLine', 'centre'] as const) {
+    for (const pass of ROAD_PASSES) {
       for (const road of roads) {
         if (dirt(road) && (pass === 'edgeLine' || pass === 'centre' || pass === 'wear')) continue
         trace(road)
         ctx.globalAlpha = 1
 
-        if (pass === 'shoulder') {
-          ctx.strokeStyle = palette.roadShoulder
-          ctx.lineWidth = (road.width + 2.4) * scale
-          ctx.globalAlpha = dirt(road) ? 0.55 : 0.9
-        } else if (pass === 'surface') {
+        if (pass === 'surface') {
           ctx.strokeStyle = dirt(road) ? palette.roadDirt : palette.road
           ctx.lineWidth = road.width * scale
         } else if (pass === 'aggregate') {
@@ -1083,8 +1101,8 @@ export class Terrain {
           ctx.lineWidth = road.width * 0.62 * scale
         } else if (pass === 'edgeLine') {
           ctx.strokeStyle = palette.roadLine
-          ctx.globalAlpha = 0.5
-          ctx.lineWidth = Math.max(1, 0.35 * scale)
+          ctx.globalAlpha = 0.34
+          ctx.lineWidth = Math.max(1, 0.3 * scale)
           // Drawn twice, offset either side by half the carriageway.
           ctx.save()
           for (const side of [-1, 1]) {
@@ -1107,8 +1125,8 @@ export class Terrain {
           continue
         } else {
           ctx.strokeStyle = palette.roadLine
-          ctx.globalAlpha = 0.62
-          ctx.lineWidth = Math.max(1, 0.4 * scale)
+          ctx.globalAlpha = 0.46
+          ctx.lineWidth = Math.max(1, 0.36 * scale)
           ctx.setLineDash([3.5 * scale, 3.5 * scale])
         }
         ctx.stroke()

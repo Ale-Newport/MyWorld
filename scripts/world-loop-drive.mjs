@@ -48,44 +48,88 @@ await page.locator('canvas').click({ position: { x: 640, y: 620 } })
   trusted and the input layer ignores it. The first version of this
   did it all in the page and reported that the car could not finish a
   single road, when in fact it had never moved.
+
+  The controller itself is the one from `world-race-drive.mjs`, which
+  already drives a 546 m circuit with twenty-five corners: it fits a
+  curve through the route, aims at a LOOK-AHEAD point rather than at
+  the next waypoint, and picks a target speed from how much the curve
+  is bending. Steering straight at waypoints with a bang-bang throttle
+  — which is what this did first — puts the car into the scenery on
+  every bend and then reports the bend as impassable.
 */
 await page.evaluate(() => {
   const g = window.__world
-  window.__auto = { route: [], at: 0, done: false, stuck: 0 }
+  const THREE = g.world.group.constructor.prototype.constructor
+  void THREE
+  window.__auto = { curve: null, length: 0, at: 0, done: false, stuck: 0, samples: [], progress: 0 }
+
+  window.__autoRoute = (points) => {
+    const a = window.__auto
+    // A curve through the road's own control points, sampled once.
+    const path = points.map(([x, z]) => ({ x, z }))
+    const N = Math.max(60, points.length * 24)
+    const samples = []
+    // Catmull-Rom, open: the roads are not loops.
+    const pt = (i) => path[Math.max(0, Math.min(path.length - 1, i))]
+    for (let seg = 0; seg < path.length - 1; seg++) {
+      const p0 = pt(seg - 1), p1 = pt(seg), p2 = pt(seg + 1), p3 = pt(seg + 2)
+      const steps = Math.ceil(N / (path.length - 1))
+      for (let k = 0; k < steps; k++) {
+        const t = k / steps, t2 = t * t, t3 = t2 * t
+        samples.push({
+          x: 0.5 * ((2 * p1.x) + (-p0.x + p2.x) * t + (2 * p0.x - 5 * p1.x + 4 * p2.x - p3.x) * t2 + (-p0.x + 3 * p1.x - 3 * p2.x + p3.x) * t3),
+          z: 0.5 * ((2 * p1.z) + (-p0.z + p2.z) * t + (2 * p0.z - 5 * p1.z + 4 * p2.z - p3.z) * t2 + (-p0.z + 3 * p1.z - 3 * p2.z + p3.z) * t3),
+        })
+      }
+    }
+    samples.push({ x: path[path.length - 1].x, z: path[path.length - 1].z })
+    let length = 0
+    for (let i = 1; i < samples.length; i++) length += Math.hypot(samples[i].x - samples[i - 1].x, samples[i].z - samples[i - 1].z)
+    a.samples = samples; a.length = length; a.at = 0; a.done = false; a.stuck = 0; a.progress = 0
+  }
+
   window.__autoCommand = () => {
     const a = window.__auto
     const p = g.player.position
-    if (a.done || !a.route.length) return { throttle: 0, steer: 0, done: true, at: a.at, of: a.route.length, x: p.x, z: p.z, stuck: a.stuck }
-    const target = a.route[a.at]
-    const dx = target[0] - p.x
-    const dz = target[1] - p.z
-    const distance = Math.hypot(dx, dz)
-    if (distance < 10) {
-      a.at++
-      a.stuck = 0
-      if (a.at >= a.route.length) a.done = true
+    if (a.done || !a.samples.length) {
+      return { throttle: 0, steer: 0, boost: false, done: true, at: a.at, of: a.samples.length, x: p.x, z: p.z, stuck: a.stuck }
     }
-    /*
-      The car faces (cos r, +sin r) where r is `player.rotationY` —
-      MEASURED, not assumed. Note this is the opposite sign to the
-      rotation `vehicle.moveTo` takes, which is why `put()` below
-      negates. Getting it backwards makes the car drive in circles and
-      the report say every road on the island is impassable.
-    */
-    const forward = { x: Math.cos(g.player.rotationY), z: Math.sin(g.player.rotationY) }
-    // NORMALISED by distance, so these are the sine and cosine of the
-    // angle to the target rather than a number that grows with how far
-    // away it is. Unnormalised, the deadband was effectively zero and
-    // the car sawed left-right the whole way down every road.
-    const cross = (forward.x * dz - forward.z * dx) / (distance || 1)
-    const ahead = (forward.x * dx + forward.z * dz) / (distance || 1)
-    if (g.vehicle.xzSpeed < 1.5) a.stuck += 1 / 60
+    // Nearest sample AHEAD of the furthest one reached, so the car
+    // cannot satisfy the route by cutting back to the start.
+    let closest = a.progress, best = Infinity
+    for (let i = a.progress; i < Math.min(a.samples.length, a.progress + 60); i++) {
+      const d = (p.x - a.samples[i].x) ** 2 + (p.z - a.samples[i].z) ** 2
+      if (d < best) { best = d; closest = i }
+    }
+    a.progress = closest
+    a.at = closest
+    if (closest >= a.samples.length - 2) { a.done = true }
+
+    const look = Math.min(a.samples.length - 1, closest + 16)
+    const target = a.samples[look]
+    const ahead = a.samples[Math.min(a.samples.length - 1, closest + 30)]
+    const here = a.samples[closest]
+    // Curvature from the angle between the next stretch and the one after.
+    const v1 = { x: target.x - here.x, z: target.z - here.z }
+    const v2 = { x: ahead.x - target.x, z: ahead.z - target.z }
+    const l1 = Math.hypot(v1.x, v1.z) || 1, l2 = Math.hypot(v2.x, v2.z) || 1
+    const curvature = Math.acos(Math.max(-1, Math.min(1, (v1.x * v2.x + v1.z * v2.z) / (l1 * l2))))
+
+    let error = Math.atan2(target.z - p.z, target.x - p.x) - g.player.rotationY
+    error = Math.atan2(Math.sin(error), Math.cos(error))
+    const angular = g.vehicle.chassis.physical.body.angvel().y
+    const steer = error + angular * 0.22
+    const speed = g.vehicle.xzSpeed
+    const wanted = Math.max(6.5, 13 - curvature * 6)
+
+    if (speed < 1.5) a.stuck += 1 / 15
     else a.stuck = 0
+
     return {
-      // Reverse briefly when wedged, then try again.
-      throttle: a.stuck > 2.5 && a.stuck < 4 ? -1 : ahead < -0.35 ? -1 : 1,
-      steer: Math.abs(cross) < 0.09 ? 0 : cross > 0 ? 1 : -1,
-      done: a.done, at: a.at, of: a.route.length, x: p.x, z: p.z, stuck: a.stuck,
+      throttle: a.stuck > 2.5 && a.stuck < 4 ? -1 : speed > wanted + 1.2 ? 0 : 1,
+      brake: speed > wanted + 1.2,
+      steer: steer < -0.075 ? -1 : steer > 0.075 ? 1 : 0,
+      done: a.done, at: closest, of: a.samples.length, x: p.x, z: p.z, stuck: a.stuck,
     }
   }
 })
@@ -101,10 +145,7 @@ async function release() {
 }
 
 async function drive(name, route, budgetSeconds) {
-  await page.evaluate(({ route }) => {
-    const a = window.__auto
-    a.route = route; a.at = 0; a.done = false; a.stuck = 0
-  }, { route })
+  await page.evaluate(({ route }) => window.__autoRoute(route), { route })
   const start = Date.now()
   let stalledAt = null
   let end = { done: false, at: 0, of: route.length }
@@ -114,6 +155,7 @@ async function drive(name, route, budgetSeconds) {
     if (c.done) break
     await press('w', c.throttle > 0)
     await press('s', c.throttle < 0)
+    await press('b', Boolean(c.brake))
     await press('a', c.steer < 0)
     await press('d', c.steer > 0)
     if (c.stuck > 6 && !stalledAt) stalledAt = `${c.x.toFixed(0)},${c.z.toFixed(0)} on leg ${c.at}/${c.of}`
@@ -123,7 +165,7 @@ async function drive(name, route, budgetSeconds) {
   await release()
   const seconds = ((Date.now() - start) / 1000).toFixed(0)
   const ok = end.done
-  console.log(`  ${ok ? 'ok  ' : 'FAIL'}  ${name.padEnd(16)} ${end.at}/${end.of} waypoints in ${seconds}s${stalledAt ? `  · stalled at ${stalledAt}` : ''}`)
+  console.log(`  ${ok ? 'ok  ' : 'FAIL'}  ${name.padEnd(16)} ${Math.round((end.at / Math.max(1, end.of)) * 100)}% of the road in ${seconds}s${stalledAt ? `  · stalled at ${stalledAt}` : ''}`)
   await page.screenshot({ path: path.join(OUT, `${name.replace(/[^a-z0-9]+/gi, '-').toLowerCase()}.png`) })
   return ok
 }
