@@ -53,7 +53,33 @@
 }
 .flowArrow { color: var(--text-faint); }
 
+/* One group to a line, exactly the three lines the <br>s used to make. */
+.spec span { display: block; }
+
 @media (max-width: 800px) { .head { max-width: 66vw; } }
+
+/* Under this width the flow row no longer fits on one line, and its first
+   line then runs the whole way to the right-hand gutter — through the spec
+   block sitting in that corner. Both are anchored near the foot, and on a
+   short screen both offsets bottom out at the same 4.5rem, so the two are
+   printed on top of each other. Give them a line each: the spec gives up
+   the corner and lies along the foot, the flow sits above it. Width, not
+   motion — the two collide on the animated path just the same. */
+@media (max-width: 700px) {
+  .spec {
+    left: var(--gutter);
+    max-width: none;
+    display: flex; flex-wrap: wrap; justify-content: flex-end;
+    /* Wider than the word space inside a group, or the middot in
+       "JAVA · MAVEN" reads as the separator for all three. */
+    column-gap: clamp(1.1rem, 3.5vw, 1.6rem);
+  }
+  /* The clamp is the corner's own offset, repeated from
+     chapters.module.css because that file belongs to all fourteen
+     chapters; the rest clears the two lines the spec wraps to at the
+     narrowest sizes, and is slack the flow can spare above. */
+  .flow { bottom: calc(clamp(4.5rem, 9vh, 5.5rem) + 2.75rem); }
+}
 
 @media (prefers-reduced-motion: reduce) {
   /* The climb is the point of the ladder, and it cannot climb here: all
@@ -101,4 +127,13 @@
    book everything under it. */
 @media (prefers-reduced-motion: reduce) and (max-width: 800px) and (min-height: 620px) {
   .visual { top: clamp(13rem, 27vh, 17rem); }
+}
+
+/* Standing still the ladder is already down at the foot, on a book drawn
+   full, and the flow now wants the band it used to leave empty below it.
+   The illustration stops well above the line its box ends on, so the
+   scale climbs into that slack rather than the flow dropping into the
+   HUD, which owns the last 4.5rem of the stage. */
+@media (prefers-reduced-motion: reduce) and (max-width: 700px) {
+  .ladderWrap { bottom: clamp(10.5rem, 22vh, 11.5rem); }
 }

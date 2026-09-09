@@ -34,7 +34,9 @@
 
 /* The foot of the page reads bottom-up: the HUD, then the portal's
    own rule, the colophon, and the contact links above them. Each
-   band clears the one below it at any viewport height. */
+   band clears the one below it at any viewport height. On a phone
+   the links leave this stack and rejoin the flow — see the foot of
+   this file. */
 .links {
   position: absolute;
   left: var(--gutter); right: var(--gutter);
@@ -86,7 +88,31 @@
 @media (max-width: 700px) {
   .colophon span:last-child { display: none; }
   .colophon { bottom: 6.4rem; }
-  .links { grid-template-columns: 1fr; bottom: 9rem; }
+
+  /* A phone cannot float the headline in the middle of a stage the
+     four links already fill: stacked, they are most of the height,
+     and the portal band holds them clear of the foot. So the two
+     bands stop competing for the same middle and are laid out one
+     above the other — the links at the foot of the content box, the
+     headline centred in whatever is left above them. The bottom
+     padding is what reserves the colophon and the portal's rule;
+     the top padding clears the corner chrome. */
+  .stage {
+    grid-template-rows: 1fr auto;
+    padding-top: clamp(8rem, 17vh, 10rem);
+    padding-bottom: 9rem;
+  }
+  /* The 40vh floor is a desktop measure: here it would push the
+     links out through the foot of the pinned stage. */
+  .center { min-height: 0; }
+  .links {
+    position: static;
+    grid-column: 1 / span 12;
+    grid-template-columns: 1fr;
+  }
+  /* Four rows at desktop rhythm do not leave the headline a band to
+     sit in; this keeps each row well past a thumb's width. */
+  .link { padding-block: var(--sp-3); }
 }
 
 @media (prefers-reduced-motion: reduce) {

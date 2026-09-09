@@ -79,12 +79,14 @@ export function Stock() {
           <span>SELL ORDERS</span>
         </div>
 
-        <div className={`${shared.corner} ${shared.cornerBR}`}>
-          JAVA · MAVEN
-          <br />
-          PRICE-TIME PRIORITY
-          <br />
-          4 TRADER THREADS
+        {/* Three groups rather than one run broken by <br>: on a narrow screen
+            the block gives up the corner and lies along the foot, and the
+            groups have to be able to sit beside each other without a line
+            break landing in the middle of one. */}
+        <div className={`${shared.corner} ${shared.cornerBR} ${styles.spec}`}>
+          <span>JAVA · MAVEN</span>
+          <span>PRICE-TIME PRIORITY</span>
+          <span>4 TRADER THREADS</span>
         </div>
       </div>
     </Chapter>

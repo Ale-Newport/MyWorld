@@ -200,9 +200,32 @@
    now starts at the top of the stage, so the marker would land on the
    same lines as it. Drop it clear of the label, into the white beside
    the first line of the title, where it still reads as a marginal note
-   and — more to the point — still tells a thumb that the gallery moves. */
+   and — more to the point — still tells a thumb that the gallery moves.
+   Beside the FIRST line and no further: "Pansofia /" stops a third of
+   the way across and leaves the right of the stage empty, whereas
+   "Grupo Newport" runs on under the marker, and a drop of a full
+   var(--sp-7) printed the two on top of each other on a 667px screen.
+   One line higher is the middle of the only band that is clear of the
+   label above it and of the second line below it. */
 @media (prefers-reduced-motion: reduce) and (max-width: 700px) {
-  .hint { transform: translateY(var(--sp-7)); }
+  .hint { transform: translateY(var(--sp-5)); }
+}
+
+/* A short phone cannot hold the numbers and the gallery at once. The
+   head takes 417 of the 523px the stage has to give at 375×667 and the
+   tiles need 217 before a caption is legible, so something has to go —
+   and the metrics are the one block on this chapter that says nothing
+   new. The lead has already read "a team of six engineers and
+   designers delivering fourteen production websites, two weeks ahead
+   of schedule", which is three of the four; the fourth, "80%+ front &
+   back-end built", is in the server-rendered profile that ships with
+   every page. The screenshots are the argument this chapter can make
+   nowhere else, so the screenshots keep the room.
+   The line is drawn on height because that is what runs out: the stage
+   padding stops growing with the viewport below 800px tall, so from
+   there down the two blocks want ~802px of a screen that has less. */
+@media (prefers-reduced-motion: reduce) and (max-width: 700px) and (max-height: 820px) {
+  .metrics { display: none; }
 }
 
 /* Wide enough to set the numbers beside the prose instead of under it,
