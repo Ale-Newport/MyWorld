@@ -20,10 +20,13 @@
   text-transform: uppercase;
 }
 
-.ladder {
+.ladderWrap {
   position: absolute;
   left: var(--gutter); right: var(--gutter);
   bottom: clamp(11rem, 27vh, 15rem);
+}
+.ladderLabel { display: none; }
+.ladder {
   display: flex; flex-wrap: wrap; align-items: baseline; justify-content: center;
   gap: clamp(0.6rem, 3vw, 3rem);
 }
@@ -51,3 +54,51 @@
 .flowArrow { color: var(--text-faint); }
 
 @media (max-width: 800px) { .head { max-width: 66vw; } }
+
+@media (prefers-reduced-motion: reduce) {
+  /* The climb is the point of the ladder, and it cannot climb here: all
+     six rungs arrive at once, at display size, across a book that is
+     already full. So the figures step down to a scale — a single quiet
+     line at the foot, ending on the figure that carries the claim — and
+     the illustration gives up the band underneath it rather than having
+     numbers lie over its depth bars. */
+  .visual { bottom: clamp(11rem, 24vh, 13.5rem); }
+
+  .ladderWrap {
+    bottom: clamp(8.5rem, 20vh, 11rem);
+    display: flex; flex-wrap: wrap; align-items: baseline;
+    gap: var(--sp-2) var(--sp-5);
+  }
+  .ladderLabel {
+    display: block;
+    font-family: var(--font-mono); font-size: var(--fs-nano);
+    letter-spacing: var(--tracking-label); text-transform: uppercase;
+    color: var(--text-muted);
+  }
+  .ladder { justify-content: flex-start; gap: clamp(0.7rem, 2vw, 1.6rem); }
+
+  /* The rungs read as ticks on that scale, so they take the mono of the
+     technical labels; the last one stays a figure. Both colours are
+     written twice — a single frame can land before the preference is
+     read, and it leaves the lit state behind on the rung. */
+  .rung {
+    opacity: 1 !important;
+    font-family: var(--font-mono); font-size: var(--fs-tiny);
+    letter-spacing: var(--tracking-label); line-height: 1;
+  }
+  .rung, .rung[data-on='true'] { color: var(--text-muted); }
+  .rung:last-child {
+    font-family: var(--font-display);
+    font-size: clamp(1.15rem, 0.85rem + 1.2vw, 1.8rem);
+    letter-spacing: -0.04em;
+  }
+  .rung:last-child, .rung:last-child[data-on='true'] { color: var(--accent); }
+}
+
+/* On a narrow screen the book is drawn full from the first frame, and
+   the heading would sit on its depth bars. Given a tall enough window
+   to divide, the chapter stacks instead: the type takes the top, the
+   book everything under it. */
+@media (prefers-reduced-motion: reduce) and (max-width: 800px) and (min-height: 620px) {
+  .visual { top: clamp(13rem, 27vh, 17rem); }
+}

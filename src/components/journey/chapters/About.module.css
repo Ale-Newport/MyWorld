@@ -49,3 +49,30 @@
   transform: scaleX(0);
   will-change: transform;
 }
+
+@media (prefers-reduced-motion: reduce) {
+  /* Nothing arrives one at a time here, so the four markers stop being a
+     sequence and become an index of the story. A bar the loop never
+     draws is not a bar caught halfway: it is the crossing already made,
+     at its full length like the other three. */
+  .intro, .marker, .markerBar { opacity: 1 !important; transform: none !important; }
+
+  /* Read all at once the rows need a shared spine, which the flex column
+     cannot give them — each marker sized its own three columns, so four
+     labels of four lengths started the bars at four different places.
+     One grid, borrowed by every row, squares the whole set off. */
+  .markers {
+    display: grid;
+    grid-template-columns: minmax(64px, auto) minmax(40px, 1fr) minmax(64px, auto);
+    gap: 0;
+    border-top: var(--hair) solid var(--border);
+  }
+  .marker {
+    grid-column: 1 / -1;
+    grid-template-columns: subgrid;
+    padding-block: clamp(0.55rem, 1.6vh, 0.9rem);
+    border-bottom: var(--hair) solid var(--border);
+  }
+  /* Both edges of the table are ruled, so both columns of type meet them. */
+  .markerTo { text-align: right; }
+}

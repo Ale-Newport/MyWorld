@@ -80,7 +80,65 @@
   .metricValue { font-size: clamp(2.6rem, 14vw, 4rem); }
 }
 
+/* ============================================================
+   STATIC STATE
+   On the animated path the board arrives long after the title
+   has gone; with nothing moving they hold the stage together,
+   and the words end up lying across the squares. So the two are
+   given separate ground — type down the left, the reconstructed
+   board to the right of it — and on a narrow screen, one column
+   in reading order.
+   ============================================================ */
+
 @media (prefers-reduced-motion: reduce) {
   .visual, .metric { opacity: 1 !important; transform: none !important; }
+  /* Read rather than scrubbed, the pipeline has already run. */
   .step { color: var(--text-primary); }
+}
+
+@media (prefers-reduced-motion: reduce) and (min-width: 1001px) {
+  /* The board gives up the left third of the stage to the heading,
+     the lead and the metric, and keeps the room between them and
+     the stage list on the right. */
+  .visual { inset: clamp(4rem, 10vh, 7rem) 15% clamp(5rem, 12vh, 7rem) 34%; }
+  /* Sized to sit inside that column instead of running under the
+     board, which is where the full display size ends up. */
+  .metricValue { font-size: clamp(2.4rem, 5.4vw, 6rem); }
+}
+
+@media (prefers-reduced-motion: reduce) and (max-width: 1000px) {
+  /* Too narrow to set anything beside anything else, so the chapter
+     reads as one column: what it is, what it looks at, the stages it
+     runs, what it gets right. The board is the only elastic row —
+     it takes whatever the words leave it, which is what keeps the
+     column inside a stage that clips. */
+  .stage {
+    padding-top: clamp(3.5rem, 6.5vh, 5rem);
+    grid-template-rows: auto minmax(9rem, 23rem) auto auto;
+    row-gap: var(--sp-4);
+  }
+  .head, .visual, .pipeline, .metric {
+    position: static;
+    inset: auto;
+    transform: none;
+    grid-column: 1 / span 12;
+  }
+  .head { grid-row: 1; max-width: none; gap: var(--sp-2); }
+  .head p { max-width: var(--measure-wide); }
+  /* Full bleed, because the board is the widest thing here and the
+     stage labels it carries only sit on one line at full width. */
+  .visual {
+    grid-row: 2;
+    min-height: 0;
+    margin-inline: calc(var(--gutter) * -1);
+  }
+  .pipeline {
+    grid-row: 3;
+    flex-flow: row wrap;
+    gap: 0.3rem clamp(0.75rem, 3vw, 1.5rem);
+    text-align: left;
+  }
+  .step { justify-content: flex-start; gap: var(--sp-2); }
+  .metric { grid-row: 4; }
+  .metricValue { font-size: clamp(1.9rem, 9vw, 3rem); }
 }

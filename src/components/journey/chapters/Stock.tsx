@@ -57,11 +57,17 @@ export function Stock() {
           <p className={shared.note}>{project.shortDescription}</p>
         </div>
 
-        <ol className={styles.ladder} ref={ladderRef} aria-label="Trades processed">
-          {LADDER.map((v) => (
-            <li key={v} className={styles.rung} data-on="false">{v}</li>
-          ))}
-        </ol>
+        {/* Counting, the ladder explains itself: the rungs light one by
+            one as the book fills. Standing still it is a row of bare
+            numbers, so the static composition names what they count. */}
+        <div className={styles.ladderWrap}>
+          <p className={styles.ladderLabel} aria-hidden="true">Trades matched</p>
+          <ol className={styles.ladder} ref={ladderRef} aria-label="Trades processed">
+            {LADDER.map((v) => (
+              <li key={v} className={styles.rung} data-on="false">{v}</li>
+            ))}
+          </ol>
+        </div>
 
         <div className={styles.flow} aria-hidden="true">
           <span>BUY ORDERS</span>

@@ -84,14 +84,14 @@ export function Prelude() {
             <span className={styles.nameLine}>Newport</span>
           </h2>
 
+          {/* Every role is always in the DOM: the cycle lights one at a
+              time, and the reduced-motion stylesheet stands the whole set
+              up at once. One element per role is what lets it be set as a
+              rule of type on a desk and a stacked list on a phone. */}
           <div className={styles.rolesWrap} ref={rolesRef} aria-hidden="true">
-            {reducedMotion ? (
-              <span className={styles.role}>{profile.roles.join(' · ')}</span>
-            ) : (
-              profile.roles.map((r, i) => (
-                <span key={r} className={styles.role} data-on={i === role}>{r}</span>
-              ))
-            )}
+            {profile.roles.map((r, i) => (
+              <span key={r} className={styles.role} data-on={i === role}>{r}</span>
+            ))}
           </div>
           <p className="sr-only">
             {profile.roles.join(', ')}. {profile.summary}

@@ -64,7 +64,27 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .role { opacity: 1; transform: none; filter: none; position: static; }
-  .rolesWrap { height: auto; display: block; }
+  /* Nothing cycles, so the roles stop being one identity at a time and
+     become the whole set at once: a single rule of type under the name,
+     spaced like the technical labels in the corners. */
+  .rolesWrap {
+    position: static;
+    height: auto;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0.6rem clamp(1rem, 2.2vw, 2rem);
+  }
+  .role { position: static; grid-area: auto; opacity: 1; transform: none; filter: none; line-height: 1; }
   .thesis { opacity: 1 !important; transform: none !important; }
+}
+
+@media (prefers-reduced-motion: reduce) and (max-width: 620px) {
+  /* No phone is wide enough to hold that rule, and a wrapped one breaks
+     into ragged halves. Set as a centred column instead — six lines that
+     read as a standing list rather than a sentence that ran out of room.
+     The name can then sit nearer the optical centre it was lifted from. */
+  .center { gap: clamp(1.4rem, 3.6vh, 2.2rem); margin-bottom: clamp(2rem, 12vh, 6rem); }
+  .rolesWrap { flex-direction: column; gap: 0.55rem; }
+  .role { font-size: var(--fs-micro); }
 }

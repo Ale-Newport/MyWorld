@@ -172,10 +172,56 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  /* Nothing fades on this path, so the heading stays on screen beside
-     the rail: the tiles keep their smaller size to leave it room. */
-  .rail { opacity: 1 !important; --tile: clamp(220px, 26vw, 380px); }
+  /* Nothing arrives or leaves on this path, so the chapter has to read
+     as a page: the role along the top of the stage, the gallery along
+     its foot, and an open band between the two. The rail rejoins the
+     flow rather than hanging off the bottom edge, so the two can never
+     come to sit on top of one another however tall the type runs. */
+  .stage { align-content: space-between; }
   .head, .stack, .count { opacity: 1 !important; transform: none !important; }
   .stack, .count { display: none; }
+
+  .rail {
+    position: static;
+    grid-column: 1 / span 12;
+    opacity: 1 !important;
+    /* Full-bleed again now that it sits on the grid: the first tile
+       holds the text's left edge, the last still runs off the right. */
+    margin-inline: calc(var(--gutter) * -1);
+    /* Large enough that the screenshots are still the point, capped
+       against the viewport height so the heading always keeps its own
+       band — a short window shrinks the gallery rather than the type. */
+    --tile: clamp(220px, min(50vw, 44vh), 440px);
+  }
   .site[data-hover='true'] .shot { transform: none; }
+}
+
+/* On a narrow screen the chapter label wraps to two lines and the head
+   now starts at the top of the stage, so the marker would land on the
+   same lines as it. Drop it clear of the label, into the white beside
+   the first line of the title, where it still reads as a marginal note
+   and — more to the point — still tells a thumb that the gallery moves. */
+@media (prefers-reduced-motion: reduce) and (max-width: 700px) {
+  .hint { transform: translateY(var(--sp-7)); }
+}
+
+/* Wide enough to set the numbers beside the prose instead of under it,
+   which is what buys the gallery below its height. */
+@media (prefers-reduced-motion: reduce) and (min-width: 901px) {
+  .head {
+    grid-column: 1 / span 12;
+    display: grid;
+    grid-template-columns: minmax(0, 7fr) minmax(0, 4fr);
+    column-gap: clamp(2rem, 5vw, 5rem);
+    row-gap: var(--sp-4);
+  }
+  .head > * { grid-column: 1; }
+  .metrics {
+    grid-column: 2;
+    grid-row: 1 / span 4;
+    align-self: end;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    margin-top: 0;
+    max-width: none;
+  }
 }

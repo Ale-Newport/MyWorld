@@ -185,7 +185,7 @@ export function Pansofia() {
           </ul>
         </div>
 
-        <div className={`${shared.corner} ${shared.cornerTR}`}>
+        <div className={`${shared.corner} ${shared.cornerTR} ${styles.hint}`}>
           DRAG OR SCROLL
           <br />
           SELECTED WORK · 2025

@@ -56,3 +56,45 @@
 }
 .eqOp { color: var(--text-faint); font-size: clamp(0.8rem, 0.7rem + 0.6vw, 1.2rem); }
 .eqResult { color: var(--accent); }
+
+@media (prefers-reduced-motion: reduce) {
+  /* Nothing arrives on this path, so the chapter has to read as a
+     finished statement rather than a first frame: the pipeline
+     already resolved, and the sum it adds up to already on the page. */
+  .equation { opacity: 1 !important; transform: none !important; }
+  .stage_ { color: var(--text-primary); }
+  .stageNo { color: var(--accent); }
+}
+
+@media (prefers-reduced-motion: reduce) and (min-width: 1001px) {
+  /* The figure gives up the left third of the stage so the paragraph
+     is read against the page instead of across the drawing. */
+  .visual { left: 35%; }
+}
+
+@media (prefers-reduced-motion: reduce) and (max-width: 1000px) {
+  /* Too narrow to set the figure beside the words, so it takes the top
+     of the stage and the argument runs beneath it in a single column,
+     ending on the equation. */
+  .visual {
+    position: static; grid-column: 1 / span 12; z-index: 0;
+    /* A plate, not a band: past this width the box goes wide enough that
+       the figure's own readouts start to land on one another. */
+    max-width: 30rem;
+    height: clamp(8rem, 20vh, 12rem);
+  }
+  .equation { position: static; grid-column: 1 / span 12; }
+  .stages { margin-top: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) and (min-width: 901px) and (max-width: 1000px) {
+  /* These widths stack without a row gap, so the column spaces itself. */
+  .head, .stages, .equation { margin-top: var(--sp-5); }
+}
+
+@media (prefers-reduced-motion: reduce) and (max-width: 1000px) and (max-height: 800px) {
+  /* Below this height the figure and the argument cannot both have the
+     stage, and the argument is the half that has to survive: the drawing
+     stands down rather than push the equation off the foot of it. */
+  .visual { display: none; }
+}
