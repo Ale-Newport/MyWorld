@@ -220,10 +220,14 @@ export class Ecology {
     return isFree(x, z, {
       clearance,
       coastMargin: 10,
+      // Reeds and willows belong on a bank, not four metres up it.
+      shore: 0.8,
       margin: {
         // Vegetation frames a road, it does not grow in it.
         road: 2.5,
-        circuit: 6,
+        // Trackside, not on the run-off: the old rule kept scatter
+        // 14.6 m off the centreline and this matches it.
+        circuit: 2,
         // A ramp needs its whole run-up clear, not just its lip.
         ramp: 8,
         // Undergrowth against a wall is fine; a tree through one is not.

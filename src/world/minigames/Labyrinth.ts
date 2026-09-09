@@ -74,11 +74,16 @@ const SEED = 4213
   road into a wall. The car stopped dead at z = -92.5, which is exactly
   where the outer wall stands.
 
-  At 5 x 4 it is 54 x 44 m, which fits inside its own district, leaves
-  the ring a way past it, and is still nineteen corridors of driving.
+  At 5 x 3 it is 54 x 33 m, which fits inside its own district and
+  leaves the ring a way past its southern and eastern sides.
+
+  BOTH COUNTS MUST BE ODD. `CENTRE_Z = (CELLS_Z - 1) / 2` indexes a
+  cell, and an even count puts the centre between two of them — the
+  first attempt at this used 5 x 4 and the world would not start, with
+  `RangeError: Invalid array length` from a half-integer index.
 */
 const CELLS_X = 5
-const CELLS_Z = 4
+const CELLS_Z = 3
 /** Odd grid: cells sit on odd indices, the walls between them on even ones. */
 const GRID_W = CELLS_X * 2 + 1
 const GRID_H = CELLS_Z * 2 + 1
@@ -98,10 +103,11 @@ const SKIRT = 1.4
 const COLLECT_RADIUS = 4.2
 const MOUTH_RADIUS = 5
 
-/** Seconds to reach the centre before the run is lost. The BFS below
- *  proves the shortest route is 19 corridors, which is about 55 m of
- *  driving; ninety seconds is three times that at a walking pace. */
-const TIME_LIMIT = 90
+/** Seconds to reach the centre before the run is lost. `measure()`
+ *  floods the finished grid and reports the shortest route in
+ *  development; on a 5 x 3 maze it is a handful of corridors, and
+ *  seventy seconds is several times that at a walking pace. */
+const TIME_LIMIT = 70
 /** Seconds of 3-2-1 at the mouth, so the run does not begin mid-corner. */
 const LEAD_IN = 3
 /** How far north of the mouth the START sign and its prompt stand. */

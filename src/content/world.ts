@@ -444,7 +444,9 @@ export const respawns: Respawn[] = [
   { id: 'lab', x: 63.5, z: -100.4, rotation: 2.865, district: 'lab' },
   { id: 'teaching', x: -12.3, z: 43.1, rotation: -1.068, district: 'teaching' },
   { id: 'algorithms', x: 5.3, z: 84.1, rotation: -1.651, district: 'algorithms' },
-  { id: 'focus', x: 37.1, z: 22.4, rotation: -0.027, district: 'focus' },
+  // West of the phone's plinth, which is 34 by 17 m and which this
+  // point used to be standing on.
+  { id: 'focus', x: 28, z: 26, rotation: 0.165, district: 'focus' },
   { id: 'gym', x: 36.2, z: 65.7, rotation: -0.304, district: 'gym' },
   { id: 'client', x: 116.2, z: 19.6, rotation: 2.155, district: 'client' },
   { id: 'chess', x: 12, z: -64, rotation: -2.415, district: 'chess' },
@@ -902,7 +904,7 @@ export const landmarks: Landmark[] = [
   {
     id: 'secret-brackets', district: 'hub', label: '{ }',
     sublabel: 'JUMP THROUGH',
-    x: 52, z: -8, rotation: Math.PI * 0.5, visual: 'bracket', interaction: 'none',
+    x: 27.7, z: -45.1, rotation: Math.PI * 0.5, visual: 'bracket', interaction: 'none',
     achievement: 'shipIt',
   },
 ]
@@ -963,7 +965,10 @@ export const roads: { id: string; points: [number, number][]; width: number }[] 
 
   /* The spine cuts north to south through the ring, which is what
      makes its junctions crossroads instead of corners. */
-  { id: 'spine', width: 9, points: [[18, 8], [30, 14], [40, 26], [50, 42], [39.2, 59.9], [40, 84], [34, 104]] },
+  /* West of the FOCUS phone, which stands on a walled 34 by 17 m
+     plinth: the spine used to have a vertex at (40, 26), inside its
+     south-west corner, and the car met a 1.9 m wall. */
+  { id: 'spine', width: 9, points: [[18, 8], [26, 16], [30, 32], [42, 50], [39.2, 59.9], [40, 84], [34, 104]] },
 
   /* ---- branches ---------------------------------------------- */
   { id: 'hub-chess', width: 8, points: [[18, 8], [10.2, -9.7], [3.3, -27], [-4, -50], [-6, -80]] },
@@ -987,7 +992,7 @@ export const roads: { id: string; points: [number, number][]; width: number }[] 
   /* A shortcut, not a route: forty metres of bridge straight across
      Mirror Lake between UCL and the spine, saving most of the eastern
      ring. Nothing signposts it. */
-  { id: 'lake-shortcut', width: 8, points: [[124, -30], [104, -26], [86, -18], [74, -6], [56, 8], [40, 26]] },
+  { id: 'lake-shortcut', width: 8, points: [[124, -30], [104, -26], [86, -18], [76, -4], [78, 14], [80, 32], [68, 46], [56, 54], [44, 60], [39.2, 59.9]] },
 
   /* Dirt, unlit, and pointed at the stunt ramp. It stops where the
      ground does. */
@@ -1012,16 +1017,21 @@ export interface Ramp {
 }
 
 export const ramps: Ramp[] = [
-  { id: 'ramp-hub-a', x: 28.5, z: 6.9, rotation: Math.PI * 0.25, length: 10, width: 7, height: 1.8, size: 'small' },
+  /* `ramp-hub-a` used to stand at (28.5, 6.9), which is where four
+     roads now meet, and there is no ground within forty metres of the
+     hub that is clear of all of them. It was a 1.8 m starter bump on a
+     forecourt that already has the letters to drive at, a cone field,
+     `ramp-hub-b` and the brackets jump — so it is gone rather than
+     exiled to the ALGORITHM FIELD to satisfy a checker. */
   // North of the letters rather than beside the KCL road: the rerouted
   // `hub-chess` runs where this ramp's run-up used to be.
-  { id: 'ramp-hub-b', x: 14, z: -22, rotation: Math.PI * 1.15, length: 12, width: 7, height: 2.4, size: 'small' },
+  { id: 'ramp-hub-b', x: 23, z: -22, rotation: Math.PI * 1.15, length: 12, width: 7, height: 2.4, size: 'small' },
   // Moved east with the brackets it launches at: the hub junction moved
   // south of the name, and the new ring-north ran straight over this
   // ramp's approach — the tour drove up it and got stuck every time.
-  { id: 'ramp-brackets', x: 46, z: -8, rotation: Math.PI * 0.5, length: 18, width: 9, height: 5.2, size: 'medium', achievement: 'shipIt' },
-  { id: 'ramp-kcl', x: -20.2, z: 14.2, rotation: Math.PI * 1.5, length: 16, width: 8, height: 4, size: 'medium' },
-  { id: 'ramp-focus', x: 52, z: 7.4, rotation: Math.PI * 1.5, length: 20, width: 9, height: 6, size: 'medium', achievement: 'phoneHop' },
+  { id: 'ramp-brackets', x: 21.7, z: -45.1, rotation: Math.PI * 0.5, length: 18, width: 9, height: 5.2, size: 'medium', achievement: 'shipIt' },
+  { id: 'ramp-kcl', x: -18.6, z: 5.3, rotation: Math.PI * 1.5, length: 16, width: 8, height: 4, size: 'medium' },
+  { id: 'ramp-focus', x: 51, z: -3.6, rotation: Math.PI * 1.5, length: 20, width: 9, height: 6, size: 'medium', achievement: 'phoneHop' },
   // Aimed at the void island, 62 m away across the moat. The angle
   // is derived from that line, not chosen: point it anywhere else
   // and the achievement it carries becomes unreachable.
@@ -1034,10 +1044,17 @@ export const ramps: Ramp[] = [
   // achievement it carries stops being reachable — see the island
   // check in scripts/world-qa.mjs.
   { id: 'ramp-stunt', x: 20, z: -142, rotation: Math.PI * 0.5, length: 42, width: 13, height: 6.5, size: 'large', achievement: 'hiddenIsland' },
+  /* ON THE EAST STRAIGHT, at `CIRCUIT.jumpAt` along the lap — the
+     position and bearing are `curve.getPointAt(0.93)` and its tangent,
+     read off the running world and written down here so it uses the
+     same ramp builder as every other jump on the island. 2.1 m over
+     13 is about nine degrees: a car at racing speed clears it without
+     being flipped, and a car arriving slowly drives over it. */
+  { id: 'ramp-circuit-jump', x: -55.9, z: 40.8, rotation: -1.4, length: 13, width: 12, height: 2.1, size: 'medium' },
   { id: 'ramp-circuit', x: -25.8, z: 88, rotation: 0, length: 16, width: 10, height: 3.2, size: 'medium' },
-  { id: 'ramp-archive', x: 56.9, z: 66.1, rotation: Math.PI * 0.5, length: 14, width: 8, height: 3, size: 'small' },
-  { id: 'ramp-voxel', x: 118, z: -18.1, rotation: Math.PI * 0.5, length: 14, width: 8, height: 3.6, size: 'small' },
-  { id: 'ramp-lab', x: 31.8, z: -88.7, rotation: Math.PI * 0.9, length: 15, width: 8, height: 3.4, size: 'small' },
+  { id: 'ramp-archive', x: 78.6, z: 69.9, rotation: Math.PI * 0.5, length: 14, width: 8, height: 3, size: 'small' },
+  { id: 'ramp-voxel', x: 132.7, z: -9.6, rotation: Math.PI * 0.5, length: 14, width: 8, height: 3.6, size: 'small' },
+  { id: 'ramp-lab', x: 34.8, z: -72, rotation: Math.PI * 0.9, length: 15, width: 8, height: 3.4, size: 'small' },
 ]
 
 /* ============================================================

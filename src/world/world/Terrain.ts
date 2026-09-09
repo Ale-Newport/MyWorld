@@ -464,7 +464,13 @@ export class Terrain {
           // The island's west side is nearly level, so the circuit's
           // gradients are authored rather than found: a crest before
           // the esses, a dip on the west run.
-          const profile = circuitElevation(near.along)
+          // Flat where it runs beside the sea. The corridor carries the
+          // ground around it up or down with the track, and the west
+          // side of the circuit is eighteen metres from the beach — a
+          // raised section there drags the shore up with it and a dip
+          // drags it under.
+          const toCoast = coastRadius(near.px, near.pz, WORLD_RADIUS) - Math.hypot(near.px, near.pz)
+          const profile = circuitElevation(near.along) * smoothstep(toCoast, 14, 46)
           const base = smooth + coastalRim(near.px, near.pz)
           height = height * (1 - shoulder) + (base + profile) * shoulder
           height = height * (1 - on) + (base + profile) * on

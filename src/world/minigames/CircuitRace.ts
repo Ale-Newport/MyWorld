@@ -174,64 +174,13 @@ export class CircuitRace extends Minigame {
     for(let i=0;i<8;i++){dummy.position.set(CIRCUIT.x-7+i*2.3,this.game.terrain.colliderHeightAt(CIRCUIT.x-7+i*2.3,CIRCUIT.z+34)+.5,CIRCUIT.z+34);dummy.rotation.set(0,0,0);dummy.updateMatrix();cones.setMatrixAt(i,dummy.matrix)}
     this.group.add(cones);this.bin.add(()=>coneGeometry.dispose())
     this.label('PIT / RESET',new THREE.Vector3(CIRCUIT.x,4,CIRCUIT.z+32),9,0)
-    this.buildJump()
+    /* THE JUMP is authored in `ramps` as `ramp-circuit-jump`, not built
+       here. The world already has a ramp builder that gets the mesh,
+       the convex hull and the vermilion lip right, and a second one
+       written from the track's tangent got the rotation convention
+       backwards and left a slab hanging in the air. */
   }
 
-  /**
-   * THE JUMP, on the east straight.
-   *
-   * A ramp rather than a kicker: 2.1 m of rise over 13 m is about
-   * nine degrees, which a car arriving at racing speed clears without
-   * being flipped and a car arriving slowly simply drives over. Both
-   * matter — the brief asks for a jump that works reliably and does
-   * not flip the car "under normal approach", and a steep ramp on a
-   * straight does exactly that to anyone who meets it at 30 m/s.
-   *
-   * The landing is flat, twenty metres long and the full width of the
-   * track, and it is signposted from both sides.
-   */
-  private buildJump():void {
-    const t=CIRCUIT.jumpAt
-    const c=this.curve.getPointAt(t),tangent=this.curve.getTangentAt(t)
-    const yaw=Math.atan2(-tangent.z,tangent.x)
-    const ground=this.game.terrain.colliderHeightAt(c.x,c.z)
-    const LENGTH=13,RISE=2.1,WIDTH=CIRCUIT.width
-
-    // A wedge, built as a box rotated about its downhill edge, so its
-    // surface is continuous with the tarmac it rises from.
-    const pitch=Math.atan2(RISE,LENGTH)
-    const geometry=new THREE.BoxGeometry(LENGTH,0.5,WIDTH)
-    geometry.translate(0,-0.25,0)
-    this.bin.add(()=>geometry.dispose())
-    const mesh=new THREE.Mesh(geometry,this.game.materials.tinted('#55565a',0.92,0))
-    mesh.castShadow=true;mesh.receiveShadow=true
-    const lift=new THREE.Object3D()
-    lift.position.set(c.x,ground+RISE,c.z)
-    lift.rotation.set(0,yaw,0)
-    const wedge=new THREE.Object3D()
-    wedge.rotation.z=pitch
-    wedge.add(mesh)
-    lift.add(wedge)
-    this.group.add(lift)
-    lift.updateMatrixWorld(true)
-    const world=new THREE.Vector3(),quaternion=new THREE.Quaternion(),scale=new THREE.Vector3()
-    mesh.matrixWorld.decompose(world,quaternion,scale)
-    this.game.physics.add({
-      type:'fixed',category:'floor',friction:1,
-      position:world,rotation:quaternion,
-      colliders:[{shape:'cuboid',parameters:[LENGTH/2,0.25,WIDTH/2]}],
-    })
-
-    // Chevrons on the lip and a board either side, so it is never a
-    // surprise. A jump you cannot see coming is a crash, not a jump.
-    for(const side of [-1,1]) {
-      const px=c.x-Math.sin(yaw)*side*(WIDTH/2+2.4)
-      const pz=c.z-Math.cos(yaw)*side*(WIDTH/2+2.4)
-      const post=this.box([0.2,4,0.2],[px,this.game.terrain.colliderHeightAt(px,pz)+2,pz],this.game.materials.get('metal'))
-      void post
-      this.label('JUMP',new THREE.Vector3(px,this.game.terrain.colliderHeightAt(px,pz)+4.6,pz),4.4,yaw+Math.PI/2)
-    }
-  }
   start():boolean {
     if(this.running)return true
     this.state=RaceState.RESETTING;this.reset();this.prepareAttempt()

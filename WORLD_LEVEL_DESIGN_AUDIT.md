@@ -11,7 +11,10 @@ The numbers here are measured, not estimated. The tools are:
 | `node scripts/world-layout-check.mjs [--all]` | every pair of hard footprints that overlap, and every respawn on unusable ground |
 | `node scripts/world-shore-check.mjs <url>` | gradient and depth either side of every waterline |
 | `node scripts/world-water-drive.mjs <url>` | drives into and back out of every body of water |
-| `node scripts/world-loop-drive.mjs <url>` | drives every road end to end under power, no teleporting |
+| `npm run world:loop -- <url>` | drives every road end to end under power, no teleporting |
+| `npm run world:clearance -- <url>` | asks Rapier what is actually standing in each carriageway |
+| `npm run world:minigames -- <url>` | every mini-game, played three times |
+| `npm run world:grass -- <url>` | the grass clipmap, at maximum zoom and the widest aspect |
 | `node scripts/world-survey.mjs <url>` | screenshots and telemetry at an arbitrary list of places |
 | SHIFT + L in development | draws every footprint the occupancy registry knows about |
 
@@ -132,6 +135,24 @@ this document is what that turned up.
   re-derived and baked. The two lake monuments are unchanged — they read as
   deliberate, standing in shallow water at the lake's edge, and the lake's
   new wadeable rim means you can drive to them.
+
+### LABYRINTH
+- **Position** was (98, −66); now (92, −62), radius 22, plate 24.
+- **Problems** The maze is not its plate. Seven by five cells of 9.4 m
+  corridor separated by 1.2 m walls is 75 × 54 m of solid static geometry
+  — the second-largest structure on the island after the circuit — and the
+  registry knew only about the 24 m plate. Two things followed. Its
+  south-east corner stood 164 m from the origin against a coastline of
+  156, so part of the maze was in the sea. And the ring road's whole
+  north-east leg ran through the middle of it: the roads were authored to
+  reach district centres, and the centre of this district is the middle of
+  the maze. `ring-east` was a road into a wall and had been since the maze
+  was built. The PARTICLE FIELD and the DEPLOYMENT ALTAR were inside it
+  too, and the lake shortcut clipped its north-west corner.
+- **Action** 5 × 3 cells (54 × 33 m), moved west and north, and its real
+  extent declared in the registry. `ring-east` goes round its eastern
+  side, through the gap between it and the coast where the island is
+  widest. Both neighbours moved out.
 
 ### RACE CIRCUIT
 See **The circuit** below. The district at (−42, 88), its start-gantry

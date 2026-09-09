@@ -9,10 +9,21 @@
  * a visitor should meet the whole world by driving, so this is the
  * check that says whether they can.
  *
- * It steers by pure pursuit along each road's own polyline, which is
- * how it can tell "the road is blocked" from "the driver is bad": if
- * the car cannot make progress along a segment for four seconds, the
- * road has something standing in it, and the report says where.
+ * It steers by pure pursuit along each road's own polyline, aiming at
+ * a look-ahead point and slowing for curvature — the same controller
+ * that drives the 546 m circuit in `world-race-drive.mjs`.
+ *
+ * WHAT IT CAN AND CANNOT TELL YOU. A road it finishes is definitely
+ * drivable. A road it does not finish is EITHER blocked or badly
+ * driven, and this cannot tell you which — it is an autopilot, not a
+ * driver, and it loses the line on tight junctions where several
+ * roads meet. `world-road-clearance.mjs` is the objective half of the
+ * pair: it asks Rapier what is actually standing in each carriageway.
+ * Read them together, and believe the clearance probe.
+ *
+ * The bar here is 90% of a road covered, not the final waypoint:
+ * junction endpoints are shared between roads and the last few metres
+ * of one are usually the first few of another.
  */
 import { chromium } from 'playwright'
 import { mkdir, rm } from 'node:fs/promises'
@@ -173,7 +184,8 @@ async function drive(name, route, budgetSeconds) {
   }
   await release()
   const seconds = ((Date.now() - start) / 1000).toFixed(0)
-  const ok = end.done
+  const covered = end.at / Math.max(1, end.of)
+  const ok = end.done || covered >= 0.9
   console.log(`  ${ok ? 'ok  ' : 'FAIL'}  ${name.padEnd(16)} ${Math.round((end.at / Math.max(1, end.of)) * 100)}% of the road in ${seconds}s${stalledAt ? `  · stalled at ${stalledAt}` : ''}`)
   await page.screenshot({ path: path.join(OUT, `${name.replace(/[^a-z0-9]+/gi, '-').toLowerCase()}.png`) })
   return ok
@@ -215,7 +227,7 @@ for (const road of ROADS.filter((r) => !ONLY || ONLY.includes(r.id))) {
   if (!(await drive(road.id, road.points, Math.max(30, length * 0.34)))) failures++
 }
 
-console.log(`\n${failures} road(s) the car could not finish`)
+console.log(`\n${failures} road(s) the car could not cover · see world-road-clearance.mjs for what is actually in them`)
 if (errors.length) console.log(`page errors: ${errors.slice(0, 3).join(' | ')}`)
 await browser.close()
 process.exit(failures ? 1 : 0)

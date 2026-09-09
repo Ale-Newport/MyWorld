@@ -110,7 +110,10 @@ export interface Zone {
 export function landmarkFootprint(visual: string, scale = 1): number {
   const base: Record<string, number> = {
     monument: 2.6, sign: 1.2, billboard: 5.4, browserTower: 4.6,
-    device: 6.5, idCard: 5.2, graphSculpture: 7, processBlocks: 6,
+    // The FOCUS phone stands on a walled 34 x 17 m plinth, not a 6.5 m
+    // pad — and the spine was authored straight into its corner because
+    // this number said otherwise.
+    device: 17, idCard: 5.2, graphSculpture: 7, processBlocks: 6,
     cipherWall: 7.4, databaseTower: 4, moduleStack: 4.4,
     // The corpus is 24 m of instanced pillars with NO colliders — you
     // drive through it. Its footprint is what it stands on, not what
@@ -127,7 +130,7 @@ export function landmarkFootprint(visual: string, scale = 1): number {
  * hand — there is no way to import it without pulling THREE.js into
  * the content layer. `CELLS * CORRIDOR + (CELLS + 1) * WALL`.
  */
-export const MAZE = { width: 5 * 9.4 + 6 * 1.2, depth: 4 * 9.4 + 5 * 1.2 }
+export const MAZE = { width: 5 * 9.4 + 6 * 1.2, depth: 3 * 9.4 + 4 * 1.2 }
 
 let cache: Zone[] | null = null
 
@@ -188,8 +191,8 @@ export function zones(): Zone[] {
 
   /*
     THE MAZE. Declared here rather than left to the district's plate,
-    because it is far bigger than that plate: five by four cells of
-    9.4 m corridor separated by 1.2 m walls is 54 x 44 m of solid
+    because it is far bigger than that plate: five by three cells of
+    9.4 m corridor separated by 1.2 m walls is 54 x 33 m of solid
     static geometry, and the plate is 24. Without this the registry
     reported the LABYRINTH as a thirty-metre disc, the road network was
     authored straight through it, and the only thing that ever noticed
@@ -297,6 +300,13 @@ export interface PlacementRules {
   /** Reject anywhere the ground is under water. Defaults true. */
   dry?: boolean
   /**
+   * How far back from a waterline `dry` reaches, in metres. Small on
+   * purpose: reeds and willows belong ON the bank, and scaling this
+   * with `clearance` — which is what it used to do — pushed the whole
+   * ecology four metres inland of every lake and river on the island.
+   */
+  shore?: number
+  /**
    * Footprints that are not in the registry yet. A generator placing
    * fifteen towers one after another passes the ones it has already
    * placed, or they all find the same piece of free ground.
@@ -321,7 +331,7 @@ export function blockedBy(x: number, z: number, rules: PlacementRules = {}): Zon
   }
   if (rules.dry !== false) {
     const water = inlandWater(x, z)
-    if (water && water.edge > -clearance - 1) {
+    if (water && water.edge > -(rules.shore ?? 0.8)) {
       return { id: 'inland-water', kind: 'water', x, z, radius: 0, label: 'inland water' }
     }
   }

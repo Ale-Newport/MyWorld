@@ -78,10 +78,15 @@ export const CIRCUIT = {
    * The crest sits just before the esses, so the fast north-east
    * descent runs downhill into the slowest part of the lap; the dip
    * is on the west run, which makes its far end a blind entry.
+   *
+   * Kept small — 2.2 m at the crest, not 3.4. The corridor has to
+   * carry the ground around it up as well, and at 3.4 the shoulder
+   * met the river bank at thirty-four degrees, which
+   * `world-shore-check.mjs` correctly called a wall.
    */
   elevation:[
-    [0.00,0.0],[0.12,-0.6],[0.28,-1.4],[0.42,0.4],
-    [0.55,2.6],[0.66,3.4],[0.74,1.2],[0.86,0.2],[1.00,0.0],
+    [0.00,0.0],[0.12,-0.4],[0.28,-0.9],[0.42,0.3],
+    [0.55,1.7],[0.66,2.2],[0.74,0.8],[0.86,0.1],[1.00,0.0],
   ] as [number,number][],
   /** The jump, as a position along the lap. On the east straight. */
   jumpAt:0.93,
@@ -195,12 +200,20 @@ export const RELAY_POINTS = [[-14,30],[26,14],[44,48]] as const
  *  river banks, the lake shores, and thickets filling the pockets the
  *  ring road curves around. `[x, z, radius]`. */
 export const FOREST_POCKETS = [
-  // The northern highland — the densest woodland on the island.
-  [-46,-128,26],[-20,-132,22],[-64,-140,20],
+  // The northern highland — the densest woodland on the island. Pulled
+  // inland: at (-46,-128) r26 the pocket's centre was seven metres
+  // inside the coastline, so most of its area was at sea and the
+  // scatter threw away nine attempts in ten.
+  [-38,-105,26],[-18,-119,22],[-48,-109,20],
   // River banks, the seam between the track and the districts.
   [-38,-88,15],[-33,-56,14],[-31,-16,14],[-29,24,14],
-  // The track's infield, which is scenery rather than activity.
-  [-70,-40,20],[-72,42,18],[-104,-8,18],[-106,30,16],[-132,-40,16],[-134,18,15],
+  /* The track's infield and the seam beside it — scenery rather than
+     activity. The old six were placed against the previous serpentine
+     and every one of them ended up on the new racing line, so the
+     ecology rejected almost every tree it tried to plant in them and
+     the whole west of the island came out bare. These four are what
+     actually fits, found by sampling the ground rather than by eye. */
+  [-102,-65,16],[-82,51,14],[-60,-12,14],[-92,-8,12],
   // Lake shores and the gaps the ring road curves around.
   [96,-14,14],[100,101,13],[-4,-104,14],
   [26,-24,13],[74,-90,15],[112,-46,14],[124,14,14],[70,72,14],[16,84,14],

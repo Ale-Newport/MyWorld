@@ -129,9 +129,10 @@ console.log('\nWATER — drive in, drive out\n')
 await wadeTest('beach east', 152, 6, 182, 6, -2.5)
 await wadeTest('beach south', 6, 132, 6, 162, -2.5)
 // Lake shores, on the shallow side each one has.
-// From the west shore: the east side of Mirror Lake is UCL's
-// forecourt, and the monuments on it are the wall the car meets.
-await wadeTest('mirror lake', 56, -10, 76, -10, -0.7)
+// From the SOUTH shore: the east side of Mirror Lake is UCL's
+// forecourt and the monuments on it are a wall, and the west side is
+// where the lake shortcut comes ashore.
+await wadeTest('mirror lake', 78, 16, 78, 0, -0.7)
 await wadeTest('willow lake', 106, 108, 90, 108, -0.65)
 await wadeTest('cold tarn', -13, -106, -28, -106, -0.8)
 // The river, forded rather than bridged.

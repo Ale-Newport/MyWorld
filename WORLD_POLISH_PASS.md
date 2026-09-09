@@ -31,8 +31,9 @@ road through the middle of a lake; two identical play spots at the same
 point; and twenty-three respawn problems, including one on a timeline plate
 so that pressing R fired the TIME TRAVELLER secret.
 
-    node scripts/world-layout-check.mjs [--all]     # 223 conflicts → ~66
-    SHIFT + L in development                        # draws all of it
+    npm run world:layout                    # 223 conflicts → ~66
+    npm run world:clearance -- <url>        # what is ACTUALLY in a road
+    SHIFT + L in development                # draws all of it
 
 ---
 
@@ -55,8 +56,17 @@ fixed geometry down every carriageway found forty-five obstructions — most
 of them district centrepieces, because the polylines were authored to reach
 district CENTRES and a centrepiece is at the centre. Interior vertices are
 nudged off solid footprints with junctions pinned; where the junction was
-itself the problem, the landmark moved. Five remain, all 1.6–4.7 m at a
-carriageway edge: furniture you pass, not walls you stop against.
+itself the problem, the landmark moved.
+
+The worst of them was invisible to the registry entirely: the LABYRINTH.
+Seven by five cells of 9.4 m corridor is 75 by 54 m of solid static
+geometry, its south-east corner stood past the coastline, and the ring
+road's whole north-east leg ran through the middle of it — because the
+registry knew only about the district's 24 m plate. The maze is 5 x 3 now,
+it declares its real extent, and the ring goes round it.
+
+Six obstructions remain and only one is over 1.6 m: at a junction where two
+road corridors overlap. The rest are knee-high furniture the car shoves.
 
 **The circuit is no longer a dead end.** It hung off `circuit-link`, an
 84 m spur — you reached the largest feature on the island by driving one
@@ -349,10 +359,12 @@ fixed-body-only obstacle raycast added for the respawn audit.
   (footprint + half the carriageway + 1.4 m) is deliberately conservative,
   and the measured obstruction probe — which casts against real colliders —
   is down to five, all trackside furniture.
-- **The automated tour does not finish every road.** It is a look-ahead
-  autopilot, not a driver; where it fails now it is losing the line on a
-  bend rather than meeting a wall, which the obstruction probe confirms
-  independently. The roads it does not complete are drivable by hand.
+- **The automated tour does not cover every road.** It is a look-ahead
+  autopilot, not a driver, and it loses the line at the tight junctions
+  where four roads meet. `world-road-clearance.mjs` is the objective half
+  of that pair — it asks Rapier what is standing in each carriageway, and
+  reports one thing over 1.6 m across the whole network. Where the two
+  disagree, believe the clearance probe.
 - **The `network` district contains none of its own landmarks.** Its two
   nodes are the ends of a tunnel and are meant to be far apart; the
   district disc does not describe that, and this pass did not change it.
