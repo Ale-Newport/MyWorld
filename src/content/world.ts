@@ -443,7 +443,7 @@ export const respawns: Respawn[] = [
   { id: 'gym', x: 36.2, z: 65.7, rotation: -0.304, district: 'gym' },
   { id: 'client', x: 116.2, z: 19.6, rotation: 2.155, district: 'client' },
   { id: 'chess', x: 12, z: -64, rotation: -2.415, district: 'chess' },
-  { id: 'stock', x: 80.8, z: -73.9, rotation: 3.014, district: 'stock' },
+  { id: 'stock', x: 54, z: -70, rotation: 0.165, district: 'stock' },
   { id: 'circuit', x: -54.7, z: 78.1, rotation: 0.662, district: 'circuit' },
   { id: 'labyrinth', x: 111.6, z: -66, rotation: 3.142, district: 'labyrinth' },
   { id: 'voxel', x: 136.8, z: -2.6, rotation: -3.085, district: 'voxel' },
@@ -805,8 +805,11 @@ export const landmarks: Landmark[] = [
     ref: p('minecraft-seeds'),
   },
   {
+    // Moved east: the monolith over this chamber is applied on top of
+    // the field's road corridor rather than under it, so wherever the
+    // room is, the ring road has to be somewhere else.
     id: 'voxel-room', district: 'voxel', label: 'UNDERGROUND',
-    x: 125.7, z: 1.7, visual: 'terminal', interaction: 'note', radius: 7,
+    x: 133, z: 8, visual: 'terminal', interaction: 'note', radius: 7,
     secret: true, achievement: 'underground',
     panel: {
       title: 'UNDERGROUND',
@@ -831,7 +834,9 @@ export const landmarks: Landmark[] = [
   {
     id: 'studio-keyframes', district: 'studio', label: 'KEYFRAMES',
     sublabel: 'PLAY · PAUSE · REVERSE',
-    x: 104, z: 74, visual: 'station', interaction: 'project', radius: 8.4,
+    // Off the ring-east / ring-south junction, which is a pinned
+    // vertex and cannot move around it.
+    x: 112, z: 81, visual: 'station', interaction: 'project', radius: 8.4,
     ref: p('keyframes'),
   },
   {
@@ -935,24 +940,34 @@ export const roads: { id: string; points: [number, number][]; width: number }[] 
      them. A car leaving the hub northbound started wedged between an
      A and an N. The junction is now at (18, 8), on the open forecourt
      SOUTH of the name, and the roads leave around it. */
-  { id: 'ring-north', width: 10, points: [[18, 8], [34, -4], [42, -24], [44, -46], [52, -62], [66, -72], [58, -88], [48, -96], [62, -100], [76, -100]] },
-  { id: 'ring-east', width: 10, points: [[76, -100], [92, -84], [98, -66], [96, -50], [90, -34], [106, -20], [118, -6], [114, 14], [108, 32], [108, 54], [104, 74]] },
+  { id: 'ring-north', width: 10, points: [[18, 8], [29.2, -7.6], [43.2, -23.7], [47.5, -45.1], [52, -62], [52, -74], [54, -86], [48, -96], [62, -100], [76, -100]] },
+      /* The EXCHANGE's order book is a twelve-by-twenty-two-metre
+         structure standing on (66, -72), and the ring used to have a
+         vertex there — the road ran through the middle of it. It goes
+         down its western side now. */
+  { id: 'ring-east', width: 10, points: [[76, -100], [92, -84], [89.7, -65], [95.4, -50.1], [90, -34], [106, -20], [112, 0], [111, 18], [108, 32], [108, 54], [104, 74]] },
+      /* WEST of SEED CHUNKS, not through it. The voxel field keeps a
+         corridor along this road, but the monolith over its secret
+         chamber is applied ON TOP of that fade — so the one thing in
+         the field that ignores the corridor was exactly what the ring
+         used to drive into. */
   { id: 'ring-south', width: 10, points: [[104, 74], [78, 92], [56, 102], [34, 104], [10, 94], [4, 68]] },
   { id: 'ring-west', width: 10, points: [[4, 68], [0, 48], [-4, 28], [2, 10], [18, 8]] },
 
   /* The spine cuts north to south through the ring, which is what
      makes its junctions crossroads instead of corners. */
-  { id: 'spine', width: 9, points: [[18, 8], [32, 13], [52, 22], [50, 42], [48, 62], [40, 84], [34, 104]] },
+  { id: 'spine', width: 9, points: [[18, 8], [30, 14], [40, 26], [50, 42], [39.2, 59.9], [40, 84], [34, 104]] },
 
   /* ---- branches ---------------------------------------------- */
-  { id: 'hub-chess', width: 8, points: [[18, 8], [4, -6], [-2, -26], [-4, -50], [-6, -80]] },
-  { id: 'lab-spur', width: 7, points: [[48, -96], [56, -112], [58, -118]] },
+  { id: 'hub-chess', width: 8, points: [[18, 8], [10.2, -9.7], [3.3, -27], [-4, -50], [-6, -80]] },
+  // Stops short of the GRAVITY WELL rather than ending inside it.
+  { id: 'lab-spur', width: 7, points: [[48, -96], [54, -110]] },
 
   /* Out of the content half and over to the track. Re-cut so it
      crosses the river SQUARELY at (-28, 55.5), where the road bridge
      is, instead of running down its west bank clipping the last four
      metres of it. */
-  { id: 'circuit-link', width: 9, points: [[-4, 28], [-14, 40], [-24, 50], [-31, 60], [-40, 72], [-48, 82], [-52, 80]] },
+  { id: 'circuit-link', width: 9, points: [[-4, 28], [-8.7, 44.8], [-24, 50], [-31, 60], [-40, 72], [-48, 82], [-52, 80]] },
 
   /* THE RETURN LEG. The circuit used to hang off `circuit-link` as an
      84 m dead-end spur: you reached the largest feature on the island
@@ -965,11 +980,11 @@ export const roads: { id: string; points: [number, number][]; width: number }[] 
   /* A shortcut, not a route: forty metres of bridge straight across
      Mirror Lake between UCL and the spine, saving most of the eastern
      ring. Nothing signposts it. */
-  { id: 'lake-shortcut', width: 8, points: [[90, -34], [84, -22], [78, -10], [70, 2], [58, 14], [52, 22]] },
+  { id: 'lake-shortcut', width: 8, points: [[90, -34], [84, -22], [78, -10], [70, 2], [53.5, 10], [40, 26]] },
 
   /* Dirt, unlit, and pointed at the stunt ramp. It stops where the
      ground does. */
-  { id: 'void-run', width: 6, points: [[-4, -60], [6, -62], [20, -66], [20, -142]] },
+  { id: 'void-run', width: 6, points: [[-4, -60], [5.9, -62.6], [20, -66], [20, -142]] },
 ]
 
 /* ============================================================
