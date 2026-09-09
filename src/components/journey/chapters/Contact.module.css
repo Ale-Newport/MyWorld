@@ -1,4 +1,15 @@
-.stage { align-content: center; }
+/* Written every frame by the chapter's loop from the portal's
+   charge. The standing chrome fades on the same curve as the
+   driven type, without three more refs to keep alive. */
+.stage {
+  align-content: center;
+  --portal-dim: 0;
+}
+
+.chrome {
+  opacity: calc(1 - var(--portal-dim) * 0.85);
+  transform: translate3d(0, calc(var(--portal-dim) * -1.2rem), 0);
+}
 
 .center {
   grid-column: 1 / span 12;
@@ -21,10 +32,13 @@
 .answer { color: var(--accent); }
 .answerText { display: block; }
 
+/* The foot of the page reads bottom-up: the HUD, then the portal's
+   own rule, the colophon, and the contact links above them. Each
+   band clears the one below it at any viewport height. */
 .links {
   position: absolute;
   left: var(--gutter); right: var(--gutter);
-  bottom: clamp(6rem, 15vh, 9rem);
+  bottom: clamp(9.8rem, 22vh, 13rem);
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
   gap: 0;
@@ -59,63 +73,10 @@
 }
 .linkArrow { grid-column: 2; grid-row: 1 / span 2; align-self: center; font-size: var(--fs-tiny); }
 
-.worldCta {
-  position: absolute;
-  left: var(--gutter);
-  bottom: clamp(7.5rem, 17vh, 10rem);
-  display: grid;
-  grid-template-columns: auto auto;
-  align-items: center;
-  gap: 2px var(--sp-4);
-  padding: var(--sp-4) var(--sp-5);
-  border: 1px solid var(--border-strong);
-  transition: border-color 260ms var(--ease-out-expo), background 260ms var(--ease-out-expo);
-}
-
-.worldCta:hover {
-  border-color: var(--accent);
-  background: color-mix(in oklab, var(--accent) 8%, transparent);
-}
-
-.worldCtaLabel {
-  grid-column: 1;
-  font-family: var(--font-mono);
-  font-size: var(--fs-micro);
-  letter-spacing: var(--tracking-label);
-  text-transform: uppercase;
-  color: var(--text-primary);
-}
-
-.worldCtaNote {
-  grid-column: 1;
-  grid-row: 2;
-  font-size: var(--fs-tiny);
-  color: var(--text-muted);
-}
-
-.worldCtaArrow {
-  grid-column: 2;
-  grid-row: 1 / span 2;
-  font-size: var(--fs-lead);
-  color: var(--accent);
-  transition: transform 260ms var(--ease-out-expo);
-}
-
-.worldCta:hover .worldCtaArrow {
-  transform: translateX(4px);
-}
-
-@media (max-width: 700px) {
-  .worldCta {
-    right: var(--gutter);
-    bottom: 11.5rem;
-  }
-}
-
 .colophon {
   position: absolute;
   left: var(--gutter); right: var(--gutter);
-  bottom: clamp(4rem, 10vh, 5.5rem);
+  bottom: clamp(7rem, 15vh, 9rem);
   display: flex; justify-content: space-between; gap: var(--sp-4); flex-wrap: wrap;
   font-family: var(--font-mono); font-size: var(--fs-nano);
   letter-spacing: var(--tracking-label); text-transform: uppercase;
@@ -124,10 +85,12 @@
 
 @media (max-width: 700px) {
   .colophon span:last-child { display: none; }
-  .links { grid-template-columns: 1fr; bottom: 8rem; }
+  .colophon { bottom: 6.4rem; }
+  .links { grid-template-columns: 1fr; bottom: 9rem; }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .question, .answer, .links > li { opacity: 1 !important; transform: none !important; }
   .question { display: none; }
+  .chrome { opacity: 1; transform: none; }
 }

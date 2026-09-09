@@ -7,6 +7,7 @@ import { TagRow } from '@/components/journey/parts'
 import { Counter } from '@/components/typography/Counter'
 import { ProjectVisual } from '@/components/project-visuals/ProjectVisual'
 import { projectById } from '@/content/projects'
+import { chapterById } from '@/content/chapters'
 import { useChapterFrame } from '@/hooks/useChapterProgress'
 import { useJourney } from '@/state/journey'
 import { clamp, range } from '@/lib/math'
@@ -68,7 +69,7 @@ export function Chess() {
         </div>
 
         <div className={styles.head}>
-          <TagRow items={['10', 'SEEING THE BOARD', '2025']} />
+          <TagRow items={[chapterById['chess'].number, 'SEEING THE BOARD', '2025']} />
           <Reveal as="h2" mode="mask" className={styles.title} id="chess-title">
             {'Chess\nAssistant'}
           </Reveal>

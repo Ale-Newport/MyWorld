@@ -4,12 +4,16 @@
    ============================================================ */
 
 :root {
-  /* ---- Surfaces: light chapters -------------------------- */
+  /* ---- Reference palette ---------------------------------
+     The journey no longer draws its ground from here — see the
+     surfaces below. This pair survives because /world mirrors
+     it: src/world/core/palette.ts copies these values name for
+     name, and the minimap reads --paper-2 off the document at
+     draw time. Moving them moves that route, not this one. */
   --paper:            #f4f2ee;   /* warm off-white  */
   --paper-2:          #eceae5;   /* recessed        */
   --paper-3:          #e2dfd8;   /* deeper recess   */
 
-  /* ---- Surfaces: dark chapters --------------------------- */
   --void:             #0a0a0b;
   --void-2:           #111113;
   --void-3:           #1a1a1d;
@@ -32,17 +36,21 @@
   --accent-deep:      #a13415;
   --signal:           #2f6f5e;   /* muted teal, secondary */
 
-  /* ---- Live theme variables (driven by chapter) ---------- */
-  --bg-primary:       var(--paper);
-  --bg-secondary:     var(--paper-2);
-  --bg-tertiary:      var(--paper-3);
+  /* ---- Surfaces: white, and only white --------------------
+     These were aliases that a [data-theme] block swapped as the
+     visitor scrolled. The page has one ground now, so they are
+     written as literals: there is no second state to fall into,
+     and nothing on the page can put it into one. */
+  --bg-primary:       #ffffff;
+  --bg-secondary:     #fafafa;   /* recessed        */
+  --bg-tertiary:      #f2f2f3;   /* deeper recess   */
   --text-primary:     var(--ink);
   --text-secondary:   var(--ink-2);
   --text-muted:       var(--ink-3);
   --text-faint:       var(--ink-4);
   --border:           color-mix(in oklab, var(--ink) 14%, transparent);
   --border-strong:    color-mix(in oklab, var(--ink) 30%, transparent);
-  --overlay:          color-mix(in oklab, var(--paper) 82%, transparent);
+  --overlay:          color-mix(in oklab, var(--bg-primary) 82%, transparent);
 
   /* ---- Type ---------------------------------------------- */
   --font-display: var(--font-geist-sans), 'Helvetica Neue', Helvetica, Arial, sans-serif;
@@ -98,19 +106,4 @@
   --z-cursor:   100;
 
   color-scheme: light;
-}
-
-/* ============ Dark chapter theme =========================== */
-[data-theme='dark'] {
-  --bg-primary:     var(--void);
-  --bg-secondary:   var(--void-2);
-  --bg-tertiary:    var(--void-3);
-  --text-primary:   var(--chalk);
-  --text-secondary: var(--chalk-2);
-  --text-muted:     var(--chalk-3);
-  --text-faint:     var(--chalk-4);
-  --border:         color-mix(in oklab, var(--chalk) 15%, transparent);
-  --border-strong:  color-mix(in oklab, var(--chalk) 32%, transparent);
-  --overlay:        color-mix(in oklab, var(--void) 84%, transparent);
-  color-scheme: dark;
 }

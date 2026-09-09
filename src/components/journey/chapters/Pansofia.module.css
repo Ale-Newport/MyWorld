@@ -78,7 +78,12 @@
 }
 
 /* ---- horizontal gallery ---- */
+/* One knob for the tile width. The gallery is an edit of eight rather
+   than the whole portfolio, so the tiles are wide enough to keep the
+   rail longer than the viewport on a large screen — otherwise the
+   scrub would run out of travel halfway through the chapter. */
 .rail {
+  --tile: clamp(240px, 32vw, 520px);
   position: absolute;
   left: 0; right: 0;
   bottom: clamp(7rem, 17vh, 10rem);
@@ -99,7 +104,7 @@
 .frame {
   position: relative;
   display: block;
-  width: clamp(220px, 26vw, 380px);
+  width: var(--tile);
   aspect-ratio: 4 / 3;
   border: var(--hair) solid var(--border);
   background: var(--bg-secondary);
@@ -123,14 +128,16 @@
   margin-left: 6px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 
-.shotWrap { position: absolute; inset: 22px 0 0; overflow: hidden; }
+.shotWrap { position: absolute; inset: 22px 0 0; overflow: hidden; container-type: size; }
 .shot {
   width: 100%; height: auto; display: block;
   transform: translateY(0);
   transition: transform 3.2s var(--ease-in-out);
 }
-/* Hover auto-scrolls the captured page — the site plays itself. */
-.site[data-hover='true'] .shot { transform: translateY(calc(-100% + 200px)); }
+/* Hover auto-scrolls the captured page — the site plays itself. It
+   stops with the foot of the capture on the foot of the frame, so a
+   wider tile scrolls further rather than running off into blank. */
+.site[data-hover='true'] .shot { transform: translateY(calc(100cqh - 100%)); }
 
 .mobileWrap {
   position: absolute;
@@ -160,12 +167,14 @@
 }
 
 @media (max-width: 700px) {
-  .frame { width: 64vw; }
+  .rail { --tile: 72vw; }
   .metrics { grid-template-columns: repeat(2, 1fr); }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .rail { opacity: 1 !important; }
+  /* Nothing fades on this path, so the heading stays on screen beside
+     the rail: the tiles keep their smaller size to leave it room. */
+  .rail { opacity: 1 !important; --tile: clamp(220px, 26vw, 380px); }
   .head, .stack, .count { opacity: 1 !important; transform: none !important; }
   .stack, .count { display: none; }
   .site[data-hover='true'] .shot { transform: none; }

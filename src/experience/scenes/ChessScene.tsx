@@ -20,6 +20,20 @@ const dummy = new THREE.Object3D()
 const color = new THREE.Color()
 const ACCENT = new THREE.Color('#d4491f')
 
+/* Value scale, inverted for paper. These are albedos, and the only lit
+   geometry on the page: ambient 0.5 plus a key at 1.1 lands a top face
+   at roughly two fifths of its albedo, so the board reads a good deal
+   darker than these numbers look. The old scale ran 0.88 down to 0.10,
+   i.e. a white army on a black ground — carried onto white paper that
+   is a half-empty checker with one side missing. So "light" now means
+   the lighter of two graphites, never the page itself, and both armies
+   sit below their squares so a piece always reads as a mark on the
+   board rather than a hole in it. */
+const SQUARE_LIGHT = 0.45
+const SQUARE_DARK = 0.10
+const PIECE_PALE = 0.30
+const PIECE_DARK = 0.045
+
 const START_RANKS = ['rnbqkbnr', 'pppppppp', '........', '........', '........', '........', 'PPPPPPPP', 'RNBQKBNR']
 
 interface Square { file: number; rank: number; scatterX: number; scatterY: number; scatterZ: number; delay: number }
@@ -105,7 +119,7 @@ export function ChessScene() {
       squares.current.setMatrixAt(i, dummy.matrix)
 
       const light = (s.file + s.rank) % 2 === 0
-      color.setScalar(light ? 0.82 : 0.16)
+      color.setScalar(light ? SQUARE_LIGHT : SQUARE_DARK)
       // Squares still "in flight" carry the detection accent.
       color.lerp(ACCENT, (1 - e) * 0.35)
       squares.current.setColorAt(i, color)
@@ -124,7 +138,7 @@ export function ChessScene() {
       dummy.scale.set(0.2, Math.max(0.001, p.tall * e), 0.2)
       dummy.updateMatrix()
       pieces.current.setMatrixAt(i, dummy.matrix)
-      color.setScalar(p.white ? 0.88 : 0.1)
+      color.setScalar(p.white ? PIECE_PALE : PIECE_DARK)
       pieces.current.setColorAt(i, color)
     }
     pieces.current.instanceMatrix.needsUpdate = true

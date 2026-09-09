@@ -33,10 +33,11 @@ export const metadata: Metadata = {
 }
 
 export const viewport: Viewport = {
-  themeColor: [
-    { media: '(prefers-color-scheme: light)', color: '#f4f2ee' },
-    { media: '(prefers-color-scheme: dark)', color: '#0a0a0b' },
-  ],
+  // One colour, unconditionally: the page is white whatever the
+  // visitor's OS is set to, and advertising a dark variant would
+  // only paint the phone's browser chrome against it. Must track
+  // --bg-primary in tokens.css.
+  themeColor: '#ffffff',
   width: 'device-width',
   initialScale: 1,
   viewportFit: 'cover',

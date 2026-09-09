@@ -36,7 +36,7 @@ const raw: Omit<TechNode, 'weight'>[] = [
   { id: 'javafx', name: 'JavaFX', group: 'framework', evidence: ['stock-market-simulator'] },
   { id: 'flask', name: 'Flask', group: 'framework', evidence: ['cinquillo-fair'] },
   { id: 'reactnative', name: 'React Native', group: 'framework', evidence: ['events-app'] },
-  { id: 'laravel', name: 'Laravel', group: 'framework', evidence: ['pansofia', 'fuerteventura-2000', 'cht-canarias'], note: 'Client work — private repositories.' },
+  { id: 'laravel', name: 'Laravel', group: 'framework', evidence: ['client-pansofia', 'client-fuerteventura-2000', 'client-cht-canarias'], note: 'Client work — private repositories.' },
   { id: 'fastify', name: 'Fastify', group: 'framework', evidence: [], note: 'Used in client work; repositories are private.' },
 
   /* ---- AI / ML ------------------------------------------ */
@@ -56,7 +56,7 @@ const raw: Omit<TechNode, 'weight'>[] = [
   { id: 'numpy', name: 'NumPy', group: 'data', evidence: ['cinquillo-fair', 'chess-assistant'] },
   { id: 'eda', name: 'EDA & Statistics', group: 'data', evidence: ['cinquillo-fair'] },
   { id: 'postgres', name: 'PostgreSQL', group: 'data', evidence: ['keyframes', 'tappedin'] },
-  { id: 'mysql', name: 'MySQL', group: 'data', evidence: ['pansofia', 'fuerteventura-2000'], note: 'Client work — private repositories.' },
+  { id: 'mysql', name: 'MySQL', group: 'data', evidence: ['client-pansofia', 'client-fuerteventura-2000'], note: 'Client work — private repositories.' },
   { id: 'sqlite', name: 'SQLite', group: 'data', evidence: ['keyframes', 'orca', 'my-library'] },
   { id: 'prisma', name: 'Prisma', group: 'data', evidence: ['keyframes'] },
   { id: 'mongo', name: 'MongoDB', group: 'data', evidence: [], note: 'Working familiarity.' },
@@ -64,7 +64,7 @@ const raw: Omit<TechNode, 'weight'>[] = [
   /* ---- cloud & infra ------------------------------------ */
   { id: 'aws', name: 'AWS EC2 / S3', group: 'cloud', evidence: ['chess-assistant'] },
   { id: 'docker', name: 'Docker', group: 'cloud', evidence: ['tappedin'] },
-  { id: 'linux', name: 'Linux / Servers', group: 'cloud', evidence: ['vpn', 'pansofia'] },
+  { id: 'linux', name: 'Linux / Servers', group: 'cloud', evidence: ['vpn', 'client-pansofia'] },
   { id: 'azure', name: 'Azure', group: 'cloud', evidence: [], note: 'Working familiarity.' },
   { id: 'ci', name: 'CI / GitHub Actions', group: 'cloud', evidence: ['my-library'] },
 

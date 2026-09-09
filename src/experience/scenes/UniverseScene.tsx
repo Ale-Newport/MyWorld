@@ -26,6 +26,13 @@ const NODES = projects.length
 const dummy = new THREE.Object3D()
 const color = new THREE.Color()
 
+/* The page, as a colour. Every "quiet" state in this scene now moves
+   toward it: on black, dimming meant multiplying a node down, but the
+   same multiply on white makes the filtered-out nodes the darkest
+   marks on screen — the loudest thing in a view that is asking them to
+   step back. Receding here means approaching the paper. */
+const PAPER = new THREE.Color('#ffffff')
+
 export function UniverseScene() {
   const device = useMemo(() => detectDevice(), [])
   const mesh = useRef<THREE.InstancedMesh>(null!)
@@ -113,16 +120,20 @@ export function UniverseScene() {
       mesh.current.setMatrixAt(i, dummy.matrix)
 
       color.copy(L.color)
-      if (!universeFilter.matches[i]) color.multiplyScalar(0.28)
-      if (isHover) color.offsetHSL(0, 0.1, 0.22)
+      // Hover deepens and saturates. Lifting lightness, as this did,
+      // walks the hovered node toward the background on a white page.
+      if (isHover) color.offsetHSL(0, 0.18, -0.12)
+      if (!universeFilter.matches[i]) color.lerp(PAPER, 0.72)
       mesh.current.setColorAt(i, color)
 
       // Halo billboards give small nodes presence without extra draws.
+      // On paper that presence is a soft aura in the node's own colour,
+      // not a glow: it carries the node's dimming with it, so filtered
+      // nodes shed their halo instead of gaining a dark ring.
       dummy.scale.multiplyScalar(1.9)
       dummy.rotation.set(0, 0, 0)
       dummy.updateMatrix()
       halo.current.setMatrixAt(i, dummy.matrix)
-      color.multiplyScalar(0.5)
       halo.current.setColorAt(i, color)
     }
     mesh.current.instanceMatrix.needsUpdate = true
@@ -133,9 +144,12 @@ export function UniverseScene() {
     const mat = mesh.current.material as THREE.MeshBasicMaterial
     mat.opacity = opacity.current
     const hmat = halo.current.material as THREE.MeshBasicMaterial
-    hmat.opacity = opacity.current * 0.1
+    hmat.opacity = opacity.current * 0.13
     const lmat = lines.current.material as THREE.LineBasicMaterial
-    lmat.opacity = opacity.current * 0.08
+    // 0.08 was an ink-on-void hairline. The same alpha in graphite on
+    // white is nothing at all, and the shared-technology graph is the
+    // only thing here saying the archive is one body of work.
+    lmat.opacity = opacity.current * 0.22
     lines.current.scale.setScalar(expand)
   })
 
@@ -177,11 +191,11 @@ export function UniverseScene() {
 
       <instancedMesh ref={halo} args={[undefined, undefined, NODES]} frustumCulled={false}>
         <sphereGeometry args={[1, 8, 8]} />
-        <meshBasicMaterial transparent opacity={0} depthWrite={false} blending={THREE.AdditiveBlending} toneMapped={false} />
+        <meshBasicMaterial transparent opacity={0} depthWrite={false} toneMapped={false} />
       </instancedMesh>
 
       <lineSegments ref={lines} geometry={edgeGeometry} frustumCulled={false}>
-        <lineBasicMaterial color="#ffffff" transparent opacity={0} depthWrite={false} />
+        <lineBasicMaterial color="#3f3f47" transparent opacity={0} depthWrite={false} />
       </lineSegments>
     </group>
   )

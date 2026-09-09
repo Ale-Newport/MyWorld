@@ -6,6 +6,7 @@ import { Reveal } from '@/components/typography/Reveal'
 import { TagRow } from '@/components/journey/parts'
 import { ProjectVisual } from '@/components/project-visuals/ProjectVisual'
 import { projectById } from '@/content/projects'
+import { chapterById } from '@/content/chapters'
 import { useChapterFrame } from '@/hooks/useChapterProgress'
 import { useJourney } from '@/state/journey'
 import { clamp, range } from '@/lib/math'
@@ -58,7 +59,7 @@ export function Gym() {
         </div>
 
         <div className={styles.head}>
-          <TagRow items={['08', 'ONE MODEL, MANY MOVEMENTS']} />
+          <TagRow items={[chapterById['gym'].number, 'ONE MODEL, MANY MOVEMENTS']} />
           <Reveal as="h2" mode="clip" className={styles.title} id="gym-title">
             {'Gym App'}
           </Reveal>

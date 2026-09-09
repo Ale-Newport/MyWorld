@@ -135,6 +135,15 @@
       "blur": "data:image/webp;base64,UklGRggBAABXRUJQVlA4IPwAAADwBQCdASoYACUAPxGEuVcsKCWjpWgBgCIJYwDHbFDVZNhHTFF9BMQAFojs8/d5fQv7p93Hzyl0kADLT/F5Gkv5XWSn1m71uijDLZpQby90klL+XItUMu5ulONCD75E+d913tsVkv2mABTlRQOQYQ1Y3rZf+2IYO1n1CThEpC6EEigLJOsc38A6ByQvxWJnhmDatXnObnro8LvSiLU9Utwn1uboa9pI89RMv4U1mqmXsNxng6KDkRf/bqTKO57HlQOm9EDw8TrzI4ZXd+zd6Sn5ZeG8i9VqWBH8fRJqRqtSZpmqov6Lc1jwVpZryaK5iXqezQaFy3EhsfmQAAA=",
       "status": "ok",
       "error": null
+    },
+    {
+      "slug": "bioever",
+      "url": "https://clinicabioever.com/",
+      "desktop": "/assets/client-work/bioever-desktop.webp",
+      "mobile": "/assets/client-work/bioever-mobile.webp",
+      "blur": "data:image/webp;base64,UklGRqQAAABXRUJQVlA4IJgAAADwBQCdASoYACUAPxFysVGsJqSiqrgN+YAiCWdbClqZkTDbJx6NuCE0EkMod0Kuc4/vBOd2pUC3ugD+7eNNpAN37bYFKYifGBQF06poEL1ZHkCitsmM+50S8k44K7qLJPyXMpknRT8go3KBe+wfGklpBVIpZ4o0sM+TUyF/WLAZiRAD6tkrYICAA/+ShZPncIC+eipviijAAA==",
+      "status": "ok",
+      "error": null
     }
   ]
 }

@@ -9,7 +9,6 @@ export type ChapterId =
   | 'prelude'
   | 'about'
   | 'kcl'
-  | 'playground'
   | 'pansofia'
   | 'teaching'
   | 'focus'
@@ -22,6 +21,11 @@ export type ChapterId =
   | 'ucl'
   | 'contact'
 
+/**
+ * The journey has no themes — it is white end to end. This union
+ * survives for `src/content/world.ts`, where a district still
+ * declares one.
+ */
 export type Theme = 'light' | 'dark'
 
 /** Narrative weight. Drives layout, duration and visual budget. */
@@ -141,32 +145,10 @@ export interface Chapter {
   vh: number
   /** Shorter length when Quick View is active. */
   quickVh: number
-  theme: Theme
-  /** Skipped entirely in Quick View. */
-  skipInQuickView?: boolean
   /** Timeline year marker, if this chapter advances the timeline. */
   year?: string
-  /** Which Core morph target this chapter drives. */
-  coreState: CoreState
   label: string
 }
-
-/** The Core's morph identity per chapter. */
-export type CoreState =
-  | 'capsule'      // prelude / ucl — the original probe
-  | 'drift'        // about — the same probe, small in a large room
-  | 'traveller'    // kcl — moving along the timeline
-  | 'rover'        // playground — small controllable vehicle
-  | 'window'       // pansofia — unfolds into browser panes
-  | 'terminal'     // teaching — code environment
-  | 'device'       // focus — phone / product
-  | 'rig'          // gym — skeleton / joints
-  | 'node'         // metaview — neural / data node
-  | 'grid'         // chess — board lattice
-  | 'stream'       // stock — parallel order streams
-  | 'star'         // universe — central star
-  | 'matrix'       // toolbox — technology lattice
-  | 'system'       // contact — everything reassembled
 
 export interface TechNode {
   id: string

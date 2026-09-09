@@ -1,0 +1,119 @@
+/* ============================================================
+   TECH TILE
+   An app icon on paper: a light plate, a hairline edge, one
+   mark. The tile stays neutral so that fifty of them read as a
+   single grid and the only colour on the wall is the brand.
+   ============================================================ */
+
+.tile {
+  /* The grid that owns the wall sets --tech-tile; the fallback
+     keeps a lone tile the right size anywhere else. */
+  --size: var(--tech-tile, 3.25rem);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.3rem;
+  width: 100%;
+  color: var(--text-muted);
+  transition:
+    color var(--dur-mid) var(--ease-out-expo),
+    opacity var(--dur-fast) linear,
+    transform var(--dur-mid) var(--ease-out-expo);
+}
+
+.plate {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: var(--size);
+  height: var(--size);
+  /* Corner radius as a share of the tile, not a fixed length,
+     so the icon keeps its shape through the clamp that resizes
+     the whole wall. */
+  border-radius: calc(var(--size) * 0.2);
+  background: var(--bg-secondary);
+  border: var(--hair) solid var(--border);
+  transition:
+    border-color var(--dur-mid) var(--ease-out-expo),
+    background-color var(--dur-mid) var(--ease-out-expo);
+}
+
+.mark {
+  --brand: var(--text-primary);
+  display: grid;
+  place-items: center;
+  width: 52%;
+  height: 52%;
+}
+
+/* The mark is painted in the legible variant of its own brand
+   colour, computed against white at generation time — see the
+   `ink` field in src/content/tech-logos.ts. Nothing is mixed in
+   here, because a mix on top of that would only drift the hue. */
+.brand { fill: var(--brand); }
+
+.monogram { font-family: var(--font-mono); font-size: 14px; }
+
+.count {
+  position: absolute;
+  top: calc(var(--size) * 0.07);
+  right: calc(var(--size) * 0.1);
+  font-family: var(--font-mono);
+  font-size: 8px;
+  line-height: 1;
+  color: var(--text-faint);
+  font-variant-numeric: tabular-nums;
+  transition: color var(--dur-mid) var(--ease-out-expo);
+}
+
+.name {
+  font-size: clamp(8px, 0.5vw, var(--fs-nano));
+  line-height: 1.1;
+  text-align: center;
+  letter-spacing: -0.005em;
+  color: inherit;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  overflow: hidden;
+}
+
+/* Weight is the number of projects that prove the technology.
+   The mark grows and the edge firms up; the tile never does,
+   because a grid of app icons is only a grid while they match. */
+.tile[data-weight='1'] .mark { width: 46%; height: 46%; opacity: 0.82; }
+.tile[data-weight='3'] .mark { width: 58%; height: 58%; }
+.tile[data-weight='3'] .plate { border-color: var(--border-strong); }
+
+/* Nothing public to point at, said in the same dashed hand the
+   chips used before. */
+.tile[data-evidence='false'] { opacity: 0.66; }
+.tile[data-evidence='false'] .plate { border-style: dashed; }
+
+.tile[data-dim='true'] { opacity: 0.26; }
+
+.tile:hover, .tile[data-on='true'] {
+  color: var(--accent);
+  opacity: 1;
+  transform: translateY(-2px);
+}
+.tile:hover .plate, .tile[data-on='true'] .plate { border-color: var(--accent); }
+.tile[data-on='true'] .count { color: var(--accent); }
+.tile[data-pinned='true'] .plate {
+  background: color-mix(in oklab, var(--accent) 12%, var(--bg-secondary));
+  border-color: var(--accent);
+}
+
+@media (max-width: 900px) {
+  /* Fifty captions do not fit under the fold on a phone, and the
+     wall must not scroll inside a pinned chapter. The tapped
+     tile names itself in the evidence readout instead, and the
+     button keeps its accessible name either way. */
+  .name { display: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tile, .plate, .count { transition: none; }
+  .tile:hover, .tile[data-on='true'] { transform: none; }
+}

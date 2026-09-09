@@ -5,6 +5,7 @@ import { Chapter } from '@/components/journey/Chapter'
 import { Reveal } from '@/components/typography/Reveal'
 import { TagRow } from '@/components/journey/parts'
 import { profile } from '@/content/profile'
+import { chapterById } from '@/content/chapters'
 import { useChapterFrame } from '@/hooks/useChapterProgress'
 import { useJourney } from '@/state/journey'
 import { clamp, range } from '@/lib/math'
@@ -13,9 +14,9 @@ import styles from './About.module.css'
 
 /* ============================================================
    04 – 10%  A LITTLE ABOUT ME
-   The camera pulls back from the title into open space and the
-   Core becomes small. Four transition markers establish the
-   through-line of the whole story before any chapter starts.
+   The camera pulls back from the title into open space. Four
+   transition markers establish the through-line of the whole
+   story before any chapter starts.
    ============================================================ */
 
 export function About() {
@@ -49,7 +50,7 @@ export function About() {
     <Chapter id="about" labelledBy="about-title">
       <div className={`${shared.stage} ${styles.stage}`}>
         <div className={`${shared.corner} ${shared.cornerTL}`}>
-          <TagRow items={['02', 'A LITTLE ABOUT ME']} />
+          <TagRow items={[chapterById['about'].number, 'A LITTLE ABOUT ME']} />
         </div>
 
         <div className={`${styles.intro} ${shared.driven}`} ref={introRef}>

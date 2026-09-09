@@ -15,22 +15,31 @@ import { clamp, damp, range, seeded, fibonacciSphere } from '@/lib/math'
 /* ============================================================
    FINALE — the whole system, reassembled.
    Every entity the visitor passed (projects, technologies,
-   degrees, roles) returns as one particle in a single structure
-   around the Core. The structure responds gravitationally to
-   the pointer: the visitor can pull the body of work around.
-   The ending mirrors the beginning — one object, now surrounded
-   by everything it built.
+   degrees, roles) returns as one particle in a single structure.
+   The structure responds gravitationally to the pointer: the
+   visitor can pull the body of work around. The ending mirrors
+   the beginning — open space, now full of what was built in it.
    ============================================================ */
 
 interface Body { home: THREE.Vector3; pos: THREE.Vector3; vel: THREE.Vector3; size: number; kind: number }
 
 const dummy = new THREE.Object3D()
 const color = new THREE.Color()
-const WHITE = new THREE.Color('#ffffff')
 const pointer3 = new THREE.Vector3()
 const tmp = new THREE.Vector3()
 
-const KIND_COLOR = ['#d4491f', '#8d8b86', '#2f6f5e', '#c9c7c2']
+/* Value scale on white, in reading order: projects take the house
+   accent, technologies a graphite, degrees and roles the secondary
+   signal, and the filler motes the palest graphite the page will
+   still hold. The last two were a mid grey and a near-white chosen
+   against the void; on paper they were the difference between a dense
+   structure and forty dots. */
+const KIND_COLOR = ['#d4491f', '#6e6c67', '#2f6f5e', '#93908a']
+
+/* Speed used to blend toward white, so the bodies the pointer pulls
+   fastest dissolved into the background at exactly the moment the
+   visitor made them move. On paper, energy is density: they burn in. */
+const BURN = new THREE.Color('#151517')
 
 export function ContactScene() {
   const device = useMemo(() => detectDevice(), [])
@@ -96,7 +105,7 @@ export function ContactScene() {
 
       color.set(KIND_COLOR[b.kind])
       const speed = clamp(b.vel.length() * 0.35, 0, 1)
-      color.lerp(WHITE, speed * 0.55)
+      color.lerp(BURN, speed * 0.55)
       mesh.current.setColorAt(i, color)
     }
     mesh.current.instanceMatrix.needsUpdate = true

@@ -1,21 +1,18 @@
 'use client'
 
 import { useEffect } from 'react'
-import { useJourney, frame } from '@/state/journey'
+import { useJourney } from '@/state/journey'
 import { useLenisScroll } from '@/hooks/useLenisScroll'
 import { detectDevice } from '@/lib/perf'
 import { totalVh } from '@/content/chapters'
-import { damp } from '@/lib/math'
-import { subscribe } from '@/lib/ticker'
 
 /**
  * Owns the global side effects of the experience:
- * device tiering, reduced-motion, scroll driver, theme
- * application, document height and deep-link restore.
+ * device tiering, reduced-motion, scroll driver, document
+ * height and deep-link restore.
  */
 export function JourneyProvider({ children }: { children: React.ReactNode }) {
   const quickView = useJourney((s) => s.quickView)
-  const theme = useJourney((s) => s.theme)
   const reducedMotion = useJourney((s) => s.reducedMotion)
   const setReducedMotion = useJourney((s) => s.setReducedMotion)
   const setPerformanceTier = useJourney((s) => s.setPerformanceTier)
@@ -45,11 +42,7 @@ export function JourneyProvider({ children }: { children: React.ReactNode }) {
     return () => mq.removeEventListener('change', apply)
   }, [setPerformanceTier, setReducedMotion, setQuickView, setReady])
 
-  /* ---- theme --------------------------------------------- */
-  useEffect(() => {
-    document.documentElement.setAttribute('data-theme', theme)
-  }, [theme])
-
+  /* ---- reduced motion ------------------------------------ */
   useEffect(() => {
     document.documentElement.setAttribute('data-reduced', reducedMotion ? 'true' : 'false')
   }, [reducedMotion])
@@ -59,14 +52,6 @@ export function JourneyProvider({ children }: { children: React.ReactNode }) {
     const vh = totalVh(quickView)
     document.documentElement.style.setProperty('--journey-vh', String(vh))
   }, [quickView])
-
-  /* ---- darkness lerp for the 3D world -------------------- */
-  useEffect(() =>
-    subscribe((dt) => {
-      const target = useJourney.getState().theme === 'dark' ? 1 : 0
-      frame.darkness = damp(frame.darkness, target, 4.2, dt)
-    }),
-  [])
 
   return <>{children}</>
 }

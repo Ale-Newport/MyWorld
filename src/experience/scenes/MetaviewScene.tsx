@@ -73,7 +73,11 @@ const documentFragment = /* glsl */ `
     if (r > 0.25) discard;
     float soft = 1.0 - smoothstep(0.05, 0.25, r);
     vec3 col = mix(uBase, uHotColor, vHot);
-    float a = uOpacity * soft * (0.10 + vSeed * 0.22 + vHot * 0.85);
+    // Alpha floor lifted from 0.10: additive blending let a tenth of a
+    // point accumulate into something on black, but each point now has
+    // to earn its own mark on paper. The spread across vSeed is what
+    // keeps the cloud reading as grain rather than as a wash.
+    float a = uOpacity * soft * (0.14 + vSeed * 0.30 + vHot * 0.80);
     gl_FragColor = vec4(col, a);
   }
 `
@@ -152,8 +156,15 @@ export function MetaviewScene() {
       uQueryPos: { value: new THREE.Vector3(0, 0, 0) },
       uSize: { value: device.tier === 'low' ? 1.7 : 1.25 },
       uRetrieval: { value: 0 },
-      uBase: { value: new THREE.Color('#8f9199') },
-      uHotColor: { value: new THREE.Color('#ff6a3c') },
+      /* Value scale, drawn on white: every document is a graphite
+         speck that takes light away from the page, and relevance is
+         the only thing allowed to carry colour. uBase was a mid grey
+         that only existed as accumulated glow; here it has to be dark
+         enough for a single point to register. The retrieved
+         neighbourhood takes the soft accent so the query core below,
+         which is the deep accent, still reads as the source. */
+      uBase: { value: new THREE.Color('#4c4c55') },
+      uHotColor: { value: new THREE.Color('#e8734d') },
       uOpacity: { value: 0 },
     }),
     [device.tier],
@@ -214,6 +225,9 @@ export function MetaviewScene() {
 
   return (
     <group ref={group}>
+      {/* Normal blending, not additive: additive can only ever add
+          light, so on a white page all 28,000 points composited to
+          exactly nothing. */}
       <points ref={points} geometry={geometry} frustumCulled={false}>
         <shaderMaterial
           ref={mat}
@@ -222,14 +236,13 @@ export function MetaviewScene() {
           uniforms={uniforms}
           transparent
           depthWrite={false}
-          blending={THREE.AdditiveBlending}
         />
       </points>
 
       {/* The query vector itself. */}
       <mesh ref={queryMesh}>
         <sphereGeometry args={[1, 16, 16]} />
-        <meshBasicMaterial color="#ff6a3c" />
+        <meshBasicMaterial color="#d4491f" />
       </mesh>
     </group>
   )

@@ -1,79 +1,76 @@
+/* ============================================================
+   TECH TOOLBOX
+   Title and evidence readout hold the narrow left column; the
+   icon wall takes the rest. The wall has to fit one pinned
+   screen without scrolling, so the tile is sized by whichever
+   of width or height runs out first.
+   ============================================================ */
+
 .stage { align-content: center; }
 
 .head {
-  position: absolute;
-  top: clamp(4.5rem, 10vh, 7rem);
-  left: var(--gutter);
+  grid-column: 1 / span 3;
+  grid-row: 1;
+  align-self: start;
   display: flex; flex-direction: column; gap: var(--sp-3);
-  max-width: min(28ch, 40vw);
 }
 .title {
-  font-size: clamp(1.7rem, 1rem + 2.8vw, 3.4rem);
+  font-size: clamp(1.7rem, 1rem + 2.4vw, 3rem);
   font-weight: 500; letter-spacing: -0.042em; line-height: 0.92;
   white-space: pre-line;
 }
 
-.grid {
-  grid-column: 1 / span 12;
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: var(--sp-5) var(--sp-6);
-  margin-top: auto;
-  align-self: end;
+.board {
+  --tech-tile: clamp(1.75rem, min(5.4vw, 4.6vh), 4rem);
+  grid-column: 4 / span 9;
+  grid-row: 1;
+  display: flex; flex-direction: column;
+  gap: clamp(0.55rem, 1.4vh, 1.1rem);
 }
 
-.group { display: flex; flex-direction: column; gap: var(--sp-3); }
+.group { display: flex; flex-direction: column; gap: 0.4rem; }
 .groupLabel {
   font-family: var(--font-mono); font-size: var(--fs-nano);
   letter-spacing: var(--tracking-label); text-transform: uppercase;
   color: var(--text-faint); font-weight: 400;
-  padding-bottom: 0.35rem;
+  line-height: 1;
+  padding-bottom: 0.3rem;
   border-bottom: var(--hair) solid var(--border);
 }
-.chips { display: flex; flex-wrap: wrap; gap: 0.25rem; }
 
-.chip {
-  display: inline-flex; align-items: baseline; gap: 0.3rem;
-  font-family: var(--font-mono); font-size: var(--fs-nano);
-  letter-spacing: 0.09em; text-transform: uppercase;
-  border: var(--hair) solid var(--border);
-  padding: 0.3rem 0.45rem;
-  color: var(--text-muted);
-  transition: color 220ms var(--ease-out-expo), border-color 220ms, opacity 220ms, transform 220ms var(--ease-out-expo);
+/* Columns are wider than a tile so the caption under it has
+   room to set on two lines; auto-fill keeps the column rhythm
+   identical from one group to the next, so the six families
+   line up as one wall rather than six. */
+.tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(4rem, 1fr));
+  gap: clamp(0.35rem, 0.9vh, 0.7rem) 0.35rem;
+  align-items: start;
 }
-.chip[data-weight='3'] { font-size: var(--fs-micro); border-color: var(--border-strong); color: var(--text-secondary); }
-.chip[data-weight='2'] { color: var(--text-secondary); }
-.chip[data-evidence='false'] { border-style: dashed; opacity: 0.62; }
-.chip:hover, .chip[data-on='true'] {
-  color: var(--accent); border-color: var(--accent); transform: translateY(-1px);
-}
-.chip[data-dim='true'] { opacity: 0.24; }
-.chip[data-pinned='true'] { background: color-mix(in oklab, var(--accent) 14%, transparent); }
-.chipCount { font-size: 8px; color: var(--text-faint); }
-.chip[data-on='true'] .chipCount { color: var(--accent); }
 
 .evidence {
-  position: absolute;
-  right: var(--gutter);
-  bottom: clamp(4.5rem, 11vh, 6.5rem);
-  max-width: min(340px, 46vw);
-  text-align: right;
+  grid-column: 1 / span 3;
+  grid-row: 1;
+  align-self: end;
+  max-width: var(--measure);
   opacity: 0;
-  transform: translateY(0.8rem);
+  transform: translateY(0.6rem);
   pointer-events: none;
   transition: opacity var(--dur-fast) linear, transform var(--dur-mid) var(--ease-out-expo);
 }
 .evidence[data-on='true'] { opacity: 1; transform: none; pointer-events: auto; }
 
-.evidenceHead { display: flex; flex-direction: column; gap: 0.2rem; align-items: flex-end; }
+.evidenceHead { display: flex; flex-direction: column; gap: 0.2rem; }
 .evidenceHead span:first-child {
   font-size: var(--fs-lead); font-weight: 500; letter-spacing: -0.02em;
+  line-height: 1.1;
 }
 .evidenceCount {
   font-family: var(--font-mono); font-size: var(--fs-nano);
   letter-spacing: var(--tracking-label); text-transform: uppercase; color: var(--accent);
 }
-.evidenceList { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 0.25rem 0.6rem; margin-top: var(--sp-3); }
+.evidenceList { display: flex; flex-wrap: wrap; gap: 0.25rem 0.6rem; margin-top: var(--sp-3); }
 .evidenceList button {
   font-size: var(--fs-tiny); color: var(--text-muted);
   border-bottom: var(--hair) solid transparent;
@@ -82,16 +79,20 @@
 .evidenceList button:hover { color: var(--text-primary); border-bottom-color: var(--border-strong); }
 .evidenceNote { font-size: var(--fs-tiny); color: var(--text-faint); margin-top: var(--sp-3); line-height: 1.5; font-style: italic; }
 
-@media (max-width: 860px) {
-  .head { position: absolute; top: clamp(4rem, 9vh, 6rem); left: var(--gutter); right: var(--gutter); max-width: none; }
-  .grid { grid-template-columns: repeat(auto-fit, minmax(132px, 1fr)); margin-top: clamp(10rem, 24vh, 13rem); gap: var(--sp-4); }
-  .evidence {
-    position: static;
-    max-width: none;
-    text-align: left;
-    grid-column: 1 / span 12;
-    margin-top: var(--sp-5);
-  }
-  .evidenceHead { align-items: flex-start; }
-  .evidenceList { justify-content: flex-start; }
+@media (max-width: 900px) {
+  /* Stacked, the three blocks share one vertical budget. The
+     captions go (see tech-tile.module.css), the labels tighten,
+     and the columns narrow to the tile itself so the wall still
+     fits the pinned screen. */
+  .head, .board, .evidence { grid-column: 1 / span 12; grid-row: auto; }
+  .head { max-width: 46ch; }
+  .evidence { align-self: start; }
+  .board { gap: 0.5rem; }
+  .group { gap: 0.3rem; }
+  .groupLabel { font-size: 9px; padding-bottom: 0.2rem; }
+  .tiles { grid-template-columns: repeat(auto-fill, minmax(var(--tech-tile), 1fr)); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .evidence { transition: opacity var(--dur-fast) linear; transform: none; }
 }

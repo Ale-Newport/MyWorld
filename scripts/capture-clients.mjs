@@ -18,6 +18,7 @@ const TMP = path.resolve('.cache/shots')
 const SITES = [
   ['fuerteventura-2000', 'https://www.fuerteventura2000.com'],
   ['pansofia', 'https://pansofia.com'],
+  ['bioever', 'https://clinicabioever.com'],
   ['cht-canarias', 'https://chtcanarias.com'],
   ['hotel-escuela-el-mirador', 'https://hotelescuelaelmirador.com'],
   ['newport-media-films', 'https://newportmediafilms.com'],

@@ -179,7 +179,7 @@ export const personalProjects: Project[] = [
     ],
     technologies: ['Python', 'NumPy', 'SciPy', 'pandas', 'matplotlib', 'seaborn', 'Flask', 'pytest', 'Reinforcement Learning', 'MCTS'],
     repository: gh('Designing-and-Analysing-a-Fair-Variant-of-Cinquillo'),
-    chapter: 'playground',
+    chapter: 'kcl',
     timelinePosition: 0.68,
     presentation: {
       type: 'procedural',
@@ -414,7 +414,7 @@ export const personalProjects: Project[] = [
     technologies: ['JavaScript', 'Canvas 2D', 'Numerical Methods', 'Physics'],
     repository: gh('Three-body-problem'),
     liveUrl: 'https://ale-newport.github.io/Three-body-problem/',
-    chapter: 'playground',
+    chapter: 'universe',
     timelinePosition: 0.52,
     presentation: {
       type: 'procedural',
@@ -459,7 +459,7 @@ export const personalProjects: Project[] = [
     technologies: ['JavaScript', 'Canvas 2D', 'Algorithms', 'Data Structures'],
     repository: gh('Labyrinth'),
     liveUrl: 'https://ale-newport.github.io/Labyrinth/',
-    chapter: 'playground',
+    chapter: 'universe',
     timelinePosition: 0.5,
     presentation: {
       type: 'procedural',
@@ -547,7 +547,7 @@ export const personalProjects: Project[] = [
     ],
     technologies: ['Python', 'C', 'Cubiomes', 'matplotlib', 'Make', 'Procedural Generation'],
     repository: gh('MinecraftSeeds'),
-    chapter: 'playground',
+    chapter: 'universe',
     timelinePosition: 0.48,
     presentation: {
       type: 'procedural',
@@ -766,7 +766,7 @@ export const personalProjects: Project[] = [
     technologies: ['JavaScript', 'HTML', 'CSS'],
     repository: gh('cinquillo'),
     liveUrl: 'https://ale-newport.github.io/cinquillo/',
-    chapter: 'playground',
+    chapter: 'universe',
     timelinePosition: 0.51,
     presentation: {
       type: 'procedural', motionComponent: 'CardsMotion',
@@ -800,7 +800,7 @@ export const personalProjects: Project[] = [
     technologies: ['JavaScript', 'Canvas 2D', 'HTML'],
     repository: gh('dots-and-boxes'),
     liveUrl: 'https://ale-newport.github.io/dots-and-boxes/',
-    chapter: 'playground',
+    chapter: 'universe',
     timelinePosition: 0.51,
     presentation: {
       type: 'procedural', motionComponent: 'DotsBoxesMotion',
@@ -943,7 +943,7 @@ export const personalProjects: Project[] = [
     metrics: [],
     technologies: [],
     repository: gh('Catan-AI'),
-    chapter: 'playground',
+    chapter: 'universe',
     timelinePosition: 0.6,
     presentation: {
       type: 'procedural', motionComponent: 'CatanMotion',

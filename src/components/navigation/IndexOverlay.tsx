@@ -75,28 +75,22 @@ export function IndexOverlay({ open, onClose }: { open: boolean; onClose: () => 
         </header>
 
         <nav className={styles.list} aria-label="Chapters">
-          {chapters.map((c, i) => {
-            const skipped = quickView && c.skipInQuickView
-            return (
+          {chapters.map((c, i) => (
               <button
                 key={c.id}
                 type="button"
                 ref={i === 0 ? firstItem : undefined}
                 className={styles.item}
                 data-current={c.id === chapter}
-                data-skipped={skipped}
                 onClick={() => go(c.id)}
-                disabled={skipped}
                 data-cursor="link"
               >
                 <span className={styles.itemNo}>{c.number}</span>
                 <span className={styles.itemTitle}>{c.title}</span>
                 <span className={styles.itemLabel}>{c.label}</span>
                 {c.year && <span className={styles.itemYear}>{c.year}</span>}
-                {skipped && <span className={styles.itemSkip}>skipped</span>}
               </button>
-            )
-          })}
+          ))}
         </nav>
 
         <footer className={styles.foot}>
@@ -114,7 +108,7 @@ export function IndexOverlay({ open, onClose }: { open: boolean; onClose: () => 
             </button>
             <p className={styles.modeNote}>
               {quickView
-                ? 'Cinematic pauses shortened and the playground skipped. Everything a recruiter needs, in about 90 seconds.'
+                ? 'Cinematic pauses shortened and the longer scenes trimmed. Everything a recruiter needs, in about 90 seconds.'
                 : 'Short on time? Quick View condenses the journey to roughly 90 seconds.'}
             </p>
           </div>

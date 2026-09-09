@@ -4,8 +4,8 @@ import type { Chapter, ChapterId } from './types'
    THE JOURNEY
    One continuous scroll. `vh` is the scroll length of each
    chapter in viewport heights — this is the single source of
-   truth for pacing. Everything (progress bar, index, camera,
-   Core morphing) derives from this array.
+   truth for pacing. Everything (progress bar, index, camera)
+   derives from this array.
    ============================================================ */
 
 export const chapters: Chapter[] = [
@@ -14,106 +14,88 @@ export const chapters: Chapter[] = [
     title: 'Intro', label: 'PRELUDE',
     subtitle: 'Alejandro Newport',
     vh: 3.2, quickVh: 1.6,
-    theme: 'light', coreState: 'capsule',
   },
   {
     id: 'about', index: 1, number: '02',
     title: 'About', label: 'A LITTLE ABOUT ME',
     subtitle: 'Computer scientist & engineer',
     vh: 3.4, quickVh: 1.8,
-    theme: 'light', coreState: 'drift',
   },
   {
     id: 'kcl', index: 2, number: '03',
     title: 'Foundations', label: "KING'S COLLEGE LONDON",
     subtitle: 'BSc Computer Science · First Class',
-    vh: 5.4, quickVh: 2.2,
-    theme: 'light', coreState: 'traveller', year: '2023',
+    vh: 4.6, quickVh: 2.2,
+    year: '2023',
   },
   {
-    id: 'playground', index: 3, number: '04',
-    title: 'Early Projects', label: 'I STARTED BUILDING',
-    subtitle: 'Drivable project playground',
-    vh: 3.0, quickVh: 0.9,
-    theme: 'light', coreState: 'rover', year: '2024',
-    skipInQuickView: true,
-  },
-  {
-    id: 'pansofia', index: 4, number: '05',
+    id: 'pansofia', index: 3, number: '04',
     title: 'Client Work', label: 'PANSOFIA / GRUPO NEWPORT',
     subtitle: 'From projects to products',
     vh: 5.0, quickVh: 2.4,
-    theme: 'light', coreState: 'window', year: '2025',
+    year: '2025',
   },
   {
-    id: 'teaching', index: 5, number: '06',
+    id: 'teaching', index: 4, number: '05',
     title: 'Teaching', label: 'LEARNING BY TEACHING',
     subtitle: 'Graduate Teaching Assistant · KCL',
     vh: 3.0, quickVh: 1.4,
-    theme: 'light', coreState: 'terminal',
   },
   {
-    id: 'focus', index: 6, number: '07',
+    id: 'focus', index: 5, number: '06',
     title: 'Focus', label: 'BUILDING A PRODUCT',
     subtitle: 'AI-generated learning video engine',
     vh: 6.4, quickVh: 2.6,
-    theme: 'light', coreState: 'device',
   },
   {
-    id: 'gym', index: 7, number: '08',
+    id: 'gym', index: 6, number: '07',
     title: 'Gym App', label: 'ONE MODEL, MANY MOVEMENTS',
     subtitle: 'Rigged pose-data exercise system',
     vh: 4.4, quickVh: 1.8,
-    theme: 'light', coreState: 'rig',
   },
   {
-    id: 'metaview', index: 8, number: '09',
+    id: 'metaview', index: 7, number: '08',
     title: 'Intelligence', label: 'METAVIEW — AI & DATA',
     subtitle: 'Retrieval, vision and scale',
     vh: 7.0, quickVh: 3.0,
-    theme: 'dark', coreState: 'node', year: '2026',
+    year: '2026',
   },
   {
-    id: 'chess', index: 9, number: '10',
+    id: 'chess', index: 8, number: '09',
     title: 'Chess Assistant', label: 'SEEING THE BOARD',
     subtitle: 'CNN board reconstruction → Stockfish',
     vh: 5.0, quickVh: 2.0,
-    theme: 'dark', coreState: 'grid',
   },
   {
-    id: 'stock', index: 10, number: '11',
+    id: 'stock', index: 9, number: '10',
     title: 'Stock Market', label: 'FORTY THOUSAND TRADES',
     subtitle: 'Multithreaded matching engine',
     vh: 3.4, quickVh: 1.4,
-    theme: 'dark', coreState: 'stream',
   },
   {
-    id: 'universe', index: 11, number: '12',
+    id: 'universe', index: 10, number: '11',
     title: 'Project Universe', label: 'EVERYTHING I HAVE BUILT',
     subtitle: 'Interactive spatial archive',
     vh: 3.6, quickVh: 2.0,
-    theme: 'dark', coreState: 'star',
   },
   {
-    id: 'toolbox', index: 12, number: '13',
+    id: 'toolbox', index: 11, number: '12',
     title: 'Tech Toolbox', label: 'EVIDENCE, NOT KEYWORDS',
     subtitle: 'Technologies linked to real projects',
     vh: 3.4, quickVh: 2.0,
-    theme: 'dark', coreState: 'matrix',
   },
   {
-    id: 'ucl', index: 13, number: '14',
+    id: 'ucl', index: 12, number: '13',
     title: 'UCL', label: 'UNIVERSITY COLLEGE LONDON',
     subtitle: 'MSc AI & Data Engineering',
     vh: 4.2, quickVh: 1.8,
-    theme: 'light', coreState: 'capsule', year: '2027',
+    year: '2027',
   },
   {
-    id: 'contact', index: 14, number: '15',
+    id: 'contact', index: 13, number: '14',
     title: 'Contact', label: "WHAT'S NEXT?",
     subtitle: 'Let’s build it',
     vh: 3.6, quickVh: 2.2,
-    theme: 'dark', coreState: 'system',
   },
 ]
 
@@ -126,7 +108,7 @@ export const chapterIds = chapters.map((c) => c.id)
 /** Total scroll length in viewport heights for a given mode. */
 export function totalVh(quick: boolean): number {
   return chapters.reduce(
-    (sum, c) => sum + (quick ? (c.skipInQuickView ? 0 : c.quickVh) : c.vh),
+    (sum, c) => sum + (quick ? c.quickVh : c.vh),
     0,
   )
 }
@@ -144,7 +126,7 @@ export function chapterRanges(quick: boolean): ChapterRange[] {
   let cursor = 0
   const out: ChapterRange[] = []
   for (const c of chapters) {
-    const len = quick ? (c.skipInQuickView ? 0 : c.quickVh) : c.vh
+    const len = quick ? c.quickVh : c.vh
     const start = cursor / total
     cursor += len
     out.push({ id: c.id, start, end: cursor / total, chapter: c })
@@ -155,7 +137,6 @@ export function chapterRanges(quick: boolean): ChapterRange[] {
 /** Timeline markers shown in the persistent HUD. */
 export const timelineYears = [
   { year: '2023', chapter: 'kcl' as ChapterId },
-  { year: '2024', chapter: 'playground' as ChapterId },
   { year: '2025', chapter: 'pansofia' as ChapterId },
   { year: '2026', chapter: 'metaview' as ChapterId },
   { year: '2027', chapter: 'ucl' as ChapterId },

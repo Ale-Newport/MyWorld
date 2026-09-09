@@ -7,9 +7,10 @@
   align-items: center;
   gap: clamp(0.9rem, 2.4vh, 1.9rem);
   text-align: center;
-  /* Sit the type in the upper field and leave the lower third to
-     the Core, so the object and the name never fight. */
-  margin-bottom: clamp(6rem, 22vh, 13rem);
+  /* The name sits a little above centre rather than dead centre:
+     optical centring, and it leaves the scroll hint room to
+     breathe under it. */
+  margin-bottom: clamp(2rem, 8vh, 5rem);
 }
 
 .name {

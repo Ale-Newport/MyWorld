@@ -1,7 +1,7 @@
 'use client'
 
 import { create } from 'zustand'
-import type { ChapterId, CoreState, Theme } from '@/content/types'
+import type { ChapterId } from '@/content/types'
 import { chapters, chapterRanges, type ChapterRange } from '@/content/chapters'
 
 export type PerformanceTier = 'low' | 'medium' | 'high'
@@ -19,8 +19,6 @@ export interface JourneyState {
   direction: 1 | -1
 
   /* ---- presentation ------------------------------------- */
-  theme: Theme
-  coreState: CoreState
   ranges: ChapterRange[]
 
   /* ---- modes -------------------------------------------- */
@@ -30,8 +28,6 @@ export interface JourneyState {
   soundEnabled: boolean
   indexOpen: boolean
   ready: boolean
-  /** True while the playground chapter owns keyboard input. */
-  playgroundActive: boolean
   /** Slug of the project overlay currently open, or null. */
   activeProject: string | null
   /** Pointer in normalised device coords, -1..1. */
@@ -46,7 +42,6 @@ export interface JourneyState {
   toggleSound: () => void
   setIndexOpen: (v: boolean) => void
   setReady: (v: boolean) => void
-  setPlaygroundActive: (v: boolean) => void
   setActiveProject: (slug: string | null) => void
 }
 
@@ -73,8 +68,6 @@ export const useJourney = create<JourneyState>((set, get) => ({
   velocity: 0,
   direction: 1,
 
-  theme: 'light',
-  coreState: 'capsule',
   ranges: initialRanges,
 
   quickView: false,
@@ -83,7 +76,6 @@ export const useJourney = create<JourneyState>((set, get) => ({
   soundEnabled: false,
   indexOpen: false,
   ready: false,
-  playgroundActive: false,
   activeProject: null,
   pointer: { x: 0, y: 0 },
 
@@ -95,8 +87,6 @@ export const useJourney = create<JourneyState>((set, get) => ({
     if (active.id !== s.chapter) {
       next.chapter = active.id
       next.chapterIndex = active.chapter.index
-      next.theme = active.chapter.theme
-      next.coreState = active.chapter.coreState
     }
     set(next)
   },
@@ -112,8 +102,6 @@ export const useJourney = create<JourneyState>((set, get) => ({
       ranges,
       chapter: active.id,
       chapterIndex: active.chapter.index,
-      theme: active.chapter.theme,
-      coreState: active.chapter.coreState,
       chapterProgress,
     })
   },
@@ -123,7 +111,6 @@ export const useJourney = create<JourneyState>((set, get) => ({
   toggleSound: () => set((s) => ({ soundEnabled: !s.soundEnabled })),
   setIndexOpen: (v) => set({ indexOpen: v }),
   setReady: (v) => set({ ready: v }),
-  setPlaygroundActive: (v) => set({ playgroundActive: v }),
   setActiveProject: (slug) => set({ activeProject: slug }),
 }))
 
@@ -145,14 +132,8 @@ export const frame = {
   /** Raw pointer target. */
   pointerTargetX: 0,
   pointerTargetY: 0,
-  /** 0 = light, 1 = dark. Lerped for smooth world transitions. */
-  darkness: 0,
   /** Seconds since mount. */
   time: 0,
-  /** Rover position, owned by the playground scene. */
-  roverX: 0,
-  roverZ: 0,
-  roverHeading: 0,
 }
 
 export const chapterCount = chapters.length

@@ -5,6 +5,7 @@ import { Chapter } from '@/components/journey/Chapter'
 import { Reveal } from '@/components/typography/Reveal'
 import { TagRow } from '@/components/journey/parts'
 import { experienceById } from '@/content/experience'
+import { chapterById } from '@/content/chapters'
 import { useChapterFrame } from '@/hooks/useChapterProgress'
 import { useJourney } from '@/state/journey'
 import { clamp, range } from '@/lib/math'
@@ -90,7 +91,7 @@ export function Teaching() {
     <Chapter id="teaching" labelledBy="teaching-title">
       <div className={`${shared.stage} ${styles.stage}`}>
         <div className={styles.head}>
-          <TagRow items={['06', 'LEARNING BY TEACHING', role.dates]} />
+          <TagRow items={[chapterById['teaching'].number, 'LEARNING BY TEACHING', role.dates]} />
           <Reveal as="h2" mode="words" className={styles.title} id="teaching-title">
             {'First I learned how systems work.\nThen I learned how to explain them.'}
           </Reveal>

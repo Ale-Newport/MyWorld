@@ -39,7 +39,7 @@ export default function NotFound() {
       }
       ctx.globalAlpha = 1
 
-      // The lost Core, tumbling.
+      // The lost object, tumbling.
       const bob = Math.sin(t * 0.9) * 6
       ctx.save()
       ctx.translate(cx, cy + bob)
@@ -74,7 +74,7 @@ export default function NotFound() {
         <p className={styles.code}>404</p>
         <h1 className={styles.title}>Signal lost</h1>
         <p className={styles.body}>
-          Nothing at this coordinate. The Core drifted somewhere it wasn’t supposed to.
+          Nothing at this coordinate. Something drifted somewhere it wasn’t supposed to.
         </p>
         <div className={styles.actions}>
           <Link href="/" className={styles.link} data-cursor="link" data-cursor-text="HOME">

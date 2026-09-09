@@ -6,7 +6,8 @@ import { Reveal } from '@/components/typography/Reveal'
 import { TagRow, MetricBlock } from '@/components/journey/parts'
 import { Counter } from '@/components/typography/Counter'
 import { experienceById } from '@/content/experience'
-import { clientProjects } from '@/content/projects/client'
+import { chapterById } from '@/content/chapters'
+import { clientProjects, featuredClientProjects } from '@/content/projects/client'
 import { useChapterFrame } from '@/hooks/useChapterProgress'
 import { useJourney } from '@/state/journey'
 import { clamp, range, easeOutCubic } from '@/lib/math'
@@ -15,10 +16,14 @@ import styles from './Pansofia.module.css'
 
 /* ============================================================
    31 – 40%  CHAPTER II — FROM PROJECTS TO PRODUCTS
-   The Core unfolds into a browser, one becomes many, and the
-   count resolves to 14. Then a horizontal gallery of the real
+   One browser pane becomes many and the count resolves to 14.
+   Then a horizontal gallery of the real
    sites — the one place on this site where screenshots are the
    honest answer, because the deliverable WAS the interface.
+
+   The fan and the counter speak for the ROLE: the whole portfolio,
+   fourteen sites shipped. The rail speaks for the gallery, and the
+   gallery is an edit — eight sites, larger, at a readable pace.
    ============================================================ */
 
 export function Pansofia() {
@@ -41,7 +46,7 @@ export function Pansofia() {
       head.style.transform = `translate3d(0, ${(1 - a) * 1.6}rem, 0)`
     }
 
-    // Fourteen browser panes fan out, then collapse behind the count.
+    // The browser panes fan out of one, then collapse behind the count.
     const stack = stackRef.current
     if (stack) {
       const fan = clamp(range(t, 0.05, 0.3))
@@ -68,12 +73,15 @@ export function Pansofia() {
     }
 
     // Horizontal gallery scrubs with vertical scroll — no scroll-jack,
-    // the page still moves at its own pace.
+    // the page still moves at its own pace. The travel is measured, not
+    // assumed, so the rail lands on the last tile whatever the gallery
+    // holds; the tiles are sized so eight of them still have somewhere
+    // to go on a wide screen.
     const rail = railRef.current
     if (rail) {
       const a = clamp(range(t, 0.6, 0.68))
       rail.style.opacity = String(a)
-      const travel = rail.scrollWidth - rail.clientWidth
+      const travel = Math.max(0, rail.scrollWidth - rail.clientWidth)
       const p = clamp(range(t, 0.62, 0.98))
       rail.scrollLeft = travel * p
     }
@@ -83,7 +91,7 @@ export function Pansofia() {
     <Chapter id="pansofia" labelledBy="pansofia-title">
       <div className={`${shared.stage} ${styles.stage}`}>
         <div className={`${styles.head} ${shared.driven}`} ref={headRef}>
-          <TagRow items={['05', 'FROM PROJECTS TO PRODUCTS', role.dates]} />
+          <TagRow items={[chapterById['pansofia'].number, 'FROM PROJECTS TO PRODUCTS', role.dates]} />
           <Reveal as="h2" mode="mask" className={styles.title} id="pansofia-title">
             {'Pansofia /\nGrupo Newport'}
           </Reveal>
@@ -96,7 +104,9 @@ export function Pansofia() {
           </div>
         </div>
 
-        {/* Fourteen panes fanning out of one. */}
+        {/* One pane per site in the engagement, not per tile in the
+            gallery: this is the "one becomes many" beat that the count
+            resolves, and eight panes would fan too thin to read. */}
         <div className={styles.stack} ref={stackRef} aria-hidden="true">
           {clientProjects.map((p) => (
             <span key={p.id} className={styles.pane} style={{ borderTopColor: p.accent }}>
@@ -115,7 +125,7 @@ export function Pansofia() {
 
         <div className={styles.rail} ref={railRef}>
           <ul className={styles.railList}>
-            {clientProjects.map((p) => (
+            {featuredClientProjects.map((p) => (
               <li
                 key={p.id}
                 className={styles.site}
@@ -178,7 +188,7 @@ export function Pansofia() {
         <div className={`${shared.corner} ${shared.cornerTR}`}>
           DRAG OR SCROLL
           <br />
-          14 SITES · 2025
+          SELECTED WORK · 2025
         </div>
       </div>
     </Chapter>

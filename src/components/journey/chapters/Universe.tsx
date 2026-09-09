@@ -5,6 +5,7 @@ import { Chapter } from '@/components/journey/Chapter'
 import { Reveal } from '@/components/typography/Reveal'
 import { TagRow } from '@/components/journey/parts'
 import { projects, universeFilters, categoryAccent } from '@/content/projects'
+import { chapterById } from '@/content/chapters'
 import { useJourney } from '@/state/journey'
 import shared from './chapters.module.css'
 import styles from './Universe.module.css'
@@ -41,7 +42,7 @@ export function Universe() {
     <Chapter id="universe" labelledBy="universe-title">
       <div className={`${shared.stage} ${styles.stage}`}>
         <div className={styles.head}>
-          <TagRow items={['12', 'PROJECT UNIVERSE']} />
+          <TagRow items={[chapterById['universe'].number, 'PROJECT UNIVERSE']} />
           <Reveal as="h2" mode="mask" className={styles.title} id="universe-title">
             {'Everything\nI have built'}
           </Reveal>

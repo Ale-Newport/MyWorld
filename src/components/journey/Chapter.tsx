@@ -24,16 +24,12 @@ interface ChapterProps {
 export function Chapter({ id, children, flow, className, noPin, labelledBy }: ChapterProps) {
   const quickView = useJourney((s) => s.quickView)
   const meta = chapterById[id]
-  const skipped = quickView && meta.skipInQuickView
   const vh = quickView ? meta.quickVh : meta.vh
-
-  if (skipped) return null
 
   return (
     <section
       id={`chapter-${id}`}
       data-chapter={id}
-      data-theme-chapter={meta.theme}
       aria-labelledby={labelledBy}
       className={`${styles.chapter} ${className ?? ''}`}
       style={{ height: `${vh * 100}vh` }}

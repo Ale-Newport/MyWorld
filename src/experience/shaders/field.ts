@@ -1,7 +1,7 @@
 /* ============================================================
-   THE FIELD — the ground/space the Core travels across.
-   Renders as a fine measured grid in the light world and as a
-   deep star field in the dark world. One material, one draw.
+   THE FIELD — the ground the journey travels across.
+   A fine measured grid drawn on the page: one material, one
+   draw, no second world to switch to.
    ============================================================ */
 
 export const fieldVertex = /* glsl */ `
@@ -22,7 +22,6 @@ export const fieldVertex = /* glsl */ `
 
 export const fieldFragment = /* glsl */ `
   uniform float uTime;
-  uniform float uDarkness;
   uniform float uFade;
   uniform vec3  uAccent;
   uniform float uProgress;
@@ -44,10 +43,14 @@ export const fieldFragment = /* glsl */ `
     float fine  = grid(vPos.xy, 0.5, 1.0);
     float major = grid(vPos.xy, 0.1, 1.3);
 
-    vec3 lineCol = mix(vec3(0.04), vec3(0.72), uDarkness);
+    // One value, and a low one: the page is white, so every line in
+    // this scene is graphite subtracting from it. The alphas below do
+    // the rest of the work — a paler ink at a higher alpha reads as
+    // fog, and this has to read as ruling.
+    vec3 lineCol = vec3(0.04);
     float a = (fine * 0.022 + major * 0.075) * horizon * uFade;
 
-    // The timeline spine — the path the Core travels. Present, but
+    // The timeline spine — the path the journey travels. Present, but
     // a hairline, not a highway.
     float spine = 1.0 - smoothstep(0.02, 0.10, abs(vPos.y));
     a += spine * horizon * 0.12 * uFade;

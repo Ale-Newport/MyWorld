@@ -19,6 +19,23 @@ import { clamp, damp, range, seeded } from '@/lib/math'
 const dummy = new THREE.Object3D()
 const color = new THREE.Color()
 
+/* Value scale, rebuilt for paper.
+   Nodes    resting graphite, hovered technology in the house accent,
+            the evidence it lights in the soft accent one step down.
+   Edges    a luminance ramp that used to run 0.006 (off) to 0.9 (lit)
+            straight into a vertexColors line material. On black those
+            low numbers were a whisper; on white they are near-black,
+            so the resting lattice drew LOUDER than the highlight it
+            was meant to sit behind. The ramp is now three explicit
+            colours running the other way — quiet is close to the page,
+            lit is the accent.
+   Dimming  approaches the paper rather than multiplying toward black,
+            for the same reason. */
+const PAPER = new THREE.Color('#ffffff')
+const EDGE_LIT = new THREE.Color('#d4491f')
+const EDGE_RESTING = new THREE.Color('#8a8882')
+const EDGE_MUTED = new THREE.Color('#e4e2dd')
+
 export function ToolboxScene() {
   const group = useRef<THREE.Group>(null!)
   const techMesh = useRef<THREE.InstancedMesh>(null!)
@@ -92,8 +109,8 @@ export function ToolboxScene() {
       dummy.rotation.set(frame.time * 0.2 + i, frame.time * 0.14, 0)
       dummy.updateMatrix()
       techMesh.current.setMatrixAt(i, dummy.matrix)
-      color.set(n.id === active ? '#ff7a4d' : '#8f8d88')
-      if (active && n.id !== active) color.multiplyScalar(0.22)
+      color.set(n.id === active ? '#d4491f' : '#5c5a56')
+      if (active && n.id !== active) color.lerp(PAPER, 0.72)
       techMesh.current.setColorAt(i, color)
     }
     techMesh.current.instanceMatrix.needsUpdate = true
@@ -108,8 +125,8 @@ export function ToolboxScene() {
       dummy.rotation.set(0, frame.time * 0.1, 0)
       dummy.updateMatrix()
       projMesh.current.setMatrixAt(i, dummy.matrix)
-      color.set(lit && active ? '#ffd7c4' : '#6c6a66')
-      if (active && !lit) color.multiplyScalar(0.16)
+      color.set(lit && active ? '#e8734d' : '#6c6a66')
+      if (active && !lit) color.lerp(PAPER, 0.82)
       projMesh.current.setColorAt(i, color)
     }
     projMesh.current.instanceMatrix.needsUpdate = true
@@ -119,23 +136,27 @@ export function ToolboxScene() {
     const cAttr = edgeGeometry.getAttribute('color') as THREE.BufferAttribute
     for (let i = 0; i < edgeData.length; i++) {
       const on = !active || techNodes[edgeData[i].ti].id === active
-      const v = on ? (active ? 0.9 : 0.045) : 0.006
+      const c = !on ? EDGE_MUTED : active ? EDGE_LIT : EDGE_RESTING
       for (let k = 0; k < 6; k += 3) {
-        cAttr.array[i * 6 + k] = v
-        cAttr.array[i * 6 + k + 1] = v * (on && active ? 0.5 : 1)
-        cAttr.array[i * 6 + k + 2] = v * (on && active ? 0.32 : 1)
+        cAttr.array[i * 6 + k] = c.r
+        cAttr.array[i * 6 + k + 1] = c.g
+        cAttr.array[i * 6 + k + 2] = c.b
       }
     }
     cAttr.needsUpdate = true
-    ;(edges.current.material as THREE.LineBasicMaterial).opacity = opacity.current * (active ? 0.9 : 0.5)
-    ;(techMesh.current.material as THREE.MeshBasicMaterial).opacity = opacity.current
-    ;(projMesh.current.material as THREE.MeshBasicMaterial).opacity = opacity.current
+    // The DOM half of this chapter is now a wall of logo tiles that
+    // fills the pinned screen, so there is no band left to stand the
+    // graph in. It sits behind the wall instead, at watermark
+    // strength — until a technology is picked, and then the edges
+    // that prove it come forward. Hovering a tile is what lights the
+    // lattice; the lattice is never competing with the tile.
+    const lit = active ? 1 : 0
+    ;(edges.current.material as THREE.LineBasicMaterial).opacity = opacity.current * (0.1 + lit * 0.45)
+    ;(techMesh.current.material as THREE.MeshBasicMaterial).opacity = opacity.current * (0.22 + lit * 0.5)
+    ;(projMesh.current.material as THREE.MeshBasicMaterial).opacity = opacity.current * (0.22 + lit * 0.55)
 
-    // Above the chip grid, not through it. The chapter reads as two
-    // stacked halves: the evidence graph, then the taxonomy that
-    // indexes it. Overlapping them made both unreadable.
-    group.current.position.set(0, 5.2, -6)
-    group.current.scale.setScalar(0.48)
+    group.current.position.set(0, 0.4, -9)
+    group.current.scale.setScalar(0.72)
     group.current.rotation.y = frame.time * 0.045 + frame.pointerX * 0.42
     group.current.rotation.x = damp(group.current.rotation.x, -frame.pointerY * 0.18, 2.4, d)
   })

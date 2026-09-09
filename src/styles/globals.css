@@ -15,10 +15,14 @@ html, body {
   padding: 0;
   width: 100%;
   overflow-x: clip;
+  /* Painted on both elements, not just body: this is the very
+     first rule the browser has, so the first frame and the
+     overscroll gutter are white before any component CSS,
+     canvas or hydration gets a say. */
+  background: var(--bg-primary);
 }
 
 body {
-  background: var(--bg-primary);
   color: var(--text-primary);
   font-family: var(--font-display);
   font-size: var(--fs-body);
@@ -27,7 +31,6 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
-  transition: background-color 700ms var(--ease-in-out), color 700ms var(--ease-in-out);
 }
 
 h1, h2, h3, h4, h5, h6, p, figure, blockquote, dl, dd { margin: 0; }
@@ -160,7 +163,6 @@ a { color: inherit; text-decoration: none; }
     animation-iteration-count: 1 !important;
     transition-duration: 0.001ms !important;
   }
-  body { transition: none; }
 }
 
 /* Hide the real cursor only when the custom one is live */

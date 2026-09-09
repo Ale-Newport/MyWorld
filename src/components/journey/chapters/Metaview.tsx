@@ -6,6 +6,7 @@ import { Reveal } from '@/components/typography/Reveal'
 import { TagRow } from '@/components/journey/parts'
 import { Counter } from '@/components/typography/Counter'
 import { experienceById } from '@/content/experience'
+import { chapterById } from '@/content/chapters'
 import { useChapterFrame } from '@/hooks/useChapterProgress'
 import { useJourney } from '@/state/journey'
 import { clamp, range, formatCount } from '@/lib/math'
@@ -87,7 +88,7 @@ export function Metaview() {
     <Chapter id="metaview" labelledBy="metaview-title">
       <div className={`${shared.stage} ${styles.stage}`}>
         <div className={`${styles.head} ${shared.driven}`} ref={headRef}>
-          <TagRow items={['09', '[ AI / DATA ]', role.dates]} />
+          <TagRow items={[chapterById['metaview'].number, '[ AI / DATA ]', role.dates]} />
           <Reveal as="h2" mode="chars" className={styles.title} id="metaview-title">
             {'Metaview'}
           </Reveal>

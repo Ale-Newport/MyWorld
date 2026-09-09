@@ -8,7 +8,6 @@ import { chapters } from '@/content/chapters'
 /* Each heavy scene is a separate chunk, mounted only in a window
    around the active chapter so GPU memory stays bounded. */
 const FieldScene     = lazy(() => import('./FieldScene').then((m) => ({ default: m.FieldScene })))
-const PlaygroundScene= lazy(() => import('./PlaygroundScene').then((m) => ({ default: m.PlaygroundScene })))
 const MetaviewScene  = lazy(() => import('./MetaviewScene').then((m) => ({ default: m.MetaviewScene })))
 const ChessScene     = lazy(() => import('./ChessScene').then((m) => ({ default: m.ChessScene })))
 const StockScene     = lazy(() => import('./StockScene').then((m) => ({ default: m.StockScene })))
@@ -19,7 +18,6 @@ const ContactScene   = lazy(() => import('./ContactScene').then((m) => ({ defaul
 /** Which chapters keep a given scene alive. */
 const SCENE_MAP: { id: string; chapters: ChapterId[]; Comp: React.ComponentType }[] = [
   { id: 'field',      chapters: ['prelude', 'about', 'kcl', 'pansofia', 'teaching', 'focus', 'gym', 'ucl'], Comp: FieldScene },
-  { id: 'playground', chapters: ['playground'], Comp: PlaygroundScene },
   { id: 'metaview',   chapters: ['metaview'], Comp: MetaviewScene },
   { id: 'chess',      chapters: ['chess'], Comp: ChessScene },
   { id: 'stock',      chapters: ['stock'], Comp: StockScene },

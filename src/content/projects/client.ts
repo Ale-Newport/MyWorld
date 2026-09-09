@@ -38,6 +38,13 @@ const seeds: ClientSeed[] = [
     importance: 'featured',
   },
   {
+    slug: 'bioever', title: 'Clínica Bioever', short: 'Bioever',
+    url: 'https://clinicabioever.com', sector: 'Longevity and aesthetics clinic',
+    palette: ['#0c3e46', '#3fbfa8', '#1c8c82'], region: 'Las Palmas de Gran Canaria',
+    evidence: 'Longevity and aesthetic medicine clinic — programmes, services and booking.',
+    importance: 'featured',
+  },
+  {
     slug: 'cht-canarias', title: 'CHT Canarias', short: 'CHT',
     url: 'https://chtcanarias.com', sector: 'Hospitality & tourism school',
     palette: ['#15284c', '#254989', '#adadad'], region: 'Gran Canaria',
@@ -145,7 +152,7 @@ export const clientProjects: Project[] = seeds.map((s, i) => ({
   shortDescription: `${s.sector} · ${s.region}`,
   description: s.evidence,
   contribution:
-    'Built as part of a fourteen-site programme delivered by a team of six, led by Alejandro. Front-end build, back-end integration and deployment to private server infrastructure.',
+    'Built as part of the site programme delivered by a team of six, led by Alejandro. Front-end build, back-end integration and deployment to private server infrastructure.',
   verifiedFacts: [
     'Live and publicly reachable — verified by HTTP request and page content.',
     `Brand palette extracted from the live public stylesheet: ${s.palette.join(', ')}.`,
@@ -177,6 +184,34 @@ export const clientProjects: Project[] = seeds.map((s, i) => ({
   featured: s.importance === 'featured',
   accent: s.palette[0],
 }))
+
+/* The eight sites the Pansofia gallery shows, in the order it shows
+   them. `clientProjects` above stays complete — it feeds the project
+   inventory, the static profile and the world route. This is only the
+   edit for the chapter, so the rail reads as a selection rather than
+   a contact sheet. */
+const gallerySlugs = [
+  'pansofia',
+  'bioever',
+  'innova-urbis',
+  'talento-profesional',
+  'avanza-fp',
+  'aula-impulsa',
+  'escuela-de-hosteleria-canaria',
+  'level-up-canarias',
+]
+
+export const featuredClientProjects: Project[] = gallerySlugs.flatMap((slug) => {
+  const project = clientProjects.find((p) => p.slug === slug)
+  if (!project) {
+    // A rename upstream would otherwise drop a site from the gallery in silence.
+    if (process.env.NODE_ENV === 'development') {
+      console.warn(`[client] gallery lists unknown slug: ${slug}`)
+    }
+    return []
+  }
+  return [project]
+})
 
 /** Palette lookup used by the gallery for per-site accenting. */
 export const clientPalettes = Object.fromEntries(

@@ -17,12 +17,19 @@ interface Shot {
  * One camera for the whole journey. Each chapter declares a
  * start and end shot; the camera interpolates within the
  * chapter and damps across boundaries, so there is never a cut.
+ *
+ * These shots were originally framed on a single travelling
+ * object. That object is gone, but the numbers are kept: every
+ * scene that remains is built around the origin, and the light
+ * chapters — which now show only the field — depend on the low
+ * look targets to hold the ground at a grazing angle. Raising
+ * them would tilt the field out of frame and leave those
+ * chapters with nothing at all.
  */
 const SHOTS: Record<ChapterId, [Shot, Shot]> = {
   prelude:   [{ pos: [0, 0.3, 6.5], look: [0, -0.5, 0],  fov: 36 }, { pos: [0, 0.8, 11],  look: [0, -0.9, 0],   fov: 44 }],
   about:     [{ pos: [0, 0.8, 11],  look: [0, -0.9, 0],  fov: 44 }, { pos: [0, 3.2, 26],  look: [0, -1.2, 0],   fov: 52 }],
   kcl:       [{ pos: [-6, 2.2, 14], look: [0, -0.3, 0],  fov: 46 }, { pos: [7, 1.6, 11],  look: [1, -0.4, 0],   fov: 44 }],
-  playground:[{ pos: [0, 13, 20],   look: [0, -2.2, 0],  fov: 46 }, { pos: [0, 11, 17],   look: [0, -2.2, 0],   fov: 46 }],
   pansofia:  [{ pos: [0, 0.4, 9],   look: [0, 0.2, 0],   fov: 40 }, { pos: [0, 0.2, 6.4], look: [0, 0.2, 0],    fov: 38 }],
   teaching:  [{ pos: [0, 0, 8],     look: [0, 0, 0],     fov: 40 }, { pos: [0.6, 0, 7],   look: [0, 0, 0],      fov: 40 }],
   focus:     [{ pos: [0, 0, 8],     look: [0, 0, 0],     fov: 38 }, { pos: [2.4, 1.0, 5], look: [0, 0, 0],      fov: 46 }],
@@ -71,16 +78,6 @@ export function JourneyCamera() {
     const drift = s.reducedMotion ? 0 : 1
     tmpPos.x += frame.pointerX * 0.55 * drift
     tmpPos.y += frame.pointerY * 0.4 * drift
-
-    // The playground is the one chapter the visitor steers, so the
-    // camera follows the rover instead of holding a fixed shot —
-    // otherwise driving away simply loses the object.
-    if (s.chapter === 'playground') {
-      tmpPos.x += frame.roverX
-      tmpPos.z += frame.roverZ
-      tmpLook.x += frame.roverX
-      tmpLook.z += frame.roverZ
-    }
 
     if (!initialised.current) {
       camera.position.copy(tmpPos)

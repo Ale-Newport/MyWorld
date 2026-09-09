@@ -1,0 +1,165 @@
+/* ============================================================
+   THE PORTAL
+   Chrome for the last gesture on the site: a hairline that
+   fills, a label that changes its mind, and a sheet the colour
+   of the page that climbs over everything behind it.
+   ============================================================ */
+
+/* The chapter stage hands pointer events to every direct child.
+   This layer must refuse them or it would swallow the contact
+   links underneath; the attribute is here to carry the extra
+   specificity that refusal needs. */
+.host[data-phase] {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+}
+
+/* The sheet is exactly the stage, resting a full height below it
+   plus the 12 points its leading edge occupies — REST_PCT in
+   WorldPortal.tsx, which is what keeps the edge off screen until
+   it is wanted. */
+.veil {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  background: var(--bg-primary);
+  transform: translate3d(0, 112%, 0);
+  will-change: transform;
+}
+
+/* The page dissolves just ahead of the seal rather than being cut
+   by it, so the edge rides above the sheet and travels with it. */
+.veilFade {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 100%;
+  height: 12%;
+  background: linear-gradient(
+    to top,
+    var(--bg-primary),
+    color-mix(in oklab, var(--bg-primary) 0%, transparent)
+  );
+}
+
+.veilEdge {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: var(--hair);
+  background: var(--border-strong);
+}
+
+.readout {
+  position: absolute;
+  z-index: 1;
+  left: var(--gutter);
+  right: var(--gutter);
+  bottom: clamp(4.2rem, 9.5vh, 5.8rem);
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: baseline;
+  gap: var(--sp-3) var(--sp-4);
+  font-family: var(--font-mono);
+  font-size: var(--fs-nano);
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+}
+
+/* A one-line window the two words pass through, so the swap
+   reads as a replacement rather than a blend. */
+.state {
+  grid-column: 1;
+  display: grid;
+  color: var(--text-muted);
+  line-height: 1.2;
+  height: 1.2em;
+  overflow: hidden;
+}
+
+.word {
+  grid-area: 1 / 1;
+  justify-self: start;
+  white-space: nowrap;
+  will-change: transform, opacity;
+}
+
+.wordGo {
+  color: var(--text-primary);
+  opacity: 0;
+  transform: translate3d(0, 100%, 0);
+}
+
+.enter {
+  grid-column: 2;
+  pointer-events: auto;
+  display: inline-flex;
+  align-items: baseline;
+  gap: var(--sp-2);
+  color: var(--text-muted);
+  transition: color var(--dur-fast) var(--ease-out-expo);
+}
+.enter:hover { color: var(--text-primary); }
+
+.enterArrow {
+  color: var(--accent);
+  transition: transform var(--dur-fast) var(--ease-out-expo);
+}
+.enter:hover .enterArrow { transform: translateX(3px); }
+
+.rule {
+  grid-column: 1 / span 2;
+  grid-row: 2;
+  align-self: stretch;
+  position: relative;
+  height: var(--hair);
+  background: var(--border);
+}
+
+.ruleFill {
+  position: absolute;
+  inset: 0;
+  background: var(--accent);
+  transform-origin: 0 50%;
+  transform: scaleX(0);
+  will-change: transform;
+}
+
+/* Committed. The frame loop lets go here and these carry the last
+   of the movement, so the page settles into the world rather than
+   cutting to it. The route swaps in before the easing has quite
+   finished, by which point the last of the travel is a pixel. */
+.host[data-phase='entering'] .veil,
+.host[data-phase='entering'] .ruleFill {
+  transition: transform var(--dur-slow) var(--ease-out-expo);
+}
+.host[data-phase='entering'] .word {
+  transition: opacity var(--dur-mid) var(--ease-out-expo),
+              transform var(--dur-mid) var(--ease-out-expo);
+}
+.host[data-phase='entering'] .enter {
+  opacity: 0;
+  transition: opacity var(--dur-fast) var(--ease-out-expo);
+}
+
+/* Reduced motion: no charge and no sheet — just the door, plainly
+   open, in the place the charge would have led to. */
+.host[data-plain='true'] .enter {
+  grid-column: 1;
+  color: var(--text-primary);
+  text-decoration: underline;
+  text-decoration-color: var(--border-strong);
+  text-decoration-thickness: var(--hair);
+  text-underline-offset: 0.4em;
+}
+
+@media (max-width: 700px) {
+  .readout {
+    bottom: 4rem;
+    font-size: 9px;
+    gap: var(--sp-2) var(--sp-3);
+  }
+}

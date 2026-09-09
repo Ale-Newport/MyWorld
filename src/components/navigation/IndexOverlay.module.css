@@ -104,10 +104,6 @@
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 .itemYear { font-family: var(--font-mono); font-size: var(--fs-nano); color: var(--text-faint); text-align: right; }
-.itemSkip {
-  grid-column: 3; font-family: var(--font-mono); font-size: var(--fs-nano);
-  color: var(--accent); letter-spacing: var(--tracking-label); text-transform: uppercase;
-}
 
 @media (max-width: 800px) {
   .item { grid-template-columns: 2.1rem 1fr auto; }

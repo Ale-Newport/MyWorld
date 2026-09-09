@@ -6,6 +6,7 @@ import { Reveal } from '@/components/typography/Reveal'
 import { TagRow } from '@/components/journey/parts'
 import { ProjectVisual } from '@/components/project-visuals/ProjectVisual'
 import { projectById } from '@/content/projects'
+import { chapterById } from '@/content/chapters'
 import { experienceById } from '@/content/experience'
 import { useChapterFrame } from '@/hooks/useChapterProgress'
 import { useJourney } from '@/state/journey'
@@ -79,7 +80,7 @@ export function Focus() {
         </div>
 
         <div className={`${styles.head} ${shared.driven}`} ref={headRef}>
-          <TagRow items={['07', 'BUILDING A PRODUCT', role.dates]} />
+          <TagRow items={[chapterById['focus'].number, 'BUILDING A PRODUCT', role.dates]} />
           <Reveal as="h2" mode="mask" className={styles.title} id="focus-title">
             {'Focus'}
           </Reveal>

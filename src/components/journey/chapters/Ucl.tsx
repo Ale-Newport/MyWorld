@@ -5,6 +5,7 @@ import { Chapter } from '@/components/journey/Chapter'
 import { Reveal } from '@/components/typography/Reveal'
 import { TagRow } from '@/components/journey/parts'
 import { educationById, credentials } from '@/content/education'
+import { chapterById } from '@/content/chapters'
 import { profile } from '@/content/profile'
 import { useChapterFrame } from '@/hooks/useChapterProgress'
 import { useJourney } from '@/state/journey'
@@ -74,7 +75,7 @@ export function Ucl() {
     <Chapter id="ucl" labelledBy="ucl-title">
       <div className={`${shared.stage} ${styles.stage}`}>
         <div className={`${styles.head} ${shared.driven}`} ref={headRef}>
-          <TagRow items={['14', 'UNIVERSITY COLLEGE LONDON', ucl.dates]} />
+          <TagRow items={[chapterById['ucl'].number, 'UNIVERSITY COLLEGE LONDON', ucl.dates]} />
           <Reveal as="h2" mode="mask" className={styles.title} id="ucl-title">
             {'MSc\nArtificial Intelligence\n& Data Engineering'}
           </Reveal>

@@ -14,7 +14,6 @@ import { useEasterEggs } from '@/hooks/useEasterEggs'
 import { Prelude } from './chapters/Prelude'
 import { About } from './chapters/About'
 import { Kcl } from './chapters/Kcl'
-import { Playground } from './chapters/Playground'
 import { Pansofia } from './chapters/Pansofia'
 import { Teaching } from './chapters/Teaching'
 import { Focus } from './chapters/Focus'
@@ -73,7 +72,6 @@ export function Journey() {
         <Prelude />
         <About />
         <Kcl />
-        <Playground />
         <Pansofia />
         <Teaching />
         <Focus />

@@ -131,7 +131,7 @@ ${review.length === 0 ? '_Nothing outstanding._' : review.map((p) => `- **${p.ti
 
 ## Client websites
 
-All fifteen were verified live (HTTP 200, brand-matching content) and captured with Playwright
+All ${client.length} were verified live (HTTP 200, brand-matching content) and captured with Playwright
 at 1440×2200 (desktop) and 390×1400 (iPhone 13), then encoded to AVIF and WebP.
 Re-capture at any time with \`npm run capture:clients\`.
 `

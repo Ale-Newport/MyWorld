@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Chapter } from '@/components/journey/Chapter'
 import { TagRow, ScrollHint } from '@/components/journey/parts'
 import { profile } from '@/content/profile'
+import { chapters } from '@/content/chapters'
 import { useChapterFrame } from '@/hooks/useChapterProgress'
 import { useJourney } from '@/state/journey'
 import { clamp, range } from '@/lib/math'
@@ -14,7 +15,7 @@ import styles from './Prelude.module.css'
    00 – 04%  PRELUDE
    No loader, no splash. The name is on screen immediately; the
    roles cycle; scrolling collapses them into a single thesis
-   and the letterforms begin to disperse into the Core.
+   and the letterforms begin to disperse.
    ============================================================ */
 
 export function Prelude() {
@@ -104,8 +105,10 @@ export function Prelude() {
         <div className={`${shared.corner} ${shared.cornerBL} ${shared.driven}`} ref={hintRef}>
           <ScrollHint />
         </div>
+        {/* Derived, not typed: a hardcoded count is a promise the
+            content file can break silently. */}
         <div className={`${shared.corner} ${shared.cornerBR}`}>
-          15 CHAPTERS
+          {chapters.length} CHAPTERS
           <br />
           ~9 MINUTES
         </div>

@@ -137,3 +137,65 @@ tuning and the focus-point camera — is the reason this page is fun rather than
 merely functional. If anything here misrepresents the relationship or you would
 like the attribution worded differently, the contact details are on the
 [home page](https://alejandronewport.com).
+
+---
+
+## 5. Simple Icons — the marks in the tech toolbox
+
+The Tech Toolbox chapter draws every technology as an app icon. Where a
+technology has a published brand mark, the path geometry comes from Simple
+Icons: it is extracted once by `scripts/gen-tech-logos.mjs` and pinned into
+`src/content/tech-logos.ts`, so the page never fetches a third-party asset at
+runtime and the icon set cannot change under the site's feet.
+
+| | |
+| --- | --- |
+| **Project** | Simple Icons |
+| **Source** | <https://github.com/simple-icons/simple-icons> |
+| **Licence** | CC0-1.0, for the icon geometry |
+| **Generated file** | [`src/content/tech-logos.ts`](./src/content/tech-logos.ts) |
+| **Generator** | [`scripts/gen-tech-logos.mjs`](./scripts/gen-tech-logos.mjs) |
+
+### Licence
+
+```
+CC0 1.0 Universal (CC0 1.0) Public Domain Dedication
+
+The person who associated a work with this deed has dedicated the work to the
+public domain by waiving all of his or her rights to the work worldwide under
+copyright law, including all related and neighboring rights, to the extent
+allowed by law.
+
+You can copy, modify, distribute and perform the work, even for commercial
+purposes, all without asking permission.
+
+Full text: https://creativecommons.org/publicdomain/zero/1.0/legalcode
+```
+
+### Trademarks
+
+CC0 covers the drawings, not the marks they depict. Every logo in the toolbox
+remains the trademark of its owner. They are used here nominatively — to
+identify the technologies behind real projects on this site — and imply no
+endorsement, sponsorship or affiliation, in either direction. If you own one
+of these marks and would rather it were not shown, the contact details are on
+the [home page](https://alejandronewport.com).
+
+### Where a mark stands in for a relative
+
+A few tiles wear the mark of the project a technology belongs to rather than
+one of its own, because that is the mark that exists: Java shows OpenJDK,
+"C / C++" shows C++, "Express / Node" shows Node.js, "TensorFlow / Keras"
+shows TensorFlow, "CI / GitHub Actions" shows GitHub Actions, and React
+Native shows the React mark it shares officially. Each tile is captioned with
+the technology it actually stands for, so nothing is passed off as something
+else.
+
+### Where there is no mark
+
+Simple Icons does not carry a mark for a concept — "Deep Learning", "Search &
+MCTS", "Cryptography" — and does not carry every trademark. Those tiles are
+drawn by hand in `src/components/tech/TechTile.tsx`, in the same line-art
+vocabulary as `src/components/motion/ModuleGlyph.tsx`. No logo is invented,
+approximated or reconstructed from memory: a technology either has its own
+mark here or it has a house drawing of the idea.

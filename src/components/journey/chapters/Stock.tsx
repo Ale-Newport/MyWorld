@@ -6,6 +6,7 @@ import { Reveal } from '@/components/typography/Reveal'
 import { TagRow } from '@/components/journey/parts'
 import { ProjectVisual } from '@/components/project-visuals/ProjectVisual'
 import { projectById } from '@/content/projects'
+import { chapterById } from '@/content/chapters'
 import { useChapterFrame } from '@/hooks/useChapterProgress'
 import { useJourney } from '@/state/journey'
 import { clamp, range } from '@/lib/math'
@@ -49,7 +50,7 @@ export function Stock() {
         </div>
 
         <div className={styles.head}>
-          <TagRow items={['11', 'CONCURRENCY', '2025']} />
+          <TagRow items={[chapterById['stock'].number, 'CONCURRENCY', '2025']} />
           <Reveal as="h2" mode="perspective" className={styles.title} id="stock-title">
             {'Order book'}
           </Reveal>

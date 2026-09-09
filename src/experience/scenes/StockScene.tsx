@@ -19,9 +19,15 @@ import { clamp, damp, range, seeded } from '@/lib/math'
 const LANES = 4
 const dummy = new THREE.Object3D()
 const color = new THREE.Color()
-const WHITE = new THREE.Color('#ffffff')
 
-const LANE_COLORS = ['#d4491f', '#2f6f5e', '#5b6a8c', '#8c8055']
+/* Value scale on white. The four lanes have to stay four legible
+   threads at a 60% alpha, so each one is a mid-dark hue rather than
+   the mid-tones that used to sit on the void. A match used to blend
+   the order 75% toward white, which on this page is the payoff moment
+   erasing itself — matching now pulls the order to the house accent,
+   the one colour reserved for a thing having happened. */
+const LANE_COLORS = ['#d4491f', '#2f6f5e', '#4a5675', '#6e6540']
+const MATCH = new THREE.Color('#d4491f')
 
 interface Order { lane: number; t: number; side: 1 | -1; size: number; speed: number; alive: boolean }
 
@@ -93,15 +99,17 @@ export function StockScene() {
       mesh.current.setMatrixAt(n, dummy.matrix)
 
       color.set(LANE_COLORS[o.lane])
-      if (o.t > 0.93) color.lerp(WHITE, 0.75)
-      color.multiplyScalar(0.35 + (1 - Math.abs(o.t - 0.5) * 2) * 0.9)
+      if (o.t > 0.93) color.lerp(MATCH, 0.75)
+      // Travel dims the ends of the run rather than brightening the
+      // middle: the old 1.25x peak pushed every lane toward the page.
+      color.multiplyScalar(0.35 + (1 - Math.abs(o.t - 0.5) * 2) * 0.65)
       mesh.current.setColorAt(n, color)
       n++
     }
     mesh.current.count = MAX
     mesh.current.instanceMatrix.needsUpdate = true
     if (mesh.current.instanceColor) mesh.current.instanceColor.needsUpdate = true
-    ;(mesh.current.material as THREE.MeshBasicMaterial).opacity = opacity.current * 0.42
+    ;(mesh.current.material as THREE.MeshBasicMaterial).opacity = opacity.current * 0.6
 
     // The DOM canvas owns this chapter; the 3D streams sit far behind
     // it as depth, not as a second diagram competing for attention.
@@ -118,10 +126,11 @@ export function StockScene() {
         <meshBasicMaterial transparent opacity={0} toneMapped={false} />
       </instancedMesh>
 
-      {/* The matching plane. */}
+      {/* The matching plane — a ruled hairline, since the thing every
+          lane converges on cannot be the same colour as the page. */}
       <mesh position={[0, 0, -0.4]}>
         <planeGeometry args={[0.012, 5.2]} />
-        <meshBasicMaterial color="#ffffff" transparent opacity={0.1} />
+        <meshBasicMaterial color="#3a3a3e" transparent opacity={0.55} />
       </mesh>
     </group>
   )

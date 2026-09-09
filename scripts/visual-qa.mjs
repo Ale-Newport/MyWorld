@@ -22,7 +22,7 @@ const VIEWPORTS = [
 ]
 
 const CHAPTERS = [
-  'prelude', 'about', 'kcl', 'playground', 'pansofia', 'teaching', 'focus',
+  'prelude', 'about', 'kcl', 'pansofia', 'teaching', 'focus',
   'gym', 'metaview', 'chess', 'stock', 'universe', 'toolbox', 'ucl', 'contact',
 ]
 
@@ -93,14 +93,18 @@ for (const vp of VIEWPORTS) {
     await page.screenshot({ path: path.join(OUT, vp.name, '_project.png') })
     report.notes.push(`${vp.name}: project deep-link opens = ${overlayOpen}`)
 
-    // Quick View
+    // Quick View — it earns its name only if it is materially shorter.
+    const full = await page.evaluate(() => ({ height: document.documentElement.scrollHeight }))
     await page.goto(`${BASE}/?quick`, { waitUntil: 'networkidle' })
     await page.waitForTimeout(1600)
     const quick = await page.evaluate(() => ({
       height: document.documentElement.scrollHeight,
-      playground: Boolean(document.getElementById('chapter-playground')),
+      chapters: document.querySelectorAll('section[data-chapter]').length,
     }))
-    report.notes.push(`${vp.name}: quick view height=${quick.height}, playground present=${quick.playground} (should be false)`)
+    report.notes.push(
+      `${vp.name}: quick view height=${quick.height} over ${quick.chapters} chapters ` +
+      `(should be well under the full ${full.height})`,
+    )
 
     // 404
     await page.goto(`${BASE}/does-not-exist`, { waitUntil: 'networkidle' })

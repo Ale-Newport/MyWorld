@@ -3,7 +3,7 @@
   "short_name": "AN",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#f4f2ee",
-  "theme_color": "#f4f2ee",
+  "background_color": "#ffffff",
+  "theme_color": "#ffffff",
   "icons": []
 }

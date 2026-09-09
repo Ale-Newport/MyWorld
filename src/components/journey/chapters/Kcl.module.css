@@ -21,6 +21,14 @@
   max-width: 30ch;
   display: flex; flex-direction: column; gap: 0.25rem;
 }
+/* The classification reads as a credential filed under the degree:
+   accent for signal, label scale so it never competes with the
+   institution above it. */
+.degreeResult {
+  font-family: var(--font-mono); font-size: var(--fs-micro);
+  letter-spacing: var(--tracking-label); text-transform: uppercase;
+  color: var(--accent);
+}
 .degreeDates {
   font-family: var(--font-mono); font-size: var(--fs-nano);
   letter-spacing: var(--tracking-label); color: var(--text-faint);
@@ -63,28 +71,3 @@
   line-height: 1.2;
 }
 .moduleBlurb { font-size: var(--fs-tiny); color: var(--text-muted); line-height: 1.4; }
-
-.result {
-  grid-column: 1 / span 12;
-  position: absolute;
-  inset: auto var(--gutter) 12vh var(--gutter);
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  opacity: 0;
-  will-change: transform, opacity;
-  pointer-events: none;
-}
-.resultLine {
-  font-size: var(--fs-mega);
-  font-weight: 500;
-  letter-spacing: -0.05em;
-  line-height: 0.8;
-  text-transform: uppercase;
-}
-.resultLine:last-of-type { margin-left: 0.1em; }
-.resultTag {
-  font-family: var(--font-mono); font-size: var(--fs-nano);
-  letter-spacing: var(--tracking-label); color: var(--accent);
-  margin-top: var(--sp-4);
-}

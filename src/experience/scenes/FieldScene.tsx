@@ -10,9 +10,9 @@ import { clamp, damp, seeded } from '@/lib/math'
 
 /**
  * THE FIELD.
- * The measured ground the Core travels across through every
- * light chapter. It doubles as the career timeline: the spine
- * lights up behind the Core as the journey progresses.
+ * The measured ground under the narrative chapters. It doubles
+ * as the career timeline: the spine carries the accent behind
+ * the point the journey has reached.
  */
 export function FieldScene() {
   const mesh = useRef<THREE.Mesh>(null!)
@@ -25,7 +25,6 @@ export function FieldScene() {
   const uniforms = useMemo(
     () => ({
       uTime: { value: 0 },
-      uDarkness: { value: 0 },
       uFade: { value: 0 },
       uAmp: { value: 0.35 },
       uAccent: { value: new THREE.Color('#d4491f') },
@@ -34,7 +33,7 @@ export function FieldScene() {
     [],
   )
 
-  // Airborne dust — gives the light world depth without weight.
+  // Airborne dust — gives the page depth without weight.
   const { positions, count } = useMemo(() => {
     const n = Math.round(620 * device.density)
     const rand = seeded(90210)
@@ -55,14 +54,14 @@ export function FieldScene() {
     const d = Math.min(0.05, dt)
     const s = useJourney.getState()
     u.uTime.value = frame.time
-    u.uDarkness.value = frame.darkness
     u.uProgress.value = frame.progress
 
-    // The field fades in as the story leaves the prelude and out
-    // as it enters the dark chapters.
-    const lightChapter = ['prelude', 'about', 'kcl', 'pansofia', 'teaching', 'focus', 'gym', 'ucl'].includes(s.chapter)
+    // The field fades in as the story leaves the prelude and steps
+    // aside for the chapters that bring a scene of their own. The
+    // list mirrors the field's mount window in SceneManager.
+    const fieldChapter = ['prelude', 'about', 'kcl', 'pansofia', 'teaching', 'focus', 'gym', 'ucl'].includes(s.chapter)
     const preludeFade = s.chapter === 'prelude' ? clamp((frame.progress - 0.004) * 90) : 1
-    const target = lightChapter ? preludeFade : 0
+    const target = fieldChapter ? preludeFade : 0
     u.uFade.value = damp(u.uFade.value, target, 2.2, d)
     u.uAmp.value = damp(u.uAmp.value, 0.3 + Math.abs(frame.velocity) * 6, 3, d)
 
@@ -71,10 +70,7 @@ export function FieldScene() {
       motes.current.rotation.y += d * 0.012
       motes.current.position.x = -frame.pointerX * 0.9
       motes.current.position.y = -frame.pointerY * 0.6
-      if (moteMat.current) {
-        moteMat.current.opacity = u.uFade.value * 0.18
-        moteMat.current.color.setScalar(frame.darkness > 0.5 ? 0.85 : 0.25)
-      }
+      if (moteMat.current) moteMat.current.opacity = u.uFade.value * 0.18
       motes.current.visible = u.uFade.value > 0.01
     }
   })
@@ -98,7 +94,19 @@ export function FieldScene() {
         <bufferGeometry>
           <bufferAttribute attach="attributes-position" args={[positions, 3]} count={count} />
         </bufferGeometry>
-        <pointsMaterial ref={moteMat} size={0.035} transparent opacity={0.3} sizeAttenuation depthWrite={false} />
+        {/* Mid graphite, declared here rather than written per frame:
+            three defaults a material with no colour to white, which on
+            this page is a mote that never arrives. Dust is the palest
+            thing the field draws — anything darker reads as dirt. */}
+        <pointsMaterial
+          ref={moteMat}
+          color="#8a8a8e"
+          size={0.035}
+          transparent
+          opacity={0.3}
+          sizeAttenuation
+          depthWrite={false}
+        />
       </points>
     </group>
   )
