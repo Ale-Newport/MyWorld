@@ -33,11 +33,15 @@ import { districtById } from '@/content/world'
       permanent world geometry rather than something the mode
       switches on, because a surface you can learn between
       attempts is worth more than the tidiness of hiding it.
-   2. THE CLOCK RUNS DOWN, NOT UP. You start with twelve seconds
-      and every gate buys back 3.6, capped so the bank cannot be
+   2. THE CLOCK RUNS DOWN, NOT UP. You start with ten REAL seconds
+      and every gate buys back three, capped so the bank cannot be
       hoarded. Running out ends the round. The recorded score is
       still the elapsed time, so a best time persists and the
-      countdown only decides whether you finish at all.
+      countdown only decides whether you finish at all. Real
+      seconds, because the number is on screen with an S after it:
+      the manager used to hand this game the world clock, which
+      runs at twice real time, so the "12.0S" a player read drained
+      in six.
    3. ANTI-SKIP IS THE SAME ONE LINE AS THE CIRCUIT. Only the
       gate currently held as target can register; every other
       gate is inert, and there is no direction check. That leaves
@@ -58,13 +62,13 @@ const LAPS = 3
 const TOTAL_GATES = GATES_PER_LAP * LAPS
 
 /** Seconds on the clock at the opening bell. */
-const START_SECONDS = 12
+const START_SECONDS = 10
 /** Seconds returned by each gate. */
-const GATE_BONUS = 3.6
+const GATE_BONUS = 3
 /** The bank cannot exceed this, so a clean deck pass is not a hoard. */
-const CLOCK_CAP = 12
-/** Held at the start line while the camera settles. */
-const ARMING = 1.6
+const CLOCK_CAP = 10
+/** Counted down on the HUD while the car is held at the start line. */
+const ARMING = 3
 
 const DECK_HALF_WIDTH = 4.2
 const DECK_HALF_LENGTH = 16
@@ -127,9 +131,10 @@ export class OrderRush extends Minigame {
   private gates: Gate[] = []
   private filled = 0
   private remaining = START_SECONDS
-  private arming = 0
   /** True only while the gates should be lit and answering. */
   private live = false
+  /** True while THIS game is the thing holding the car still. */
+  private holding = false
   /** Whole seconds left at the last warning chirp. */
   private warnedAt = 0
 
@@ -148,6 +153,7 @@ export class OrderRush extends Minigame {
     super(game, bin)
     // The whole run fits inside the district, so straying is unambiguous.
     this.abandonRadius = 130
+    this.leadIn = ARMING
   }
 
   /* ========================================================
@@ -421,51 +427,49 @@ export class OrderRush extends Minigame {
   start(): boolean {
     if (this.running) return true
 
-    this.reset()
-    this.state = 'countdown'
-    this.arming = ARMING
-    this.elapsed = 0
+    // The base class owns the countdown now, so this override only has
+    // to place the car and light the book. `cancel` is the base's too:
+    // the override this replaced guarded on `running || finished` and
+    // so refused to run while `failed`, which welded ORDER EXPIRED to
+    // the HUD for the rest of the session.
     this.remaining = START_SECONDS
     this.warnedAt = Math.ceil(START_SECONDS)
-    this.origin.copy(this.startPosition)
-
-    // This override never reaches `super.start()`, so the one thing
-    // the base class does before a run has to be repeated: an
-    // overlay that filtered the driving controls may still have them
-    // held, and a countdown you cannot drive out of is a lost round.
-    this.game.inputs.setFilters([])
 
     this.game.player.setState('locked')
+    this.holding = true
     this.game.vehicle.moveTo(this.startPosition, this.startRotation)
     this.game.view.focusPoint.trackedPosition.copy(this.startPosition)
     this.game.view.snapToTarget()
 
+    const started = super.start()
+    this.origin.copy(this.startPosition)
     this.live = true
     this.applyRoles()
-    this.publish()
-    this.events.trigger('start')
-    return true
+    this.game.audio?.blip(0.7)
+    return started
   }
 
-  cancel(reason: 'player' | 'strayed' | 'respawn' = 'player'): void {
-    // `finish` leaves its card up for five seconds and never calls
-    // `reset`, so ESCAPE has to reach a finished round too — otherwise
-    // the result hangs over the world until the timer decides.
-    if (!this.running && this.state !== 'finished') return
-    this.state = 'idle'
-    this.reset()
-    this.game.store.getState().setMinigame(null)
-    this.events.trigger('cancel', [reason])
+  /** The opening bell: hand the car back and start the clock. */
+  protected onStart(): void {
+    this.releaseCar()
+  }
+
+  private releaseCar(): void {
+    if (!this.holding) return
+    this.holding = false
+    this.game.player.setState('default')
   }
 
   protected reset(): void {
     this.filled = 0
     this.remaining = START_SECONDS
-    this.arming = 0
     this.live = false
     this.hasPrevious = false
     this.applyRoles()
-    this.game.player.setState('default')
+    // Only if THIS game locked the car. `Game.resetObjects` runs every
+    // registered game's `reset`, so an unconditional unlock here could
+    // hand the car back in the middle of somebody else's cinematic.
+    this.releaseCar()
   }
 
   /* ========================================================
@@ -474,19 +478,6 @@ export class OrderRush extends Minigame {
 
   update(delta: number): void {
     this.animateTarget()
-    if (!this.running) return
-
-    if (this.state === 'countdown') {
-      this.arming -= delta
-      if (this.arming <= 0) {
-        this.state = 'running'
-        this.elapsed = 0
-        this.game.player.setState('default')
-      }
-      this.publish()
-      return
-    }
-
     super.update(delta)
   }
 
@@ -598,18 +589,12 @@ export class OrderRush extends Minigame {
      HUD
      ======================================================== */
 
-  /**
-   * `finish` and `fail` write the closing card themselves, and the
-   * base class publishes once more on its way out of `tick` — which
-   * would paint the live readout straight back over it.
-   */
-  protected publish(): void {
-    if (this.state !== 'running' && this.state !== 'countdown') return
-    super.publish()
-  }
-
   protected hint(): string {
     return 'GATES BUY TIME'
+  }
+
+  protected briefing(): string {
+    return 'WEAVE THE GATES · EACH ONE BUYS 3S'
   }
 
   protected lines(): string[] {
@@ -617,7 +602,7 @@ export class OrderRush extends Minigame {
     const book = `FILLED ${this.filled}/${TOTAL_GATES}   OPEN ${open}`
 
     if (this.state === 'countdown') {
-      return ['OPENING BELL', book, this.hint()]
+      return [`OPENING BELL IN ${Math.ceil(this.leadInLeft).toFixed(0)}`, book, this.briefing()]
     }
 
     const next = this.gates[this.filled % GATES_PER_LAP]

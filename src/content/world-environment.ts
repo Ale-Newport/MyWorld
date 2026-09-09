@@ -8,17 +8,91 @@
 
 export const CIRCUIT = {
   x:-99,z:-1,width:12,laps:2,
-  /** What a good lap looks like, in seconds — the SPEED DEMON bar. At
-   *  ~780 m a lap that is an average of about 20 m/s, which is quick
-   *  without being unreachable. */
-  targetLapSeconds:44,
-  // A four-lane serpentine filling the western half of the island,
-  // the way the reference gives its whole left side to the track. The
-  // start/finish straight runs beside the content half, so the circuit
-  // is something you come across rather than only visit on purpose.
-  // ~780 m a lap, against the ~300 m loop this replaces.
-  points:[[47,81],[46,45],[45,7],[44,-31],[43,-63],[39,-87],[28,-100],[14,-99],[12,-83],[11,-49],[10,-11],[9,25],[9,51],[5,65],[-5,73],[-15,66],[-18,45],[-19,9],[-20,-25],[-21,-57],[-25,-77],[-33,-87],[-41,-78],[-43,-57],[-45,-25],[-45,7],[-43,35],[-35,53],[-26,64],[-13,75],[7,78],[29,77],[43,79]] as [number,number][],
+  /** What a good lap looks like, in seconds — the SPEED DEMON bar. */
+  targetLapSeconds:46,
+  /**
+   * NEWPORT CIRCUIT — a road course, not a serpentine.
+   *
+   * What this replaces was four near-parallel lanes joined at the
+   * ends. It read as a slalom rather than a track, two of its lanes
+   * merged into a single slab of tarmac in the north-west, and its
+   * start/finish line sat on a 0.8 m-radius cusp where the closed
+   * spline turned back on itself — so the lap began mid-hairpin.
+   *
+   * The layout now has the things a circuit is supposed to have, in
+   * this order from the line:
+   *
+   *   START/FINISH   the south straight, 55 m, beside the link road
+   *                  so the track is something you come across
+   *   TURN 1         a long fast right onto the west side, R ~22 m
+   *   THE WEST RUN   80 m of near-straight, the fastest part
+   *   TURNS 2-3      a medium right into the north-west
+   *   THE HAIRPIN    the north end, R ~11 m, slowest corner
+   *   THE DESCENT    north-east, fast, downhill (see the profile below)
+   *   THE ESSES      a left-right-left chicane into the infield
+   *   THE INFIELD    technical, second gear
+   *   TURN 9         right onto the east straight
+   *   EAST STRAIGHT  70 m, the overtaking place, with the JUMP on it
+   *   THE LAST CORNER back onto the line
+   *
+   * Coordinates are LOCAL — add `x` and `z`. Kept in that form
+   * because the whole circuit can then be moved with two numbers.
+   */
+  points:[
+    // start / finish straight, running west
+    [44,80],[26,82],[6,83],
+    // turn 1: a long fast right, its line set by the coastline —
+    // the south-west is the narrowest part of the island and the
+    // track is held eighteen metres inside the sand
+    [-6,76],[-15,67],[-25,56],[-35,44],
+    // the west run — the fastest part of the lap
+    [-46,24],[-46,-2],[-45,-28],
+    // turns 2 and 3, into the north-west
+    [-42,-52],[-35,-73],[-24,-88],
+    // the hairpin, the slowest corner
+    [-8,-97],[10,-97],[24,-89],
+    // the descent
+    [31,-74],[34,-56],
+    // the esses and the infield: second gear, and where a lap is lost
+    [30,-40],[16,-36],[2,-34],[-10,-28],[-18,-16],[-20,-2],[-16,12],
+    [-6,22],[8,26],[22,24],[32,16],
+    // turn 9 onto the east straight
+    [40,30],
+    // the east straight, with the jump on it
+    [44,48],[44,66],
+  ] as [number,number][],
+  /**
+   * Elevation along the lap, as [position 0..1, metres above the
+   * natural ground]. The terrain flattens a corridor to whatever it
+   * finds underneath, and what it finds on the island's west side is
+   * nearly level — so without this the circuit is a billiard table.
+   * Interpolated smoothly and applied by `Terrain.heightAt`.
+   *
+   * The crest sits just before the esses, so the fast north-east
+   * descent runs downhill into the slowest part of the lap; the dip
+   * is on the west run, which makes its far end a blind entry.
+   */
+  elevation:[
+    [0.00,0.0],[0.12,-0.6],[0.28,-1.4],[0.42,0.4],
+    [0.55,2.6],[0.66,3.4],[0.74,1.2],[0.86,0.2],[1.00,0.0],
+  ] as [number,number][],
+  /** The jump, as a position along the lap. On the east straight. */
+  jumpAt:0.93,
 }
+
+/** Height the circuit is raised above the natural ground at `t` (0..1). */
+export function circuitElevation(t:number):number {
+  const keys=CIRCUIT.elevation
+  const u=((t%1)+1)%1
+  for(let i=1;i<keys.length;i++) {
+    if(u>keys[i][0])continue
+    const [a,ha]=keys[i-1],[b,hb]=keys[i]
+    const k=(u-a)/Math.max(1e-6,b-a)
+    return ha+(hb-ha)*k*k*(3-2*k)
+  }
+  return 0
+}
+
 /**
  * Sea level. The ground falls away past the coast as -(over*0.12)^1.7,
  * so this number decides how wide the beach is: at -6 the waterline sat

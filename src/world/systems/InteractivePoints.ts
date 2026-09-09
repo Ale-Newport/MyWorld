@@ -31,8 +31,12 @@ export interface InteractivePointOptions {
   id: string
   position: THREE.Vector3
   radius: number
+  /** What it is called. The popup's headline. */
   label: string
+  /** One line: what kind of thing it is. */
   sublabel?: string
+  /** The verb shown beside the key. Defaults to EXPLORE. */
+  action?: string
   /** Anchor for the on-screen prompt; defaults to `position` plus 3 m. */
   anchor?: THREE.Vector3
   onInteract: () => void
@@ -48,10 +52,21 @@ interface Point extends InteractivePointOptions {
   approached: boolean
 }
 
+/** The last thing pushed to React, so identical frames are skipped. */
+interface Published {
+  id: string
+  qx: number
+  qy: number
+  label: string
+  sublabel?: string
+  action?: string
+}
+
 export class InteractivePoints {
   readonly events = new Events<'interact' | 'approach'>()
   private points = new Map<string, Point>()
   private active: Point | null = null
+  private published: Published | null = null
 
   private readonly screen = new THREE.Vector2()
   /** Where the player is. Written by the Game each step. */
@@ -117,11 +132,12 @@ export class InteractivePoints {
     }
   }
 
-  setLabel(id: string, label: string, sublabel?: string): void {
+  setLabel(id: string, label: string, sublabel?: string, action?: string): void {
     const point = this.points.get(id)
     if (!point) return
     point.label = label
     point.sublabel = sublabel
+    if (action !== undefined) point.action = action
     if (this.active === point) this.publish(point)
   }
 
@@ -135,13 +151,26 @@ export class InteractivePoints {
     if (this.store.getState().overlay !== null) {
       if (this.active) {
         this.active = null
+        this.published = null
         this.store.getState().setPrompt(null)
       }
       return
     }
 
+    /*
+      SELECTION. Nearest wins, but two things stop it flickering when
+      several points overlap — which at the hub, where the welcome,
+      the about card, a timeline plate and a ramp all sit within a few
+      metres, it did constantly.
+
+      A point is scored by how far INSIDE its radius the car is, as a
+      fraction, rather than by raw distance: a small precise trigger
+      beats a large vague one you happen to be nearer the centre of.
+      And the point already showing gets a 15% handicap in its own
+      favour, so a tie does not swap back and forth every frame.
+    */
     let nearest: Point | null = null
-    let nearestDistance = Infinity
+    let best = -Infinity
 
     for (const point of this.points.values()) {
       if (!point.enabled) continue
@@ -150,8 +179,10 @@ export class InteractivePoints {
       // A point 20 m below is not the same place, whatever the plan
       // view says.
       if (Math.abs(this.target.y - point.position.y) > 18) continue
-      if (distance < nearestDistance) {
-        nearestDistance = distance
+      let score = 1 - Math.sqrt(distance) / point.radius
+      if (point === this.active) score += 0.15
+      if (score > best) {
+        best = score
         nearest = point
       }
     }
@@ -169,6 +200,7 @@ export class InteractivePoints {
 
     this.active = nearest
     if (!nearest) {
+      this.published = null
       this.store.getState().setPrompt(null)
       return
     }
@@ -178,16 +210,40 @@ export class InteractivePoints {
   private publish(point: Point): void {
     const visible = this.view.project(point.anchor, this.screen)
     if (!visible) {
-      this.store.getState().setPrompt(null)
+      if (this.published !== null) {
+        this.published = null
+        this.store.getState().setPrompt(null)
+      }
       return
     }
+    // Kept inside the frame so a prompt never sits half off-screen
+    // when the landmark is at the edge of the view.
+    const x = Math.min(0.93, Math.max(0.07, this.screen.x))
+    const y = Math.min(0.9, Math.max(0.12, this.screen.y))
+
+    /*
+      Only when something has actually changed. This used to build a
+      fresh object and push it into the React store on EVERY FRAME
+      that a prompt was on screen — sixty state updates a second, each
+      re-rendering the whole HUD, for a card that moves a pixel. The
+      position is quantised to a thousandth of the viewport, which is
+      about one pixel at 1080p and below what anyone can see move.
+    */
+    const qx = Math.round(x * 1000)
+    const qy = Math.round(y * 1000)
+    const last = this.published
+    if (
+      last && last.id === point.id && last.qx === qx && last.qy === qy &&
+      last.label === point.label && last.sublabel === point.sublabel &&
+      last.action === point.action
+    ) return
+
+    this.published = { id: point.id, qx, qy, label: point.label, sublabel: point.sublabel, action: point.action }
     this.store.getState().setPrompt({
       label: point.label,
       sublabel: point.sublabel,
-      // Kept inside the frame so a prompt never sits half off-screen
-      // when the landmark is at the edge of the view.
-      x: Math.min(0.93, Math.max(0.07, this.screen.x)),
-      y: Math.min(0.9, Math.max(0.12, this.screen.y)),
+      action: point.action,
+      x, y,
     })
   }
 }

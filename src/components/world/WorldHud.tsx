@@ -1,12 +1,13 @@
 'use client'
 
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useStore } from 'zustand'
 import type { WorldStore } from '@/world/state/store'
 import type { Game } from '@/world/Game'
 import { districtById } from '@/content/world'
 import { profile } from '@/content/profile'
 import styles from './world.module.css'
+import popup from './interaction.module.css'
 
 /* ============================================================
    HUD
@@ -26,6 +27,8 @@ interface Props {
 export function WorldHud({ store, getGame }: Props) {
   const district = useStore(store, (s) => s.district)
   const prompt = useStore(store, (s) => s.prompt)
+  // Collapsed by default: the time is the news, the board is the detail.
+  const [showBoard, setShowBoard] = useState(false)
   const notifications = useStore(store, (s) => s.notifications)
   const onboarding = useStore(store, (s) => s.onboarding)
   const inputMode = useStore(store, (s) => s.inputMode)
@@ -108,22 +111,70 @@ export function WorldHud({ store, getGame }: Props) {
         </ul>
       </div>
 
-      {/* ---- centre: interact prompt ------------------------ */}
+      {/* ---- the contextual popup ---------------------------
+           Anchored at the landmark, never a collider, and gone the
+           moment you leave its radius. This replaced seven ten-metre
+           billboards standing in the middle of the landscape. */}
       {prompt && (
         <div
-          className={styles.prompt}
+          className={`${popup.popup} ${prompt.y < 0.26 ? popup.below : ''}`}
           style={{ left: `${prompt.x * 100}%`, top: `${prompt.y * 100}%` }}
         >
-          <span className={styles.promptKey}>
-            {inputMode === 'gamepad' ? '✕' : inputMode === 'touch' ? 'TAP' : 'ENTER'}
+          <span className={popup.name}>{prompt.label}</span>
+          {prompt.sublabel && <span className={popup.category}>{prompt.sublabel}</span>}
+          <span className={popup.act}>
+            <span className={popup.key}>
+              {inputMode === 'gamepad' ? '✕' : inputMode === 'touch' ? 'TAP' : 'ENTER'}
+            </span>
+            <span className={popup.verb}>{prompt.action ?? 'Explore'}</span>
           </span>
-          <span className={styles.promptLabel}>{prompt.label}</span>
-          {prompt.sublabel && <span className={styles.promptSub}>{prompt.sublabel}</span>}
+        </div>
+      )}
+
+      {/* ---- the END SCREEN ---------------------------------
+           A finished run is not a readout with different words in it.
+           The time is what the screen is about, so the time is what is
+           set large — the card used to typeset the word FINISH at
+           three times the size of the lap it was announcing. */}
+      {minigame?.result && (
+        <div className={`${styles.minigame} ${popup.result}`}>
+          <p className={popup.resultHead}>{minigame.result.headline}</p>
+          <p className={popup.resultTime}>{minigame.result.time}</p>
+          {minigame.result.newBest && <p className={popup.resultBest}>NEW PERSONAL BEST</p>}
+
+          <button
+            type="button"
+            className={popup.boardToggle}
+            aria-expanded={showBoard}
+            onClick={() => setShowBoard((open) => !open)}
+          >
+            {showBoard ? 'Hide leaderboard' : 'View leaderboard'}
+          </button>
+
+          {showBoard && (
+            <ol className={popup.board}>
+              {minigame.result.board.map((entry, i) => (
+                <li key={i} className={entry.you ? popup.boardYou : undefined}>
+                  <span className={popup.boardRank}>{String(i + 1).padStart(2, '0')}</span>
+                  <span className={popup.boardWho}>{entry.you ? 'YOU' : 'PREVIOUS'}</span>
+                  <span className={popup.boardTime}>{entry.time}</span>
+                  <span className={popup.boardWhen}>
+                    {entry.at ? new Date(entry.at).toLocaleDateString(undefined, { day: 'numeric', month: 'short' }) : '—'}
+                  </span>
+                </li>
+              ))}
+            </ol>
+          )}
+
+          <div className={styles.minigameActions}>
+            <button type="button" onClick={() => { const g = getGame(); if (!g) return; setShowBoard(false); g.minigames.cancel(); g.minigames.start(minigame.id) }}>Restart</button>
+            <button type="button" onClick={() => { setShowBoard(false); getGame()?.minigames.cancel() }}>Exit</button>
+          </div>
         </div>
       )}
 
       {/* ---- mini-game readout ------------------------------ */}
-      {minigame && (
+      {minigame && !minigame.result && (
         <div className={styles.minigame}>
           <p className={styles.minigameTitle}>{minigame.title}</p>
           {minigame.lines.map((line, i) => (

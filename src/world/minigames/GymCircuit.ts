@@ -56,11 +56,18 @@ import { districtById, landmarkById } from '@/content/world'
    ============================================================ */
 
 /** Distance from the district centre to each station. */
-const RING = 19
+const RING = 20
 /** How close the car must get for a station to count. */
 const STATION_RADIUS = 7
+/** How far the car must get back out before a station can count. */
+const ARM_RADIUS = 11
 /** How close the car must get for the athlete to demonstrate. */
 const POSE_RADIUS = 15
+
+/** Real seconds to take all four stations. */
+const TIME_LIMIT = 60
+/** Seconds of 3-2-1 at the gate. */
+const LEAD_IN = 3
 
 /** Hip height of the standing rig, and the length of each bone. */
 const HIP_Y = 0.86
@@ -88,10 +95,10 @@ interface StationSpec {
    south is the approach gate and the north-east sector carries
    the road spur in from the hub; both want to stay clear. */
 const STATIONS: StationSpec[] = [
-  { id: 'push', label: 'PUSH', sublabel: 'BENCH & BAR', bearing: 65, movement: 'PRESS' },
-  { id: 'pull', label: 'PULL', sublabel: 'CABLE TOWER', bearing: 155, movement: 'ROW' },
-  { id: 'legs', label: 'LEGS', sublabel: 'SQUAT RACK', bearing: 245, movement: 'SQUAT' },
-  { id: 'core', label: 'CORE', sublabel: 'MAT', bearing: 335, movement: 'CRUNCH' },
+  { id: 'push', label: 'PUSH', sublabel: 'BENCH & BAR', bearing: 57, movement: 'PRESS' },
+  { id: 'pull', label: 'PULL', sublabel: 'CABLE TOWER', bearing: 147, movement: 'ROW' },
+  { id: 'legs', label: 'LEGS', sublabel: 'SQUAT RACK', bearing: 237, movement: 'SQUAT' },
+  { id: 'core', label: 'CORE', sublabel: 'MAT', bearing: 327, movement: 'CRUNCH' },
 ]
 
 interface Station {
@@ -99,6 +106,13 @@ interface Station {
   /** World position at ground level. */
   position: THREE.Vector3
   done: boolean
+  /**
+   * False while the car is still inside this station's pad. The gate
+   * landmark used to stand 9.96 m from PULL against a 7 m scoring
+   * radius, so the first station of a run was very nearly free; now a
+   * station only counts once the car has been out past ARM_RADIUS.
+   */
+  armed: boolean
   lampPending: THREE.Mesh
   lampDone: THREE.Mesh
 }
@@ -161,11 +175,12 @@ export class GymCircuit extends Minigame {
 
   constructor(game: Game, bin: Bin) {
     super(game, bin)
-    // The station ring is 38 m across and the run starts at the
+    // The station ring is 40 m across and the run starts at the
     // southern gate, 28 m out from the centre, so 110 m is well
     // clear of any honest lap and still catches somebody who has
     // driven off to the hub.
     this.abandonRadius = 110
+    this.leadIn = LEAD_IN
   }
 
   /* ========================================================
@@ -365,6 +380,7 @@ export class GymCircuit extends Minigame {
       spec,
       position: frame.at.clone(),
       done: false,
+      armed: false,
       lampPending: lamps.pending,
       lampDone: lamps.done,
     })
@@ -826,10 +842,23 @@ export class GymCircuit extends Minigame {
 
   protected tick(delta: number): void {
     void delta
+
+    // A circuit with no clock is a drive round a ring. Sixty real
+    // seconds is about four times the distance at a gentle pace.
+    if (this.elapsed > TIME_LIMIT) {
+      this.game.audio?.play('fail')
+      this.fail('SESSION TIMED OUT')
+      return
+    }
+
     const position = this.game.player.position
     for (const station of this.stations) {
       if (station.done) continue
       const distance = dist2(position.x, position.z, station.position.x, station.position.z)
+      if (!station.armed) {
+        if (distance > ARM_RADIUS * ARM_RADIUS) station.armed = true
+        continue
+      }
       if (distance > STATION_RADIUS * STATION_RADIUS) continue
       this.markDone(station)
     }
@@ -846,12 +875,21 @@ export class GymCircuit extends Minigame {
 
     if (done < this.stations.length) return
     this.game.achievements.set('gymCircuit', 1)
+    // A sound of its own, because the achievement only fires its
+    // unlock chime the first time anybody ever finishes.
+    this.game.audio?.play('achievement')
+    this.game.particles.burst(this.game.player.position, 24, 'confetti')
     this.finish(this.elapsed)
   }
 
   protected reset(): void {
+    const position = this.game.player.position
     for (const station of this.stations) {
       station.done = false
+      // Measured rather than assumed: a run started while parked on a
+      // pad must not hand that station over on the first frame.
+      station.armed =
+        dist2(position.x, position.z, station.position.x, station.position.z) > ARM_RADIUS * ARM_RADIUS
       station.lampPending.visible = true
       station.lampDone.visible = false
     }
@@ -871,19 +909,15 @@ export class GymCircuit extends Minigame {
      HUD
      ======================================================== */
 
+  protected briefing(): string {
+    return `FOUR STATIONS IN ${TIME_LIMIT}s · ANY ORDER`
+  }
+
   protected lines(): string[] {
     const best = this.bestTime
 
-    // The last station is scored inside `tick`, and the base class
-    // publishes once more on its way out of that same frame — which
-    // would paint the running HUD back over the result. Answering
-    // for the finished state here is what keeps the result up.
-    if (this.state === 'finished') {
-      return [
-        formatTime(this.elapsed),
-        'SESSION COMPLETE',
-        best !== null ? `BEST ${formatTime(best)}` : '',
-      ]
+    if (this.state === 'countdown') {
+      return [Math.ceil(this.leadInLeft).toFixed(0), 'GET READY', this.briefing()]
     }
 
     // Capitals for stations you have hit, lower case for the ones
@@ -893,10 +927,11 @@ export class GymCircuit extends Minigame {
       .map((station) => (station.done ? station.spec.label : station.spec.label.toLowerCase()))
       .join(' ')
 
+    const left = Math.max(0, TIME_LIMIT - this.elapsed)
     return [
-      formatTime(this.elapsed),
+      `${formatTime(this.elapsed)}   ${left.toFixed(0)}s LEFT`,
       marks,
-      `${this.doneCount}/${this.stations.length}  ${best !== null ? `BEST ${formatTime(best)}` : 'NO BEST YET'}`,
+      `${this.doneCount}/${this.stations.length}  ${best !== null ? `BEST ${formatTime(best)}` : 'NO BEST YET'}  ESC TO LEAVE`,
     ]
   }
 

@@ -300,3 +300,31 @@ export function monogramTexture(
   texture.anisotropy = 4
   return texture
 }
+
+/**
+ * A world-space sign: dark plate, light type, readable from the car.
+ *
+ * Lived on `Playground` as a method, which made every caller depend
+ * on Playground having been constructed — and Playground is built
+ * two-thirds of the way through `Game.init`, after the mini-games.
+ * The Labyrinth called it from its constructor and took the whole
+ * world down with "Cannot read properties of undefined". It is a
+ * pure function of `textTexture`; it belongs here.
+ */
+export function signLabel(
+  text: string,
+  parent: THREE.Object3D,
+  at: THREE.Vector3,
+  width: number,
+  height: number,
+): THREE.Mesh {
+  const [first, ...sublines] = text.split('\n')
+  const { texture: map } = textTexture({ text: first, sublines, size: 256, color: '#eee9d7', background: '#2e423b' })
+  const mesh = new THREE.Mesh(
+    new THREE.PlaneGeometry(width, height),
+    new THREE.MeshBasicMaterial({ map, side: THREE.DoubleSide }),
+  )
+  mesh.position.copy(at)
+  parent.add(mesh)
+  return mesh
+}

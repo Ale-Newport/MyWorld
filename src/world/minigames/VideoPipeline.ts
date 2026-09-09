@@ -19,15 +19,28 @@ import { districtById, landmarkById } from '@/content/world'
    not any one stage — it is that the stages only work in one
    order. So this is a game about order and nothing else.
 
-   Five plinth gates stand in a ring around the pipeline
-   landmark. Drive through them SCRIPT → VOICE → VISUALS →
+   Five plinth gates stand in the open ground north of the Focus
+   device. Drive through them SCRIPT → VOICE → VISUALS →
    CAPTIONS → RENDER. The stage you need next glows accent, the
    ones you have stamped go graphite, the rest stay paper. Take a
    stage early and the run is over: the base class puts OUT OF
    ORDER on the HUD, holds it, then resets and returns to idle.
-   Starting again is ENTER at the landmark, which stands at the
-   centre of the ring, 21 m from every gate — a mistake costs the
+   Starting again is ENTER at the landmark — a mistake costs the
    sequence, never the ability to try it again.
+
+   THE GATES ARE AUTHORED, NOT GENERATED. They used to be five
+   slots on a 21 m ring around the landmark, and the ring did not
+   fit: VOICE stood on the bowling lane with two solid plinths on
+   it, VISUALS sat three metres from the chip relay's cache, and
+   the reward screen's mast colliders landed four metres from the
+   GYM APP monument and, before the respawn audit moved it, two
+   and a half metres from the Focus respawn point. The Focus
+   district is 24 m across with a building-sized phone in the
+   middle of it; there is no 21 m ring available. What there is,
+   is a band of free ground between the phone, the bowling venue
+   and the gym — so the five stages are placed in it by hand and
+   checked against `content/world-layout`. A pipeline is a chain
+   anyway, which is closer to what the product does than a circle.
 
    Four decisions worth writing down:
 
@@ -66,28 +79,36 @@ import { districtById, landmarkById } from '@/content/world'
 const STAGES = ['SCRIPT', 'VOICE', 'VISUALS', 'CAPTIONS', 'RENDER'] as const
 
 /**
- * Which slot on the ring each stage stands at. Two slots per step
- * means the route crosses the middle instead of walking the rim,
- * so the labels have to be read rather than followed round.
+ * Where each stage stands, in world metres, and which way its gate
+ * line faces. `yaw` is the bearing of the GATE LINE, so a car drives
+ * through it at right angles to that.
+ *
+ * Every one of these is on ground `content/world-layout` reports free
+ * for a 2.5 m footprint, with both plinths clear at 2.2 m, and none is
+ * within 13 m of the Focus device, 10 m of the Focus respawn, 12 m of
+ * the chip relay's cache, 11 m of the GYM APP monument or inside the
+ * bowling venue. The order zig-zags on purpose: consecutive stages are
+ * 10-17 m apart on alternating sides, so the route crosses itself and
+ * the labels have to be read rather than followed round.
  */
-const RING_SLOTS = [0, 2, 4, 1, 3]
+const STATION_SITES = [
+  { x: 66, z: 30, yaw: 0 },
+  { x: 52, z: 40, yaw: Math.PI / 6 },
+  { x: 66, z: 46, yaw: 0 },
+  { x: 54, z: 50, yaw: (Math.PI * 5) / 12 },
+  { x: 66, z: 54, yaw: 0 },
+] as const
 
-const RING_RADIUS = 21
 /** Half the clear opening between a gate's two plinths. */
 const GATE_HALF_WIDTH = 4.6
 /** Gate detection radius. The circuit's value; forgiving on purpose. */
 const CHECK_RADIUS = 2
 /** How far the car must get from a gate before that gate can fire again. */
 const ARM_DISTANCE = 9
-
-const SLOT_STEP = (Math.PI * 2) / STAGES.length
-/**
- * The road in from the Focus device arrives from due north, so the
- * ring opens towards it — turned half a slot so that no gate stands
- * inside the device's own interact radius and steals the ENTER key
- * from a run in progress.
- */
-const BASE_ANGLE = -Math.PI / 2 - SLOT_STEP / 2
+/** Seconds of 3-2-1 before the sequence goes live. */
+const LEAD_IN = 3
+/** Where the reward screen stands, and which way it looks. */
+const SCREEN_SITE = { x: 66, z: 60, yaw: 0 } as const
 
 /* ---- the finished video --------------------------------- */
 
@@ -178,12 +199,15 @@ export class VideoPipeline extends Minigame {
 
   private readonly previous2 = new THREE.Vector2()
   private readonly current2 = new THREE.Vector2()
+  /** False on the first frame of a run, when there is no path to sweep. */
+  private hasPrevious = false
 
   constructor(game: Game, bin: Bin) {
     super(game, bin)
-    // The ring is 21 m in radius; 90 m from its centre is past the
+    // The course spans about 35 m; 90 m from the landmark is past the
     // far edge of the Focus district, so straying is unambiguous.
     this.abandonRadius = 90
+    this.leadIn = LEAD_IN
   }
 
   /* ========================================================
@@ -205,9 +229,9 @@ export class VideoPipeline extends Minigame {
       this.stations.push(this.buildStation(index))
     }
 
-    this.buildRingPath()
+    this.buildRoute()
     this.buildBeacon()
-    this.buildScreen(this.stations[STAGES.length - 1])
+    this.buildScreen()
 
     this.game.renderer.scene.add(this.group)
     this.bin.object3D(this.group)
@@ -223,16 +247,18 @@ export class VideoPipeline extends Minigame {
   }
 
   private buildStation(index: number): Station {
-    const angle = BASE_ANGLE + RING_SLOTS[index] * SLOT_STEP
-    const x = this.centre.x + Math.cos(angle) * RING_RADIUS
-    const z = this.centre.z + Math.sin(angle) * RING_RADIUS
+    const site = STATION_SITES[index]
+    const x = site.x
+    const z = site.z
     const y = this.game.world.terrain.colliderHeightAt(x, z)
 
-    // Gate line is tangent to the ring, so a stage is driven through
-    // radially and the plinths never stand in the driving line.
-    const tx = -Math.sin(angle)
-    const tz = Math.cos(angle)
-    const yaw = Math.atan2(-tz, tx)
+    // The gate line runs along `yaw`, so a stage is driven through at
+    // right angles to it and the plinths never stand in the driving line.
+    const tx = -Math.sin(site.yaw)
+    const tz = Math.cos(site.yaw)
+    const yaw = site.yaw
+    // Which way the labels face: square to the gate, both sides.
+    const angle = Math.atan2(tx, -tz)
 
     const plinths: THREE.Mesh[] = []
 
@@ -295,7 +321,7 @@ export class VideoPipeline extends Minigame {
     // Two backs-to-back planes rather than one double-sided one: a
     // double-sided label reads mirrored from the far approach, and
     // every stage here has two approaches.
-    const facing = Math.atan2(Math.cos(angle), Math.sin(angle))
+    const facing = yaw + Math.PI / 2
     for (const turn of [0, Math.PI]) {
       const label = new THREE.Mesh(labelGeometry, labelMaterial)
       label.position.set(x, y + 3.35, z)
@@ -335,26 +361,43 @@ export class VideoPipeline extends Minigame {
     }
   }
 
-  /** Faint marks around the ring, so the five gates read as one shape. */
-  private buildRingPath(): void {
-    const count = this.game.quality.count(64, 20)
-    const geometry = new THREE.PlaneGeometry(0.5, 0.5)
+  /**
+   * Faint dashes from the landmark to stage one and then stage to
+   * stage, so the five gates read as one route rather than five props.
+   * A route rather than a ring: the ring these dots used to draw was
+   * decoration for a shape the gates no longer make.
+   */
+  private buildRoute(): void {
+    const legs: [THREE.Vector3, THREE.Vector3][] = []
+    let from = this.centre.clone()
+    for (const station of this.stations) {
+      legs.push([from, station.centre.clone()])
+      from = station.centre.clone()
+    }
+
+    const perLeg = this.game.quality.count(12, 5)
+    const count = legs.length * perLeg
+    const geometry = new THREE.PlaneGeometry(0.45, 1.5)
     geometry.rotateX(-Math.PI / 2)
 
     const dots = new THREE.InstancedMesh(
       geometry,
-      this.game.materials.flat(palette.chalk3, 0.35),
+      this.game.materials.flat(palette.chalk3, 0.32),
       count,
     )
     const dummy = new THREE.Object3D()
-    for (let i = 0; i < count; i++) {
-      const angle = (i / count) * Math.PI * 2
-      const x = this.centre.x + Math.cos(angle) * RING_RADIUS
-      const z = this.centre.z + Math.sin(angle) * RING_RADIUS
-      dummy.position.set(x, this.game.world.terrain.colliderHeightAt(x, z) + 0.05, z)
-      dummy.rotation.y = -angle
-      dummy.updateMatrix()
-      dots.setMatrixAt(i, dummy.matrix)
+    let i = 0
+    for (const [a, b] of legs) {
+      const yaw = Math.atan2(b.x - a.x, b.z - a.z)
+      for (let step = 0; step < perLeg; step++) {
+        const t = (step + 0.5) / perLeg
+        const x = a.x + (b.x - a.x) * t
+        const z = a.z + (b.z - a.z) * t
+        dummy.position.set(x, this.game.world.terrain.colliderHeightAt(x, z) + 0.05, z)
+        dummy.rotation.y = yaw
+        dummy.updateMatrix()
+        dots.setMatrixAt(i++, dummy.matrix)
+      }
     }
     dots.instanceMatrix.needsUpdate = true
     dots.renderOrder = 1
@@ -379,14 +422,16 @@ export class VideoPipeline extends Minigame {
    * a 320×180 canvas at 12 Hz — no files, no decoding, and it stops
    * redrawing when there is nobody near enough to read it.
    */
-  private buildScreen(station: Station): void {
-    const outward = new THREE.Vector3(Math.cos(station.angle), 0, Math.sin(station.angle))
-    const at = station.centre.clone().addScaledVector(outward, 5.4)
-    at.y = this.game.world.terrain.colliderHeightAt(at.x, at.z)
+  private buildScreen(): void {
+    const at = new THREE.Vector3(
+      SCREEN_SITE.x,
+      this.game.world.terrain.colliderHeightAt(SCREEN_SITE.x, SCREEN_SITE.z),
+      SCREEN_SITE.z,
+    )
 
     this.screen.position.copy(at)
-    // Faces the middle of the ring, which is where the last run ends.
-    this.screen.rotation.y = Math.atan2(-outward.x, -outward.z)
+    // Faces back down the course, which is where the last run ends.
+    this.screen.rotation.y = SCREEN_SITE.yaw + Math.PI
     this.group.add(this.screen)
 
     this.screenAnchor.copy(at).setY(at.y + 5.6)
@@ -453,8 +498,9 @@ export class VideoPipeline extends Minigame {
 
   start(): boolean {
     if (this.running) return true
+    this.clearRun()
     const started = super.start()
-    // Straying is measured from the ring, not from wherever the car
+    // Straying is measured from the landmark, not from wherever the car
     // happened to be parked when ENTER was pressed.
     this.origin.copy(this.centre)
     this.game.audio?.blip(0.8)
@@ -463,7 +509,7 @@ export class VideoPipeline extends Minigame {
 
   protected reset(): void {
     this.reached = 0
-    this.previous2.set(0, 0)
+    this.hasPrevious = false
 
     // A gate the car is sitting in must not fire until it has left.
     const position = this.game.player.position
@@ -471,9 +517,23 @@ export class VideoPipeline extends Minigame {
       station.armed = this.isClearOf(station, position)
     }
 
+    // The screen deliberately stays on. `reset` runs on every cancel —
+    // and the manager cancels on ESCAPE, on the map, and on a respawn —
+    // so switching the picture off here meant that opening the map after
+    // winning turned the reward off permanently.
+    this.refresh()
+  }
+
+  /**
+   * Everything a NEW run has to undo, including the last run's reward.
+   * Separate from `reset` because a cancel must not take the screen down
+   * but starting again must.
+   */
+  private clearRun(): void {
+    this.game.tweens.killOf(this.panel.scale)
+    this.panel.scale.setScalar(1)
     this.screenPlaying = false
     this.panel.visible = false
-    this.refresh()
   }
 
   /* ========================================================
@@ -503,6 +563,7 @@ export class VideoPipeline extends Minigame {
     }
 
     this.previous2.copy(this.current2)
+    this.hasPrevious = true
   }
 
   /**
@@ -513,7 +574,9 @@ export class VideoPipeline extends Minigame {
    */
   private hasCrossed(station: Station): boolean {
     if (segmentCircleHit(station.a, station.b, this.current2, CHECK_RADIUS)) return true
-    if (this.previous2.lengthSq() === 0) return false
+    // An explicit flag rather than a (0, 0) sentinel: the origin is a
+    // real place on this island, forty metres from the hub.
+    if (!this.hasPrevious) return false
     return segmentsIntersect(this.previous2, this.current2, station.a, station.b)
   }
 
@@ -566,7 +629,7 @@ export class VideoPipeline extends Minigame {
       this.game.tweens.to(
         this.panel.scale,
         { x: 1, y: 1, z: 1 },
-        { duration: 0.7, ease: easing.backOut },
+        { duration: 0.7, ease: easing.backOut, overwrite: true },
       )
     }
 
@@ -746,17 +809,24 @@ export class VideoPipeline extends Minigame {
    * Without this guard that last publish lands on the same frame and
    * replaces OUT OF ORDER — or COMPLETE — with the live progress.
    */
-  protected publish(): void {
+  protected publish(force = false): void {
     if (!this.running) return
-    super.publish()
+    super.publish(force)
+  }
+
+  protected briefing(): string {
+    return 'SCRIPT → VOICE → VISUALS → CAPTIONS → RENDER'
   }
 
   protected lines(): string[] {
+    if (this.state === 'countdown') {
+      return [Math.ceil(this.leadInLeft).toFixed(0), 'GET READY', this.briefing()]
+    }
     const target = this.stations[this.reached]
     return [
       `${this.reached}/${STAGES.length}`,
       target ? `NEXT · ${target.label}` : 'RENDERING',
-      this.hint(),
+      `${this.hint()} · ESC TO LEAVE`,
     ]
   }
 

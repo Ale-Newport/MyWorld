@@ -6,7 +6,7 @@ import type { Quality } from '../core/Quality'
 import type { Physics } from '../physics/Physics'
 import type { Materials } from './materials'
 import { districts, ramps, roads, WORLD_RADIUS, type District } from '@/content/world'
-import { inlandWater, coastRadius, CIRCUIT, CIRCUIT_TRACK, FOREST_POCKETS, BRIDGES, PLAY_SPOTS, OCEAN_LEVEL, BANK_WIDTH, LAKES } from '@/content/world-environment'
+import { inlandWater, coastRadius, circuitElevation, CIRCUIT, CIRCUIT_TRACK, FOREST_POCKETS, BRIDGES, PLAY_SPOTS, OCEAN_LEVEL, BANK_WIDTH, LAKES } from '@/content/world-environment'
 
 /* ============================================================
    TERRAIN
@@ -200,10 +200,15 @@ function shoreHeight(over: number): number {
  * cross-slope is a camber the car slides down, which is how a straight
  * run-up quietly steers itself off a ramp.
  */
-function closestOnPolyline(x: number, z: number, points: [number, number][]): { distance: number; px: number; pz: number } {
+function closestOnPolyline(
+  x: number, z: number, points: [number, number][],
+  /** Cumulative length to the START of each segment, for `along`. */
+  lengths?: { at: number[]; total: number },
+): { distance: number; px: number; pz: number; along: number } {
   let best = Infinity
   let bx = points[0][0]
   let bz = points[0][1]
+  let along = 0
   for (let i = 0; i < points.length - 1; i++) {
     const [ax, az] = points[i]
     const [cx, cz] = points[i + 1]
@@ -214,10 +219,31 @@ function closestOnPolyline(x: number, z: number, points: [number, number][]): { 
     const px = ax + dx * t
     const pz = az + dz * t
     const distance = Math.hypot(x - px, z - pz)
-    if (distance < best) { best = distance; bx = px; bz = pz }
+    if (distance < best) {
+      best = distance
+      bx = px
+      bz = pz
+      // Position ALONG the line, 0..1. The circuit's elevation profile
+      // is authored against it, so the terrain needs it here and not
+      // only the nearest point.
+      if (lengths) along = (lengths.at[i] + Math.sqrt(lengthSq) * t) / lengths.total
+    }
   }
-  return { distance: best, px: bx, pz: bz }
+  return { distance: best, px: bx, pz: bz, along }
 }
+
+/** Cumulative arc lengths of a polyline, for `closestOnPolyline`. */
+function arcLengths(points: [number, number][]): { at: number[]; total: number } {
+  const at = [0]
+  let total = 0
+  for (let i = 0; i < points.length - 1; i++) {
+    total += Math.hypot(points[i + 1][0] - points[i][0], points[i + 1][1] - points[i][1])
+    at.push(total)
+  }
+  return { at, total: total || 1 }
+}
+
+const CIRCUIT_LENGTHS = arcLengths(CIRCUIT_TRACK)
 
 /** Distance from a point to a polyline, and the segment parameter. */
 function distanceToPolyline(x: number, z: number, points: [number, number][]): number {
@@ -423,14 +449,25 @@ export class Terrain {
     // own, flattened to the ground it runs over minus the small noise.
     // A racing line that climbs a hill mid-corner is not a racing line.
     {
-      const near = closestOnPolyline(x, z, CIRCUIT_TRACK)
+      const near = closestOnPolyline(x, z, CIRCUIT_TRACK, CIRCUIT_LENGTHS)
       const half = CIRCUIT.width * 0.5
-      if (near.distance < half * 3.2) {
+      // Wider than the racing surface, because the elevation profile
+      // has to carry the RUN-OFF up with the track — a track raised
+      // three metres out of ground that stayed flat is a track on a
+      // plinth, with a drop off both kerbs.
+      if (near.distance < half * 6) {
         const on = 1 - smoothstep(near.distance, half * 1.15, half * 3)
-        if (on > 0) {
+        const shoulder = 1 - smoothstep(near.distance, half * 2.6, half * 6)
+        if (shoulder > 0) {
           // Sampled on the centreline, so the track is flat across.
           const smooth = landform(near.px, near.pz) + (fbm(near.px * 0.0042, near.pz * 0.0042) - 0.5) * 2.8
-          height = height * (1 - on) + (smooth + coastalRim(near.px, near.pz)) * on
+          // The island's west side is nearly level, so the circuit's
+          // gradients are authored rather than found: a crest before
+          // the esses, a dip on the west run.
+          const profile = circuitElevation(near.along)
+          const base = smooth + coastalRim(near.px, near.pz)
+          height = height * (1 - shoulder) + (base + profile) * shoulder
+          height = height * (1 - on) + (base + profile) * on
         }
       }
     }

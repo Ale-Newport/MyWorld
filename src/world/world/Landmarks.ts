@@ -234,48 +234,67 @@ const buildSign: Builder = (ctx, landmark) => {
   return { group, anchor: new THREE.Vector3(0, 4, 0), radius: 8 }
 }
 
-/** A slab with a headline and a rule — the world's editorial voice. */
+/**
+ * A LECTERN, not a billboard.
+ *
+ * These seven landmarks — the welcome, both degrees, the teaching
+ * role, the lab role, the archive sign, the ticker — used to be 10 m
+ * wide, 5.6 m tall, solid, and standing in the landscape on two solid
+ * posts. Approach one obliquely, or land on one off a ramp, and it
+ * was a wall. The brief is explicit that portfolio information must
+ * not be a road obstacle, and the reference does not build them at
+ * all: what a visitor needs to know when they are near something is a
+ * small popup, which is now what they get (see `InteractivePoints`).
+ *
+ * What is left is furniture. A waist-high plinth with an angled
+ * plate, the name cut into it, and NO COLLIDER — you drive over it.
+ * It marks the spot without owning the view or the road.
+ */
 const buildBillboard: Builder = (ctx, landmark) => {
   const group = new THREE.Group()
   const scale = landmark.scale ?? 1
-  const width = 10 * scale
-  const height = 5.6 * scale
+  const width = 3.2 * scale
+  const height = 1.5 * scale
 
-  const metal = ctx.materials.get('metal')
-  for (const x of [-width * 0.36, width * 0.36]) {
-    solidBox(ctx, group, 0.2, 2.4 * scale, 0.2, [x, 1.2 * scale, 0], metal, {})
-  }
+  // A low kerb, so the lectern has somewhere to stand. Flat enough to
+  // drive over at any speed without the suspension noticing.
+  solidBox(ctx, group, width + 1.4, 0.16, 2.4, [0, 0.08, 0], ctx.materials.get('concrete'),
+    { chamfer: 0.05, collide: false })
 
-  solidBox(
-    ctx, group, width, height, 0.34 * scale,
-    [0, 2.4 * scale + height / 2, 0],
-    ctx.materials.get('paper'),
-    { chamfer: 0.1 },
-  )
+  const plate = new THREE.Group()
+  plate.position.set(0, 0.16 + height * 0.5, 0)
+  plate.rotation.x = -0.42
+  group.add(plate)
+  solidBox(ctx, plate, width, height, 0.16, [0, 0, 0], ctx.materials.get('paper'),
+    { chamfer: 0.05, collide: false })
 
-  const faceY = 2.4 * scale + height / 2
-  textPlane(ctx, group, landmark.label, 0.8 * scale, [0, faceY + height * 0.16, 0.19 * scale], {
+  textPlane(ctx, plate, landmark.label, 0.3 * scale, [0, height * 0.2, 0.1], {
     letterSpacing: 0.1,
   })
   if (landmark.sublabel) {
-    textPlane(ctx, group, landmark.sublabel, 0.38 * scale, [0, faceY - height * 0.06, 0.19 * scale], {
+    textPlane(ctx, plate, landmark.sublabel, 0.17 * scale, [0, -height * 0.06, 0.1], {
       color: palette.ink3,
       letterSpacing: 0.16,
       weight: 500,
     })
   }
-
-  // A vermilion rule under the headline: the site's own device.
   const rule = new THREE.Mesh(
-    new THREE.PlaneGeometry(width * 0.72, 0.06 * scale),
+    new THREE.PlaneGeometry(width * 0.7, 0.045),
     ctx.materials.get('emissiveAccent'),
   )
-  rule.position.set(0, faceY - height * 0.2, 0.19 * scale)
-  group.add(rule)
+  rule.position.set(0, -height * 0.22, 0.1)
+  plate.add(rule)
   ctx.bin.add(() => rule.geometry.dispose())
 
+  // A slim post either side, purely so it reads as a made thing.
+  // Non-colliding: the posts were most of what the car actually hit.
+  for (const x of [-width * 0.5 - 0.35, width * 0.5 + 0.35]) {
+    solidBox(ctx, group, 0.14, 1.5 * scale, 0.14, [x, 0.75 * scale, 0],
+      ctx.materials.get('metal'), { collide: false })
+  }
+
   markerRing(ctx, group, (landmark.radius ?? 12) - 1)
-  return { group, anchor: new THREE.Vector3(0, faceY + height * 0.62, 0), radius: 12 }
+  return { group, anchor: new THREE.Vector3(0, 2.4, 0), radius: landmark.radius ?? 10 }
 }
 
 /** The hub's name, in physical letters you can drive between. */
@@ -340,8 +359,13 @@ const buildMonument: Builder = (ctx, landmark) => {
 /** A giant ID card, leaning on its edge. The About landmark. */
 const buildIdCard: Builder = (ctx, landmark) => {
   const group = new THREE.Group()
-  const width = 9
-  const height = 5.6
+  // Two thirds of what it was. At 9 x 5.6 this stood 4.7 m off the
+  // ring road as an unbroken wall from the ground up, and it is the
+  // ABOUT panel — information, which the brief says must not be a
+  // road obstacle. The card is now pass-through; only the plinth it
+  // leans on collides, so a car can drive under the lean.
+  const width = 6
+  const height = 3.8
 
   const card = new THREE.Group()
   card.rotation.x = -0.16
@@ -351,16 +375,10 @@ const buildIdCard: Builder = (ctx, landmark) => {
   solidBox(ctx, card, width, height, 0.34, [0, 0, 0], ctx.materials.get('paper'), {
     chamfer: 0.14, collide: false,
   })
-  ctx.physics.add({
-    type: 'fixed',
-    category: 'floor',
-    position: toWorld(ctx, 0, height / 2 + 0.5, 0),
-    rotation: new THREE.Quaternion().setFromEuler(
-      new THREE.Euler(-0.16, ctx.rotation, 0, 'YXZ'),
-    ),
-    friction: 0.6,
-    colliders: [{ shape: 'cuboid', parameters: [width / 2, height / 2, 0.17] }],
-  })
+  // The plinth only. A low kerb the car bumps over, not a slab it
+  // stops against.
+  solidBox(ctx, group, width * 0.9, 0.5, 1.6, [0, 0.25, 0],
+    ctx.materials.get('concrete'), { chamfer: 0.06 })
 
   // Portrait block, deliberately abstract.
   solidBox(ctx, card, 2.2, 2.8, 0.06, [-2.9, 0.5, 0.19], ctx.materials.get('graphite'), {
@@ -510,8 +528,25 @@ const buildCipherWall: Builder = (ctx, landmark) => {
   const rows = 6
   const cell = 1.05
 
-  solidBox(ctx, group, cols * cell + 0.6, rows * cell + 0.6, 0.5, [0, (rows * cell) / 2 + 0.3, 0],
-    ctx.materials.get('graphite'), { chamfer: 0.08 })
+  /*
+    THREE PANELS WITH GAPS, not one 13 m slab.
+
+    This was the single most wall-like landmark in the world: 13.2 m
+    across, 6.9 m tall, solid, standing on the KCL campus where the
+    road in arrives. Nothing about a cryptography module needs to be
+    impassable, and a wall you have to drive all the way around is
+    the kind of thing the brief means by "roads passing through
+    landmarks". It still reads as one wall from a distance; up close
+    there are two gaps wide enough to drive between.
+  */
+  const panels = 3
+  const panelCols = cols / panels
+  const gap = 2.4
+  for (let panel = 0; panel < panels; panel++) {
+    const offset = (panel - (panels - 1) / 2) * (panelCols * cell + gap)
+    solidBox(ctx, group, panelCols * cell + 0.4, rows * cell + 0.6, 0.5,
+      [offset, (rows * cell) / 2 + 0.3, 0], ctx.materials.get('graphite'), { chamfer: 0.08 })
+  }
 
   // Tiles in front of the wall, each a slightly different depth, so
   // the surface reads as encrypted rather than tiled.
@@ -523,8 +558,13 @@ const buildCipherWall: Builder = (ctx, landmark) => {
     for (let col = 0; col < cols; col++) {
       const on = rand() > 0.42
       const mesh = new THREE.Mesh(tile, on ? light : dark)
+      // Laid out panel by panel, so tiles land on the panels and not
+      // in the gaps between them.
+      const panel = Math.floor(col / panelCols)
+      const within = col % panelCols
       mesh.position.set(
-        (col - (cols - 1) / 2) * cell,
+        (panel - (panels - 1) / 2) * (panelCols * cell + gap)
+          + (within - (panelCols - 1) / 2) * cell,
         0.3 + (row + 0.5) * cell,
         0.26 + rand() * 0.1,
       )

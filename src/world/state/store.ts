@@ -40,8 +40,16 @@ export interface Notification {
 }
 
 export interface PromptState {
+  /** What the thing is called. The headline. */
   label: string
+  /** One line: what kind of thing it is. */
   sublabel?: string
+  /**
+   * The verb, next to the key. `label` used to carry this — the
+   * prompt read READ in large type with the project's name beneath
+   * it, so every landmark in the world announced itself as "READ".
+   */
+  action?: string
   /** Screen position in 0..1, for anchoring. */
   x: number
   y: number
@@ -88,6 +96,19 @@ export interface WorldState {
     best: number | null
     /** 0..1, for progress-shaped games. */
     progress: number | null
+    /**
+     * A finished run's result card. When this is set the HUD shows the
+     * END SCREEN — the time large, the standing, and the board — rather
+     * than the running readout.
+     */
+    result?: {
+      headline: string
+      /** The thing the screen is actually about, set large. */
+      time: string
+      newBest: boolean
+      /** Fastest first. `at` is epoch ms, or 0 if it predates dates. */
+      board: { time: string; at: number; you: boolean }[]
+    }
   } | null
 
   /* ---- actions ---------------------------------------- */
@@ -159,11 +180,19 @@ export function createWorldStore(): WorldStore {
 
     notify: (notification) => {
       const id = ++notificationId
-      set((state) => ({
+      set((state) => {
+        // You can only be in one district. A second district notice
+        // REPLACES the first rather than stacking under it — driving
+        // through three districts in ten seconds used to leave three
+        // "you have arrived" cards on screen at once, two of them
+        // about places you had already left.
+        const kept = notification.kind === 'district'
+          ? state.notifications.filter((n) => n.kind !== 'district')
+          : state.notifications
         // Three at a time, newest first. More than that and the
         // corner of the screen becomes a log file.
-        notifications: [{ ...notification, id }, ...state.notifications].slice(0, 3),
-      }))
+        return { notifications: [{ ...notification, id }, ...kept].slice(0, 3) }
+      })
       window.setTimeout(() => get().dismiss(id), notification.duration * 1000)
     },
     dismiss: (id) =>

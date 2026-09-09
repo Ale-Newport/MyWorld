@@ -20,7 +20,16 @@ import type { QualityPreference } from '../core/Quality'
    ============================================================ */
 
 export const SAVE_KEY = 'alejandro-world-save-v1'
-const SAVE_VERSION = 1
+/**
+ * Bumped to 2 for the circuit leaderboard.
+ *
+ * `coerce` used to DISCARD the whole blob on any version mismatch, so
+ * changing this number threw away every visitor's districts, notes,
+ * secrets, achievements and best times. It now migrates instead: a
+ * version-1 blob is read as it always was, and its bare list of race
+ * times becomes leaderboard entries with an unknown date.
+ */
+const SAVE_VERSION = 2
 const WRITE_DEBOUNCE_MS = 700
 
 export interface SaveData {
@@ -51,7 +60,10 @@ export interface SaveData {
     /** Mini-game id → best time in seconds (lower is better). */
     bestTimes: Record<string, number>
     completedGames: string[]
+    /** Kept for the version-1 blobs it is migrated from. */
     raceHistory: number[]
+    /** The circuit leaderboard: fastest first, at most ten. */
+    raceBoard: { time: number; at: number }[]
     /** Last respawn point name. */
     lastRespawn: string | null
   }
@@ -79,6 +91,7 @@ function defaults(): SaveData {
       bestTimes: {},
       completedGames: [],
       raceHistory: [],
+      raceBoard: [],
       lastRespawn: null,
     },
   }
@@ -102,8 +115,11 @@ function coerce(raw: unknown): SaveData {
   const out = defaults()
   if (!isRecord(raw)) return out
 
-  // A blob from a future version of the site is not ours to guess at.
-  if (numberOr(raw.version, 0) !== SAVE_VERSION) return out
+  // A blob from a FUTURE version is not ours to guess at. An older one
+  // is, and throwing it away is how a visitor loses everything they
+  // did here because a field was added.
+  const version = numberOr(raw.version, 0)
+  if (version < 1 || version > SAVE_VERSION) return out
 
   const settings = isRecord(raw.settings) ? raw.settings : {}
   const quality = settings.quality
@@ -138,6 +154,20 @@ function coerce(raw: unknown): SaveData {
   out.progress.raceHistory = Array.isArray(progress.raceHistory)
     ? progress.raceHistory.filter((v): v is number => typeof v === 'number' && Number.isFinite(v) && v > 0).sort((a, b) => a - b).slice(0, 5)
     : []
+
+  // The leaderboard, either read back or migrated from the version-1
+  // list of bare times. `at: 0` means "before this site kept dates",
+  // which the board renders as a dash rather than as 1 January 1970.
+  const board = Array.isArray(progress.raceBoard) ? progress.raceBoard : []
+  out.progress.raceBoard = board
+    .filter(isRecord)
+    .map((entry) => ({ time: numberOr(entry.time, 0), at: numberOr(entry.at, 0) }))
+    .filter((entry) => Number.isFinite(entry.time) && entry.time > 0)
+    .sort((a, b) => a.time - b.time)
+    .slice(0, 10)
+  if (!out.progress.raceBoard.length && out.progress.raceHistory.length) {
+    out.progress.raceBoard = out.progress.raceHistory.map((time) => ({ time, at: 0 }))
+  }
   out.progress.distanceDriven = Math.max(0, numberOr(progress.distanceDriven, 0))
   out.progress.timePlayed = Math.max(0, numberOr(progress.timePlayed, 0))
   out.progress.lastRespawn =

@@ -130,7 +130,11 @@ export class CircuitRace extends Minigame {
     }
     const geo=new THREE.BufferGeometry();geo.setAttribute('position',new THREE.Float32BufferAttribute(positions,3));geo.setAttribute('uv',new THREE.Float32BufferAttribute(uvs,2));geo.setIndex(indices);geo.computeVertexNormals()
     // The permanent ribbon follows the heightfield. Nothing disables the ground.
-    const mesh=new THREE.Mesh(geo,this.game.materials.tinted('#48534e',0.96,0));mesh.receiveShadow=true;this.group.add(mesh);this.bin.add(()=>geo.dispose())
+    // Asphalt, the same greys the roads are painted in. This ribbon used
+    // to be a sage `#48534e`, which read as painted concrete over the
+    // tarmac the terrain paints underneath it — two different surfaces
+    // claiming the same ground.
+    const mesh=new THREE.Mesh(geo,this.game.materials.tinted('#4b4a4e',0.95,0));mesh.receiveShadow=true;this.group.add(mesh);this.bin.add(()=>geo.dispose())
     for(const [i,pieces] of [...curbs,arrows].entries()) {
       const merged=mergeGeometries(pieces);pieces.forEach(g=>g.dispose());if(!merged)continue
       this.bin.add(()=>merged.dispose());this.group.add(new THREE.Mesh(merged,this.game.materials.tinted(i===1?'#e07749':'#f1ead3',0.8,0)))
@@ -146,8 +150,13 @@ export class CircuitRace extends Minigame {
     const points=this.curve.getSpacedPoints(360),positions:THREE.Vector3[]=[],angles:number[]=[]
     for(let i=8;i<360;i+=13) {
       const p=points[i],t=this.curve.getTangentAt(i/360),side=new THREE.Vector3(-t.z,0,t.x),at=p.clone().addScaledVector(side,10)
-      // Keep the established stunt-ramp run-up open, including its shoulders.
-      if(Math.hypot(at.x-238,at.z+196)<36||points.some(q=>q.distanceToSquared(at)<8.5**2))continue
+      // Two things a barrier must not stand in: the racing surface
+      // itself where the lap doubles back, and the run-up to the jump.
+      // The guard this replaces tested `hypot(at.x-238, at.z+196)`,
+      // which is a point from a world twice this size — it excluded
+      // nothing, anywhere, and had not since the island was rescaled.
+      if(points.some(q=>q.distanceToSquared(at)<9.5**2))continue
+      if(Math.abs(((i/360)-CIRCUIT.jumpAt+1.5)%1-0.5)<0.035)continue
       at.y=this.game.terrain.colliderHeightAt(at.x,at.z)+.4;positions.push(at);angles.push(Math.atan2(-t.z,t.x))
     }
     const geometry=new THREE.BoxGeometry(3.6,.65,.6),material=this.game.materials.tinted('#d8d8c2',.9,0)
@@ -165,6 +174,63 @@ export class CircuitRace extends Minigame {
     for(let i=0;i<8;i++){dummy.position.set(CIRCUIT.x-7+i*2.3,this.game.terrain.colliderHeightAt(CIRCUIT.x-7+i*2.3,CIRCUIT.z+34)+.5,CIRCUIT.z+34);dummy.rotation.set(0,0,0);dummy.updateMatrix();cones.setMatrixAt(i,dummy.matrix)}
     this.group.add(cones);this.bin.add(()=>coneGeometry.dispose())
     this.label('PIT / RESET',new THREE.Vector3(CIRCUIT.x,4,CIRCUIT.z+32),9,0)
+    this.buildJump()
+  }
+
+  /**
+   * THE JUMP, on the east straight.
+   *
+   * A ramp rather than a kicker: 2.1 m of rise over 13 m is about
+   * nine degrees, which a car arriving at racing speed clears without
+   * being flipped and a car arriving slowly simply drives over. Both
+   * matter — the brief asks for a jump that works reliably and does
+   * not flip the car "under normal approach", and a steep ramp on a
+   * straight does exactly that to anyone who meets it at 30 m/s.
+   *
+   * The landing is flat, twenty metres long and the full width of the
+   * track, and it is signposted from both sides.
+   */
+  private buildJump():void {
+    const t=CIRCUIT.jumpAt
+    const c=this.curve.getPointAt(t),tangent=this.curve.getTangentAt(t)
+    const yaw=Math.atan2(-tangent.z,tangent.x)
+    const ground=this.game.terrain.colliderHeightAt(c.x,c.z)
+    const LENGTH=13,RISE=2.1,WIDTH=CIRCUIT.width
+
+    // A wedge, built as a box rotated about its downhill edge, so its
+    // surface is continuous with the tarmac it rises from.
+    const pitch=Math.atan2(RISE,LENGTH)
+    const geometry=new THREE.BoxGeometry(LENGTH,0.5,WIDTH)
+    geometry.translate(0,-0.25,0)
+    this.bin.add(()=>geometry.dispose())
+    const mesh=new THREE.Mesh(geometry,this.game.materials.tinted('#55565a',0.92,0))
+    mesh.castShadow=true;mesh.receiveShadow=true
+    const lift=new THREE.Object3D()
+    lift.position.set(c.x,ground+RISE,c.z)
+    lift.rotation.set(0,yaw,0)
+    const wedge=new THREE.Object3D()
+    wedge.rotation.z=pitch
+    wedge.add(mesh)
+    lift.add(wedge)
+    this.group.add(lift)
+    lift.updateMatrixWorld(true)
+    const world=new THREE.Vector3(),quaternion=new THREE.Quaternion(),scale=new THREE.Vector3()
+    mesh.matrixWorld.decompose(world,quaternion,scale)
+    this.game.physics.add({
+      type:'fixed',category:'floor',friction:1,
+      position:world,rotation:quaternion,
+      colliders:[{shape:'cuboid',parameters:[LENGTH/2,0.25,WIDTH/2]}],
+    })
+
+    // Chevrons on the lip and a board either side, so it is never a
+    // surprise. A jump you cannot see coming is a crash, not a jump.
+    for(const side of [-1,1]) {
+      const px=c.x-Math.sin(yaw)*side*(WIDTH/2+2.4)
+      const pz=c.z-Math.cos(yaw)*side*(WIDTH/2+2.4)
+      const post=this.box([0.2,4,0.2],[px,this.game.terrain.colliderHeightAt(px,pz)+2,pz],this.game.materials.get('metal'))
+      void post
+      this.label('JUMP',new THREE.Vector3(px,this.game.terrain.colliderHeightAt(px,pz)+4.6,pz),4.4,yaw+Math.PI/2)
+    }
   }
   start():boolean {
     if(this.running)return true
@@ -251,10 +317,35 @@ export class CircuitRace extends Minigame {
     this.game.achievements.set('circuit',1)
     if(this.elapsed<CIRCUIT.laps*CIRCUIT.targetLapSeconds)this.game.achievements.set('speedDemon',1)
     if(this.recoveries===0)this.game.achievements.set('perfectRun',1)
+
+    // THE LEADERBOARD. Ten entries, fastest first, with the date each
+    // was set — the old version kept five bare numbers and showed none
+    // of them. `at` is stamped here rather than in `Save`, because the
+    // time a run was set is a fact about the run.
     const progress=this.game.save.data.progress
+    const run={time:this.elapsed,at:Date.now()}
     progress.raceHistory=[...progress.raceHistory,this.elapsed].sort((a,b)=>a-b).slice(0,5)
-    this.game.audio.play('achievement');this.finish(this.elapsed);this.prepareAttempt()
-    this.game.store.getState().setMinigame({id:this.id,title:this.title,lines:['FINISH',raceTime(this.elapsed),newBest?'NEW PERSONAL BEST':'BEST '+raceTime(this.bestTime??this.elapsed)],time:null,best:this.bestTime,progress:1})
+    progress.raceBoard=[...progress.raceBoard,run].sort((a,b)=>a.time-b.time).slice(0,10)
+    this.game.save.schedule()
+
+    this.game.audio.play('achievement')
+    // `finish` arms the result card's dismissal; `prepareAttempt` used
+    // to be called straight after and cancelled it in the same frame,
+    // so the card either never appeared or never left. The race's end
+    // screen is dismissed by the player, so neither is wanted here.
+    this.finish(this.elapsed)
+    this.game.store.getState().setMinigame({
+      id:this.id,title:this.title,lines:[],time:null,best:this.bestTime,progress:1,
+      result:{
+        headline:'FINISH',
+        time:raceTime(this.elapsed),
+        newBest,
+        board:progress.raceBoard.map((entry)=>({
+          time:raceTime(entry.time),at:entry.at,
+          you:Math.abs(entry.time-run.time)<1e-6,
+        })),
+      },
+    })
   }
   protected publish():void {
     if(!this.running)return
@@ -263,7 +354,7 @@ export class CircuitRace extends Minigame {
     this.lastHud=step;super.publish()
   }
   protected lines():string[] {
-    if(this.state===RaceState.COUNTDOWN)return [String(Math.ceil(this.countdown)),'3 LAPS · FOLLOW THE GREEN GATE']
+    if(this.state===RaceState.COUNTDOWN)return [String(Math.ceil(this.countdown)),`${CIRCUIT.laps} LAPS · FOLLOW THE GREEN GATE`]
     return [this.elapsed<0.9?'GO':raceTime(this.elapsed),
       'LAP '+Math.min(CIRCUIT.laps,Math.floor(Math.max(0,this.reached-1)/12)+1)+'/'+CIRCUIT.laps+' · '+(this.reached%12===0?'FINISH LINE':'CHECKPOINT '+this.reached%12+'/11'),
       this.bestTime===null?'SET YOUR FIRST TIME':'BEST '+raceTime(this.bestTime),'R · LAST CHECKPOINT']

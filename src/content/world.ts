@@ -427,10 +427,9 @@ export const respawns: Respawn[] = [
     so had never moved a point in its life), but with these baked in it
     finds nothing to do.
   */
-  // On the ring road where it leaves the hub, facing back at the
-  // name. Clear of the signpost cluster at (32.6, -21.4) that the
-  // point inside the plate kept landing on.
-  { id: 'hub', x: 30, z: -24, rotation: 2.07, district: 'hub' },
+  // On the ring road where it leaves the hub, facing back at the name
+  // across the forecourt.
+  { id: 'hub', x: 28, z: 2, rotation: 2.6, district: 'hub' },
   // The whole north side of the hub plate is the physical name, so the
   // second hub point is on the forecourt south of it rather than behind
   // the letters, where it used to spawn the car inside an A.
@@ -452,7 +451,7 @@ export const respawns: Respawn[] = [
   { id: 'studio', x: 104, z: 87.6, rotation: -1.571, district: 'studio' },
   { id: 'orbit', x: 33.7, z: -53.6, rotation: 1.056, district: 'orbit' },
   { id: 'archive', x: 52.6, z: 102.8, rotation: 3.077, district: 'archive' },
-  { id: 'road-west', x: -5.7, z: -1.7, rotation: -0.013, district: 'hub' },
+  { id: 'road-west', x: -7.5, z: 6, rotation: -0.6, district: 'hub' },
   { id: 'road-east', x: 49.6, z: -10.1, rotation: 2.891, district: 'hub' },
   // Just south of the 2023 timeline plate: landing on a plate fires
   // the TIME TRAVELLER sequence, and respawning onto one made that
@@ -479,7 +478,7 @@ export const landmarks: Landmark[] = [
   {
     id: 'hub-welcome', district: 'hub', label: 'WELCOME',
     sublabel: 'PRESS ENTER',
-    x: 36, z: 4, visual: 'billboard', interaction: 'panel', radius: 7.7,
+    x: 37.7, z: 0.9, visual: 'billboard', interaction: 'panel', radius: 7.7,
     panel: {
       title: 'WELCOME',
       lines: [
@@ -494,7 +493,7 @@ export const landmarks: Landmark[] = [
   },
   {
     id: 'hub-about', district: 'hub', label: 'ABOUT',
-    x: 5.9, z: 1.2, rotation: Math.PI * 0.25, visual: 'idCard',
+    x: 1.7, z: -4.4, rotation: Math.PI * 0.25, visual: 'idCard',
     interaction: 'panel', radius: 12, ref: { kind: 'profile' },
     achievement: 'about',
   },
@@ -512,11 +511,11 @@ export const landmarks: Landmark[] = [
   },
   {
     id: 'hub-sign-circuit', district: 'hub', label: 'RACE TRACK', sublabel: 'BEST LAP',
-    x: 32.6, z: -21.4, rotation: Math.PI * 1.75, visual: 'sign', interaction: 'none',
+    x: 36.6, z: -19.2, rotation: Math.PI * 1.75, visual: 'sign', interaction: 'none',
   },
   {
     id: 'hub-sign-client', district: 'hub', label: 'CLIENT WORK', sublabel: '14 SITES',
-    x: 35.2, z: 15.2, rotation: Math.PI * 0.75, visual: 'sign', interaction: 'none',
+    x: 32.6, z: 20, rotation: Math.PI * 0.75, visual: 'sign', interaction: 'none',
   },
   {
     id: 'hub-sign-projects', district: 'hub', label: 'PROJECTS', sublabel: 'ARCHIVE',
@@ -524,14 +523,14 @@ export const landmarks: Landmark[] = [
   },
   {
     id: 'hub-sign-focus', district: 'hub', label: 'PRODUCTS', sublabel: 'FOCUS · GYM',
-    x: 3.4, z: 17.4, rotation: Math.PI * 0.35, visual: 'sign', interaction: 'none',
+    x: 7.2, z: 18.7, rotation: Math.PI * 0.35, visual: 'sign', interaction: 'none',
   },
 
   /* ---- KCL: five modules as five structures --------------- */
   {
     id: 'kcl-degree', district: 'kcl', label: "KING'S COLLEGE LONDON",
     sublabel: 'BSc COMPUTER SCIENCE',
-    x: -2, z: -51.3, visual: 'billboard', interaction: 'panel', radius: 9.1,
+    x: 8, z: -52.3, visual: 'billboard', interaction: 'panel', radius: 9.1,
     ref: ed('kcl'), achievement: 'kcl',
   },
   {
@@ -560,7 +559,7 @@ export const landmarks: Landmark[] = [
   },
   {
     id: 'kcl-crypto', district: 'kcl', label: 'CRYPTOGRAPHY',
-    x: 8.5, z: -30.3, visual: 'cipherWall', interaction: 'panel', radius: 7,
+    x: 15, z: -32.9, visual: 'cipherWall', interaction: 'panel', radius: 7,
     panel: {
       title: 'CRYPTOGRAPHY',
       lines: ['Transformation, keys, guarantees.', 'The wall re-scrambles every time you look away.'],
@@ -568,7 +567,7 @@ export const landmarks: Landmark[] = [
   },
   {
     id: 'kcl-se', district: 'kcl', label: 'SOFTWARE ENGINEERING',
-    x: -2, z: -24.6, visual: 'moduleStack', interaction: 'panel', radius: 7,
+    x: -6.2, z: -22.9, visual: 'moduleStack', interaction: 'panel', radius: 7,
     panel: {
       title: 'SOFTWARE ENGINEERING',
       lines: ['Modules assembling into one system.', 'Knock a module out and the stack still stands. Mostly.'],
@@ -581,7 +580,7 @@ export const landmarks: Landmark[] = [
   },
   {
     id: 'kcl-tappedin', district: 'kcl', label: 'TAPPEDIN', sublabel: 'NLP + WEB',
-    x: 15, z: -59.4, visual: 'monument', interaction: 'project', radius: 7,
+    x: 15.4, z: -58, visual: 'monument', interaction: 'project', radius: 7,
     ref: p('tappedin'), scale: 0.7,
   },
   {
@@ -594,18 +593,21 @@ export const landmarks: Landmark[] = [
   {
     id: 'teaching-role', district: 'teaching', label: 'GRADUATE TEACHING ASSISTANT',
     sublabel: "KING'S COLLEGE LONDON",
-    x: -4, z: 18.3, visual: 'billboard', interaction: 'panel', radius: 8.4,
+    x: -12.5, z: 15.5, visual: 'billboard', interaction: 'panel', radius: 8.4,
     ref: xp('kcl-gta'),
   },
   {
     id: 'teaching-bugs', district: 'teaching', label: 'FAIL',
     sublabel: 'KNOCK THEM DOWN',
-    x: -4, z: 32.1, visual: 'processBlocks', interaction: 'none',
+    // West of the ring road inside the yard. Pushed off the road, but
+    // not so far that the blocks end up in the ALGORITHM FIELD, which
+    // is where a second automatic pass had put them.
+    x: -17, z: 34, visual: 'processBlocks', interaction: 'none',
     achievement: 'debugger', scale: 1.2,
   },
   {
     id: 'teaching-duck', district: 'teaching', label: 'RUBBER DUCK',
-    x: -12.9, z: 36.1, visual: 'duck', interaction: 'note', radius: 7,
+    x: -17.5, z: 32.3, visual: 'duck', interaction: 'note', radius: 7,
     secret: true, achievement: 'duck',
     panel: { title: 'RUBBER DUCK', lines: ['Explain the bug out loud. It usually works.'] },
   },
@@ -614,7 +616,7 @@ export const landmarks: Landmark[] = [
   {
     id: 'algo-cinquillo', district: 'algorithms', label: 'CINQUILLO 2.0',
     sublabel: 'GAME AI RESEARCH',
-    x: 4, z: 57.5, visual: 'monument', interaction: 'project', radius: 7,
+    x: 10.9, z: 56.1, visual: 'monument', interaction: 'project', radius: 7,
     ref: p('cinquillo-fair-variant'),
   },
   {
@@ -634,7 +636,7 @@ export const landmarks: Landmark[] = [
   },
   {
     id: 'algo-primes', district: 'algorithms', label: 'PRIMOS EN CLICK',
-    x: 12.9, z: 83.4, visual: 'monument', interaction: 'project', radius: 7,
+    x: 15.8, z: 82.7, visual: 'monument', interaction: 'project', radius: 7,
     ref: p('primes'), scale: 0.6,
   },
 
@@ -642,7 +644,7 @@ export const landmarks: Landmark[] = [
   {
     id: 'ucl-degree', district: 'ucl', label: 'UNIVERSITY COLLEGE LONDON',
     sublabel: 'MSc AI & DATA ENGINEERING',
-    x: 90, z: -45.3, visual: 'researchShell', interaction: 'panel', radius: 9.8,
+    x: 81.1, z: -48.6, visual: 'researchShell', interaction: 'panel', radius: 9.8,
     ref: ed('ucl'), achievement: 'ucl',
   },
   {
@@ -657,12 +659,12 @@ export const landmarks: Landmark[] = [
   },
   {
     id: 'ucl-mining', district: 'ucl', label: 'DATA MINING',
-    x: 80.3, z: -21, visual: 'monument', interaction: 'panel', radius: 7, scale: 0.7,
+    x: 76.3, z: -23, visual: 'monument', interaction: 'panel', radius: 7, scale: 0.7,
     panel: { title: 'DATA MINING', lines: ['Pattern discovery at scale.'] },
   },
   {
     id: 'ucl-analysis', district: 'ucl', label: 'DATA ANALYSIS',
-    x: 99.7, z: -21, visual: 'monument', interaction: 'panel', radius: 7, scale: 0.7,
+    x: 96.4, z: -17.2, visual: 'monument', interaction: 'panel', radius: 7, scale: 0.7,
     panel: { title: 'DATA ANALYSIS', lines: ['Inference, experiment design, uncertainty.'] },
   },
   {
@@ -672,7 +674,7 @@ export const landmarks: Landmark[] = [
   },
   {
     id: 'ucl-ml-revision', district: 'ucl', label: 'ML REVISION ENGINE',
-    x: 107.8, z: -13.7, visual: 'monument', interaction: 'project', radius: 7,
+    x: 103.6, z: -10.1, visual: 'monument', interaction: 'project', radius: 7,
     ref: p('ml-revision'), scale: 0.6,
   },
 
@@ -680,13 +682,13 @@ export const landmarks: Landmark[] = [
   {
     id: 'lab-role', district: 'lab', label: 'METAVIEW',
     sublabel: 'AI & DATA ANALYSIS ENGINEER',
-    x: 48, z: -85.5, visual: 'billboard', interaction: 'panel', radius: 9.8,
+    x: 45.5, z: -82.4, visual: 'billboard', interaction: 'panel', radius: 9.8,
     ref: xp('metaview'), achievement: 'lab',
   },
   {
     id: 'lab-corpus', district: 'lab', label: 'CORPUS',
     sublabel: 'DRIVE INTO IT',
-    x: 48, z: -103.3, visual: 'dataField', interaction: 'none', scale: 1.4,
+    x: 40, z: -107.3, visual: 'dataField', interaction: 'none', scale: 1.4,
   },
   {
     id: 'lab-retrieval', district: 'lab', label: 'RETRIEVAL',
@@ -697,7 +699,7 @@ export const landmarks: Landmark[] = [
   {
     id: 'lab-vision', district: 'lab', label: 'VISION',
     sublabel: '50K+ IMAGES · 92% ACCURACY',
-    x: 62.6, z: -107.3, visual: 'monument', interaction: 'panel', radius: 7, scale: 0.8,
+    x: 62.6, z: -108.8, visual: 'monument', interaction: 'panel', radius: 7, scale: 0.8,
     panel: {
       title: 'IMAGE CLASSIFICATION',
       lines: [
@@ -740,12 +742,12 @@ export const landmarks: Landmark[] = [
   {
     id: 'focus-pipeline', district: 'focus', label: 'VIDEO PIPELINE',
     sublabel: 'SCRIPT → VOICE → VISUALS → CAPTIONS → RENDER',
-    x: 52, z: 35.8, visual: 'station', interaction: 'minigame', radius: 8.4,
+    x: 62, z: 36.8, visual: 'station', interaction: 'minigame', radius: 8.4,
     minigame: 'pipeline', achievement: 'contentEngine',
   },
   {
     id: 'focus-role', district: 'focus', label: 'CO-FOUNDER & DEVELOPER',
-    x: 40.7, z: 12.3, visual: 'billboard', interaction: 'panel', radius: 7,
+    x: 44.3, z: 5.7, visual: 'billboard', interaction: 'panel', radius: 7,
     ref: xp('focus'), scale: 0.8,
   },
 
@@ -759,7 +761,7 @@ export const landmarks: Landmark[] = [
   {
     id: 'gym-circuit', district: 'gym', label: 'GYM CIRCUIT',
     sublabel: 'PUSH · PULL · LEGS · CORE',
-    x: 48, z: 73.3, visual: 'gate', interaction: 'minigame', radius: 7.7,
+    x: 59.3, z: 77.4, visual: 'gate', interaction: 'minigame', radius: 7.7,
     minigame: 'gymCircuit', achievement: 'gymCircuit',
   },
 
@@ -767,14 +769,17 @@ export const landmarks: Landmark[] = [
   {
     id: 'client-count', district: 'client', label: '14',
     sublabel: 'WEBS SHIPPED',
-    x: 108, z: 16.6, visual: 'monument', interaction: 'panel', radius: 9.1,
+    x: 103.3, z: 15, visual: 'monument', interaction: 'panel', radius: 9.1,
     ref: xp('pansofia'), achievement: 'client', scale: 1.3,
   },
 
   /* ---- CIRCUIT -------------------------------------------- */
   {
     id: 'circuit-start', district: 'circuit', label: 'START / FINISH',
-    sublabel: '3 LAPS',
+    // Two, and it has always been two — `CIRCUIT.laps` says so and the
+    // race counts to it. The sign said three, and so did the SPEED
+    // DEMON hint, which made the achievement's bar look unreachable.
+    sublabel: '2 LAPS',
     x: -42, z: 110.7, visual: 'gate', interaction: 'minigame', radius: 8.4,
     minigame: 'circuit', achievement: 'speedDemon',
   },
@@ -783,7 +788,7 @@ export const landmarks: Landmark[] = [
   {
     id: 'labyrinth-entry', district: 'labyrinth', label: 'LABYRINTH',
     sublabel: 'FIND THE CENTRE',
-    x: 98, z: -49.8, visual: 'gate', interaction: 'project', radius: 7.7,
+    x: 111.9, z: -48.1, visual: 'gate', interaction: 'project', radius: 7.7,
     ref: p('labyrinth'), minigame: 'labyrinth',
   },
   {
@@ -796,12 +801,12 @@ export const landmarks: Landmark[] = [
   {
     id: 'voxel-seed', district: 'voxel', label: 'MINECRAFT SEED FINDER',
     sublabel: 'PROCEDURAL SEARCH',
-    x: 109.1, z: -12.5, visual: 'monument', interaction: 'project', radius: 7,
+    x: 103.8, z: -8, visual: 'monument', interaction: 'project', radius: 7,
     ref: p('minecraft-seeds'),
   },
   {
     id: 'voxel-room', district: 'voxel', label: 'UNDERGROUND',
-    x: 123.7, z: 1.3, visual: 'terminal', interaction: 'note', radius: 7,
+    x: 125.7, z: 1.7, visual: 'terminal', interaction: 'note', radius: 7,
     secret: true, achievement: 'underground',
     panel: {
       title: 'UNDERGROUND',
@@ -847,7 +852,7 @@ export const landmarks: Landmark[] = [
   {
     id: 'archive-sign', district: 'archive', label: 'PROJECT ARCHIVE',
     sublabel: 'EVERYTHING ELSE',
-    x: 34, z: 79.7, visual: 'billboard', interaction: 'panel', radius: 8.4,
+    x: 29.8, z: 78.2, visual: 'billboard', interaction: 'panel', radius: 8.4,
     panel: {
       title: 'PROJECT ARCHIVE',
       lines: [
@@ -924,17 +929,23 @@ export const roads: { id: string; points: [number, number][]; width: number }[] 
      One loop through the whole eastern half. Every district sits ON
      it, so leaving one puts the next one ahead rather than back the
      way you came. */
-  { id: 'ring-north', width: 10, points: [[18, -2], [30, -24], [38, -46], [52, -62], [66, -72], [58, -88], [48, -96], [62, -100], [76, -100]] },
+  /* Every road out of the hub used to meet at (18, -2), which is where
+     the physical name stands: ALEJANDRO is twenty-five metres of
+     movable letters, and three of the four roads ran straight through
+     them. A car leaving the hub northbound started wedged between an
+     A and an N. The junction is now at (18, 8), on the open forecourt
+     SOUTH of the name, and the roads leave around it. */
+  { id: 'ring-north', width: 10, points: [[18, 8], [34, -4], [42, -24], [44, -46], [52, -62], [66, -72], [58, -88], [48, -96], [62, -100], [76, -100]] },
   { id: 'ring-east', width: 10, points: [[76, -100], [92, -84], [98, -66], [96, -50], [90, -34], [106, -20], [118, -6], [114, 14], [108, 32], [108, 54], [104, 74]] },
   { id: 'ring-south', width: 10, points: [[104, 74], [78, 92], [56, 102], [34, 104], [10, 94], [4, 68]] },
-  { id: 'ring-west', width: 10, points: [[4, 68], [0, 48], [-4, 28], [2, 10], [18, -2]] },
+  { id: 'ring-west', width: 10, points: [[4, 68], [0, 48], [-4, 28], [2, 10], [18, 8]] },
 
   /* The spine cuts north to south through the ring, which is what
      makes its junctions crossroads instead of corners. */
-  { id: 'spine', width: 9, points: [[18, -2], [30, 10], [52, 22], [50, 42], [48, 62], [40, 84], [34, 104]] },
+  { id: 'spine', width: 9, points: [[18, 8], [32, 13], [52, 22], [50, 42], [48, 62], [40, 84], [34, 104]] },
 
   /* ---- branches ---------------------------------------------- */
-  { id: 'hub-chess', width: 8, points: [[18, -2], [6, -20], [-2, -40], [-4, -60], [-6, -80]] },
+  { id: 'hub-chess', width: 8, points: [[18, 8], [4, -6], [-2, -26], [-4, -50], [-6, -80]] },
   { id: 'lab-spur', width: 7, points: [[48, -96], [56, -112], [58, -118]] },
 
   /* Out of the content half and over to the track. Re-cut so it

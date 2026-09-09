@@ -33,7 +33,16 @@ export interface Zone<T = unknown> {
 }
 
 /** Leaving takes 8% more distance than entering, so edges do not chatter. */
-const HYSTERESIS = 1.08
+/**
+ * How much further than `radius` a body must travel before a zone
+ * reports `leave`. Exported because anything that arms itself on a
+ * measured distance has to use the SAME number: Retrieval wrote its own
+ * 1.1 and opened a 13 cm dead band in which a cluster was outside the
+ * zone (so no `leave` would ever fire) and marked unarmed (so no
+ * `enter` would ever count).
+ */
+export const ZONE_HYSTERESIS = 1.08
+const HYSTERESIS = ZONE_HYSTERESIS
 
 export class Zones {
   readonly items: Zone<unknown>[] = []

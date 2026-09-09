@@ -6,7 +6,7 @@ import { textTexture } from '../world/materials'
 import { chamferedBox } from '../world/geometry'
 import type { Bin } from '../core/Disposal'
 import type { Game } from '../Game'
-import type { Zone } from '../systems/Zones'
+import { ZONE_HYSTERESIS, type Zone } from '../systems/Zones'
 import type { MinigameId } from '@/content/world'
 import { landmarkById } from '@/content/world'
 
@@ -59,14 +59,23 @@ const CLUSTER_COUNT = 5
 /** Trigger radius in metres. Gameplay: never scaled by quality. */
 const CLUSTER_RADIUS = 6.5
 /** How far the clusters stand from the centre of the corpus. */
-const CLUSTER_RING = 24
+const CLUSTER_RING = 26
 
 /**
- * Where each cluster stands, in degrees around the corpus. The gap
- * between 130° and 250° faces the retrieval terminal: the player
- * must never start a round already inside one.
+ * Where each cluster stands, in degrees around the corpus, measured so
+ * that 0° is +X and 90° is +Z (south).
+ *
+ * All five are in the NORTHERN half. They used to be spread all the way
+ * round at [250, 310, 10, 70, 130], and two of them landed on top of
+ * another mini-game: the cluster at 310° stood 70 cm from PACKET RUN's
+ * third gate frame in the middle of its causeway, and the one at 250°
+ * was 5.4 m from the NODE A monument, over the west ramp's foot. A
+ * cluster zone is a cylinder that ignores height, so driving the
+ * causeway 2.9 m above one of these rings triggered it. The southern
+ * arc belongs to the causeway; the corpus is only ever approached from
+ * the north anyway, because that is where the road and the terminal are.
  */
-const CLUSTER_ANGLES = [250, 310, 10, 70, 130]
+const CLUSTER_ANGLES = [22, 56, 90, 124, 158]
 
 /** Past this distance from the corpus you are no longer in the field. */
 const FIELD_RADIUS = 44
@@ -382,10 +391,12 @@ export class Retrieval extends Minigame {
       this.corpus.z - terminal.z,
     ).normalize()
 
-    // Eleven metres towards the field, then six aside: the line
-    // between the terminal and the corpus stays clear to drive.
-    const x = terminal.x + toField.x * 11 - toField.y * 6
-    const z = terminal.z + toField.y * 11 + toField.x * 6
+    // Six metres towards the field, then thirteen aside: the line
+    // between the terminal and the corpus stays clear to drive, and the
+    // board is out of the plate's driving area rather than 5.5 m from
+    // the middle of it.
+    const x = terminal.x + toField.x * 6 - toField.y * 13
+    const z = terminal.z + toField.y * 6 + toField.x * 13
     const y = this.game.world.terrain.colliderHeightAt(x, z)
     const yaw = Math.atan2(terminal.x - x, terminal.z - z)
 
@@ -394,8 +405,10 @@ export class Retrieval extends Minigame {
     board.rotation.y = yaw
     this.group.add(board)
 
+    // No colliders on any of it. This is a sign, and a sign a car can
+    // be stopped dead by in the middle of a district's driving area is
+    // furniture pretending to be architecture.
     const shadows = this.game.quality.settings.shadows
-    const rotation = new THREE.Quaternion().setFromEuler(new THREE.Euler(0, yaw, 0))
 
     const post = (offset: number) => {
       const geometry = chamferedBox(0.24, 3.4, 0.24, 0.04)
@@ -404,20 +417,6 @@ export class Retrieval extends Minigame {
       mesh.castShadow = shadows
       board.add(mesh)
       this.bin.add(() => geometry.dispose())
-
-      this.game.physics.add({
-        type: 'fixed',
-        category: 'floor',
-        position: {
-          x: x + Math.cos(yaw) * offset,
-          y: y + 1.7,
-          z: z - Math.sin(yaw) * offset,
-        },
-        rotation,
-        friction: 0.7,
-        restitution: 0.12,
-        colliders: [{ shape: 'cuboid', parameters: [0.12, 1.7, 0.12] }],
-      })
     }
     post(-3.2)
     post(3.2)
@@ -428,16 +427,6 @@ export class Retrieval extends Minigame {
     panel.castShadow = shadows
     board.add(panel)
     this.bin.add(() => panelGeometry.dispose())
-
-    this.game.physics.add({
-      type: 'fixed',
-      category: 'floor',
-      position: { x, y: y + 4.6, z },
-      rotation,
-      friction: 0.7,
-      restitution: 0.12,
-      colliders: [{ shape: 'cuboid', parameters: [4.2, 1.25, 0.15] }],
-    })
 
     const { texture, aspect } = textTexture({
       text: 'QUERY → EMBEDDING → RETRIEVAL → CONTEXT → GENERATION',
@@ -535,19 +524,6 @@ export class Retrieval extends Minigame {
     return true
   }
 
-  cancel(reason: 'player' | 'strayed' | 'respawn' = 'player'): void {
-    // Cancellable while a result card is up as well. WRONG CLUSTER
-    // holds for 2.6s and COMPLETE for 5s, and during either the field
-    // is still lit with every zone disabled — the one window where
-    // ESC would otherwise do nothing at all. The cards' own delayed
-    // callbacks re-check `state`, so they fall through after this.
-    if (this.state === 'idle') return
-    this.state = 'idle'
-    this.reset()
-    this.game.store.getState().setMinigame(null)
-    this.events.trigger('cancel', [reason])
-  }
-
   protected reset(): void {
     this.token++
     this.round = 0
@@ -579,7 +555,12 @@ export class Retrieval extends Minigame {
 
     const round = this.rounds[index]
     const player = this.game.player.position
-    const armDistance = (CLUSTER_RADIUS * 1.1) ** 2
+    // Derived from the zone's own hysteresis, not written independently:
+    // 1.1 against the zone's 1.08 left a 13 cm band in which a cluster
+    // was outside the zone (so no `leave` could arm it) and measured as
+    // unarmed (so no `enter` could count it) — and if that cluster held
+    // the answer the round could not be won at all.
+    const armDistance = (CLUSTER_RADIUS * ZONE_HYSTERESIS) ** 2
 
     for (const cluster of this.clusters) {
       const topic = round.labels[cluster.index]
@@ -737,9 +718,28 @@ export class Retrieval extends Minigame {
      HUD
      ======================================================== */
 
+  /**
+   * `fail` and `finish` write the card the player is meant to read.
+   * This game gets away without the guard today only because its misses
+   * arrive from a Zone handler on the `fixed` channel rather than from
+   * inside `tick` — an accident of ordering, not a design. Guarded like
+   * VideoPipeline's and OrderRush's so it stays true.
+   */
+  protected publish(force = false): void {
+    if (!this.running) return
+    super.publish(force)
+  }
+
+  protected briefing(): string {
+    return 'DRIVE INTO THE CLUSTER THAT ANSWERS THE QUERY'
+  }
+
   protected lines(): string[] {
+    if (this.state === 'countdown') {
+      return [Math.ceil(this.leadInLeft).toFixed(0), 'GET READY', this.briefing()]
+    }
     if (this.state !== 'running' || this.rounds.length === 0) return [this.title]
-    return [this.rounds[this.round].query.text, this.strip(), this.status()]
+    return [this.rounds[this.round].query.text, this.strip(), `${this.status()} · ESC TO LEAVE`]
   }
 
   /** QRY→EMB→ret→ctx→gen. Lower case is a stage not reached yet. */

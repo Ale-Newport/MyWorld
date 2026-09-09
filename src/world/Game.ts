@@ -24,6 +24,7 @@ import { Water } from './world/Water'
 import { Playground } from './world/Playground'
 import { buildSceneryDetails } from './world/SceneryDetails'
 import { Tracks } from './world/Tracks'
+import { LayoutDebug } from './world/LayoutDebug'
 import { Particles } from './world/Particles'
 import { Respawns } from './systems/Respawns'
 import { Zones } from './systems/Zones'
@@ -50,7 +51,7 @@ import { LabInstallations } from './world/districts/LabInstallations'
 import { Save } from './systems/Save'
 import type { Terrain } from './world/Terrain'
 import type { WorldStore } from './state/store'
-import { districtById, landmarkById, resolvePanel, type DistrictId } from '@/content/world'
+import { districtById, landmarkById, projectsBySlugForWorld, resolvePanel, type DistrictId, type Landmark } from '@/content/world'
 
 /* ============================================================
    THE GAME
@@ -84,6 +85,35 @@ export interface GameOptions {
 }
 
 export type GameEvent = 'ready' | 'districtEnter' | 'districtLeave' | 'interact'
+
+/** How a project's category reads on a popup's second line. */
+const CATEGORY_LABEL: Record<string, string> = {
+  'ai-ml': 'AI / MACHINE LEARNING',
+  software: 'SOFTWARE',
+  web: 'WEB',
+  mobile: 'MOBILE',
+  '3d': 'REAL-TIME 3D',
+  data: 'DATA',
+  university: 'UNIVERSITY',
+  experiment: 'EXPERIMENT',
+  'client-work': 'CLIENT WORK',
+}
+
+/**
+ * The one-line kind, for the popup's second line. Read from the
+ * SAME content the panel will show, so the two can never disagree.
+ */
+function categoryOf(landmark: Landmark): string | undefined {
+  const ref = landmark.ref
+  if (!ref) return landmark.minigame ? 'MINI-GAME' : undefined
+  if (ref.kind === 'project') {
+    const project = projectsBySlugForWorld[ref.id]
+    return project ? (CATEGORY_LABEL[project.category] ?? 'PROJECT') : 'PROJECT'
+  }
+  if (ref.kind === 'experience') return 'EXPERIENCE'
+  if (ref.kind === 'education') return 'EDUCATION'
+  return 'PROFILE'
+}
 
 export class Game {
   readonly bin = new Bin()
@@ -120,6 +150,8 @@ export class Game {
   particles!: Particles
   minigames!: Minigames
   nipple!: Nipple
+  /** Development only. See `LayoutDebug`. */
+  layoutDebug?: LayoutDebug
 
   readonly store: WorldStore
   private host: HTMLElement
@@ -383,6 +415,14 @@ export class Game {
       console.info('[world] respawn points adjusted:\n  ' + moved.join('\n  '))
     }
 
+    // Development only: SHIFT+L draws every footprint the occupancy
+    // registry knows about, and prints the conflict report. Stripped
+    // from production by the branch, and it builds nothing until the
+    // first toggle.
+    if (process.env.NODE_ENV === 'development') {
+      this.layoutDebug = new LayoutDebug(this, this.bin)
+    }
+
     // Secrets last: it reaches into landmarks, zones and the vehicle,
     // all of which have to exist first.
     this.secrets = new Secrets(this, this.bin)
@@ -496,10 +536,23 @@ export class Game {
       const landmark = handle.landmark
       if (landmark.interaction === 'none') continue
 
-      const label =
-        landmark.interaction === 'minigame' ? 'START'
-          : landmark.interaction === 'link' ? 'OPEN'
-          : 'READ'
+      /*
+        The popup announces THE THING, then what kind of thing it is,
+        then what pressing the key will do:
+
+            CHESS ASSISTANT
+            AI / COMPUTER VISION
+            ENTER  Explore
+
+        It used to be the other way round — the verb in large type and
+        the name underneath — so every landmark on the island
+        introduced itself as "READ".
+      */
+      const action =
+        landmark.interaction === 'minigame' ? 'Play'
+          : landmark.interaction === 'link' ? 'Open'
+          : landmark.interaction === 'project' ? 'Explore'
+          : 'Read'
 
       this.interactions.add({
         id: landmark.id,
@@ -510,8 +563,9 @@ export class Game {
         ),
         anchor: handle.anchor,
         radius: handle.radius,
-        label,
-        sublabel: landmark.label,
+        label: landmark.label,
+        sublabel: landmark.sublabel ?? categoryOf(landmark),
+        action,
         onInteract: () => this.openLandmark(landmark.id),
       })
     }

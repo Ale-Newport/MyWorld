@@ -5,15 +5,17 @@ import { useStore } from 'zustand'
 import type { WorldStore } from '@/world/state/store'
 import type { Game } from '@/world/Game'
 import {
+  archiveIslands,
+  clientTowers,
   districts,
-  roads,
   landmarks,
+  ramps,
+  roads,
   WORLD_RADIUS,
   type DistrictId,
 } from '@/content/world'
 import styles from './map.module.css'
-import { BRIDGES, FOREST_POCKETS, PLAY_SPOTS, WATERFALL, coastRadius } from '@/content/world-environment'
-import type { CircuitRace } from '@/world/minigames/CircuitRace'
+import { BRIDGES, CIRCUIT, CIRCUIT_TRACK, FOREST_POCKETS, PLAY_SPOTS, WATERFALL, coastRadius } from '@/content/world-environment'
 
 /* ============================================================
    MAP
@@ -190,15 +192,31 @@ export function WorldMap({ store, getGame }: Props) {
         })
         ctx.stroke()
       }
+      // Along the deck's own bearing, like the deck itself. Drawn
+      // due east regardless of rotation, these used to cross their
+      // own rivers at right angles to the crossing.
       for (const bridge of BRIDGES) {
+        const dx = Math.cos(bridge.rotation) * bridge.length / 2
+        const dz = Math.sin(bridge.rotation) * bridge.length / 2
         ctx.strokeStyle = '#f4e8c9'; ctx.lineWidth = bridge.width / SPAN * size
-        ctx.beginPath(); ctx.moveTo(px(bridge.x-bridge.length/2),py(bridge.z)); ctx.lineTo(px(bridge.x+bridge.length/2),py(bridge.z)); ctx.stroke()
+        ctx.beginPath()
+        ctx.moveTo(px(bridge.x - dx), py(bridge.z - dz))
+        ctx.lineTo(px(bridge.x + dx), py(bridge.z + dz))
+        ctx.stroke()
       }
-      const circuit = game.minigames.get('circuit') as CircuitRace
-      if (circuit) {
-        ctx.beginPath(); circuit.curve.getSpacedPoints(120).forEach((p,i) => { if (i) ctx.lineTo(px(p.x),py(p.z)); else ctx.moveTo(px(p.x),py(p.z)) })
-        ctx.strokeStyle = '#65786b'; ctx.lineWidth = 12 / SPAN * size; ctx.stroke()
-      }
+
+      // The circuit comes from the SAME spline the terrain flattens
+      // and the ecology keeps off, not from the running mini-game —
+      // so the track is on the map whether or not the race has been
+      // registered yet, and the two can never disagree.
+      ctx.beginPath()
+      CIRCUIT_TRACK.forEach(([x, z], i) => {
+        if (i) ctx.lineTo(px(x), py(z))
+        else ctx.moveTo(px(x), py(z))
+      })
+      ctx.strokeStyle = '#4c4b4f'
+      ctx.lineWidth = Math.max(2, CIRCUIT.width / SPAN * size)
+      ctx.stroke()
 
       /* ---- districts ----------------------------------- */
       ctx.font = '500 9px ui-monospace, SFMono-Regular, Menlo, monospace'
@@ -242,6 +260,44 @@ export function WorldMap({ store, getGame }: Props) {
           ctx.fillStyle = ink4
           ctx.fillText('?', x, y + pin + 8)
         }
+      }
+
+      /* ---- ramps ---------------------------------------
+         A chevron pointing the way the ramp launches. The map used
+         to draw none of them, so the one feature that changes where
+         you can GET to was invisible on it. */
+      ctx.strokeStyle = '#b8703a'
+      ctx.lineWidth = 1.2
+      for (const ramp of ramps) {
+        // The stunt ramp is how the hidden island is reached; it stays
+        // off the map until that island has been found.
+        if (ramp.id === 'ramp-stunt' && !foundSecrets.has('hiddenIsland')) continue
+        const x = px(ramp.x)
+        const y = py(ramp.z)
+        const a = ramp.rotation
+        ctx.save()
+        ctx.translate(x, y)
+        ctx.rotate(a)
+        ctx.beginPath()
+        ctx.moveTo(-3.4, 2.4); ctx.lineTo(0, -2.4); ctx.lineTo(3.4, 2.4)
+        ctx.stroke()
+        ctx.restore()
+      }
+
+      /* ---- generated buildings and islands --------------
+         Fifteen client towers and seven archive islands are placed by
+         generator rather than authored, and none of them was drawn.
+         They are most of what fills those two districts. */
+      ctx.fillStyle = 'rgba(120,110,96,0.85)'
+      for (const tower of clientTowers()) {
+        const w = tower.height > 13 ? 3.2 : 2.4
+        ctx.fillRect(px(tower.x) - w / 2, py(tower.z) - w / 2, w, w)
+      }
+      ctx.fillStyle = 'rgba(110,120,104,0.8)'
+      for (const island of archiveIslands()) {
+        ctx.beginPath()
+        ctx.arc(px(island.x), py(island.z), 2.4, 0, Math.PI * 2)
+        ctx.fill()
       }
 
       /* ---- landmarks the visitor has opened ------------ */

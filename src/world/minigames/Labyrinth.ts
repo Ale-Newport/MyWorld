@@ -1,4 +1,5 @@
 import * as THREE from 'three'
+import { signLabel } from '../world/materials'
 import { Minigame } from './Minigame'
 import { palette } from '../core/palette'
 import { clamp, formatTime, seeded } from '../core/maths'
@@ -81,6 +82,17 @@ const SKIRT = 1.4
 const COLLECT_RADIUS = 4.2
 const MOUTH_RADIUS = 5
 
+/** Seconds to reach the centre before the run is lost. The BFS below
+ *  proves the shortest route is 19 corridors, which is about 55 m of
+ *  driving; ninety seconds is three times that at a walking pace. */
+const TIME_LIMIT = 90
+/** Seconds of 3-2-1 at the mouth, so the run does not begin mid-corner. */
+const LEAD_IN = 3
+/** How far north of the mouth the START sign and its prompt stand. */
+const APPROACH = 7.5
+/** A win cannot be re-awarded inside this many seconds. */
+const CENTRE_COOLDOWN = 4
+
 const DX = [1, 0, -1, 0]
 const DZ = [0, 1, 0, -1]
 
@@ -110,6 +122,8 @@ export class Labyrinth extends Minigame {
   private beaconY = 0
 
   private ratio = 0
+  /** Real seconds on the clock when the centre was last awarded. */
+  private awardedAt = -CENTRE_COOLDOWN
 
   constructor(game: Game, bin: Bin) {
     super(game, bin)
@@ -117,6 +131,7 @@ export class Labyrinth extends Minigame {
     // far corner of the maze is ~70 m from there, so 80 holds a run
     // together while heading back up the road to KCL ends it.
     this.abandonRadius = 80
+    this.leadIn = LEAD_IN
   }
 
   /* ========================================================
@@ -144,6 +159,7 @@ export class Labyrinth extends Minigame {
     this.buildApproach()
     this.buildCentre()
     this.buildZones()
+    this.buildEntrance()
 
     this.game.renderer.scene.add(this.group)
     this.bin.object3D(this.group)
@@ -212,10 +228,11 @@ export class Labyrinth extends Minigame {
       if (!moved) stack.pop()
     }
 
-    // Exactly one hole in the boundary, cut in the face the road in
-    // from KCL arrives on: the gate at (-214, -76) stands 13 m beyond
-    // it, in the same column, so the way in is a straight line from the
-    // signpost. Every other boundary cell stays solid.
+    // Exactly one hole in the boundary, cut in the middle column of the
+    // north face, which is the side the ring road arrives on. The START
+    // sign this game registers itself (`buildEntrance`) stands APPROACH
+    // metres beyond it in the same column, so the way in is a straight
+    // line from the prompt. Every other boundary cell stays solid.
     open(ENTRANCE_COL * 2 + 1, GRID_H - 1)
   }
 
@@ -421,6 +438,40 @@ export class Labyrinth extends Minigame {
     }
   }
 
+  /**
+   * The way in, as something you can read and press ENTER at.
+   *
+   * The content layer's `labyrinth-entry` gate carries a dead
+   * `minigame: 'labyrinth'` field — `Game.openLandmark` only dispatches
+   * to a mini-game when `interaction === 'minigame'`, and that landmark
+   * is a `'project'` — so the ONLY way to start a run was to drive
+   * blind through an unmarked zone from the correct side. That gate also
+   * stands at z = -49.8, which is ten metres INSIDE the maze, in a wall
+   * row. This point stands where the approach marks lead, names the
+   * game, states the rule and the clock, and starts it.
+   */
+  private buildEntrance(): void {
+    const x = this.mouth.x
+    const z = this.mouth.z + APPROACH
+    const y = this.game.world.terrain.colliderHeightAt(x, z)
+    const at = new THREE.Vector3(x, y, z)
+
+    // `signLabel`, not `game.playground.label`: the Labyrinth is
+    // constructed before Playground exists, and calling through it
+    // here took the whole world down on boot.
+    signLabel('LABYRINTH', this.group, at.clone().setY(y + 4.6), 11, 1.7)
+
+    this.game.interactions.add({
+      id: 'labyrinth-start',
+      position: at,
+      radius: 7,
+      label: 'RUN THE LABYRINTH',
+      sublabel: `Find the centre inside ${TIME_LIMIT} seconds.`,
+      onInteract: () => { this.game.minigames.start(this.id) },
+    })
+    this.bin.add(() => this.game.interactions.remove('labyrinth-start'))
+  }
+
   /* ---- the middle ----------------------------------------- */
 
   /**
@@ -498,9 +549,19 @@ export class Labyrinth extends Minigame {
   private onCentre(): void {
     if (this.state === 'finished') return
 
+    // The zone's exit hysteresis is 1.08, so any loop out past 4.5 m and
+    // back re-fires `enter`. Without this the arrival re-awarded the
+    // achievement, re-kicked the camera and re-published a COMPLETE card
+    // on every bounce, forever.
+    const now = this.game.ticker.elapsed
+    if (now - this.awardedAt < CENTRE_COOLDOWN) return
+    this.awardedAt = now
+
     this.game.achievements.set('pathFound', 1)
+    this.game.audio?.play('achievement')
     this.game.audio?.blip(1.8)
     this.game.view.kick(0.5)
+    this.game.particles.burst(this.centre.clone().setY(this.centre.y + 1.4), 24, 'confetti')
     this.pulse()
     this.ratio = 1
 
@@ -585,6 +646,15 @@ export class Labyrinth extends Minigame {
   protected tick(delta: number): void {
     void delta
 
+    // A maze with no losing condition is a walk. Ninety real seconds is
+    // three times the shortest route, so the limit only catches somebody
+    // who has stopped looking.
+    if (this.elapsed > TIME_LIMIT) {
+      this.game.audio?.play('fail')
+      this.fail('LOST IN THE MAZE')
+      return
+    }
+
     const position = this.game.player.position
     const gx = indexAt(this.xAxis, position.x - this.centre.x)
     const gz = indexAt(this.zAxis, position.z - this.centre.z)
@@ -601,12 +671,20 @@ export class Labyrinth extends Minigame {
      HUD
      ======================================================== */
 
+  protected briefing(): string {
+    return `FIND THE CENTRE IN ${TIME_LIMIT}s`
+  }
+
   protected lines(): string[] {
+    if (this.state === 'countdown') {
+      return [Math.ceil(this.leadInLeft).toFixed(0), 'GET READY', this.briefing()]
+    }
     const best = this.bestTime
+    const left = Math.max(0, TIME_LIMIT - this.elapsed)
     return [
       formatTime(this.elapsed),
-      'FIND THE CENTRE',
-      best !== null ? `BEST ${formatTime(best)}` : 'NO BEST TIME YET',
+      `${left.toFixed(0)}s LEFT · FIND THE CENTRE`,
+      best !== null ? `BEST ${formatTime(best)} · ESC TO LEAVE` : 'ESC TO LEAVE',
     ]
   }
 

@@ -5,8 +5,9 @@ import type { Bin } from '../core/Disposal'
 import type { Physical, ColliderDescription } from '../physics/Physics'
 import { textGeometry } from './Type3D'
 import { ALPHABET, GLYPH_WIDTH } from './alphabet'
-import { textTexture } from './materials'
+import { signLabel } from './materials'
 import { PLAY_SPOTS } from '@/content/world-environment'
+import { LETTERS } from '@/content/world-layout'
 
 export type Actor = { physical: Physical; mesh: THREE.Object3D }
 export type Explosive = Actor & { fuse: number; exploded: boolean; armedAt: number }
@@ -72,11 +73,10 @@ export class Playground {
     const tick=()=>this.update();game.ticker.events.on('tick',tick,12);bin.add(()=>game.ticker.events.off('tick',tick))
   }
 
+  /** Kept as a method because half the world calls it that way; the
+   *  implementation is `signLabel`, which needs no Playground. */
   label(text:string,parent:THREE.Object3D,at:THREE.Vector3,width:number,height:number):THREE.Mesh {
-    const [first,...sublines]=text.split('\n')
-    const {texture:map}=textTexture({text:first,sublines,size:256,color:'#eee9d7',background:'#2e423b'})
-    const mesh=new THREE.Mesh(new THREE.PlaneGeometry(width,height),new THREE.MeshBasicMaterial({map,side:THREE.DoubleSide}))
-    mesh.position.copy(at);parent.add(mesh);return mesh
+    return signLabel(text,parent,at,width,height)
   }
 
   box(at:THREE.Vector3,size:THREE.Vector3,colour:string,mass:number,colliders?:ColliderDescription[]):Actor {
@@ -93,26 +93,44 @@ export class Playground {
   }
 
   private buildName():void {
+    /*
+      SIZE LIVES IN `world-layout`, not here.
+
+      It used to be the literal 5.2 written twice in this method, with
+      a third copy as the 7.5 m row pitch and a fourth baked into the
+      collider half-extents — while `hub-name` carried a `scale` field
+      that the builder ignored. So the letters could not be resized
+      without editing four numbers in lockstep, and nothing else in the
+      world (the terrain that flattens under them, the ecology that
+      keeps off them, the map that draws them) could know how big they
+      were.
+
+      They are now 3.9 m, which is 75% of what they were: still the
+      largest thing at the hub and still a playground of sixteen
+      movable letters, but no longer filling the frame from every
+      approach.
+    */
     const handle=this.game.world.landmarks.get('hub-name');if(!handle)return
+    const SIZE=LETTERS.size, HALF=SIZE/2, PITCH=LETTERS.rowPitch
     const origin=handle.group.position,rotation=handle.group.quaternion
     for(const [row,line] of ['ALEJANDRO','NEWPORT'].entries()) {
-      const layout=textGeometry(line,{size:5.2,weight:.16,depth:1.5});layout.geometry.dispose()
+      const layout=textGeometry(line,{size:SIZE,weight:.16,depth:1.5});layout.geometry.dispose()
       for(const letter of layout.letters) {
-        const geometry=textGeometry(letter.char,{size:5.2,weight:.16,depth:1.5}).geometry
-        geometry.translate(0,-2.6,-.75)
+        const geometry=textGeometry(letter.char,{size:SIZE,weight:.16,depth:1.5}).geometry
+        geometry.translate(0,-HALF,-.75)
         geometry.computeBoundingBox()
         let bottom=geometry.boundingBox!.min.y
         const mesh=new THREE.Mesh(geometry,new THREE.MeshStandardMaterial({color:row===0?'#33473d':'#657c5b',roughness:.65,metalness:.12}))
         const colliders:ColliderDescription[]=[]
         // Stroke colliders preserve open counters in A/D/O/P/R.
         for(const stroke of ALPHABET[letter.char])for(let i=1;i<stroke.length;i++) {
-          const a=stroke[i-1],b=stroke[i],dx=(b[0]-a[0])*5.2,dy=(b[1]-a[1])*5.2
+          const a=stroke[i-1],b=stroke[i],dx=(b[0]-a[0])*SIZE,dy=(b[1]-a[1])*SIZE
           const q=new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0,0,1),Math.atan2(dy,dx))
           const length=Math.hypot(dx,dy)
-          bottom=Math.min(bottom,(a[1]+b[1])*2.6-2.6-Math.abs(dy/length)*(length/2+.05)-Math.abs(dx/length)*.416)
-          colliders.push({shape:'cuboid',parameters:[Math.hypot(dx,dy)/2+.05,.416,.75],position:{x:((a[0]+b[0])/2-GLYPH_WIDTH/2)*5.2,y:(a[1]+b[1])*2.6-2.6,z:0},quaternion:q})
+          bottom=Math.min(bottom,(a[1]+b[1])*HALF-HALF-Math.abs(dy/length)*(length/2+.05)-Math.abs(dx/length)*.416)
+          colliders.push({shape:'cuboid',parameters:[Math.hypot(dx,dy)/2+.05,.416,.75],position:{x:((a[0]+b[0])/2-GLYPH_WIDTH/2)*SIZE,y:(a[1]+b[1])*HALF-HALF,z:0},quaternion:q})
         }
-        const at=new THREE.Vector3(letter.x+letter.width/2,-bottom+.025,row*-7.5+.75).applyQuaternion(rotation).add(origin)
+        const at=new THREE.Vector3(letter.x+letter.width/2,-bottom+.025,row*-PITCH+.75).applyQuaternion(rotation).add(origin)
         const physical=this.game.physics.add({type:'dynamic',position:at,rotation,mass:3.5,sleeping:true,friction:.62,restitution:.08,linearDamping:.22,angularDamping:.4,colliders,onCollision:(f,p)=>this.impact(f,p)})
         mesh.position.copy(at);mesh.quaternion.copy(rotation);mesh.castShadow=true;mesh.receiveShadow=true;this.group.add(mesh)
         const actor={mesh,physical,down:false,char:letter.char};this.letters.push(actor);this.actors.push(actor)
