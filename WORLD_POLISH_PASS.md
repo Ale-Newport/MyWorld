@@ -352,6 +352,22 @@ fixed-body-only obstacle raycast added for the respawn audit.
 
 ---
 
+## The state at the end of the pass
+
+| check | result |
+|---|---|
+| `npm run world:layout` | 186 footprints, 0 respawn problems |
+| `npm run world:clearance` | 1 obstruction over 1.6 m in ~1 km of road |
+| `npm run world:shore` | 23 transects, 0 failing |
+| `npm run world:water` | in and out of the beach, all three lakes and the river; the open sea recovers the car |
+| `npm run world:grass` | rings cross, far ring wraps, grass reaches 92 m against 29 m of visible ground |
+| `npm run world:minigames` | 15 of 15 through play / exit / replay / leave / replay |
+| `npm run world:loop` | 8 of 11 roads covered; the whole ring at 96–99% |
+| `scripts/world-race-drive.mjs` | both paces finish, never more than 4.1 m off the racing line, leaderboard survives a reload |
+| `npm run lint`, `npm run typecheck`, `npm run build` | clean |
+
+---
+
 ## Remaining limitations
 
 - **`world-layout-check.mjs` still reports about sixty-six conflicts.**
