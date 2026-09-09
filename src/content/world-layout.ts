@@ -122,6 +122,13 @@ export function landmarkFootprint(visual: string, scale = 1): number {
   return (base[visual] ?? 4) * scale
 }
 
+/**
+ * The labyrinth's real extent, kept in step with `Labyrinth.ts` by
+ * hand — there is no way to import it without pulling THREE.js into
+ * the content layer. `CELLS * CORRIDOR + (CELLS + 1) * WALL`.
+ */
+export const MAZE = { width: 5 * 9.4 + 6 * 1.2, depth: 4 * 9.4 + 5 * 1.2 }
+
 let cache: Zone[] | null = null
 
 /** Every footprint on the island. Built once, then reused. */
@@ -177,6 +184,25 @@ export function zones(): Zone[] {
 
   for (const l of landmarks) {
     out.push({ id: `landmark-${l.id}`, kind: 'landmark', x: l.x, z: l.z, radius: landmarkFootprint(l.visual, l.scale ?? 1), label: l.label })
+  }
+
+  /*
+    THE MAZE. Declared here rather than left to the district's plate,
+    because it is far bigger than that plate: five by four cells of
+    9.4 m corridor separated by 1.2 m walls is 54 x 44 m of solid
+    static geometry, and the plate is 24. Without this the registry
+    reported the LABYRINTH as a thirty-metre disc, the road network was
+    authored straight through it, and the only thing that ever noticed
+    was a car stopping dead against a wall nobody had modelled.
+  */
+  {
+    const d = districtById.labyrinth
+    out.push({
+      id: 'maze', kind: 'play', x: d.x, z: d.z,
+      radius: Math.max(MAZE.width, MAZE.depth) / 2,
+      rx: MAZE.width / 2, rz: MAZE.depth / 2,
+      label: 'the maze',
+    })
   }
 
   for (const p of PLAY_SPOTS) {

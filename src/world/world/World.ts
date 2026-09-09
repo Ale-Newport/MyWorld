@@ -11,7 +11,7 @@ import { Terrain } from './Terrain'
 import { Props, type PropKind } from './Props'
 import { buildLandmark } from './Landmarks'
 import { rampGeometry } from './geometry'
-import { PLAY_SPOTS } from '@/content/world-environment'
+import { CIRCUIT, CIRCUIT_TRACK, PLAY_SPOTS, lineDistance } from '@/content/world-environment'
 import {
   archiveIslands,
   clientTowers,
@@ -21,6 +21,7 @@ import {
   landmarks,
   ramps,
   respawns,
+  roads,
   timelinePlates,
   projectsBySlugForWorld,
   type Landmark,
@@ -482,6 +483,22 @@ export class World {
     this.props.reserve('panel', q.count(30, 12))
 
     const place = (kind: PropKind, x: number, z: number, options?: { tag?: string; rotation?: number }) => {
+      /*
+        NOT IN THE CARRIAGEWAY.
+
+        This was the third and last copy of "may something be placed
+        here?" — it knew about play spots, respawns and ramps, and
+        nothing about roads. So the scatter dropped drums and crates
+        down the middle of the ring, and the automated tour spent
+        sixty-five seconds shunting a cluster of them along ring-east's
+        first leg.
+
+        The verge is still fair game, and so is a forecourt: only the
+        lane itself is kept clear, which is why this is a road test and
+        not a call to `isFree`.
+      */
+      if (roads.some(road => lineDistance(x, z, road.points) < road.width * 0.5 + 1)) return
+      if (lineDistance(x, z, CIRCUIT_TRACK) < CIRCUIT.width * 0.5 + 1) return
       if (PLAY_SPOTS.some(p => Math.hypot(x - p.x, z - p.z) < p.radius)) return
       // Never ON a respawn — R is the key people press when they are
       // stuck, and it should not drop them inside a stack of crates.

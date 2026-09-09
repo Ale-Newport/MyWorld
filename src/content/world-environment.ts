@@ -8,8 +8,15 @@
 
 export const CIRCUIT = {
   x:-99,z:-1,width:12,laps:2,
-  /** What a good lap looks like, in seconds — the SPEED DEMON bar. */
-  targetLapSeconds:46,
+  /**
+   * What a good lap looks like, in seconds — the SPEED DEMON bar.
+   *
+   * Measured rather than guessed: `scripts/world-race-drive.mjs` runs
+   * the lap at three paces and its careful middle setting averages
+   * 6.1 m/s over the 546 m. Sixty seconds is 9.1 m/s, which needs a
+   * driver who uses the straights and does not run wide at the esses.
+   */
+  targetLapSeconds:60,
   /**
    * NEWPORT CIRCUIT — a road course, not a serpentine.
    *
@@ -157,7 +164,7 @@ export const BRIDGES = [
   // The lake shortcut: forty metres of deck straight across Mirror
   // Lake, which is a real saving between UCL and the spine and is
   // meant to be found rather than signposted.
-  {x:78,z:-10,length:44,width:8,kind:'modern',rotation:2.099,road:'lake-shortcut',level:1.2},
+  {x:80,z:-12,length:44,width:8,kind:'modern',rotation:2.356,road:'lake-shortcut',level:1.2},
 ] as const
 /** `flat` is the radius of ground a spot levels under itself, for the
  *  venues that build one continuous surface — a bowling lane laid over
@@ -169,13 +176,15 @@ export const PLAY_SPOTS = [
   // twice at identical coordinates, which the map worked around by
   // filtering one out by id.
   {id:'tnt',label:'TNT QUARRY',x:92,z:8,radius:16,flat:16,game:'domino'},
-  {id:'deployment',label:'DEPLOYMENT ALTAR',x:58,z:-48,radius:13,flat:12},
+  {id:'deployment',label:'DEPLOYMENT ALTAR',x:50,z:-46,radius:13,flat:12},
   {id:'timeMachine',label:'TIME MACHINE',x:62,z:88,radius:12,flat:10},
   {id:'debugDash',label:'DEBUG DASH',x:8,z:46,radius:15},
   {id:'riverRun',label:'RIVER RUN',x:-32,z:-14,radius:13},
   {id:'chipRelay',label:'CHIP RELAY',x:34,z:40,radius:13,flat:11},
   {id:'gravityWell',label:'GRAVITY WELL',x:58,z:-118,radius:11},
-  {id:'particleField',label:'PARTICLE FIELD',x:80,z:-54,radius:11},
+  // Out of the maze: the labyrinth is 54 by 44 m and this sat inside
+  // its eastern half.
+  {id:'particleField',label:'PARTICLE FIELD',x:60,z:-24,radius:11},
   {id:'procedural',label:'PROCEDURAL TERRAIN',x:120,z:50,radius:12},
   // In the infield between two of the track's lanes: you only find it
   // by leaving the racing line.

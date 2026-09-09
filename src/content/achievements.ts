@@ -79,10 +79,11 @@ export const achievements: Achievement[] = [
 
   /* ---- mini-games ---------------------------------------- */
   { id: 'circuit', label: 'CHEQUERED FLAG', hint: 'Finish three laps of the circuit.', group: 'minigames', target: 1 },
-  // The bar is `CIRCUIT.laps * CIRCUIT.targetLapSeconds` — two laps
-  // at 46 s. The hint said sixty seconds, which is a time nobody
-  // could set for a two-lap race and made the award look broken.
-  { id: 'speedDemon', label: 'SPEED DEMON', hint: 'Finish the circuit inside 1:32.', group: 'minigames', target: 1 },
+  // The bar is `CIRCUIT.laps * CIRCUIT.targetLapSeconds` — two laps at
+  // 60 s. The hint used to say sixty seconds for the whole race, which
+  // is a time nobody could set for two laps and made the award look
+  // broken; it is now what the code actually checks.
+  { id: 'speedDemon', label: 'SPEED DEMON', hint: 'Finish the two-lap circuit inside 2:00.', group: 'minigames', target: 1 },
   { id: 'pathFound', label: 'PATH FOUND', hint: 'Reach the centre of the labyrinth.', group: 'minigames', target: 1 },
   { id: 'checkmate', label: 'ENGINE APPROVED', hint: 'Play the engine move at the chess terminal.', group: 'minigames', target: 1 },
   { id: 'contentEngine', label: 'CONTENT ENGINE', hint: 'Complete the Focus video pipeline in order.', group: 'minigames', target: 1 },

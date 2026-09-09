@@ -282,7 +282,10 @@ export const districts: District[] = [
     id: 'stock',
     label: 'EXCHANGE',
     short: 'MARKET',
-    x: 66, z: -72, radius: 24, plate: 28,
+    // Plate 20, not 28. At 28 this paved a fifty-six-metre disc whose
+    // shoulder reached the ring road's north-east corner, and the
+    // furniture the district builds on it stood in the carriageway.
+    x: 66, z: -72, radius: 24, plate: 20,
     theme: 'dark', accent: '#2f6f5e',
     ground: 'dark',
     blurb: 'Forty thousand trades, matched between two moving walls.',
@@ -303,7 +306,9 @@ export const districts: District[] = [
     id: 'labyrinth',
     label: 'LABYRINTH',
     short: 'MAZE',
-    x: 98, z: -66, radius: 22, plate: 24,
+    // West and north of where it was: the maze is built around this
+    // point and its old south-east corner was past the coastline.
+    x: 92, z: -62, radius: 22, plate: 24,
     theme: 'light', accent: '#6f6f76',
     ground: 'plate',
     blurb: 'A real maze with a real centre. No shortcuts through the walls.',
@@ -445,14 +450,16 @@ export const respawns: Respawn[] = [
   { id: 'chess', x: 12, z: -64, rotation: -2.415, district: 'chess' },
   { id: 'stock', x: 54, z: -70, rotation: 0.165, district: 'stock' },
   { id: 'circuit', x: -54.7, z: 78.1, rotation: 0.662, district: 'circuit' },
-  { id: 'labyrinth', x: 111.6, z: -66, rotation: 3.142, district: 'labyrinth' },
+  // Off the maze's east side, on the ring: the maze is 54 by 44 m
+  // and this point used to be inside it.
+  { id: 'labyrinth', x: 124, z: -56, rotation: 3.142, district: 'labyrinth' },
   { id: 'voxel', x: 136.8, z: -2.6, rotation: -3.085, district: 'voxel' },
   { id: 'network', x: 92.3, z: -89.8, rotation: -2.493, district: 'network' },
   { id: 'studio', x: 104, z: 87.6, rotation: -1.571, district: 'studio' },
   { id: 'orbit', x: 33.7, z: -53.6, rotation: 1.056, district: 'orbit' },
   { id: 'archive', x: 52.6, z: 102.8, rotation: 3.077, district: 'archive' },
   { id: 'road-west', x: -7.5, z: 6, rotation: -0.6, district: 'hub' },
-  { id: 'road-east', x: 49.6, z: -10.1, rotation: 2.891, district: 'hub' },
+  { id: 'road-east', x: 44, z: -16, rotation: 2.6, district: 'hub' },
   // Just south of the 2023 timeline plate: landing on a plate fires
   // the TIME TRAVELLER sequence, and respawning onto one made that
   // secret go off every time you pressed R.
@@ -895,7 +902,7 @@ export const landmarks: Landmark[] = [
   {
     id: 'secret-brackets', district: 'hub', label: '{ }',
     sublabel: 'JUMP THROUGH',
-    x: 41.5, z: 0.4, rotation: Math.PI * 0.5, visual: 'bracket', interaction: 'none',
+    x: 52, z: -8, rotation: Math.PI * 0.5, visual: 'bracket', interaction: 'none',
     achievement: 'shipIt',
   },
 ]
@@ -945,7 +952,7 @@ export const roads: { id: string; points: [number, number][]; width: number }[] 
          structure standing on (66, -72), and the ring used to have a
          vertex there — the road ran through the middle of it. It goes
          down its western side now. */
-  { id: 'ring-east', width: 10, points: [[76, -100], [92, -84], [89.7, -65], [95.4, -50.1], [90, -34], [106, -20], [112, 0], [111, 18], [108, 32], [108, 54], [104, 74]] },
+  { id: 'ring-east', width: 10, points: [[76, -100], [98, -98], [120, -88], [130, -70], [132, -48], [124, -30], [112, 0], [111, 18], [108, 32], [108, 54], [104, 74]] },
       /* WEST of SEED CHUNKS, not through it. The voxel field keeps a
          corridor along this road, but the monolith over its secret
          chamber is applied ON TOP of that fade — so the one thing in
@@ -980,7 +987,7 @@ export const roads: { id: string; points: [number, number][]; width: number }[] 
   /* A shortcut, not a route: forty metres of bridge straight across
      Mirror Lake between UCL and the spine, saving most of the eastern
      ring. Nothing signposts it. */
-  { id: 'lake-shortcut', width: 8, points: [[90, -34], [84, -22], [78, -10], [70, 2], [53.5, 10], [40, 26]] },
+  { id: 'lake-shortcut', width: 8, points: [[124, -30], [104, -26], [86, -18], [74, -6], [56, 8], [40, 26]] },
 
   /* Dirt, unlit, and pointed at the stunt ramp. It stops where the
      ground does. */
@@ -1006,8 +1013,13 @@ export interface Ramp {
 
 export const ramps: Ramp[] = [
   { id: 'ramp-hub-a', x: 28.5, z: 6.9, rotation: Math.PI * 0.25, length: 10, width: 7, height: 1.8, size: 'small' },
-  { id: 'ramp-hub-b', x: 7.5, z: -14.1, rotation: Math.PI * 1.15, length: 12, width: 7, height: 2.4, size: 'small' },
-  { id: 'ramp-brackets', x: 35.8, z: 0.4, rotation: Math.PI * 0.5, length: 18, width: 9, height: 5.2, size: 'medium', achievement: 'shipIt' },
+  // North of the letters rather than beside the KCL road: the rerouted
+  // `hub-chess` runs where this ramp's run-up used to be.
+  { id: 'ramp-hub-b', x: 14, z: -22, rotation: Math.PI * 1.15, length: 12, width: 7, height: 2.4, size: 'small' },
+  // Moved east with the brackets it launches at: the hub junction moved
+  // south of the name, and the new ring-north ran straight over this
+  // ramp's approach — the tour drove up it and got stuck every time.
+  { id: 'ramp-brackets', x: 46, z: -8, rotation: Math.PI * 0.5, length: 18, width: 9, height: 5.2, size: 'medium', achievement: 'shipIt' },
   { id: 'ramp-kcl', x: -20.2, z: 14.2, rotation: Math.PI * 1.5, length: 16, width: 8, height: 4, size: 'medium' },
   { id: 'ramp-focus', x: 52, z: 7.4, rotation: Math.PI * 1.5, length: 20, width: 9, height: 6, size: 'medium', achievement: 'phoneHop' },
   // Aimed at the void island, 62 m away across the moat. The angle

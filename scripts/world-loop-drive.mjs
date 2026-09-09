@@ -20,6 +20,7 @@ import path from 'node:path'
 
 const args = process.argv.slice(2)
 const BASE = args.find((a) => !a.startsWith('--')) ?? 'http://localhost:3000'
+const ONLY = args.find((a) => a.startsWith('--only='))?.slice(7).split(',')
 const OUT = path.resolve('.qa/loop')
 await rm(OUT, { recursive: true, force: true })
 await mkdir(OUT, { recursive: true })
@@ -64,28 +65,30 @@ await page.evaluate(() => {
   window.__auto = { curve: null, length: 0, at: 0, done: false, stuck: 0, samples: [], progress: 0 }
 
   window.__autoRoute = (points) => {
-    const a = window.__auto
-    // A curve through the road's own control points, sampled once.
+    const auto = window.__auto
     const path = points.map(([x, z]) => ({ x, z }))
-    const N = Math.max(60, points.length * 24)
+    /*
+      LINEAR between the control points, not a spline through them.
+      The terrain paints these roads with `lineTo`, so the polyline IS
+      the road; a Catmull-Rom through the same points bulges outside it
+      at every corner. On `hub-chess` that bulge put the racing line
+      nine metres into the physical name, and the harness spent thirty
+      seconds wedged in an E reporting the road as impassable.
+    */
     const samples = []
-    // Catmull-Rom, open: the roads are not loops.
-    const pt = (i) => path[Math.max(0, Math.min(path.length - 1, i))]
     for (let seg = 0; seg < path.length - 1; seg++) {
-      const p0 = pt(seg - 1), p1 = pt(seg), p2 = pt(seg + 1), p3 = pt(seg + 2)
-      const steps = Math.ceil(N / (path.length - 1))
+      const a = path[seg]
+      const b = path[seg + 1]
+      const steps = Math.max(2, Math.ceil(Math.hypot(b.x - a.x, b.z - a.z) / 1.5))
       for (let k = 0; k < steps; k++) {
-        const t = k / steps, t2 = t * t, t3 = t2 * t
-        samples.push({
-          x: 0.5 * ((2 * p1.x) + (-p0.x + p2.x) * t + (2 * p0.x - 5 * p1.x + 4 * p2.x - p3.x) * t2 + (-p0.x + 3 * p1.x - 3 * p2.x + p3.x) * t3),
-          z: 0.5 * ((2 * p1.z) + (-p0.z + p2.z) * t + (2 * p0.z - 5 * p1.z + 4 * p2.z - p3.z) * t2 + (-p0.z + 3 * p1.z - 3 * p2.z + p3.z) * t3),
-        })
+        const t = k / steps
+        samples.push({ x: a.x + (b.x - a.x) * t, z: a.z + (b.z - a.z) * t })
       }
     }
     samples.push({ x: path[path.length - 1].x, z: path[path.length - 1].z })
     let length = 0
     for (let i = 1; i < samples.length; i++) length += Math.hypot(samples[i].x - samples[i - 1].x, samples[i].z - samples[i - 1].z)
-    a.samples = samples; a.length = length; a.at = 0; a.done = false; a.stuck = 0; a.progress = 0
+    auto.samples = samples; auto.length = length; auto.at = 0; auto.done = false; auto.stuck = 0; auto.progress = 0
   }
 
   window.__autoCommand = () => {
@@ -105,9 +108,12 @@ await page.evaluate(() => {
     a.at = closest
     if (closest >= a.samples.length - 2) { a.done = true }
 
-    const look = Math.min(a.samples.length - 1, closest + 16)
+    // Twelve metres of look-ahead at 1.5 m a sample. Sixteen samples
+    // was twenty-four, which on a fifteen-metre leg aims past the
+    // corner entirely and cuts it.
+    const look = Math.min(a.samples.length - 1, closest + 8)
     const target = a.samples[look]
-    const ahead = a.samples[Math.min(a.samples.length - 1, closest + 30)]
+    const ahead = a.samples[Math.min(a.samples.length - 1, closest + 18)]
     const here = a.samples[closest]
     // Curvature from the angle between the next stretch and the one after.
     const v1 = { x: target.x - here.x, z: target.z - here.z }
@@ -130,6 +136,9 @@ await page.evaluate(() => {
       brake: speed > wanted + 1.2,
       steer: steer < -0.075 ? -1 : steer > 0.075 ? 1 : 0,
       done: a.done, at: closest, of: a.samples.length, x: p.x, z: p.z, stuck: a.stuck,
+      speed: g.vehicle.xzSpeed, steerRaw: steer, wanted,
+      y: p.y, ground: g.terrain.colliderHeightAt(p.x, p.z), wheels: g.vehicle.wheels.inContactCount,
+      flipped: g.vehicle.upsideDown?.active ?? false, wedged: g.vehicle.stuck?.active ?? false,
     }
   }
 })
@@ -159,7 +168,7 @@ async function drive(name, route, budgetSeconds) {
     await press('a', c.steer < 0)
     await press('d', c.steer > 0)
     if (c.stuck > 6 && !stalledAt) stalledAt = `${c.x.toFixed(0)},${c.z.toFixed(0)} on leg ${c.at}/${c.of}`
-    if (process.env.VERBOSE) console.log(`      at ${c.x.toFixed(0)},${c.z.toFixed(0)} leg ${c.at}/${c.of} stuck ${c.stuck.toFixed(1)}`)
+    if (process.env.VERBOSE) console.log(`      at ${c.x.toFixed(0)},${c.z.toFixed(0)} leg ${c.at}/${c.of} v=${c.speed?.toFixed(1)} want=${c.wanted?.toFixed(1)} steer=${c.steerRaw?.toFixed(2)} thr=${c.throttle} stuck ${c.stuck.toFixed(1)} y=${c.y?.toFixed(1)}/${c.ground?.toFixed(1)} wheels=${c.wheels} flip=${c.flipped} wedge=${c.wedged}`)
     await page.waitForTimeout(70)
   }
   await release()
@@ -184,7 +193,7 @@ const put = (x, z, rotation) => page.evaluate(({ x, z, rotation }) => {
 
 console.log('\nTHE GRAND TOUR — driven, not teleported\n')
 let failures = 0
-for (const road of ROADS) {
+for (const road of ROADS.filter((r) => !ONLY || ONLY.includes(r.id))) {
   const first = road.points[0]
   const second = road.points[1]
   // A quarter of the way along the first leg, not on the vertex: road
@@ -199,7 +208,11 @@ for (const road of ROADS) {
   for (let i = 1; i < road.points.length; i++) {
     length += Math.hypot(road.points[i][0] - road.points[i - 1][0], road.points[i][1] - road.points[i - 1][1])
   }
-  if (!(await drive(road.id, road.points.slice(1), Math.max(30, length * 0.34)))) failures++
+  // The WHOLE polyline, not from the second point: the car starts a
+  // quarter of the way along the first leg, and a route that begins at
+  // the second vertex has the car twenty metres behind its own first
+  // sample with nothing to measure progress against.
+  if (!(await drive(road.id, road.points, Math.max(30, length * 0.34)))) failures++
 }
 
 console.log(`\n${failures} road(s) the car could not finish`)

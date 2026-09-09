@@ -61,8 +61,24 @@ import { districtById } from '@/content/world'
 /** Change this and every stored best time is for a maze that no longer exists. */
 const SEED = 4213
 
-const CELLS_X = 7
-const CELLS_Z = 5
+/*
+  FIVE BY FOUR, not seven by five.
+
+  At 7 x 5 the maze was 75 m across and 54 m deep — the second-largest
+  structure on the island after the circuit — and two things followed
+  from that which nobody had noticed. Its south-east corner stood 164 m
+  from the origin against a coastline of 156, so part of the maze was
+  in the sea. And the ring road's whole north-east leg ran through the
+  middle of it: the road was authored to reach the district CENTRE, and
+  the district centre is the middle of the maze, so `ring-east` was a
+  road into a wall. The car stopped dead at z = -92.5, which is exactly
+  where the outer wall stands.
+
+  At 5 x 4 it is 54 x 44 m, which fits inside its own district, leaves
+  the ring a way past it, and is still nineteen corridors of driving.
+*/
+const CELLS_X = 5
+const CELLS_Z = 4
 /** Odd grid: cells sit on odd indices, the walls between them on even ones. */
 const GRID_W = CELLS_X * 2 + 1
 const GRID_H = CELLS_Z * 2 + 1
