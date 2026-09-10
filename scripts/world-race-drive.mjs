@@ -30,7 +30,10 @@ for(const mode of modes) {
       const samples=m.curve.getSpacedPoints(480);let closest=0,dist=Infinity
       for(let i=0;i<480;i++){const d=(p.x-samples[i].x)**2+(p.z-samples[i].z)**2;if(d<dist){dist=d;closest=i}}
       const v=g.vehicle.chassis.physical.body.linvel(),speed=Math.hypot(v.x,v.z)
-      const look=mode==='boost'?14:mode==='normal'?11:9
+      // 10/8/6, not 14/11/9: the lap is 633 m instead of 954 and the corners
+      // are proportionally tighter, so the old look-aheads aimed the car
+      // past the apex and cut every one of them.
+      const look=mode==='boost'?10:mode==='normal'?8:6
       const length=m.curve.getLength(),target=m.curve.getPointAt((closest/480+look/length)%1)
       const tangent=m.curve.getTangentAt(closest/480),ahead=m.curve.getTangentAt((closest/480+20/length)%1)
       const curvature=Math.acos(Math.min(1,Math.max(-1,tangent.dot(ahead))))
