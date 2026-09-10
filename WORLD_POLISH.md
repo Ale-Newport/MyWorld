@@ -1,5 +1,13 @@
 # World polish and gameplay pass
 
+> **Superseded on 9 September 2026.** This document describes the island as it
+> was BEFORE the map was rebuilt from Alejandro's hand-drawn plan — nineteen
+> districts, fifteen mini-games, a 320 m disc. None of those coordinates are
+> live any more. It is kept because the reasoning in it is still the reasoning:
+> what a shore has to do to be drivable, why a respawn belongs on a road, what a
+> mini-game owes the player when it is cancelled. For the island that exists,
+> read `MAP_RECONSTRUCTION_PLAN.md` and `DRAWING_MAP_IMPLEMENTATION.md`.
+
 ## Baseline — 8 September 2026
 
 The existing page was run at localhost:3000 (production), then localhost:3001

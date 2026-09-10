@@ -479,9 +479,30 @@ save file.
 
 ### The world is data
 
-`src/content/world.ts` is the whole map. Districts, landmarks, roads, ramps,
-respawn points, timeline plates and dev notes are arrays; `src/world/world/World.ts`
-is the machine that turns them into geometry and colliders.
+**The island is a hand-drawn map, compiled.** The plan lives in
+`scripts/mapcal/plan.json` as normalized 0..1 drawing coordinates, verified
+against the photograph by `scripts/mapcal/overlay.mjs`, and
+`scripts/mapcal/emit-ts.mjs` turns it into `src/content/world-map.ts` — the
+coastline, the racing line, the water, the zone table, the vegetation masses and
+the path network, in metres. Re-run the emitter after editing the plan; nothing
+downstream reads the JSON.
+
+From there it is three files, in order:
+
+* `src/content/world-map.ts` — the drawing (generated, do not hand-edit)
+* `src/content/world-environment.ts` — the natural geography derived from it:
+  coast, circuit, lakes, river, bridge, venues, vegetation
+* `src/content/world.ts` — the built environment: districts, landmarks, paths,
+  ramps, respawns, timeline plates, dev notes
+
+`src/world/world/World.ts` is the machine that turns those into geometry and
+colliders, and `src/content/world-layout.ts` is the one occupancy registry that
+says whether a piece of ground is free.
+
+In development, **SHIFT+M** puts the camera where the plan was drawn from and
+lays the plan itself over the world so the two can be compared feature by
+feature; **SHIFT+L** draws every footprint the registry knows about and prints
+its conflict report.
 
 **To add a landmark**, add an entry to `landmarks`:
 
@@ -498,11 +519,13 @@ means adding a `Builder` there and a name to `LandmarkVisual`. Setting `ref`
 instead of `panel` pulls the copy from `projects`, `experience` or `education` —
 which is how the world and the scroll journey stay in agreement.
 
-**Archive projects place themselves.** Any project not explicitly given a
-landmark appears as an island in the archive district, generated from the same
-inventory the Project Universe uses. Adding a project to
+**Projects place themselves.** The island has ONE projects area: a terminal you
+press ENTER on, which opens the whole archive as an overlay, and eight plinths
+around it carrying the featured work. `PROJECT_GROUPS` in `world.ts` derives the
+overlay's collections from the inventory, and a development-time check warns if
+any project ends up in none of them — so adding a project to
 `src/content/projects/personal.ts` puts it in both experiences with no other
-change.
+change, and no project can quietly fall off the map.
 
 **To add a mini-game**, extend `Minigame` (`src/world/minigames/Minigame.ts`),
 implement `build()`, `tick()` and `reset()`, register it in `Game.init()`, and
@@ -549,7 +572,13 @@ every setting. A phone and a desktop are playing the same game.
 
 ```bash
 npm run world:qa        # drives the car and asserts on it
-npm run world:tour      # screenshots every district
+npm run world:tour      # drives the whole island in one go, watching for teleports
+npm run world:layout    # the occupancy registry: is anything inside anything else?
+npm run world:decor     # the decoration manifest: placed, refused, and why
+npm run world:clearance # is anything standing in a road?
+npm run world:minigames # every mini-game: start, play, leave, replay
+npm run world:water     # drive into every body of water, and out again
+npm run world:shore     # is the beach drivable on every bearing?
 npm run world:browsers  # boots and drives it in Chromium, Firefox and WebKit
 ```
 
@@ -561,8 +590,8 @@ in development only). What it asserts:
 | --- | --- |
 | **Physics** | Settles on four wheels at 1.10 m. 72 km/h cruising, 315 km/h boosted. Steering turns it. Braking sheds speed. Jumping leaves the ground by 1.8 m and lands upright. It never falls through the world. |
 | **Recovery** | Respawn puts it on solid ground. Flipped on its roof, it rights itself with no input. After a heavy boost run it is still upright and still driveable. |
-| **Mini-games** | All nine start, run, and give the controls back on Escape — no HUD left behind, no camera left in cinematic mode, no collider left disabled, no input filter left set. |
-| **World** | Every district can be entered and driven. Every one of the 22 respawn points can be driven away from. Every landmark stands on ground the car can reach. The stunt ramp actually reaches the hidden island and unlocks it. |
+| **Mini-games** | All four start, run, and give the controls back on Escape — no HUD left behind, no camera left in cinematic mode, no collider left disabled, no input filter left set. |
+| **World** | Every district can be entered and driven. Every one of the 12 respawn points can be driven away from — the bowling one used to face a kerb and manage 3.5 m. Every landmark stands on ground the car can reach. The big ramp launches the car 6.7 m above the ground and it survives the landing. |
 | **Touch** | A phone gets a reduced quality tier, touch input mode, on-screen buttons, and one-finger driving. No horizontal overflow. |
 | **Teardown** | Four round trips through the route, then the fifth world still renders. Browsers cap live WebGL contexts and drop the oldest silently, so a leak does not throw — it just stops rendering after a few visits, and this is the only way to see it. |
 
@@ -627,8 +656,18 @@ What was actually checked, and how:
 | Reduced motion | separate context with `reducedMotion: 'reduce'` | Renders a designed static state. |
 | First load | `node scripts/perf-check.mjs` | FCP ~56 ms, ~611 KB transferred including fonts and the client captures. |
 | Frame rate | same script, scrubbing the entire journey | Holds up under software rendering (headless SwiftShader); real GPUs are far above it. |
-| `/world` — physics, recovery, mini-games, world, touch, teardown | `npm run world:qa` — Playwright drives the car and reads engine telemetry | All pass. 83 landmarks, 346 props, 920 bodies, 1,645 colliders. |
-| `/world` — every district | `npm run world:tour` | Photographed from each district's respawn point. |
+| `/world` — physics, recovery, the ramp, mini-games, world, touch, teardown | `npm run world:qa` — Playwright drives the car and reads engine telemetry | All pass. 26 landmarks, 117 props, 372 bodies, 491 colliders. |
+| `/world` — the whole island, driven | `npm run world:tour` — one continuous drive from the landing to the race start, watching for the engine rescuing the car | 10 of 10 stops reached, **0 teleports**, 932 m driven. |
+| `/world` — nothing inside anything else | `npm run world:layout` | 100 footprints, 0 conflicts, 0 respawn problems. |
+| `/world` — decoration placed, and what was refused | `npm run world:decor` | 809 of 1,204 placed (67%), 21 instanced meshes, 0 failures — with the rejection histogram per theme. |
+| `/world` — nothing standing in a road | `npm run world:clearance` | 0 obstructions; 11 samples excused by design (bridge deck, ramps, the labyrinth arch). |
+| `/world` — the circuit, driven at three paces | `node scripts/world-race-drive.mjs` | All three finish: 75.6 / 65.6 / 47.0 s, 25 gate crossings each, never more than 4.0 m off the racing surface. |
+| `/world` — every mini-game, three times each | `npm run world:minigames` | 4 mini-games, 0 failing — start, play, exit, clean HUD, second run, third run. |
+| `/world` — bowling, five sets | `node scripts/world-bowling-qa.mjs <url> --sets=5` | All checks pass; the screen never showed a pin that was not standing. |
+| `/world` — driving into water and out again | `npm run world:water` | Both lakes, both river fords and the ramp's shallows pass; the open coast past its shelf is recovered by the drowning rule, as designed. |
+| `/world` — the beach, on every bearing | `npm run world:shore` | 0 failing transects. |
+| `/world` — the race under a hostile driver | `node scripts/world-runtime-checks.mjs` | 22 records, 0 failing; 60 fps on all three quality tiers. |
+| `/world` — is it the drawing? | `node scripts/world-topdown.mjs <url>` then `node scripts/mapcal/compare.mjs` | Side by side with the photograph, at the same aspect and grid. |
 | `/world` — leaving and returning | five mounts in one session | Fifth world renders; no WebGL context leak. |
 | `/world` — Chromium, Firefox, WebKit | `npm run world:browsers` | All three boot, settle on four wheels and drive the same distance (33.1 / 33.4 / 33.1 m), which is also the fixed timestep doing its job. Firefox and WebKit auto-select MEDIUM. WebKit here is Playwright's build, not Safari. |
 

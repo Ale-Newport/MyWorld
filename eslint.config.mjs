@@ -6,7 +6,12 @@ const spread = (c) => (Array.isArray(c) ? c : [c])
 
 /** Flat config — ESLint 9 / eslint-config-next 16 native format. */
 export default [
-  { ignores: ['.next/**', 'node_modules/**', 'out/**', '.qa/**', 'next-env.d.ts'] },
+  /* `.next-verify` is the escape-hatch dist dir a verification build
+     writes to while a dev server holds `.next` (see next.config.ts's
+     NEXT_DIST_DIR). Un-ignored, `eslint .` lints the compiled bundle:
+     156 errors and 9,400 warnings from Turbopack's own output, which
+     buries the handful that are actually about this repo's source. */
+  { ignores: ['.next/**', '.next-verify/**', 'node_modules/**', 'out/**', '.qa/**', 'next-env.d.ts'] },
   ...spread(next),
   ...spread(nextCoreWebVitals),
   ...spread(nextTypeScript),

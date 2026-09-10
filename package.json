@@ -17,6 +17,7 @@
     "world:browsers": "node scripts/world-browsers.mjs",
     "world:clearance": "ROADS_JSON=$(node scripts/_roads.mjs) EXTRA_JSON=$(node scripts/_extra.mjs) node scripts/world-road-clearance.mjs",
     "world:layout": "node scripts/world-layout-check.mjs",
+    "world:decor": "node scripts/world-decor-check.mjs",
     "world:shore": "node scripts/world-shore-check.mjs",
     "world:water": "node scripts/world-water-drive.mjs",
     "world:grass": "node scripts/world-grass-check.mjs",

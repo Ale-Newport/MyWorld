@@ -11,3 +11,4 @@ next-env.d.ts
 .qa/
 .cache/
 /.claude/settings.local.json
+/.next-verify
