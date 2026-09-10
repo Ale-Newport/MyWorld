@@ -648,13 +648,37 @@ export const ramps: Ramp[] = [
      than a memory of how wide it used to be.
   */
   { id: 'ramp-circuit-jump', x: -64.3, z: 71.6, rotation: -0.05, length: 16, width: CIRCUIT.width, height: 2.4, size: 'medium' },
-  /* A starter bump on the landing forecourt, aimed at open ground. */
-  /* A starter bump. It stood on the LANDING forecourt, which on a 266 m
-     island has no twelve-metre hole left in it, and then on the open run
-     towards the labyrinth — which turned out to be the labyrinth's own
-     approach the moment that approach became a footprint anything could
-     see. East of the maze road, on open ground, is where it fits. */
-  { id: 'ramp-landing', x: 104, z: 8, rotation: Math.PI * 0.92, length: 12, width: 7, height: 2.2, size: 'small' },
+  /*
+    A STARTER BUMP, AND ITS THIRD ADDRESS.
+
+    It stood on the LANDING forecourt, which on a 266 m island has no
+    twelve-metre hole left in it; then on the open run towards the
+    labyrinth, which turned out to be the labyrinth's own approach the
+    moment that approach became a footprint anything could see; then
+    here, at (104, 8), where two things were wrong at once and neither
+    was visible.
+
+    Its RUN-UP WAS THE SEA. `rotation` PI*0.92 points the slope
+    west-north-west, so the approach runs in from the east — and
+    (104, 8) is 9.7 m inland. Measured, the ground ten metres behind
+    the foot sits 1.33 m BELOW sea level and fifteen metres behind it
+    is the ocean floor; two of three full-speed runs from the run-up
+    the registry reserves ended in the water. Nothing checked: the
+    landing shoal tests what is thirty metres PAST the lip and nothing
+    tested what is behind the foot.
+
+    And its lip stood inside the labyrinth's approach pad, which the
+    registry could not see while a square pad was registered as the
+    disc inside it.
+
+    (104, 16) facing 285 degrees fixes both: 28 m of run-up and deck
+    with 1.82 m of relief and a 10.8 degree maximum gradient, a
+    minimum coast inset of 11.5 m over the whole run-up — which also
+    shuts the shore's own valve, since it is fully open only inside
+    8 m — and 30 m of landing at 0.51 to 0.65 m. That is an eight
+    metre move.
+  */
+  { id: 'ramp-landing', x: 104, z: 16, rotation: 4.9742, length: 12, width: 7, height: 2.2, size: 'small' },
 ]
 
 /* ============================================================

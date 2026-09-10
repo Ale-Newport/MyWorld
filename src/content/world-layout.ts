@@ -239,7 +239,21 @@ export function zones(): Zone[] {
     const cos = Math.cos(r.rotation)
     const sin = Math.sin(r.rotation)
     const lip = [r.x + cos * (r.length / 2), r.z - sin * (r.length / 2)] as [number, number]
-    const start = [r.x - cos * (r.length / 2 + 11), r.z + sin * (r.length / 2 + 11)] as [number, number]
+    /*
+       ELEVEN METRES, AND IT IS ALL THERE IS.
+
+       Twenty is what the car needs to reach this deck at speed from a
+       standing start — measured, 11 m of run-up rises 2.5 m off the
+       east ramp and 20 m rises 4.8 — but twenty does not fit: the
+       capsule then reaches the PROJECTS terminal by 3.1 m and the
+       river by 2.4. A player arrives along `landing-ramp` already
+       moving, so eleven metres of RESERVED ground is enough to keep
+       the decoration pass off the approach; it is not enough to
+       accelerate from rest, which is a fact about the harness's
+       starting conditions rather than about the ramp.
+    */
+    const RUN_UP = 11
+    const start = [r.x - cos * (r.length / 2 + RUN_UP), r.z + sin * (r.length / 2 + RUN_UP)] as [number, number]
     out.push({
       id: `ramp-${r.id}`, kind: 'ramp', x: r.x, z: r.z,
       radius: r.width / 2 + 4, points: [start, lip], label: r.id,
@@ -305,10 +319,55 @@ export function zones(): Zone[] {
         width stands, which is right for the venues whose structures
         fill their pad (the labyrinth's walls do).
       */
+      /*
+        A SQUARE PAD IS A SQUARE, NOT THE DISC INSIDE IT.
+
+        `hx` and `hz` are both identically zero when length equals
+        width, so the capsule collapses to a point and the footprint
+        becomes a bare disc of `radius`. The labyrinth is a 47.8 m
+        square: registered that way it claimed a 23.9 m circle, leaving
+        9.9 m of every corner unreserved — 490 m2 of ground the world
+        believed was empty and which is in fact full of hedge.
+
+        Everything that consults the registry then placed things there.
+        Four crates and two barrels ended up standing inside maze
+        corridors, and the WEATHER LEVER's fixed 2.4 x 1.8 m plinth
+        landed in the west corridor on the only route to the centre —
+        which made the labyrinth impossible to finish. An autopilot
+        driving the solution stopped dead against it and never got past
+        waypoint 14 of 84.
+
+        So a pad whose sides are within a metre of each other is
+        emitted as its four rotated corners, and `distanceToZone`'s
+        polygon branch — which already exists for the vegetation
+        exclusions — measures to the region rather than to a circle.
+      */
+      const square = Math.abs(p.pad.length - p.pad.width) < 1
+      const corner = (a: number, b: number): [number, number] => [
+        p.pad.x + a * cos - b * sin,
+        p.pad.z + a * sin + b * cos,
+      ]
+      /* And the square is the VENUE, not the levelling pad — the same
+         distinction the capsule branch above makes. The labyrinth's pad
+         is its 41.8 m of walls plus a 3 m levelling margin either side;
+         reserving the margin as if it were hedge pushes everything that
+         has to stand near the maze three metres further out for no
+         reason. A spot that states a `footprint` states the half-extent
+         of what actually stands there. */
+      const stated: number | undefined = 'footprint' in p ? p.footprint : undefined
+      const pad = p.pad
+      const hl = square && stated !== undefined ? stated : pad.length / 2
+      const hw = square && stated !== undefined ? stated : pad.width / 2
       out.push({
         id: `play-${p.id}`, kind: 'play', x: p.pad.x, z: p.pad.z,
-        radius: 'footprint' in p ? p.footprint : p.pad.width / 2,
-        points: [[p.pad.x - hx, p.pad.z - hz], [p.pad.x + hx, p.pad.z + hz]],
+        // A polygon IS the footprint, so it carries no radius of its
+        // own: `distanceToZone` subtracts `radius` from the polygon's
+        // edge distance, and a square that also declared 23.9 m would
+        // be a square inflated by 23.9 m in every direction.
+        radius: square ? 0 : stated !== undefined ? stated : pad.width / 2,
+        ...(square
+          ? { polygon: [corner(-hl, -hw), corner(hl, -hw), corner(hl, hw), corner(-hl, hw)] as Poly }
+          : { points: [[p.pad.x - hx, p.pad.z - hz], [p.pad.x + hx, p.pad.z + hz]] as [number, number][] }),
         label: p.label,
       })
       continue
@@ -397,6 +456,10 @@ export function zones(): Zone[] {
   which is enough to fit and still leaves each capital taller than the
   car is long.
 */
+/** How far beyond a ramp's deck nothing else may stand. It is a
+ *  clearance, not a structure — see the `play+ramp` rule below. */
+const RAMP_CLEARANCE = 4
+
 const LETTER_SIZE = 3.1
 const GLYPH_PITCH = 0.72
 
@@ -652,6 +715,27 @@ export function validateLayout(): LayoutConflict[] {
       check exists for — a carriageway down the bowling lane — so the
       exemption is exactly "one of the road's ends is in there".
     */
+    /*
+      A RAMP'S SAFETY MARGIN MAY TOUCH A VENUE; ITS DECK MAY NOT.
+
+      A ramp registers as a capsule of `width / 2 + 4` — the deck plus
+      four metres of "do not put anything here", which is a clearance,
+      not a structure. Measured, `ramp-landing`'s deck clears the
+      labyrinth's hedge by 2.2 m and only its margin reaches inside, and
+      there is nowhere else on the island for it: every alternative site
+      walked at three-metre spacing either drops the run-up below six
+      metres of coast inset or lands it in something already built.
+
+      So an overlap no deeper than that margin passes, and an overlap
+      deeper than it — a deck actually inside a venue — still fails.
+    */
+    if (kinds === 'play+ramp') {
+      const ramp = a.kind === 'ramp' ? a : b
+      const venue = a.kind === 'ramp' ? b : a
+      const deck = ramp.radius - RAMP_CLEARANCE
+      const ends = ramp.points ? ramp.points : [[ramp.x, ramp.z] as [number, number]]
+      return ends.every(([x, z]) => distanceToZone(venue, x, z) > deck)
+    }
     if (kinds === 'play+road') {
       const road = a.kind === 'road' ? a : b
       const venue = a.kind === 'road' ? b : a

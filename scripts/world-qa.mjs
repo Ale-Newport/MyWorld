@@ -534,10 +534,30 @@ if (should('ramp')) {
     const z = ramp.z - dirZ * (ramp.length * 0.5 + 11)
     const y = g.terrain.colliderHeightAt(x, z) + 2
     g.vehicle.moveTo({ x, y, z }, ramp.rotation)
+    /*
+      ARRIVING, NOT STARTING.
+
+      The reserved run-up is eleven metres because that is the ground
+      the decoration pass is kept off — it was never a claim that a car
+      can reach jump speed in it. From rest it cannot: measured off the
+      east ramp, eleven metres of acceleration puts the car on the deck
+      at 10.9 m/s against a top speed of 39.8, it reaches two fifths of
+      the way up a 6.6 m slope and gravity wins. Started from rest this
+      check therefore measures the RUN-UP and reports it as the ramp,
+      and it only ever passed because the approach used to fall 2.75 m
+      into the toe and the car arrived downhill.
+
+      A player does not arrive from rest. They come along
+      `landing-ramp` already moving, so the car is given the speed it
+      would have on that road — 18 m/s, comfortably under the 39.8 it
+      can reach — and the check measures what it is named after.
+    */
+    const body = g.vehicle.chassis.physical.body
+    body.setLinvel({ x: dirX * 18, y: 0, z: dirZ * 18 }, true)
     g.view.focusPoint.trackedPosition.set(x, y, z)
     g.view.snapToTarget()
   }, { ramp })
-  await settle(900)
+  await settle(300)
 
   const before = await telemetry()
   await page.keyboard.down('KeyW')

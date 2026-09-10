@@ -149,7 +149,18 @@ const SPECS: AttractionSpec[] = [
      metres from it and to the north-east, because everything closer
      is inside the south forest, and because JUMP TO THE NEXT COMMIT
      owns a seven-metre circle this one's five must clear. */
-  { id: 'weatherLever', anchor: { kind: 'district', id: 'timeMachine' }, bearing: -0.77, distance: 21, footprint: 2, prompt: 5, allow: ['plate'] },
+  /* RE-AIMED, AND THE REASON IS WORTH KEEPING. At bearing -0.77 this
+     resolved into the labyrinth's west corridor, on the unique route
+     to its centre, and made the maze impossible to complete — the
+     occupancy registry described a 47.8 m square as the 23.9 m disc
+     inside it, so the corner it landed in read as open ground. The
+     square is registered as a square now, but the wish is re-aimed as
+     well: a placement that only survives because the oracle was fixed
+     is a placement waiting for the next oracle. Twelve metres and
+     bearing 0.175 is the nearest point to the time machine that is
+     28.5 m from the maze centre, out of the water, off the roads and
+     clear of everything already placed. */
+  { id: 'weatherLever', anchor: { kind: 'district', id: 'timeMachine' }, bearing: 0.175, distance: 12, footprint: 2, prompt: 5, allow: ['plate'] },
 
   /* ---- no prompt: driven, hit, or driven over ------------- */
   /* Where the catapult throws you — measured off the catapult's

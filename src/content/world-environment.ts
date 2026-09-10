@@ -492,6 +492,11 @@ export const PLAY_SPOTS = [
   */
   {
     id: 'maze', label: 'LABYRINTH', x: ZONES.maze.x, z: ZONES.maze.z, radius: 21,
+    /* The walls plus a metre. The pad levels three metres more than
+       that on each side so the ground outside the hedge is flat too,
+       and reserving the levelling as if it were structure pushed the
+       east ramp's safety margin — not its deck — into a conflict. */
+    footprint: ZONES.maze.size / 2 + 1,
     pad: { x: ZONES.maze.x, z: ZONES.maze.z, length: ZONES.maze.size + 6, width: ZONES.maze.size + 6, rotation: 0 },
   },
   /*
