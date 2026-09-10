@@ -90,11 +90,11 @@ export const RACE_LINE: Poly = [
  *  want ellipses. Two named bodies, five ellipses. */
 export const LAKE_WEST = [
   { x: -82.5, z: 21.9, rx: 13.8, rz: 9.6 },
-  { x: -72.9, z: 32.9, rx: 10.6, rz: 11 },
-  { x: -79.3, z: 39.9, rx: 12.8, rz: 6.4 },
+  { x: -74.9, z: 31.8, rx: 10.6, rz: 11 },
+  { x: -79.8, z: 39.8, rx: 12.8, rz: 6.4 },
 ] as const
 export const LAKE_SOUTH = [
-  { x: 27.9, z: 37.7, rx: 11.2, rz: 12 },
+  { x: 30.4, z: 37.5, rx: 11.2, rz: 12 },
   { x: 29.8, z: 51.9, rx: 8, rz: 8.4 },
 ] as const
 
@@ -116,7 +116,7 @@ export const ZONES = {
   bowlingLane: { from: [-39.4, -78.8], to: [1.3, -78.8], width: 11.4 },
   projects: { x: 72.9, z: -47.5, rx: 12.8, rz: 8.4 },
   ramp: { x: 84.6, z: -21.9, length: 30, width: 9.7, rotation: 0 },
-  timeMachine: { x: 46, z: 62, radius: 10.6 },
+  timeMachine: { x: 48, z: 64, radius: 10.6 },
   maze: { x: 79, z: 45, size: 41.8, rotation: 0 },
   achievements: { x: -60.6, z: -17.6, rx: 15.2, rz: 7.4 },
   blackHole: { x: -70, z: -60.2, radius: 12 },

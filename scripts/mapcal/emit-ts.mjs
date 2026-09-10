@@ -174,6 +174,108 @@ const lapLength = race.reduce((s, a, i) => {
   return s + Math.hypot(b[0] - a[0], b[1] - a[1])
 }, 0)
 
+/* ============================================================
+   LAKES CLEAR THE RACING LINE
+
+   The drawing puts water and the racing line in the same place. It is
+   not a tracing error — at map scale a pond edge and a track edge are
+   two pencil strokes a millimetre apart — but in metres it means the
+   lake's BANK reaches the racing surface, and the bank is carved by
+   the one terrain stage that is deliberately allowed to beat built
+   ground. Measured before this rule: lake-south-0's water began 1 m
+   from the centreline at (8.3, 40.2) and took the outer half of the
+   track down to 0.11 m against a racing floor of 0.73; lake-west-2 did
+   the same at (-55.6, 42).
+
+   Neither moving the racing line nor accepting the drop is available.
+   The line has 1.00 m of budget at the pinch, and a level track with
+   the bank starting at its kerb is the "abrupt terrain wall beside the
+   asphalt" this pass exists to remove.
+
+   So the lake gives way, by the smallest amount that works: it is
+   shrunk about its own centre until its mapped edge is a track
+   half-width, a bank width and a margin clear of the line. Shrinking
+   rather than moving keeps the blob's centre where it was drawn, so
+   the union of ellipses that makes each lake keeps its shape.
+   ============================================================ */
+/* Must match `VALVE_FREE` in Terrain.ts: the distance outside a lake
+   at which built ground stops being carved. Beyond it a track is safe
+   whatever the bank is doing. */
+const VALVE_FREE = 5
+const LAKE_MARGIN = 1
+const LAKE_CLEAR = TRACK_WIDTH / 2 + VALVE_FREE + LAKE_MARGIN
+/** How far a lake may be pushed before it starts losing size instead. */
+const LAKE_NUDGE = 8
+
+/** Metres from a point to an ellipse's edge; negative inside. */
+function metresToEllipse([px, pz], e) {
+  const ux = (px - e.x) / e.rx
+  const uz = (pz - e.z) / e.rz
+  const n = Math.hypot(ux, uz)
+  if (n <= 0) return -Math.min(e.rx, e.rz)
+  const gradient = Math.hypot(ux / e.rx, uz / e.rz) / n
+  return (n - 1) / gradient
+}
+
+const lakeShrinks = []
+function clearRacingLine(planEllipse, id) {
+  const world = { x: X(planEllipse.u), z: Z(planEllipse.v), rx: W(planEllipse.ru), rz: D(planEllipse.rv) }
+  const nearest = (e) => race.reduce((best, pt) => Math.min(best, metresToEllipse(pt, e)), Infinity)
+  const before = nearest(world)
+  if (before >= LAKE_CLEAR) return planEllipse
+  /*
+     NUDGE FIRST, SHRINK ONLY IF THAT IS NOT ENOUGH.
+
+     A pond moved four metres still reads as the pond that was drawn; a
+     pond at half its diameter does not. So the ellipse is pushed
+     directly away from the nearest point of the racing line — up to
+     `LAKE_NUDGE` — and only then, if it still overlaps, does it lose
+     size. Both are reported, because both are departures from the
+     drawing and neither should be discoverable only by looking.
+  */
+  const closest = race.reduce(
+    (best, pt) => (metresToEllipse(pt, world) < best.d ? { d: metresToEllipse(pt, world), pt } : best),
+    { d: Infinity, pt: race[0] },
+  )
+  let vx = world.x - closest.pt[0]
+  let vz = world.z - closest.pt[1]
+  const len = Math.hypot(vx, vz) || 1
+  vx /= len
+  vz /= len
+
+  const moved = { ...world }
+  let nudge = 0
+  while (nudge < LAKE_NUDGE && nearest(moved) < LAKE_CLEAR) {
+    nudge += 0.25
+    moved.x = world.x + vx * nudge
+    moved.z = world.z + vz * nudge
+  }
+
+  let scale = 1
+  while (scale > 0.5 && nearest({ ...moved, rx: moved.rx * scale, rz: moved.rz * scale }) < LAKE_CLEAR) {
+    scale -= 0.02
+  }
+  const final = { ...moved, rx: moved.rx * scale, rz: moved.rz * scale }
+  if (nearest(final) < LAKE_CLEAR) {
+    throw new Error(
+      `[emit] ${id} cannot clear the racing line: its edge is ${before.toFixed(1)} m from the line and needs `
+      + `${LAKE_CLEAR} m. ${LAKE_NUDGE} m of nudge and half its radius are not enough. `
+      + `Move the line or the lake in plan.json.`,
+    )
+  }
+  lakeShrinks.push({ id, nudge, scale, before, after: nearest(final), rx: world.rx, rz: world.rz })
+  return {
+    ...planEllipse,
+    u: final.x / MAP_WIDTH + 0.5,
+    v: final.z / MAP_DEPTH + 0.5,
+    ru: planEllipse.ru * scale,
+    rv: planEllipse.rv * scale,
+  }
+}
+
+P.water.lakeWestEllipses = P.water.lakeWestEllipses.map((e, i) => clearRacingLine(e, `lake-west-${i}`))
+P.water.lakeSouthEllipses = P.water.lakeSouthEllipses.map((e, i) => clearRacingLine(e, `lake-south-${i}`))
+
 const ell = (e) => `{ x: ${X(e.u)}, z: ${Z(e.v)}, rx: ${W(e.ru)}, rz: ${D(e.rv)} }`
 const zone = (k) => {
   const z = P.zones[k]
@@ -358,5 +460,11 @@ fs.writeFileSync(target, out)
 console.log(
   `wrote ${target}\n  lap ${Math.round(lapLength)} m`
   + `\n  tightest corner ${tightest.toFixed(1)} m (track is ${TRACK_WIDTH} m wide)`
-  + `\n  furthest a control point moved from the drawing: ${drift.toFixed(1)} m`,
+  + `\n  furthest a control point moved from the drawing: ${drift.toFixed(1)} m`
+  + (lakeShrinks.length
+    ? `\n  lakes shrunk to clear the racing line (needs ${LAKE_CLEAR} m):\n`
+      + lakeShrinks.map((l) =>
+        `    ${l.id} nudged ${l.nudge.toFixed(2)} m, scaled x${l.scale.toFixed(2)} — edge was ${l.before.toFixed(1)} m`
+        + ` from the line, now ${l.after.toFixed(1)} m (${l.rx.toFixed(1)} x ${l.rz.toFixed(1)} m)`).join('\n')
+    : '\n  every lake already clears the racing line'),
 )

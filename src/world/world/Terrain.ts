@@ -208,6 +208,10 @@ const ROAD_PROOF_RAMPS = ramps.filter(
  *  RIVER APRON block, and `polylineOverrun` for why it must end. */
 const APRON_END_FADE = 12
 
+/** How far past a lake's bank its apron eases the ground, IN METRES —
+ *  see `metresOutsideLake` for why that needed saying. */
+const LAKE_APRON = 22
+
 const RAMP_PAD_SHOULDER = 16
 const RAMP_PAD_SIDE = 8
 /**
@@ -382,6 +386,55 @@ function rampPadAt(
     height = smoothGround(ramp.x, ramp.z)
   }
   return { inside, height }
+}
+
+/**
+ * How far OUTSIDE a lake's mapped edge a point is, in metres.
+ *
+ * The normalised ellipse radius is the natural thing to reach for and
+ * it is not a distance: on lake-west-0 (13.8 x 9.6) a reach authored
+ * as "13 m" spans 30.2 m of ground, and on lake-west-2 (12.8 x 6.4)
+ * it spans 42.0. That is why an apron written to ease eight metres of
+ * bank was reaching the racing line across three separate stretches
+ * and holding the whole TNT verge.
+ *
+ * First-order, via the gradient of the normalised radius, which is
+ * exact on a circle and good to a few per cent on these ellipses —
+ * far closer than the factor of three the normalised radius was out.
+ */
+function metresOutsideLake(x: number, z: number, lake: { x: number; z: number; rx: number; rz: number }): number {
+  const ux = (x - lake.x) / lake.rx
+  const uz = (z - lake.z) / lake.rz
+  const normalised = Math.hypot(ux, uz)
+  if (normalised <= 0) return -Math.min(lake.rx, lake.rz)
+  const gradient = Math.hypot(ux / lake.rx, uz / lake.rz) / normalised
+  return gradient > 0 ? (normalised - 1) / gradient : 0
+}
+
+/**
+ * THE VALVE, and it is one shape used in four places.
+ *
+ * `built` says this ground is spoken for by something constructed. A
+ * landscape stage that runs afterwards may still shape the first few
+ * metres beside its own water — that is what an apron is for, and
+ * removing it brings back the 43-65 degree banks it was written to
+ * cure — but past that it must leave built ground alone.
+ *
+ * Zero at the water's edge, one by `FREE` metres out. Multiply a
+ * stage's claim by `1 - built * landValve(metres)` and it keeps its
+ * bank and loses its overreach.
+ */
+const VALVE_HOLD = 2
+/* Five metres, not eight. Eight is `BANK_WIDTH` — the full reach of a
+   lake's bank — and demanding that a whole bank clear built ground
+   meant a lake's mapped edge had to be thirteen metres from a racing
+   line this drawing puts eight from it. At five the inner bank still
+   shapes freely, which is what stops a bank ending in a step, and the
+   requirement on the drawing falls to eleven metres, which it can
+   meet by giving way a little rather than by half a lake vanishing. */
+const VALVE_FREE = 5
+function landValve(metresFromWater: number): number {
+  return smoothstep(metresFromWater, VALVE_HOLD, VALVE_FREE)
 }
 
 /**
@@ -733,69 +786,6 @@ export class Terrain {
     }
 
     /*
-      Play spots that build one continuous surface level their own
-      ground, the same way a district plate does — and they do it AFTER
-      the circuit and the roads, because a venue is a building and a
-      track's run-off shoulder is not.
-
-      That ordering is not a preference, it is a bug fix. The circuit's
-      corridor carries the ground with it out to six half-widths — 30 m
-      at CIRCUIT.width 10, and it was 42 m at 14 — and the bowling
-      precinct's west end is twenty metres from the
-      top loop's exit. Flattened before the circuit, the venue's pad was
-      overwritten by that shoulder and its own probe then set the deck
-      SIX METRES above the lane: the car was put down inside the
-      foundation and ejected through the floor on every throw.
-
-      A spot may declare a `pad` — a RECTANGLE — instead of a `flat`
-      radius. The bowling venue is 62 m long and 12 wide: a disc big
-      enough to hold it levels fourteen thousand square metres of the
-      north coast, and a disc small enough not to left the drive-up
-      apron hanging off the end of the flattening, which is where the
-      plinth used to become a wall.
-    */
-    for (const spot of PLAY_SPOTS) {
-      if ('pad' in spot && spot.pad) {
-        const pad = spot.pad
-        const cos = Math.cos(pad.rotation)
-        const sin = Math.sin(pad.rotation)
-        const dx = x - pad.x
-        const dz = z - pad.z
-        const along = Math.abs(dx * cos + dz * sin)
-        const across = Math.abs(-dx * sin + dz * cos)
-        const half = pad.length / 2
-        const wide = pad.width / 2
-        if (along > half + 20 || across > wide + 20) continue
-        const inside = (1 - smoothstep(along, half, half + 18)) * (1 - smoothstep(across, wide, wide + 18))
-        if (inside <= 0) continue
-        /*
-          `pad.level` is the point whose ground the pad flattens TO,
-          and it defaults to the pad's own centre.
-
-          It exists because a venue can need two rectangles: the
-          labyrinth levels its 41.8 m square and, separately, the
-          twelve metres of approach in front of its mouth. Levelled to
-          its own centre, that second pad held the approach at the
-          natural ground there — 3.4 m above the maze's floor — and put
-          a step across the only way in, with the mouth trigger and the
-          start prompt floating above it.
-        */
-        const level = 'level' in pad && pad.level ? pad.level : [pad.x, pad.z]
-        height = height * (1 - inside) + smoothGround(level[0], level[1]) * inside
-        built = Math.max(built, inside)
-        continue
-      }
-      if (!('flat' in spot) || !spot.flat) continue
-      const distance = Math.hypot(x - spot.x, z - spot.z)
-      if (distance > spot.flat * 2.2) continue
-      const inside = 1 - smoothstep(distance, spot.flat * 0.85, spot.flat * 2.1)
-      if (inside <= 0) continue
-      const target = smoothGround(spot.x, spot.z)
-      height = height * (1 - inside) + target * inside
-      built = Math.max(built, inside)
-    }
-
-    /*
       THE SHORE WINS, and it has to be applied LAST.
 
       This used to run before the plates, the ramps, the circuit and
@@ -901,13 +891,29 @@ export class Terrain {
       racing line off Cold Tarn's edge is the fix, and it lives in
       `world-environment.ts`.
     */
+    /*
+      MEASURED IN METRES NOW, AND IT LETS GO OF BUILT GROUND.
+
+      Two changes to the block above, and the comment's own conclusion
+      — "moving the racing line off Cold Tarn's edge is the fix" — is
+      superseded by them. The reach was authored in metres and applied
+      as a normalised ellipse radius, so "13 m" was 30.2 m of ground on
+      lake-west-0 and 42.0 m on lake-west-2: that is why an apron
+      reached the racing line at all, and why it held the entire TNT
+      verge flat at full weight. And it took no notice of `built`,
+      which is why every one of the four attempts recorded above
+      failed — they were guarded on the wrong quantity.
+
+      Keyed on true metres and released past eight of them, the apron
+      still eases every bank it was written for and stops claiming
+      ground a track, a road or a venue already owns.
+    */
     for (const lake of LAKES) {
-      const normalised = Math.hypot((x - lake.x) / lake.rx, (z - lake.z) / lake.rz)
-      const scale = Math.min(lake.rx, lake.rz)
-      const reach = 1 + BANK_WIDTH / scale
-      const apron = reach + 13 / scale
-      if (normalised > apron) continue
-      const inside = 1 - smoothstep(normalised, reach, apron)
+      const outward = metresOutsideLake(x, z, lake)
+      if (outward > BANK_WIDTH + LAKE_APRON) continue
+      const inside = (1 - smoothstep(outward, BANK_WIDTH, BANK_WIDTH + LAKE_APRON))
+        * (1 - built * landValve(outward))
+      if (inside <= 0) continue
       height = height * (1 - inside) + (lake.level + 1.5) * inside
     }
 
@@ -955,9 +961,130 @@ export class Terrain {
       const past = polylineOverrun(x, z, RIVER.points)
       const span = 1 - smoothstep(past, 0, APRON_END_FADE)
       if (span > 0 && along < apron) {
+        // And the same valve the lakes get: the bank is still eased,
+        // built ground more than eight metres from the water is not.
         const inside = (1 - smoothstep(along, bankStart, apron)) * span
-        height = height * (1 - inside) + (RIVER.level + 1.5) * inside
+          * (1 - built * landValve(along - RIVER.width / 2))
+        if (inside > 0) height = height * (1 - inside) + (RIVER.level + 1.5) * inside
       }
+    }
+
+    /*
+      PLAY-SPOT PADS — MOVED, AND THE MOVE IS THE FIX.
+
+      A venue's floor is the most authored surface on the island and it
+      used to be levelled BEFORE the shore, the lake aprons and the
+      river apron, all three of which then took it back. Measured over
+      each footprint's own core, that cost the bowling deck 0.61 m, the
+      TNT pad 1.63 m and the time machine 2.08 m — none of it authored,
+      all of it a landscape stage flattening ground that a building was
+      already standing on.
+
+      Levelled here instead, after every apron and before the water is
+      carved, a floor is flat because nothing later than it has an
+      opinion about it. The carve stays downstream on purpose: the two
+      river fords are road corridors crossing flowing water, and they
+      exist only because the carve beats everything above it.
+
+      THE COAST GUARD IS NOT OPTIONAL. Running after the shore means a
+      pad now wins at the waterline too, and the labyrinth's plate
+      already overhangs the coastline by six metres at one corner. Held
+      unconditionally that corner is a plinth standing in the sea with
+      a step at its foot, which `world-shore-check.mjs` reports as a
+      wall — so the claim fades out exactly where the shore's own
+      safety valve fades in, and a pad may not hold ground that is not
+      there.
+    */
+    {
+      const guard = smoothstep(coastInset(x, z), -2, 8)
+      /*
+        CORE AND SHOULDER, WEAKENED SEPARATELY.
+
+        A pad is a rectangle plus an eighteen-metre blend so the car
+        can drive onto it. The rectangle is the venue and nothing may
+        argue with it; the blend is a convenience, and it was reaching
+        far past the venue and ironing whatever it found. Measured, the
+        bowling pad's shoulder put 1.25 m of camber across
+        bowling-west-spur twenty-four metres away, the TNT pad's laid a
+        1.22 m ridge down the middle of the circuit's west straight,
+        and the labyrinth approach's pulled the east ramp's deck down
+        1.48 m.
+
+        So the core keeps its claim and the shoulder yields to anything
+        already built — `built` at this point carries the plates, the
+        ramp pads, the circuit corridor and the roads, which is exactly
+        the list a venue's blend should defer to.
+      */
+      const shoulderClaim = (core: number, full: number) =>
+        (core + (full - core) * (1 - built)) * guard
+      /*
+        Play spots that build one continuous surface level their own
+        ground, the same way a district plate does — and they do it AFTER
+        the circuit and the roads, because a venue is a building and a
+        track's run-off shoulder is not.
+
+        That ordering is not a preference, it is a bug fix. The circuit's
+        corridor carries the ground with it out to six half-widths — 30 m
+        at CIRCUIT.width 10, and it was 42 m at 14 — and the bowling
+        precinct's west end is twenty metres from the
+        top loop's exit. Flattened before the circuit, the venue's pad was
+        overwritten by that shoulder and its own probe then set the deck
+        SIX METRES above the lane: the car was put down inside the
+        foundation and ejected through the floor on every throw.
+
+        A spot may declare a `pad` — a RECTANGLE — instead of a `flat`
+        radius. The bowling venue is 62 m long and 12 wide: a disc big
+        enough to hold it levels fourteen thousand square metres of the
+        north coast, and a disc small enough not to left the drive-up
+        apron hanging off the end of the flattening, which is where the
+        plinth used to become a wall.
+      */
+      for (const spot of PLAY_SPOTS) {
+        if ('pad' in spot && spot.pad) {
+          const pad = spot.pad
+          const cos = Math.cos(pad.rotation)
+          const sin = Math.sin(pad.rotation)
+          const dx = x - pad.x
+          const dz = z - pad.z
+          const along = Math.abs(dx * cos + dz * sin)
+          const across = Math.abs(-dx * sin + dz * cos)
+          const half = pad.length / 2
+          const wide = pad.width / 2
+          if (along > half + 20 || across > wide + 20) continue
+          const inside = (1 - smoothstep(along, half, half + 18)) * (1 - smoothstep(across, wide, wide + 18))
+          if (inside <= 0) continue
+          // The rectangle itself, with no blend: this is the venue.
+          const core = along <= half && across <= wide ? 1 : 0
+          /*
+            `pad.level` is the point whose ground the pad flattens TO,
+            and it defaults to the pad's own centre.
+
+            It exists because a venue can need two rectangles: the
+            labyrinth levels its 41.8 m square and, separately, the
+            twelve metres of approach in front of its mouth. Levelled to
+            its own centre, that second pad held the approach at the
+            natural ground there — 3.4 m above the maze's floor — and put
+            a step across the only way in, with the mouth trigger and the
+            start prompt floating above it.
+          */
+          const level = 'level' in pad && pad.level ? pad.level : [pad.x, pad.z]
+          const claim = shoulderClaim(core, inside)
+          height = height * (1 - claim) + smoothGround(level[0], level[1]) * claim
+          built = Math.max(built, claim)
+          continue
+        }
+        if (!('flat' in spot) || !spot.flat) continue
+        const distance = Math.hypot(x - spot.x, z - spot.z)
+        if (distance > spot.flat * 2.2) continue
+        const inside = 1 - smoothstep(distance, spot.flat * 0.85, spot.flat * 2.1)
+        if (inside <= 0) continue
+        const core = distance <= spot.flat * 0.85 ? 1 : 0
+        const target = smoothGround(spot.x, spot.z)
+        const claim = shoulderClaim(core, inside)
+        height = height * (1 - claim) + target * claim
+        built = Math.max(built, claim)
+      }
+
     }
 
     const water = inlandWater(x, z)
@@ -972,6 +1099,22 @@ export class Terrain {
       // `inlandWater` reaches — so it finishes instead of being cut
       // off a third of the way down, which is what left every lake
       // wearing a ring cliff.
+      /*
+        AND THE CARVE KEEPS ITS EXEMPTION, deliberately.
+
+        Weakening it by `built` was tried and measured, because the TNT
+        quarry and the time machine were both standing on a lake bank.
+        It works on those two and it costs every bank a step: the
+        protection arrives over five metres, and a bank that is carved
+        inside that distance and held outside it has a ledge exactly
+        where the transition sits. Measured, lake-west-1's east
+        approach went from 25.5 degrees to 48.6, and lake-west-0's to
+        59.3 — walls in a stage whose entire purpose is to stop walls.
+
+        The two venues were on the water because they were AUTHORED on
+        the water, and both have been moved off it. Placement was the
+        defect; this stage was not.
+      */
       const bank = smoothstep(water.edge, -BANK_WIDTH, 0)
       // Then a WADEABLE SHELF: the depth curve is raised to a power,
       // so the first few metres of water are ankle-deep and only the

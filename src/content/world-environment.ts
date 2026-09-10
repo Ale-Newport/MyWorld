@@ -439,11 +439,41 @@ export const PLAY_SPOTS = [
       grass to the kerb and 1.7 m to the water. The crate stack is laid
       along it, not across it.
     */
-    id: 'tnt', label: 'TNT', x: ZONES.tnt.x + 7.5, z: ZONES.tnt.z, radius: 7,
-    pad: { x: ZONES.tnt.x + 7.5, z: ZONES.tnt.z, length: 24, width: 12, rotation: Math.PI / 2 },
+    /*
+      +1.7 AND SIX WIDE, MEASURED AGAINST THE VERGE THAT EXISTS.
+
+      At +7.5 the pad's east edge was 0.2 m from lake-west-0's mapped
+      water and sat inside its bank, which the carve is allowed to win
+      — so 1.63 m of the quarry's floor was a lake bank, and no
+      ordering could have saved it. Walked at two-metre intervals, the
+      gap between the circuit's inner kerb and that water now runs
+      8.4 m at its narrowest (z 22) and 13.8 m at its widest.
+
+      Where in that gap is set by the occupancy registry rather than by
+      the middle of it: the circuit reserves `width/2 + 3.4` = 8.4 m
+      either side of the racing line, so the venue's own footprint has
+      to start beyond that. At the midpoint it overlapped by 2.6 m.
+      +3.6 puts the stack 11.1 m from the centreline, clear of the
+      reservation, and still 0.8 m short of the water at the pinch.
+    */
+    id: 'tnt', label: 'TNT', x: ZONES.tnt.x + 3.6, z: ZONES.tnt.z, radius: 7, footprint: 2,
+    pad: { x: ZONES.tnt.x + 3.6, z: ZONES.tnt.z, length: 24, width: 6, rotation: Math.PI / 2 },
     game: 'domino' as const,
   },
-  { id: 'timeMachine', label: 'TIME MACHINE', x: ZONES.timeMachine.x, z: ZONES.timeMachine.z, radius: 6.5, flat: 11 },
+  /*
+    MOVED 2.8 m AND SHRUNK, BETWEEN A LAKE AND A LABYRINTH.
+
+    At (46, 62) the venue had 3.0 m of ground before lake-south-1's
+    bank, so a `flat` of 11 reached 8.8 m into water the carve is
+    allowed to win — that is the whole of its 2.08 m of relief. There
+    is more room to the east and it runs out quickly: the labyrinth's
+    pad is a 47.8 m square whose west edge is x 55.1, and a venue
+    centred at (52, 64) put its core inside it, which simply traded a
+    lake for a maze floor. (48, 64) has 5.8 m of clear ground before
+    the lake and 7.1 m before the maze pad, so a 6.5 m disc — core
+    5.5 m — is the largest that touches neither.
+  */
+  { id: 'timeMachine', label: 'TIME MACHINE', x: ZONES.timeMachine.x, z: ZONES.timeMachine.z, radius: 6.5, flat: 6.5 },
   /* Inside the circuit's north loop. The pull is an interaction, not a
      force field over the racing surface. */
   { id: 'blackHole', label: 'BLACK HOLE', x: ZONES.blackHole.x, z: ZONES.blackHole.z, radius: 11 },
@@ -671,12 +701,28 @@ export function riverPresence(x: number, z: number): number {
 export function inlandWater(x: number, z: number): { level: number; depth: number; edge: number; flow: number } | null {
   let region: { level: number; depth: number; edge: number; flow: number } | null = null
   for (const lake of LAKES) {
-    const radius = Math.hypot((x - lake.x) / lake.rx, (z - lake.z) / lake.rz)
-    // Reach exactly one bank width past the mapped edge, so the blend
-    // has room to finish and the shore meets the land at zero.
-    const reach = 1 + BANK_WIDTH / Math.min(lake.rx, lake.rz)
-    if (radius < reach) {
-      const candidate = { level: lake.level, depth: lake.depth, edge: (1 - radius) * Math.min(lake.rx, lake.rz), flow: 0.16 }
+    /*
+      ONE BANK WIDTH PAST THE EDGE, IN METRES.
+
+      This read `1 + BANK_WIDTH / min(rx, rz)` and compared it against
+      a NORMALISED radius, which is not a distance: on lake-west-0
+      (13.8 x 9.6) the eight-metre bank spanned 11.5 m of ground to the
+      west, and on lake-west-2 (12.8 x 6.4) it spanned 16.0. The verge
+      between the circuit's inner kerb and this lake is 4.8 m wide at
+      its narrowest, so an over-long bank did not merely overhang the
+      TNT quarry's pad — it covered it, and the carve is the one stage
+      that is deliberately allowed to win.
+
+      `edge` keeps its meaning: negative outside the water, and how far
+      in once inside, both in metres.
+    */
+    const ux = (x - lake.x) / lake.rx
+    const uz = (z - lake.z) / lake.rz
+    const radius = Math.hypot(ux, uz)
+    const gradient = radius > 0 ? Math.hypot(ux / lake.rx, uz / lake.rz) / radius : 1 / Math.min(lake.rx, lake.rz)
+    const outward = gradient > 0 ? (radius - 1) / gradient : 0
+    if (outward < BANK_WIDTH) {
+      const candidate = { level: lake.level, depth: lake.depth, edge: -outward, flow: 0.16 }
       // Overlapping ellipses make one body: the deepest point wins, so
       // the seam between two of them is water, not a bar across it.
       if (!region || candidate.edge > region.edge) region = candidate
