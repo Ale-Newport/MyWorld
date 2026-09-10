@@ -2,7 +2,15 @@ import * as THREE from 'three'
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js'
 import type { Game } from '../Game'
 import type { Bin } from '../core/Disposal'
-import { LAKES, RIVER, WATERFALL, BRIDGES, OCEAN_LEVEL, inlandWater } from '@/content/world-environment'
+import { LAKES, LAKE_BODIES, RIVER, BRIDGES, OCEAN_LEVEL, coastInset, inlandWater } from '@/content/world-environment'
+
+/** One ellipse, as a GLSL predicate on the world-space point `p`.
+ *  A lake body is a UNION of these — the drawn lakes are blobby and
+ *  five overlapping transparent planes at one level is five times the
+ *  z-fighting, so each body gets one plane that discards outside all
+ *  of its ellipses. */
+const ellipseTest = (e: { x: number; z: number; rx: number; rz: number }) =>
+  `length((p-vec2(${e.x.toFixed(1)},${e.z.toFixed(1)}))/vec2(${e.rx.toFixed(1)},${e.rz.toFixed(1)}))<1.`
 
 /** WebGL water using world-space waves and terrain depth. The shore-depth and
  * wind ideas come from folio-2025 WaterSurface (MIT); GLSL and geometry are
@@ -18,17 +26,16 @@ export class Water {
   private wake = { value: new THREE.Vector4(0, 0, 0, 0) }
   private submerged = 0
   private splashAt = 0
-  private fallAt = 0
 
   constructor(private game: Game, bin: Bin) {
-    const surface = (geometry: THREE.BufferGeometry, level: number, flow: number, lake?:typeof LAKES[number]) => {
+    const surface = (geometry: THREE.BufferGeometry, level: number, flow: number, body?:typeof LAKE_BODIES[number]) => {
       const position = geometry.getAttribute('position')
       const depth = new Float32Array(position.count)
       for (let i = 0; i < position.count; i++) depth[i] = Math.max(0, level - game.world.terrain.colliderHeightAt(position.getX(i), position.getZ(i)))
       geometry.setAttribute('waterDepth', new THREE.BufferAttribute(depth, 1))
       const material = new THREE.ShaderMaterial({
         transparent: true, depthWrite: false, side: THREE.DoubleSide,
-        uniforms: { uTime: this.time, uWind: this.wind, uNight: this.night, uDetail: this.detail, uRain: this.rain, uWake: this.wake, uFlow: { value: flow }, uLake:{value:lake?new THREE.Vector4(lake.x,lake.z,lake.rx,lake.rz):new THREE.Vector4()} },
+        uniforms: { uTime: this.time, uWind: this.wind, uNight: this.night, uDetail: this.detail, uRain: this.rain, uWake: this.wake, uFlow: { value: flow } },
         vertexShader: `
           attribute float waterDepth;
           uniform float uTime; uniform float uWind; uniform float uFlow;
@@ -42,14 +49,14 @@ export class Water {
             gl_Position=projectionMatrix*viewMatrix*vec4(vWorld,1.);
           }`,
         fragmentShader: `
-          uniform float uTime; uniform float uWind; uniform float uFlow; uniform float uNight; uniform float uDetail; uniform float uRain; uniform vec4 uWake; uniform vec4 uLake;
+          uniform float uTime; uniform float uWind; uniform float uFlow; uniform float uNight; uniform float uDetail; uniform float uRain; uniform vec4 uWake;
           varying vec3 vWorld; varying float vDepth;
           float noise(vec2 p) { return sin(p.x*1.7+sin(p.y*1.3))*sin(p.y*1.9+sin(p.x*.6)); }
           void main() {
             if(vDepth<.02) discard;
             vec2 p=vWorld.xz;
-            if(uLake.z>0.&&length((p-uLake.xy)/uLake.zw)>1.)discard;
-            if(uFlow>.9&&(${LAKES.map(lake=>`length((p-vec2(${lake.x.toFixed(1)},${lake.z.toFixed(1)}))/vec2(${lake.rx.toFixed(1)},${lake.rz.toFixed(1)}))<1.`).join('||')}))discard;
+            ${body ? `if(!(${body.ellipses.map(e=>ellipseTest(e)).join('||')}))discard;` : ''}
+            if(uFlow>.9&&(${LAKES.map(ellipseTest).join('||')}))discard;
             float t=uTime;
             float n=uDetail>.5?noise(p*.7+vec2(t*.15,t*uFlow*.6)):sin(p.x+p.y+t*.5)*.3;
             vec3 normal=normalize(vec3(cos(p.x*.35+t*1.2)*.09+n*.06,1.,cos(p.y*.49-t*1.7)*.12));
@@ -74,10 +81,14 @@ export class Water {
     const ocean = new THREE.PlaneGeometry(1600, 1600, 128, 128); ocean.rotateX(-Math.PI / 2); ocean.translate(0, OCEAN_LEVEL, 0)
     surface(ocean, OCEAN_LEVEL, .3)
     // Lake grids and river quads share the same terrain depth calculation.
-    for (const lake of LAKES) {
-      const geometry = new THREE.PlaneGeometry(lake.rx * 2.3, lake.rz * 2.3, 48, 40)
-      geometry.rotateX(-Math.PI / 2); geometry.translate(lake.x, lake.level, lake.z)
-      surface(geometry, lake.level, .1,lake)
+    // One grid per BODY, over the union's bounding box.
+    for (const body of LAKE_BODIES) {
+      let x0=Infinity,x1=-Infinity,z0=Infinity,z1=-Infinity
+      for(const e of body.ellipses){x0=Math.min(x0,e.x-e.rx);x1=Math.max(x1,e.x+e.rx);z0=Math.min(z0,e.z-e.rz);z1=Math.max(z1,e.z+e.rz)}
+      const pad=2, width=x1-x0+pad*2, depth=z1-z0+pad*2
+      const geometry = new THREE.PlaneGeometry(width, depth, Math.ceil(width/1.6), Math.ceil(depth/1.6))
+      geometry.rotateX(-Math.PI / 2); geometry.translate((x0+x1)/2, body.level, (z0+z1)/2)
+      surface(geometry, body.level, .1, body)
     }
     const vertices: number[] = []
     // Shared mitered banks avoid transparent overlaps at bends. Sampling across
@@ -103,7 +114,6 @@ export class Water {
     }
     const river = new THREE.BufferGeometry(); river.setAttribute('position',new THREE.Float32BufferAttribute(vertices,3)); river.computeVertexNormals(); surface(river,RIVER.level,1)
     this.buildBridges()
-    this.buildWaterfall()
     game.physics.waterAt = (x,z) => { const w=inlandWater(x,z); return w && w.edge>0 ? w.level : null }
     game.particles.waterLevelAt=(x,z)=>game.physics.waterAt?.(x,z)??OCEAN_LEVEL
     game.renderer.scene.add(this.group); bin.object3D(this.group)
@@ -120,8 +130,8 @@ export class Water {
       no way to be expressed.
     */
     for(const bridge of BRIDGES) {
-      const wood = new THREE.MeshStandardMaterial({color:bridge.kind==='modern'?'#d8d9c8':'#a8895c',roughness:.85})
-      const railing = new THREE.MeshStandardMaterial({color:bridge.kind==='modern'?'#49675a':'#6d6250',roughness:.75})
+      const wood = new THREE.MeshStandardMaterial({color:'#a8895c',roughness:.85})
+      const railing = new THREE.MeshStandardMaterial({color:'#6d6250',roughness:.75})
       const beams:THREE.BufferGeometry[]=[]
       const box=(w:number,h:number,d:number,x:number,y:number,z:number)=>{const g=new THREE.BoxGeometry(w,h,d);g.translate(x,y,z);beams.push(g)}
       const group=new THREE.Group()
@@ -165,19 +175,6 @@ export class Water {
   }
 
 
-  private buildWaterfall():void {
-    const f=WATERFALL
-    const material=new THREE.ShaderMaterial({transparent:true,side:THREE.DoubleSide,depthWrite:false,uniforms:{uTime:this.time},vertexShader:'varying vec2 vUv; void main(){vUv=uv;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}',fragmentShader:`uniform float uTime;varying vec2 vUv;void main(){float streak=sin(vUv.x*87.+sin(vUv.x*32.)+uTime*.3)*.12+sin(vUv.y*28.+uTime*9.)*.08;float edge=smoothstep(0.,.1,vUv.x)*smoothstep(0.,.1,1.-vUv.x);gl_FragColor=vec4(vec3(.61,.86,.78)+streak,edge*.88);#include <colorspace_fragment>}`.replace(';#include',';\n#include')})
-    const curtain=new THREE.Mesh(new THREE.PlaneGeometry(f.width,f.top-f.bottom,12,8),material)
-    curtain.position.set(f.x,(f.top+f.bottom)/2,f.z);this.group.add(curtain)
-    const stone=new THREE.MeshStandardMaterial({color:'#737f6c',roughness:1,flatShading:true})
-    const pieces:THREE.BufferGeometry[]=[]
-    for(let i=0;i<11;i++) {const g=new THREE.IcosahedronGeometry(1,0);g.scale(2.5+(i%3),3+(i%4),2);g.translate(f.x+(i-5)*2.1, i>2&&i<8?4:1,f.z-2.8);pieces.push(g)}
-    const mesh=new THREE.Mesh(mergeGeometries(pieces),stone);pieces.forEach(g=>g.dispose());mesh.castShadow=true;this.group.add(mesh)
-    // The grotto remains accessible from the sides behind the curtain.
-    this.game.interactions.add({id:'waterfall-secret',position:new THREE.Vector3(f.x,0,f.z-7),radius:4,label:'THE QUIET COMMIT',sublabel:'A small space behind the noise.',onInteract:()=>{this.game.achievements.set('waterfall',1);this.game.recordSecret('waterfall');this.game.audio.play('achievement')}})
-  }
-
   private update():void {
     const game=this.game,p=game.player.position,now=game.ticker.elapsed,dt=Math.min(.05,game.ticker.delta)
     this.time.value=now;this.wind.value=game.weather.windStrength;this.night.value=game.lighting.nightFactor
@@ -202,10 +199,7 @@ export class Water {
       if(game.minigames.current?.id==='circuit')game.minigames.current.recover()
       else {game.player.respawn();game.audio.play('land',.5)}
     }
-    if(now>this.fallAt&&p.distanceTo(new THREE.Vector3(WATERFALL.x,0,WATERFALL.z))<85) {
-      this.fallAt=now+.2;game.particles.burst(new THREE.Vector3(WATERFALL.x+(Math.random()-.5)*8,-.4,WATERFALL.z+1),6,'splash')
-    }
     if(water)game.audio.environment('water',Math.max(.1,1-Math.abs(water.edge)/12)*.5)
-    else if(Math.hypot(p.x,p.z)>335)game.audio.environment('water',Math.min(.5,(Math.hypot(p.x,p.z)-335)/70))
+    else if(coastInset(p.x,p.z)<14)game.audio.environment('water',Math.min(.5,(14-coastInset(p.x,p.z))/40))
   }
 }

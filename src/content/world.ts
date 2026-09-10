@@ -3,6 +3,8 @@ import { projects, projectBySlug } from './projects'
 import { experience } from './experience'
 import { education } from './education'
 import { findNear, type Zone } from './world-layout'
+import { PATHS, ZONES } from './world-map'
+import { CIRCUIT, WORLD_RADIUS } from './world-environment'
 
 /* ============================================================
    ALEJANDRO'S WORLD — SPATIAL PRESENTATION LAYER
@@ -13,55 +15,44 @@ import { findNear, type Zone } from './world-layout'
    through the `ref` field below, so updating a project updates
    the scroll journey and the world at the same time.
 
+   WHERE THE POSITIONS COME FROM. Not from here. The island is a
+   hand-drawn map, digitised into `world-map.ts` and turned into
+   geography by `world-environment.ts`; this file places the built
+   things against those zones. If a number here is not read out of
+   `ZONES`, `PATHS` or `CIRCUIT`, it is an offset from one that is,
+   and the comment says which.
+
    Coordinates are metres in the physics world. +X is east, +Z
-   is south, Y is up. The vehicle is ~2.6 m long and tops out
-   around 10 m/s cruising and ~35 m/s boosting, so a 90 m hop
-   between districts is a few seconds of driving.
+   is south, Y is up — so the top of the drawing is −Z. The
+   vehicle is ~2.6 m long and tops out around 10 m/s cruising and
+   ~35 m/s boosting, so a 90 m hop between places is a few seconds
+   of driving.
    ============================================================ */
 
 export type DistrictId =
-  | 'hub'
-  | 'kcl'
-  | 'teaching'
-  | 'algorithms'
-  | 'ucl'
-  | 'lab'
-  | 'chess'
-  | 'stock'
-  | 'focus'
-  | 'gym'
-  | 'client'
+  | 'landing'
   | 'circuit'
-  | 'labyrinth'
-  | 'voxel'
-  | 'network'
-  | 'studio'
-  | 'orbit'
-  | 'archive'
-  | 'void'
+  | 'social'
+  | 'bowling'
+  | 'projects'
+  | 'achievements'
+  | 'maze'
+  | 'timeMachine'
+  | 'blackhole'
+  | 'tnt'
 
 /** How a landmark is built in 3D. One builder per value. */
 export type LandmarkVisual =
   | 'sign'
   | 'monument'
   | 'billboard'
-  | 'browserTower'
-  | 'device'
   | 'idCard'
-  | 'graphSculpture'
-  | 'processBlocks'
-  | 'cipherWall'
-  | 'databaseTower'
-  | 'moduleStack'
-  | 'researchShell'
-  | 'dataField'
-  | 'chessboard'
-  | 'orderBook'
-  | 'station'
-  | 'gate'
-  | 'island'
   | 'terminal'
-  | 'duck'
+  | 'island'
+  | 'gate'
+  | 'camera'
+  | 'trophy'
+  | 'singularity'
   | 'bracket'
 
 /** What pressing ENTER inside the landmark's radius does. */
@@ -71,6 +62,8 @@ export type LandmarkInteraction =
   | 'minigame'
   | 'link'
   | 'note'
+  | 'projects'
+  | 'achievements'
   | 'none'
 
 /** Joins a landmark to the single source of truth. */
@@ -96,8 +89,7 @@ export interface District {
    * district can be discoverable from a distance without stamping a
    * disc on the landscape. Leave it out and the district sits on
    * natural ground, which is what most of them should do; set it
-   * only where one continuous surface actually matters (a board, a
-   * maze floor, a slab of asphalt, paving the letters lie on).
+   * only where one continuous surface actually matters.
    */
   plate?: number
   theme: Theme
@@ -107,10 +99,10 @@ export interface District {
   /** Corresponding chapter in the scroll journey, for cross-links. */
   chapter?: ChapterId
   /** Ground treatment used by the terrain builder. */
-  ground: 'paper' | 'plate' | 'grid' | 'dark' | 'voxel' | 'asphalt' | 'water'
+  ground: 'paper' | 'plate' | 'grid' | 'dark' | 'asphalt' | 'water'
   /** Districts are revealed on the map only once visited. */
   secret?: boolean
-  /** Signposted from the hub. */
+  /** Signposted from the landing. */
   signposted?: boolean
 }
 
@@ -143,36 +135,24 @@ export interface Landmark {
   secret?: boolean
 }
 
-export type MinigameId =
-  | 'circuit'
-  | 'labyrinth'
-  | 'chess'
-  | 'pipeline'
-  | 'retrieval'
-  | 'orderRush'
-  | 'gymCircuit'
-  | 'threeBody'
-  | 'packets'
-  | 'bowling'
-  | 'debugDash'
-  | 'riverRun'
-  | 'chipRelay'
-  | 'domino'
-  | 'deployment'
+/** Four physical experiences survive the map. Everything else the
+ *  world used to run as a mini-game was tied to a district the
+ *  drawing does not have, and lives in the PROJECTS archive now. */
+export type MinigameId = 'circuit' | 'labyrinth' | 'bowling' | 'domino'
 
 /* ============================================================
    DISTRICTS
-   The macro map. Roughly the arrangement in the brief: the lab
-   to the north, the two universities east and west of the hub,
-   products and client work to the south.
+
+   The named places on the drawing, and nothing else. Positions
+   are read straight out of the plan.
    ============================================================ */
 
 export const districts: District[] = [
   {
-    id: 'hub',
-    label: 'CENTRAL HUB',
-    short: 'HOME',
-    x: 18, z: -2, radius: 32, plate: 30,
+    id: 'landing',
+    label: 'LANDING',
+    short: 'LANDING',
+    x: ZONES.landing.x, z: ZONES.landing.z, radius: 30, plate: 15,
     theme: 'light', accent: '#d4491f',
     ground: 'paper',
     blurb: 'Where the name is written large enough to drive on.',
@@ -180,202 +160,126 @@ export const districts: District[] = [
     signposted: true,
   },
   {
-    id: 'lab',
-    label: 'AI LAB',
-    short: 'AI LAB',
-    x: 48, z: -96, radius: 26, plate: 18,
-    theme: 'dark', accent: '#d4491f',
-    ground: 'dark',
-    blurb: 'Metaview. Half a million documents, standing up as light.',
-    chapter: 'metaview',
+    id: 'circuit',
+    label: 'NEWPORT CIRCUIT',
+    short: 'RACE',
+    // The start/finish line. The TRACK is 954 m of the western half;
+    // this disc is where you join it.
+    x: ZONES.raceStart.x, z: ZONES.raceStart.z, radius: 21,
+    theme: 'light', accent: '#8c1f14',
+    ground: 'asphalt',
+    blurb: 'One lap of the long way round. Your best time lives in this browser.',
     signposted: true,
   },
   {
-    id: 'kcl',
-    label: "KING'S COLLEGE LONDON",
-    short: 'KCL',
-    x: -2, z: -40, radius: 32,
-    theme: 'light', accent: '#8d8467',
-    ground: 'plate',
-    blurb: 'Foundations. Five modules, built as five structures.',
-    chapter: 'kcl',
-    signposted: true,
-  },
-  {
-    id: 'ucl',
-    label: 'UNIVERSITY COLLEGE LONDON',
-    short: 'UCL',
-    x: 90, z: -34, radius: 30,
+    id: 'social',
+    label: 'SOCIAL',
+    short: 'SOCIAL',
+    // Twenty, not twenty-six. At 26 the discovery disc reached z −114
+    // and the bowling lane runs along z −112.6: driving a ball down the
+    // lane announced "you have arrived at SOCIAL".
+    x: ZONES.social.x, z: ZONES.social.z, radius: 14, plate: 11,
     theme: 'light', accent: '#5f8490',
     ground: 'plate',
-    blurb: 'The next degree. Still under construction, on purpose.',
-    chapter: 'ucl',
+    blurb: 'A camera on a tripod, and four ways to get hold of me.',
+    chapter: 'contact',
     signposted: true,
   },
   {
-    id: 'teaching',
-    label: 'DEBUG YARD',
-    short: 'TEACHING',
-    x: -4, z: 28, radius: 20,
-    theme: 'light', accent: '#2f6f5e',
-    ground: 'grid',
-    blurb: 'Graduate Teaching Assistant. Knock the failing blocks over.',
-    chapter: 'teaching',
-    signposted: true,
-  },
-  {
-    id: 'algorithms',
-    label: 'ALGORITHM FIELD',
-    short: 'ALGOS',
-    x: 4, z: 68, radius: 26,
-    theme: 'light', accent: '#6f6f76',
-    ground: 'grid',
-    blurb: 'Search, games and experiments. The things built for the sake of building.',
-    chapter: 'playground',
-    signposted: true,
-  },
-  {
-    id: 'focus',
-    label: 'FOCUS',
-    short: 'FOCUS',
-    x: 52, z: 22, radius: 24,
-    theme: 'light', accent: '#d4491f',
-    ground: 'plate',
-    blurb: 'A phone the size of a building, and the pipeline that fills it.',
-    chapter: 'focus',
-    signposted: true,
-  },
-  {
-    id: 'gym',
-    label: 'GYM APP',
-    short: 'GYM',
-    x: 48, z: 62, radius: 20,
-    theme: 'light', accent: '#2f6f5e',
-    ground: 'plate',
-    blurb: 'One rigged athlete. Many exercises. Drive the circuit.',
-    chapter: 'gym',
-    signposted: true,
-  },
-  {
-    id: 'client',
-    label: 'CLIENT CITY',
-    short: 'CLIENTS',
-    x: 108, z: 32, radius: 24,
+    id: 'bowling',
+    label: 'NEWPORT LANES',
+    short: 'BOWLING',
+    // The venue's own middle, not the foul line: the lane runs west
+    // from PLAY_SPOTS.bowling and the district should sit over it.
+    /* Follows the venue, which moved 12 m east and 8 m south to keep
+       its pad out of the sea. A district centre that stays where the
+       venue used to be puts the toast, the ground paint and the map
+       marker in the wrong field. */
+    x: -6.2, z: -71, radius: 32,
     theme: 'light', accent: '#a8683f',
-    ground: 'asphalt',
-    blurb: 'Pansofía / Grupo Newport. Fourteen sites, shipped as towers.',
-    chapter: 'pansofia',
+    ground: 'plate',
+    blurb: 'Ten pins, one very large ball, and a car instead of a bowler.',
     signposted: true,
   },
   {
-    id: 'chess',
-    label: 'CHESS TERMINAL',
-    short: 'CHESS',
-    x: -6, z: -80, radius: 14, plate: 13,
-    theme: 'dark', accent: '#d4491f',
-    ground: 'dark',
-    blurb: 'Camera to CNN to FEN to engine. Park and solve one.',
-    chapter: 'chess',
-    signposted: true,
-  },
-  {
-    id: 'stock',
-    label: 'EXCHANGE',
-    short: 'MARKET',
-    // Plate 20, not 28. At 28 this paved a fifty-six-metre disc whose
-    // shoulder reached the ring road's north-east corner, and the
-    // furniture the district builds on it stood in the carriageway.
-    x: 66, z: -72, radius: 24, plate: 20,
-    theme: 'dark', accent: '#2f6f5e',
-    ground: 'dark',
-    blurb: 'Forty thousand trades, matched between two moving walls.',
-    chapter: 'stock',
-    signposted: true,
-  },
-  {
-    id: 'circuit',
-    label: 'RACE CIRCUIT',
-    short: 'CIRCUIT',
-    x: -42, z: 88, radius: 26, plate: 26,
-    theme: 'light', accent: '#d4491f',
-    ground: 'asphalt',
-    blurb: 'Two laps of the long way round. Your best time lives in this browser.',
-    signposted: true,
-  },
-  {
-    id: 'labyrinth',
-    label: 'LABYRINTH',
-    short: 'MAZE',
-    // West and north of where it was: the maze is built around this
-    // point and its old south-east corner was past the coastline.
-    x: 92, z: -62, radius: 22, plate: 24,
-    theme: 'light', accent: '#6f6f76',
+    id: 'projects',
+    label: 'PROJECTS',
+    short: 'PROJECTS',
+    x: ZONES.projects.x, z: ZONES.projects.z, radius: 20, plate: 9,
+    theme: 'light', accent: '#5b6f8a',
     ground: 'plate',
-    blurb: 'A real maze with a real centre. No shortcuts through the walls.',
-  },
-  {
-    id: 'voxel',
-    label: 'SEED CHUNKS',
-    short: 'VOXELS',
-    x: 118, z: -6, radius: 20, plate: 20,
-    theme: 'light', accent: '#8d8467',
-    ground: 'voxel',
-    blurb: 'The terrain gives up and becomes cubes.',
-  },
-  {
-    id: 'network',
-    label: 'TUNNEL',
-    short: 'VPN',
-    x: 76, z: -100, radius: 20,
-    theme: 'dark', accent: '#5f8490',
-    ground: 'dark',
-    blurb: 'Two nodes, one hazard, and packets that stop being readable.',
-  },
-  {
-    id: 'studio',
-    label: 'KEYFRAMES',
-    short: 'STUDIO',
-    x: 104, z: 74, radius: 22, plate: 17,
-    theme: 'light', accent: '#7d7488',
-    ground: 'plate',
-    blurb: 'An animation studio where the timeline drives the scenery.',
-  },
-  {
-    id: 'orbit',
-    label: 'THREE BODIES',
-    short: 'ORBIT',
-    x: 38, z: -46, radius: 14,
-    theme: 'light', accent: '#2f6f5e',
-    ground: 'plate',
-    blurb: 'Three masses overhead, integrated live. Nudge one and watch it fail.',
-  },
-  {
-    id: 'archive',
-    label: 'PROJECT ARCHIVE',
-    short: 'ARCHIVE',
-    // Pulled south and tightened: at radius 70 it reached back over
-    // the gym, and two districts claiming the same ground makes the
-    // "you have arrived" toast meaningless.
-    x: 34, z: 104, radius: 30, plate: 22,
-    theme: 'light', accent: '#6f6f76',
-    ground: 'plate',
-    blurb: 'Everything smaller, kept honestly, on its own small island.',
+    blurb: 'Everything I have built, in one place instead of nine.',
     chapter: 'universe',
     signposted: true,
   },
   {
-    id: 'void',
-    label: '404',
-    short: '404',
-    // Past the edge of the world, on the bearing of the stunt ramp
-    // and 91 m out from its lip — which is where a boosting car
-    // actually comes down. See the island check in
-    // scripts/world-qa.mjs; that distance is measured, not chosen.
-    x: 20, z: -233, radius: 30, plate: 14,
-    theme: 'dark', accent: '#d4491f',
-    ground: 'water',
-    blurb: 'You were not supposed to get here.',
+    id: 'achievements',
+    label: 'ACHIEVEMENTS',
+    short: 'AWARDS',
+    x: ZONES.achievements.x, z: ZONES.achievements.z, radius: 17, plate: 11,
+    theme: 'light', accent: '#c8922f',
+    ground: 'plate',
+    blurb: 'A star on a plinth, and the list of what you have found.',
+    signposted: true,
+  },
+  {
+    id: 'maze',
+    label: 'LABYRINTH',
+    short: 'MAZE',
+    x: ZONES.maze.x, z: ZONES.maze.z, radius: 36,
+    /* A PLATE, because a labyrinth has a floor.
+
+       Without one the square sat across the hillside that runs down to
+       the south-east beach: 2.8 m of fall from its west wall to its
+       east one, an 11.8° cross-slope through the middle of it, and a
+       corner three metres under the rest. Corridors seven metres wide
+       on a side-slope roll a car into a wall, and a car on its roof
+       between two walls cannot hop itself back over — the tour found
+       one there and left it there for the rest of the run.
+
+       26 rather than 21: `plate * 0.8` is the fully-flat radius, so 26
+       flattens everything inside 20.8 m — the whole square bar its
+       four corners, which are wall cells. The shore profile is applied
+       after this, so the plate cannot push the beach out to sea. */
+    /* NO PLATE. A disc big enough to hold a 46 m square dead flat to
+       its corners is 41 across, ramps for a further 22 m and paves out
+       to 63 — a bald circle a quarter of the island wide. The
+       labyrinth levels its own floor with a RECTANGLE instead; see
+       `PLAY_SPOTS.maze` in world-environment.ts. */
+    theme: 'light', accent: '#4f7a4a',
+    ground: 'plate',
+    blurb: 'A real maze with a real centre. No shortcuts through the walls.',
+    signposted: true,
+  },
+  {
+    id: 'timeMachine',
+    label: 'TIME MACHINE',
+    short: 'TIME',
+    x: ZONES.timeMachine.x, z: ZONES.timeMachine.z, radius: 11, plate: 7,
+    theme: 'light', accent: '#7a6cb0',
+    ground: 'plate',
+    blurb: 'It does not go anywhere. It goes when.',
+    signposted: true,
+  },
+  {
+    id: 'blackhole',
+    label: 'BLACK HOLE',
+    short: 'VOID',
+    x: ZONES.blackHole.x, z: ZONES.blackHole.z, radius: 11,
+    theme: 'dark', accent: '#3b3b45',
+    ground: 'dark',
+    blurb: 'Inside the north loop. You will see it every lap.',
     secret: true,
+  },
+  {
+    id: 'tnt',
+    label: 'TNT',
+    short: 'TNT',
+    // Beside the circuit's west run, on the infield verge.
+    x: ZONES.tnt.x + 8, z: ZONES.tnt.z, radius: 10,
+    theme: 'light', accent: '#e2b33a',
+    ground: 'grid',
+    blurb: 'Eighteen crates, one fuse, and a racing line you should not park on.',
   },
 ]
 
@@ -384,20 +288,19 @@ export const districtById = Object.fromEntries(districts.map((d) => [d.id, d])) 
   District
 >
 
-/** Radius of the drivable world. Beyond this the ground stops. */
-export const WORLD_RADIUS = 160
+/** Re-exported for the handful of callers that still import it from
+ *  here. See the note on its declaration: it is a fallback, not a
+ *  description of the island. */
+export { WORLD_RADIUS }
 
-/** Where a fresh visitor starts. This is the `hub` respawn, and it is
- *  the one place the id matters: `Respawns.getDefault()` looks it up by
- *  name. The old free-standing `SPAWN` constant was exported, documented
- *  as "where a fresh visitor starts" and imported by nothing — and would
- *  have put them 4.5 m inside the DEBUG YARD if it had been. */
-export const SPAWN_RESPAWN = 'hub'
+/** Where a fresh visitor starts. This is the id `Respawns.getDefault()`
+ *  looks up, and the one place a respawn's name matters. */
+export const SPAWN_RESPAWN = 'landing'
 
 /* ============================================================
    RESPAWN POINTS
-   `R` teleports to the nearest of these. One per district, plus
-   a few along the long roads, so nowhere is a long walk back.
+   `R` teleports to the nearest of these. One per place, plus
+   a few along the long paths, so nowhere is a long walk back.
    ============================================================ */
 
 export interface Respawn {
@@ -411,83 +314,90 @@ export interface Respawn {
 
 export const respawns: Respawn[] = [
   /*
-    Authored, not nudged. These used to be written by hand and then
-    quietly relocated at load by `Respawns.validate()`, so the numbers
-    in this file were not the numbers the game used — and six of them
-    sat outside the district they claim to serve while several put the
-    car down inside a wall.
-
-    They are now generated against the occupancy registry
-    (`scripts/world-layout-check.mjs` proves it, and re-derived by
-    `scripts/_respawn-fix.mjs`): every one is on free ground, within
-    sixteen metres of a road so there is a way out, inside its own
-    district, and facing that district's centre — which is the thing
-    you came to look at.
-
-    Three of them — hub, voxel and network — carry a further nudge that
-    only the finished world could find: a static registry knows where a
-    voxel field is declared, not how tall the stack it generates turns
-    out to be. `Respawns.validate()` still runs as a net (and now
-    actually works — it used to compare the heightfield with itself and
-    so had never moved a point in its life), but with these baked in it
-    finds nothing to do.
+    Authored against the drawing, then checked: every one is on free
+    ground, near a path so there is a way out, inside the place it
+    claims to serve, and facing that place's centre — which is the
+    thing you came to look at. `scripts/world-layout-check.mjs`
+    proves it and `Respawns.validate()` runs as a net.
   */
-  // On the ring road where it leaves the hub, facing back at the name
-  // across the forecourt.
-  { id: 'hub', x: 28, z: 2, rotation: 2.6, district: 'hub' },
-  // The whole north side of the hub plate is the physical name, so the
-  // second hub point is on the forecourt south of it rather than behind
-  // the letters, where it used to spawn the car inside an A.
-  { id: 'hub-plaza', x: 8.3, z: 10.7, rotation: -0.919, district: 'hub' },
-  { id: 'kcl', x: -8.7, z: -58.7, rotation: 1.227, district: 'kcl' },
-  { id: 'ucl', x: 108.6, z: -35.1, rotation: 3.083, district: 'ucl' },
-  { id: 'lab', x: 63.5, z: -100.4, rotation: 2.865, district: 'lab' },
-  { id: 'teaching', x: -12.3, z: 43.1, rotation: -1.068, district: 'teaching' },
-  { id: 'algorithms', x: 5.3, z: 84.1, rotation: -1.651, district: 'algorithms' },
-  // West of the phone's plinth, which is 34 by 17 m and which this
-  // point used to be standing on.
-  { id: 'focus', x: 28, z: 26, rotation: 0.165, district: 'focus' },
-  { id: 'gym', x: 36.2, z: 65.7, rotation: -0.304, district: 'gym' },
-  { id: 'client', x: 116.2, z: 19.6, rotation: 2.155, district: 'client' },
-  { id: 'chess', x: 12, z: -64, rotation: -2.415, district: 'chess' },
-  { id: 'stock', x: 54, z: -70, rotation: 0.165, district: 'stock' },
-  { id: 'circuit', x: -54.7, z: 78.1, rotation: 0.662, district: 'circuit' },
-  // Off the maze's east side, on the ring: the maze is 54 by 44 m
-  // and this point used to be inside it.
-  { id: 'labyrinth', x: 124, z: -56, rotation: 3.142, district: 'labyrinth' },
-  { id: 'voxel', x: 136.8, z: -2.6, rotation: -3.085, district: 'voxel' },
-  { id: 'network', x: 92.3, z: -89.8, rotation: -2.493, district: 'network' },
-  { id: 'studio', x: 104, z: 87.6, rotation: -1.571, district: 'studio' },
-  { id: 'orbit', x: 33.7, z: -53.6, rotation: 1.056, district: 'orbit' },
-  { id: 'archive', x: 52.6, z: 102.8, rotation: 3.077, district: 'archive' },
-  { id: 'road-west', x: -7.5, z: 6, rotation: -0.6, district: 'hub' },
-  { id: 'road-east', x: 44, z: -16, rotation: 2.6, district: 'hub' },
-  // Just south of the 2023 timeline plate: landing on a plate fires
-  // the TIME TRAVELLER sequence, and respawning onto one made that
-  // secret go off every time you pressed R.
-  { id: 'road-south', x: 20.4, z: 33, rotation: -1.651, district: 'hub' },
+  // On the forecourt east of the name, facing back across it.
+  { id: 'landing', x: 54.6, z: 6, rotation: -2.42, district: 'landing' },
+  // The north side of the landing is the physical name, so the second
+  // point is on the open ground west of it rather than inside an A.
+  { id: 'landing-west', x: 22.4, z: -1.4, rotation: -0.28, district: 'landing' },
+  { id: 'circuit', x: -43.4, z: -0.7, rotation: 2.24, district: 'circuit' },
+  { id: 'social', x: -1.4, z: -50.4, rotation: -2.36, district: 'social' },
+  /* Off the east end of the lane, FACING OUT.
+
+     It faced west, down the lane at a bed that stood 0.81 m proud of
+     the pad two metres in front of it: the car climbed the lip and
+     beached itself, making 3.5 m in 1.4 s of throttle against 11-19 m
+     at every other respawn, and because R lands on the same point the
+     mini-game sweep failed with it.
+
+     The lane is flush with the ground now — 0.06 m, with a skirt
+     ramping every edge — so the step is gone, but the point still
+     faces out: the way ONTO the lane is the prompt, and a respawn you
+     can drive straight off is worth more than one with a view. */
+  { id: 'bowling', x: 32, z: -71, rotation: 0, district: 'bowling' },
+  { id: 'projects', x: 61.6, z: -42, rotation: -0.87, district: 'projects' },
+  /* OFF THE PODIUM'S FLANK. The set dressing builds a three-tier podium
+     with an entry wedge on each tier, so it can be driven up — along its
+     own approach. This point sat beside it facing across that approach,
+     and a 0.42 m step taken sideways rolls a 2.5 kg car: `world-qa`
+     reported the respawn as flipped about one run in three. */
+  { id: 'achievements', x: -36, z: -14, rotation: 2.66, district: 'achievements' },
+  // Off the maze's west side: the maze is 35 m square and this used
+  // to be the sort of point that lands inside a wall.
+  /* OUTSIDE THE WALLS, on the spur that arrives at the gate.
+     (86.8, 56) is inside the 46 m square — nineteen metres west and six
+     north of its centre, which on the current seed is an open corridor
+     and on any other seed is a wall. Respawning eight corridors deep
+     with no way of knowing where you are is not a respawn. This stands
+     on the spur from the time machine, west of the square and facing
+     along it towards the gate; `respawn + road` is a pairing the
+     registry expects. The approach straight in front of the mouth is
+     not available: the pad's own footprint reaches 33 m from the maze
+     centre and `ramp-landing` claims another 19 m of it. */
+  { id: 'maze', x: 80, z: 40, rotation: 0.25, district: 'maze' },
+  /* Follows the venue, which moved 23 m west this pass to clear the
+     enlarged labyrinth. Left where it was, the point stood off the
+     district it serves and the car flipped on the bank behind it. */
+  { id: 'timeMachine', x: 48, z: 52, rotation: 0.9, district: 'timeMachine' },
+  // On the long paths, so the east of the island is never a walk.
+  { id: 'road-ramp', x: 52, z: -55, rotation: 0.8 },
+  { id: 'road-south', x: 50.4, z: 30.8, rotation: 1.4 },
+  { id: 'road-race', x: -14, z: -4.2, rotation: 3.02 },
 ]
 
 /* ============================================================
    LANDMARKS
-   Positions are absolute, not district-relative, so a landmark
-   can straddle a boundary without special-casing.
+
+   The built things. Twenty-eight of them, against sixty-one on
+   the old island — the drawing has ten places, not nineteen, and
+   the projects that used to have a district each are reached
+   through one terminal now.
    ============================================================ */
 
-const p = (id: string): ContentRef => ({ kind: 'project', id })
-const xp = (id: string): ContentRef => ({ kind: 'experience', id })
-const ed = (id: string): ContentRef => ({ kind: 'education', id })
-
 export const landmarks: Landmark[] = [
-  /* ---- HUB ---------------------------------------------- */
+  /* ---- LANDING ------------------------------------------- */
   {
-    id: 'hub-name', district: 'hub', label: 'ALEJANDRO NEWPORT',
-    x: 18, z: -7.7, visual: 'monument', interaction: 'none', scale: 1,
+    id: 'landing-name', district: 'landing', label: 'ALEJANDRO NEWPORT',
+    /* The letters themselves are physics bodies built by Playground;
+       this is the plinth and the anchor for the prompt.
+
+       Offset to the name's north-west corner rather than its middle.
+       Dead centre, on a 266 m island, is 6.9 m from the landing-projects
+       carriageway and the plinth needs 8.7; here it is 12.8, and it is
+       still inside the letters' own footprint, which is where a plinth
+       for the name belongs. */
+    x: ZONES.nameLetters.x - 4.4, z: ZONES.nameLetters.z - 4,
+    visual: 'monument', interaction: 'none', scale: 1,
   },
   {
-    id: 'hub-welcome', district: 'hub', label: 'WELCOME',
+    id: 'landing-welcome', district: 'landing', label: 'WELCOME',
     sublabel: 'PRESS ENTER',
-    x: 37.7, z: 0.9, visual: 'billboard', interaction: 'panel', radius: 7.7,
+    x: 68, z: 2, rotation: Math.PI * 1.05, visual: 'billboard', interaction: 'panel', radius: 8,
     panel: {
       title: 'WELCOME',
       lines: [
@@ -501,503 +411,187 @@ export const landmarks: Landmark[] = [
     },
   },
   {
-    id: 'hub-about', district: 'hub', label: 'ABOUT',
-    x: 1.7, z: -4.4, rotation: Math.PI * 0.25, visual: 'idCard',
-    interaction: 'panel', radius: 12, ref: { kind: 'profile' },
-    achievement: 'about',
+    id: 'landing-about', district: 'landing', label: 'ABOUT',
+    x: 15.4, z: 14.2, rotation: Math.PI * 0.35, visual: 'idCard',
+    interaction: 'panel', radius: 7, ref: { kind: 'profile' },
+  },
+  /* The signposts. One per direction you can actually leave in, set
+     back from the junction so a car leaving the landing does not have
+     to drive through them. */
+  {
+    id: 'landing-sign-race', district: 'landing', label: 'RACE CIRCUIT', sublabel: 'BEST LAP',
+    x: 18.2, z: -9.8, rotation: Math.PI * 1.02, visual: 'sign', interaction: 'none',
   },
   {
-    id: 'hub-sign-kcl', district: 'hub', label: 'KCL', sublabel: 'EDUCATION',
-    x: -4.5, z: -11.2, rotation: Math.PI, visual: 'sign', interaction: 'none',
+    id: 'landing-sign-social', district: 'landing', label: 'SOCIAL', sublabel: 'OVER THE BRIDGE',
+    x: 25, z: -10, rotation: Math.PI * 1.24, visual: 'sign', interaction: 'none',
   },
   {
-    id: 'hub-sign-ucl', district: 'hub', label: 'UCL', sublabel: 'WHAT IS NEXT',
-    x: 40.5, z: -11.2, rotation: 0, visual: 'sign', interaction: 'none',
+    id: 'landing-sign-projects', district: 'landing', label: 'PROJECTS', sublabel: 'ALL OF THEM',
+    x: 44, z: -26, rotation: Math.PI * 1.72, visual: 'sign', interaction: 'none',
   },
   {
-    id: 'hub-sign-lab', district: 'hub', label: 'AI LAB', sublabel: 'METAVIEW',
-    x: 14.8, z: -26.1, rotation: Math.PI * 1.5, visual: 'sign', interaction: 'none',
+    id: 'landing-sign-maze', district: 'landing', label: 'LABYRINTH', sublabel: 'AND THE TIME MACHINE',
+    x: 48, z: 2, rotation: Math.PI * 0.32, visual: 'sign', interaction: 'none',
   },
   {
-    id: 'hub-sign-circuit', district: 'hub', label: 'RACE TRACK', sublabel: 'BEST LAP',
-    x: 36.6, z: -19.2, rotation: Math.PI * 1.75, visual: 'sign', interaction: 'none',
-  },
-  {
-    id: 'hub-sign-client', district: 'hub', label: 'CLIENT WORK', sublabel: '14 SITES',
-    x: 32.6, z: 20, rotation: Math.PI * 0.75, visual: 'sign', interaction: 'none',
-  },
-  {
-    id: 'hub-sign-projects', district: 'hub', label: 'PROJECTS', sublabel: 'ARCHIVE',
-    x: 9.9, z: 21, rotation: Math.PI * 0.5, visual: 'sign', interaction: 'none',
-  },
-  {
-    id: 'hub-sign-focus', district: 'hub', label: 'PRODUCTS', sublabel: 'FOCUS · GYM',
-    x: 7.2, z: 18.7, rotation: Math.PI * 0.35, visual: 'sign', interaction: 'none',
+    id: 'secret-brackets', district: 'landing', label: '{ }',
+    x: 36, z: 64, visual: 'bracket', interaction: 'none', secret: true,
   },
 
-  /* ---- KCL: five modules as five structures --------------- */
+  /* ---- SOCIAL -------------------------------------------- */
   {
-    id: 'kcl-degree', district: 'kcl', label: "KING'S COLLEGE LONDON",
-    sublabel: 'BSc COMPUTER SCIENCE',
-    x: 8, z: -52.3, visual: 'billboard', interaction: 'panel', radius: 9.1,
-    ref: ed('kcl'), achievement: 'kcl',
-  },
-  {
-    id: 'kcl-data-structures', district: 'kcl', label: 'DATA STRUCTURES',
-    x: -15.8, z: -41.6, visual: 'graphSculpture', interaction: 'panel', radius: 7,
+    id: 'social-camera', district: 'social', label: 'SOCIAL',
+    sublabel: 'FOUR WAYS TO REACH ME',
+    x: ZONES.social.x, z: ZONES.social.z - 2, visual: 'camera',
+    interaction: 'panel', radius: 12,
     panel: {
-      title: 'DATA STRUCTURES',
-      lines: ['Nodes, edges, invariants, cost.', 'Drive through the graph — the edges are solid.'],
-    },
-  },
-  {
-    id: 'kcl-databases', district: 'kcl', label: 'DATABASE SYSTEMS',
-    x: 9.3, z: -48.1, visual: 'databaseTower', interaction: 'panel', radius: 7,
-    panel: {
-      title: 'DATABASE SYSTEMS',
-      lines: ['Relational algebra, indexing, transactions.', 'The tower is a B-tree. The top page is the root.'],
-    },
-  },
-  {
-    id: 'kcl-os', district: 'kcl', label: 'OPERATING SYSTEMS',
-    x: -12.5, z: -26.2, visual: 'processBlocks', interaction: 'panel', radius: 7,
-    panel: {
-      title: 'OPERATING SYSTEMS',
-      lines: ['Processes, scheduling, memory, concurrency.', 'Each block is a process. They are scheduled, not static.'],
-    },
-  },
-  {
-    id: 'kcl-crypto', district: 'kcl', label: 'CRYPTOGRAPHY',
-    x: 15, z: -32.9, visual: 'cipherWall', interaction: 'panel', radius: 7,
-    panel: {
-      title: 'CRYPTOGRAPHY',
-      lines: ['Transformation, keys, guarantees.', 'The wall re-scrambles every time you look away.'],
-    },
-  },
-  {
-    id: 'kcl-se', district: 'kcl', label: 'SOFTWARE ENGINEERING',
-    x: -6.2, z: -22.9, visual: 'moduleStack', interaction: 'panel', radius: 7,
-    panel: {
-      title: 'SOFTWARE ENGINEERING',
-      lines: ['Modules assembling into one system.', 'Knock a module out and the stack still stands. Mostly.'],
-    },
-  },
-  {
-    id: 'kcl-orca', district: 'kcl', label: 'ORCA', sublabel: 'SCHEDULING',
-    x: -19.8, z: -52.1, visual: 'monument', interaction: 'project', radius: 7,
-    ref: p('orca'), scale: 0.7,
-  },
-  {
-    id: 'kcl-tappedin', district: 'kcl', label: 'TAPPEDIN', sublabel: 'NLP + WEB',
-    x: 15.4, z: -58, visual: 'monument', interaction: 'project', radius: 7,
-    ref: p('tappedin'), scale: 0.7,
-  },
-  {
-    id: 'kcl-library', district: 'kcl', label: 'MY LIBRARY',
-    x: -17.4, z: -15.7, visual: 'monument', interaction: 'project', radius: 7,
-    ref: p('my-library'), scale: 0.6,
-  },
-
-  /* ---- TEACHING / DEBUG YARD ------------------------------ */
-  {
-    id: 'teaching-role', district: 'teaching', label: 'GRADUATE TEACHING ASSISTANT',
-    sublabel: "KING'S COLLEGE LONDON",
-    x: -12.5, z: 15.5, visual: 'billboard', interaction: 'panel', radius: 8.4,
-    ref: xp('kcl-gta'),
-  },
-  {
-    id: 'teaching-bugs', district: 'teaching', label: 'FAIL',
-    sublabel: 'KNOCK THEM DOWN',
-    // West of the ring road inside the yard. Pushed off the road, but
-    // not so far that the blocks end up in the ALGORITHM FIELD, which
-    // is where a second automatic pass had put them.
-    x: -17, z: 34, visual: 'processBlocks', interaction: 'none',
-    achievement: 'debugger', scale: 1.2,
-  },
-  {
-    id: 'teaching-duck', district: 'teaching', label: 'RUBBER DUCK',
-    x: -17.5, z: 32.3, visual: 'duck', interaction: 'note', radius: 7,
-    secret: true, achievement: 'duck',
-    panel: { title: 'RUBBER DUCK', lines: ['Explain the bug out loud. It usually works.'] },
-  },
-
-  /* ---- ALGORITHM FIELD ------------------------------------ */
-  {
-    id: 'algo-cinquillo', district: 'algorithms', label: 'CINQUILLO 2.0',
-    sublabel: 'GAME AI RESEARCH',
-    x: 10.9, z: 56.1, visual: 'monument', interaction: 'project', radius: 7,
-    ref: p('cinquillo-fair-variant'),
-  },
-  {
-    id: 'algo-catan', district: 'algorithms', label: 'CATAN AI',
-    x: -9, z: 68.8, visual: 'monument', interaction: 'project', radius: 7,
-    ref: p('catan-ai'), scale: 0.7,
-  },
-  {
-    id: 'algo-dots', district: 'algorithms', label: 'DOTS & BOXES',
-    x: 15.3, z: 71.2, visual: 'monument', interaction: 'project', radius: 7,
-    ref: p('dots-and-boxes'), scale: 0.7,
-  },
-  {
-    id: 'algo-cinquillo-web', district: 'algorithms', label: 'CINQUILLO',
-    x: -4.9, z: 80.2, visual: 'monument', interaction: 'project', radius: 7,
-    ref: p('cinquillo'), scale: 0.6,
-  },
-  {
-    id: 'algo-primes', district: 'algorithms', label: 'PRIMOS EN CLICK',
-    x: 15.8, z: 82.7, visual: 'monument', interaction: 'project', radius: 7,
-    ref: p('primes'), scale: 0.6,
-  },
-
-  /* ---- UCL ------------------------------------------------ */
-  {
-    id: 'ucl-degree', district: 'ucl', label: 'UNIVERSITY COLLEGE LONDON',
-    sublabel: 'MSc AI & DATA ENGINEERING',
-    x: 81.1, z: -48.6, visual: 'researchShell', interaction: 'panel', radius: 9.8,
-    ref: ed('ucl'), achievement: 'ucl',
-  },
-  {
-    id: 'ucl-ml', district: 'ucl', label: 'MACHINE LEARNING',
-    x: 77.9, z: -35.6, visual: 'monument', interaction: 'panel', radius: 7, scale: 0.7,
-    panel: { title: 'MACHINE LEARNING', lines: ['Statistical learning, optimisation, generalisation.'] },
-  },
-  {
-    id: 'ucl-dl', district: 'ucl', label: 'APPLIED DEEP LEARNING',
-    x: 102.2, z: -35.6, visual: 'monument', interaction: 'panel', radius: 7, scale: 0.7,
-    panel: { title: 'APPLIED DEEP LEARNING', lines: ['Architectures, training regimes, representation.'] },
-  },
-  {
-    id: 'ucl-mining', district: 'ucl', label: 'DATA MINING',
-    x: 76.3, z: -23, visual: 'monument', interaction: 'panel', radius: 7, scale: 0.7,
-    panel: { title: 'DATA MINING', lines: ['Pattern discovery at scale.'] },
-  },
-  {
-    id: 'ucl-analysis', district: 'ucl', label: 'DATA ANALYSIS',
-    x: 96.4, z: -17.2, visual: 'monument', interaction: 'panel', radius: 7, scale: 0.7,
-    panel: { title: 'DATA ANALYSIS', lines: ['Inference, experiment design, uncertainty.'] },
-  },
-  {
-    id: 'ucl-vv', district: 'ucl', label: 'VALIDATION & VERIFICATION',
-    x: 90, z: -15.4, visual: 'monument', interaction: 'panel', radius: 7, scale: 0.7,
-    panel: { title: 'VALIDATION & VERIFICATION', lines: ['Proving systems behave as specified.'] },
-  },
-  {
-    id: 'ucl-ml-revision', district: 'ucl', label: 'ML REVISION ENGINE',
-    x: 103.6, z: -10.1, visual: 'monument', interaction: 'project', radius: 7,
-    ref: p('ml-revision'), scale: 0.6,
-  },
-
-  /* ---- AI LAB / METAVIEW ---------------------------------- */
-  {
-    id: 'lab-role', district: 'lab', label: 'METAVIEW',
-    sublabel: 'AI & DATA ANALYSIS ENGINEER',
-    x: 45.5, z: -82.4, visual: 'billboard', interaction: 'panel', radius: 9.8,
-    ref: xp('metaview'), achievement: 'lab',
-  },
-  {
-    id: 'lab-corpus', district: 'lab', label: 'CORPUS',
-    sublabel: 'DRIVE INTO IT',
-    x: 40, z: -107.3, visual: 'dataField', interaction: 'none', scale: 1.4,
-  },
-  {
-    id: 'lab-retrieval', district: 'lab', label: 'RETRIEVAL',
-    sublabel: 'QUERY → EMBED → RETRIEVE → GENERATE',
-    x: 34.2, z: -107.3, visual: 'terminal', interaction: 'minigame', radius: 7,
-    minigame: 'retrieval', achievement: 'retrieval',
-  },
-  {
-    id: 'lab-vision', district: 'lab', label: 'VISION',
-    sublabel: '50K+ IMAGES · 92% ACCURACY',
-    x: 62.6, z: -108.8, visual: 'monument', interaction: 'panel', radius: 7, scale: 0.8,
-    panel: {
-      title: 'IMAGE CLASSIFICATION',
+      title: 'SOCIAL',
       lines: [
-        'Trained and evaluated a classifier over a 50,000+ image dataset.',
-        '92% classification accuracy. Manual labelling time down 70%.',
+        'The four posts around this camera are the real links:',
+        'GitHub, LinkedIn, email and the CV.',
+        '',
+        'Drive up to one and press ENTER to open it.',
       ],
     },
   },
-
-  /* ---- CHESS ---------------------------------------------- */
   {
-    id: 'chess-board', district: 'chess', label: 'CHESS ASSISTANT',
-    sublabel: 'CAMERA → CNN → FEN → STOCKFISH',
-    x: -6, z: -80, visual: 'chessboard', interaction: 'minigame', radius: 9.8,
-    ref: p('chess-assistant'), minigame: 'chess', achievement: 'checkmate',
+    id: 'social-github', district: 'social', label: 'GITHUB', sublabel: 'Ale-Newport',
+    x: ZONES.social.x - 15, z: ZONES.social.z - 2, rotation: Math.PI * 0.5,
+    visual: 'sign', interaction: 'link', radius: 6.5,
+    href: 'https://github.com/Ale-Newport',
+  },
+  {
+    id: 'social-linkedin', district: 'social', label: 'LINKEDIN', sublabel: 'alejandro-newport',
+    x: ZONES.social.x - 11, z: ZONES.social.z - 12, rotation: Math.PI * 0.75,
+    visual: 'sign', interaction: 'link', radius: 6.5,
+    href: 'https://www.linkedin.com/in/alejandro-newport',
+  },
+  {
+    id: 'social-email', district: 'social', label: 'EMAIL', sublabel: 'hello@alejandronewport.com',
+    x: ZONES.social.x - 6, z: ZONES.social.z + 15, rotation: Math.PI,
+    visual: 'sign', interaction: 'link', radius: 6.5,
+    href: 'mailto:hello@alejandronewport.com',
+  },
+  {
+    id: 'social-cv', district: 'social', label: 'CV', sublabel: 'PDF',
+    x: ZONES.social.x - 11, z: ZONES.social.z + 11, rotation: Math.PI * 1.25,
+    visual: 'sign', interaction: 'link', radius: 6.5,
+    href: '/assets/alejandro-newport-cv.pdf',
   },
 
-  /* ---- STOCK ---------------------------------------------- */
+  /* ---- BOWLING ------------------------------------------- */
   {
-    id: 'stock-book', district: 'stock', label: 'STOCK MARKET SIMULATOR',
-    sublabel: '40K+ TRADES',
-    x: 66, z: -72, visual: 'orderBook', interaction: 'minigame', radius: 9.1,
-    ref: p('stock-market-simulator'), minigame: 'orderRush', achievement: 'orderRush',
-  },
-  {
-    id: 'stock-ticker', district: 'stock', label: 'ANP',
-    sublabel: 'FICTIONAL TICKER',
-    x: 77.3, z: -81.7, visual: 'billboard', interaction: 'note', radius: 7,
-    secret: true, achievement: 'ticker', scale: 0.7,
-    panel: { title: 'ANP', lines: ['Not investment advice. Not a real security.', 'Purely decorative volatility.'] },
+    id: 'bowling-sign', district: 'bowling', label: 'NEWPORT LANES',
+    sublabel: 'DRIVE INTO THE BALL',
+    // Beside the approach, on the north verge. The venue registers its
+    // own prompt at the mark; this is the thing you see from the path.
+    x: 8.4, z: -88.2, rotation: Math.PI * 0.5, visual: 'sign', interaction: 'none',
   },
 
-  /* ---- FOCUS ---------------------------------------------- */
+  /* ---- PROJECTS ------------------------------------------ */
   {
-    id: 'focus-device', district: 'focus', label: 'FOCUS',
-    sublabel: 'DRIVE INSIDE',
-    x: 52, z: 22, visual: 'device', interaction: 'project', radius: 11.2,
-    ref: p('focus'), scale: 1,
-  },
-  {
-    id: 'focus-pipeline', district: 'focus', label: 'VIDEO PIPELINE',
-    sublabel: 'SCRIPT → VOICE → VISUALS → CAPTIONS → RENDER',
-    x: 62, z: 36.8, visual: 'station', interaction: 'minigame', radius: 8.4,
-    minigame: 'pipeline', achievement: 'contentEngine',
-  },
-  {
-    id: 'focus-role', district: 'focus', label: 'CO-FOUNDER & DEVELOPER',
-    x: 44.3, z: 5.7, visual: 'billboard', interaction: 'panel', radius: 7,
-    ref: xp('focus'), scale: 0.8,
+    id: 'projects-terminal', district: 'projects', label: 'PROJECTS',
+    sublabel: 'ENTER TO EXPLORE',
+    x: ZONES.projects.x, z: ZONES.projects.z, visual: 'terminal',
+    interaction: 'projects', radius: 11, achievement: 'archivist',
   },
 
-  /* ---- GYM ------------------------------------------------ */
+  /* ---- ACHIEVEMENTS -------------------------------------- */
   {
-    id: 'gym-app', district: 'gym', label: 'GYM APP',
-    sublabel: 'ONE MODEL · MANY MOVEMENTS',
-    x: 48, z: 62, visual: 'monument', interaction: 'project', radius: 8.4,
-    ref: p('gym-app'),
-  },
-  {
-    id: 'gym-circuit', district: 'gym', label: 'GYM CIRCUIT',
-    sublabel: 'PUSH · PULL · LEGS · CORE',
-    x: 59.3, z: 77.4, visual: 'gate', interaction: 'minigame', radius: 7.7,
-    minigame: 'gymCircuit', achievement: 'gymCircuit',
+    id: 'achievements-star', district: 'achievements', label: 'ACHIEVEMENTS',
+    sublabel: 'ENTER TO SEE THE LIST',
+    x: ZONES.achievements.x, z: ZONES.achievements.z, visual: 'trophy',
+    interaction: 'achievements', radius: 11,
   },
 
-  /* ---- CLIENT CITY ---------------------------------------- */
-  {
-    id: 'client-count', district: 'client', label: '14',
-    sublabel: 'WEBS SHIPPED',
-    x: 103.3, z: 15, visual: 'monument', interaction: 'panel', radius: 9.1,
-    ref: xp('pansofia'), achievement: 'client', scale: 1.3,
-  },
-
-  /* ---- CIRCUIT -------------------------------------------- */
+  /* ---- CIRCUIT ------------------------------------------- */
   {
     id: 'circuit-start', district: 'circuit', label: 'START / FINISH',
-    // Two, and it has always been two — `CIRCUIT.laps` says so and the
-    // race counts to it. The sign said three, and so did the SPEED
-    // DEMON hint, which made the achievement's bar look unreachable.
-    sublabel: '2 LAPS',
-    x: -42, z: 110.7, visual: 'gate', interaction: 'minigame', radius: 8.4,
-    minigame: 'circuit', achievement: 'speedDemon',
+    sublabel: 'ENTER TO RACE',
+    // On the line. `CircuitRace` owns the gantry itself; the landmark
+    // is the trigger and the map marker.
+    x: CIRCUIT.points[0][0], z: CIRCUIT.points[0][1],
+    visual: 'gate', interaction: 'minigame', minigame: 'circuit',
+    radius: 10, achievement: 'speedDemon',
   },
 
-  /* ---- LABYRINTH ------------------------------------------ */
-  {
-    id: 'labyrinth-entry', district: 'labyrinth', label: 'LABYRINTH',
-    sublabel: 'FIND THE CENTRE',
-    x: 111.9, z: -48.1, visual: 'gate', interaction: 'project', radius: 7.7,
-    ref: p('labyrinth'), minigame: 'labyrinth',
-  },
-  {
-    id: 'labyrinth-prize', district: 'labyrinth', label: 'CENTRE',
-    x: 98, z: -66, visual: 'monument', interaction: 'none', radius: 7,
-    secret: true, achievement: 'pathFound', scale: 0.5,
-  },
+  /* ---- BLACK HOLE ----------------------------------------
 
-  /* ---- VOXEL ---------------------------------------------- */
-  {
-    id: 'voxel-seed', district: 'voxel', label: 'MINECRAFT SEED FINDER',
-    sublabel: 'PROCEDURAL SEARCH',
-    x: 103.8, z: -8, visual: 'monument', interaction: 'project', radius: 7,
-    ref: p('minecraft-seeds'),
-  },
-  {
-    // Moved east: the monolith over this chamber is applied on top of
-    // the field's road corridor rather than under it, so wherever the
-    // room is, the ring road has to be somewhere else.
-    id: 'voxel-room', district: 'voxel', label: 'UNDERGROUND',
-    x: 133, z: 8, visual: 'terminal', interaction: 'note', radius: 7,
-    secret: true, achievement: 'underground',
-    panel: {
-      title: 'UNDERGROUND',
-      lines: ['You found the room under the chunks.', 'Built at 2am. Left in on purpose.'],
-    },
-  },
+     Not here. `Playground.buildBlackHole` owns it end to end — the
+     horizon, the disc, the crater rim and the one prompt that pulls
+     you in — because the pull has to be an interaction rather than a
+     field, and the thing that applies it should be the thing that
+     offers it.
 
-  /* ---- NETWORK / VPN -------------------------------------- */
-  {
-    id: 'vpn-node-a', district: 'network', label: 'NODE A',
-    x: 36, z: -122, visual: 'monument', interaction: 'project', radius: 7,
-    ref: p('vpn'), scale: 0.8,
-  },
-  {
-    id: 'vpn-node-b', district: 'network', label: 'NODE B',
-    sublabel: 'ENCRYPTED TUNNEL',
-    x: 82, z: -122, visual: 'monument', interaction: 'minigame', radius: 7,
-    minigame: 'packets', scale: 0.8, achievement: 'tunnel',
-  },
+     There used to be a `blackhole-core` landmark at this exact point
+     as well: a second flat ring, a second marker ring, a floating
+     'ENTER TO PULL' under the disc, and a second prompt on top of
+     'FALL IN'. The nearest prompt wins, so one of the two was always
+     unreachable and which one was a coin toss. The map is unaffected
+     — it only draws landmarks you have opened — and the district
+     itself is still the secret that reveals the black hole on it.
+     ------------------------------------------------------------ */
 
-  /* ---- STUDIO / KEYFRAMES --------------------------------- */
+  /* ---- MAZE ---------------------------------------------- */
   {
-    id: 'studio-keyframes', district: 'studio', label: 'KEYFRAMES',
-    sublabel: 'PLAY · PAUSE · REVERSE',
-    // Off the ring-east / ring-south junction, which is a pinned
-    // vertex and cannot move around it.
-    x: 112, z: 81, visual: 'station', interaction: 'project', radius: 8.4,
-    ref: p('keyframes'),
-  },
-  {
-    id: 'studio-video', district: 'studio', label: 'VIDEO PLAYER',
-    x: 114.5, z: 64.3, visual: 'monument', interaction: 'project', radius: 7,
-    ref: p('video-player'), scale: 0.6,
-  },
+    id: 'maze-entry', district: 'maze', label: 'LABYRINTH',
+    sublabel: 'ENTER TO START THE CLOCK',
+    // The mouth. Labyrinth.ts builds the walls around the district
+    // centre and puts its opening on the north face; the arch stands
+    // across that opening, turned to face the road that arrives from
+    // the north so the name is not on the back of the gate.
+    x: ZONES.maze.x, z: ZONES.maze.z - ZONES.maze.size * 0.5 - 6,
+    rotation: Math.PI,
+    /* SCENERY, NOT A TRIGGER. `Labyrinth.buildEntrance` puts its own
+       prompt one metre from here, and the nearest prompt wins — so
+       two prompts on one spot means one of them cannot be reached
+       and which one is a coin toss. The mini-game keeps the prompt,
+       because it is the one that states the rule and the clock and
+       starts the run; the gate keeps the words.
 
-  /* ---- ORBIT / THREE BODY --------------------------------- */
-  {
-    id: 'orbit-system', district: 'orbit', label: 'THREE BODY PROBLEM',
-    sublabel: 'NUDGE ONE',
-    x: 38, z: -46, visual: 'monument', interaction: 'minigame', radius: 8.4,
-    ref: p('three-body-problem'), minigame: 'threeBody', achievement: 'chaosTheory',
-  },
-
-  /* ---- ARCHIVE ISLANDS ------------------------------------ */
-  {
-    id: 'archive-sign', district: 'archive', label: 'PROJECT ARCHIVE',
-    sublabel: 'EVERYTHING ELSE',
-    x: 29.8, z: 78.2, visual: 'billboard', interaction: 'panel', radius: 8.4,
-    panel: {
-      title: 'PROJECT ARCHIVE',
-      lines: [
-        'The smaller work, kept as it is rather than dressed up.',
-        'Each island is one repository. Drive up and press ENTER.',
-      ],
-    },
-  },
-
-  /* ---- SECRETS -------------------------------------------- */
-  {
-    id: 'secret-devroom', district: 'hub', label: 'DEV ROOM',
-    x: 4, z: -6, visual: 'terminal', interaction: 'note', radius: 7,
-    secret: true, achievement: 'devRoom',
-    panel: {
-      title: 'DEV ROOM',
-      lines: [
-        'Under the sign there is a room.',
-        '',
-        'The engine here is a port of Bruno Simon’s folio-2025 (MIT).',
-        'The world, the art and the mistakes are mine.',
-        'Source: github.com/Ale-Newport',
-      ],
-    },
-  },
-  {
-    id: 'secret-island', district: 'void', label: 'HIDDEN ISLAND',
-    x: 20, z: -233, visual: 'island', interaction: 'note', radius: 11.2,
-    secret: true, achievement: 'hiddenIsland',
-    panel: {
-      title: 'THE VOID',
-      lines: ['Nothing is supposed to be rendered here.', 'And yet.'],
-    },
-  },
-  {
-    id: 'secret-brackets', district: 'hub', label: '{ }',
-    sublabel: 'JUMP THROUGH',
-    x: 27.7, z: -45.1, rotation: Math.PI * 0.5, visual: 'bracket', interaction: 'none',
-    achievement: 'shipIt',
+       The `achievement: 'labyrinth'` this used to carry was not an
+       achievement id at all. The labyrinth's is `pathFound`, and
+       `Labyrinth` awards it at the centre, where it is earned. */
+    visual: 'gate', interaction: 'none',
   },
 ]
 
 /* ============================================================
-   ARCHIVE ISLANDS
-   Generated from the project inventory rather than hand-listed,
-   so a new archive project appears in the world automatically.
+   PATHS
+
+   The drawing's brown tracks, straight out of the plan. Compact
+   earth rather than asphalt: the only tarmac on this island is
+   the circuit, which is what makes the circuit read as a circuit
+   from above.
    ============================================================ */
 
-/** Project slugs that already have a bespoke landmark above. */
-const PLACED = new Set(
-  landmarks
-    .map((l) => (l.ref?.kind === 'project' ? l.ref.id : null))
-    .filter((v): v is string => Boolean(v)),
-)
+const PATH_WIDTHS: Record<string, number> = {
+  landing_bridge_social: 9,
+  social_bowling: 8,
+  bridge_bowling_east: 8,
+  bowling_projects: 8,
+  landing_projects: 9,
+  landing_ramp: 8,
+  east_coast_road: 7,
+  landing_south_spine: 8,
+  landing_maze_road: 8,
+  // Six, not eight. It is a spur that arrives at the maze's mouth, and
+  // the mouth is six metres outside a forty-two-metre square of solid
+  // wall: a wider carriageway cannot reach it without standing on it.
+  timemachine_maze: 6,
+  landing_racestart: 9,
+  south_shore_road: 7,
+  bowling_west_spur: 7,
+}
 
-/** Client sites get their own towers in Client City, laid out on a spiral. */
-/**
- * Push a generated position radially clear of every play spot.
- *
- * Towers and islands are laid out on rings around their district, and a
- * ring of the wrong radius drops them straight through whatever venue
- * happens to sit at that distance — two client towers were standing in
- * the middle of the bowling lane. Deterministic, so the layout stays
- * stable between loads.
- */
-/* ============================================================
-   ROADS
-   Polylines the terrain builder paints and the map draws. They
-   are cosmetic: nothing stops you driving across the grass.
-   ============================================================ */
-
-export const roads: { id: string; points: [number, number][]; width: number }[] = [
-  /* ---- the ring ----------------------------------------------
-     One loop through the whole eastern half. Every district sits ON
-     it, so leaving one puts the next one ahead rather than back the
-     way you came. */
-  /* Every road out of the hub used to meet at (18, -2), which is where
-     the physical name stands: ALEJANDRO is twenty-five metres of
-     movable letters, and three of the four roads ran straight through
-     them. A car leaving the hub northbound started wedged between an
-     A and an N. The junction is now at (18, 8), on the open forecourt
-     SOUTH of the name, and the roads leave around it. */
-  { id: 'ring-north', width: 10, points: [[18, 8], [29.2, -7.6], [43.2, -23.7], [47.5, -45.1], [52, -62], [52, -74], [54, -86], [48, -96], [62, -100], [76, -100]] },
-      /* The EXCHANGE's order book is a twelve-by-twenty-two-metre
-         structure standing on (66, -72), and the ring used to have a
-         vertex there — the road ran through the middle of it. It goes
-         down its western side now. */
-  { id: 'ring-east', width: 10, points: [[76, -100], [98, -98], [120, -88], [130, -70], [132, -48], [124, -30], [112, 0], [111, 18], [108, 32], [108, 54], [104, 74]] },
-      /* WEST of SEED CHUNKS, not through it. The voxel field keeps a
-         corridor along this road, but the monolith over its secret
-         chamber is applied ON TOP of that fade — so the one thing in
-         the field that ignores the corridor was exactly what the ring
-         used to drive into. */
-  { id: 'ring-south', width: 10, points: [[104, 74], [78, 92], [56, 102], [34, 104], [10, 94], [4, 68]] },
-  { id: 'ring-west', width: 10, points: [[4, 68], [0, 48], [-4, 28], [2, 10], [18, 8]] },
-
-  /* The spine cuts north to south through the ring, which is what
-     makes its junctions crossroads instead of corners. */
-  /* West of the FOCUS phone, which stands on a walled 34 by 17 m
-     plinth: the spine used to have a vertex at (40, 26), inside its
-     south-west corner, and the car met a 1.9 m wall. */
-  { id: 'spine', width: 9, points: [[18, 8], [26, 16], [30, 32], [42, 50], [39.2, 59.9], [40, 84], [34, 104]] },
-
-  /* ---- branches ---------------------------------------------- */
-  { id: 'hub-chess', width: 8, points: [[18, 8], [10.2, -9.7], [3.3, -27], [-4, -50], [-6, -80]] },
-  // Stops short of the GRAVITY WELL rather than ending inside it.
-  { id: 'lab-spur', width: 7, points: [[48, -96], [54, -110]] },
-
-  /* Out of the content half and over to the track. Re-cut so it
-     crosses the river SQUARELY at (-28, 55.5), where the road bridge
-     is, instead of running down its west bank clipping the last four
-     metres of it. */
-  { id: 'circuit-link', width: 9, points: [[-4, 28], [-8.7, 44.8], [-24, 50], [-31, 60], [-40, 72], [-48, 82], [-52, 80]] },
-
-  /* THE RETURN LEG. The circuit used to hang off `circuit-link` as an
-     84 m dead-end spur: you reached the largest feature on the island
-     by driving one road, and left by driving the same road backwards.
-     This closes the loop across the top — off the track's north-east
-     corner, over the river on the wood bridge, and into the chess
-     terminal, where `hub-chess` picks it up. */
-  { id: 'north-link', width: 8, points: [[-6, -80], [-18, -70], [-33.3, -56], [-46, -56], [-57, -62]] },
-
-  /* A shortcut, not a route: forty metres of bridge straight across
-     Mirror Lake between UCL and the spine, saving most of the eastern
-     ring. Nothing signposts it. */
-  { id: 'lake-shortcut', width: 8, points: [[124, -30], [104, -26], [86, -18], [76, -4], [78, 14], [80, 32], [68, 46], [56, 54], [44, 60], [39.2, 59.9]] },
-
-  /* Dirt, unlit, and pointed at the stunt ramp. It stops where the
-     ground does. */
-  { id: 'void-run', width: 6, points: [[-4, -60], [5.9, -62.6], [20, -66], [20, -142]] },
-]
+export const roads: { id: string; points: [number, number][]; width: number; surface?: 'dirt' }[] =
+  PATHS.map((path) => ({
+    id: path.id.replace(/_/g, '-'),
+    width: PATH_WIDTHS[path.id] ?? 8,
+    surface: 'dirt' as const,
+    points: path.points.map(([x, z]) => [x, z] as [number, number]),
+  }))
 
 /* ============================================================
    RAMPS AND JUMPS
@@ -1017,79 +611,87 @@ export interface Ramp {
 }
 
 export const ramps: Ramp[] = [
-  /* `ramp-hub-a` used to stand at (28.5, 6.9), which is where four
-     roads now meet, and there is no ground within forty metres of the
-     hub that is clear of all of them. It was a 1.8 m starter bump on a
-     forecourt that already has the letters to drive at, a cone field,
-     `ramp-hub-b` and the brackets jump — so it is gone rather than
-     exiled to the ALGORITHM FIELD to satisfy a checker. */
-  // North of the letters rather than beside the KCL road: the rerouted
-  // `hub-chess` runs where this ramp's run-up used to be.
-  { id: 'ramp-hub-b', x: 23, z: -22, rotation: Math.PI * 1.15, length: 12, width: 7, height: 2.4, size: 'small' },
-  // Moved east with the brackets it launches at: the hub junction moved
-  // south of the name, and the new ring-north ran straight over this
-  // ramp's approach — the tour drove up it and got stuck every time.
-  { id: 'ramp-brackets', x: 21.7, z: -45.1, rotation: Math.PI * 0.5, length: 18, width: 9, height: 5.2, size: 'medium', achievement: 'shipIt' },
-  { id: 'ramp-kcl', x: -18.6, z: 5.3, rotation: Math.PI * 1.5, length: 16, width: 8, height: 4, size: 'medium' },
-  { id: 'ramp-focus', x: 51, z: -3.6, rotation: Math.PI * 1.5, length: 20, width: 9, height: 6, size: 'medium', achievement: 'phoneHop' },
-  // Aimed at the void island, 62 m away across the moat. The angle
-  // is derived from that line, not chosen: point it anywhere else
-  // and the achievement it carries becomes unreachable.
-  // The stunt ramp, sized by measurement rather than by eye. At
-  // 17 m over 40 m (23 degrees) the car spent its speed climbing and
-  // barely left the lip; at 12 over 48 it cleared the island
-  // entirely and landed in the sea beyond. 6.5 over 42 is about
-  // 8.8 degrees, which puts a boosting car down on the island's flat
-  // top with room either side. Change either number and the
-  // achievement it carries stops being reachable — see the island
-  // check in scripts/world-qa.mjs.
-  { id: 'ramp-stunt', x: 20, z: -142, rotation: Math.PI * 0.5, length: 42, width: 13, height: 6.5, size: 'large', achievement: 'hiddenIsland' },
-  /* ON THE EAST STRAIGHT, at `CIRCUIT.jumpAt` along the lap — the
-     position and bearing are `curve.getPointAt(0.93)` and its tangent,
-     read off the running world and written down here so it uses the
-     same ramp builder as every other jump on the island. 2.1 m over
-     13 is about nine degrees: a car at racing speed clears it without
-     being flipped, and a car arriving slowly drives over it. */
-  { id: 'ramp-circuit-jump', x: -55.9, z: 40.8, rotation: -1.4, length: 13, width: 12, height: 2.1, size: 'medium' },
-  { id: 'ramp-circuit', x: -25.8, z: 88, rotation: 0, length: 16, width: 10, height: 3.2, size: 'medium' },
-  { id: 'ramp-archive', x: 78.6, z: 69.9, rotation: Math.PI * 0.5, length: 14, width: 8, height: 3, size: 'small' },
-  { id: 'ramp-voxel', x: 132.7, z: -9.6, rotation: Math.PI * 0.5, length: 14, width: 8, height: 3.6, size: 'small' },
-  { id: 'ramp-lab', x: 34.8, z: -72, rotation: Math.PI * 0.9, length: 15, width: 8, height: 3.4, size: 'small' },
+  /* THE RAMP, where the drawing puts it and pointing where the
+     drawing's arrow points: east, off the grass, over the beach and
+     into the shallows. The landing is water on purpose — it is the
+     only water on the island you are supposed to end up in.
+
+     It used to say "the shelf there is 0.6 m deep, so you drive out
+     again", and the general beach shelf is — for the fifteen metres
+     past the waterline that every other stretch of coast gets. A
+     full-boost launch off 5.6 m flies seventy-eight, so the claim was
+     false for the only run that clears the lip at all: the car went
+     eleven metres under and was recovered by the drowning rule. The
+     shallows are now carried out under the whole flight —
+     `Terrain.LANDING_SHOALS`, derived from THIS table, so a ramp
+     turned inland stops carrying one. */
+  {
+    id: 'ramp-east', x: ZONES.ramp.x, z: ZONES.ramp.z, rotation: ZONES.ramp.rotation,
+    /* 6.6 m, not 5.6. The deck is built from its FOOT so that the low
+       end cannot be a step (see World.buildRamps), and on rising ground
+       that puts the base plane below the levelled pad around it — the
+       lip cleared the ground by 4.77 m of a 5.6 m ramp. A metre back
+       makes the jump the size it says it is: measured, 5.8 m of air. */
+    length: ZONES.ramp.length, width: ZONES.ramp.width, height: 6.6,
+    size: 'large', achievement: 'airborne',
+  },
+  /*
+     THE CIRCUIT JUMP, ON THE SOUTH RUN, read off the racing line at
+     CIRCUIT.jumpAt (0.60 of a 633 m lap) and written down.
+
+     RE-DERIVE IT WHENEVER THE CENTRELINE MOVES, and note that scaling
+     it is not re-deriving it: the island shrank by 30% and this point
+     was multiplied by 0.7 along with everything else, which left the
+     ramp THIRTY METRES off a racing line whose SHAPE the relaxer had
+     also changed. A jump nobody can reach is worse than no jump. The
+     width follows CIRCUIT.width so the ramp spans the track rather
+     than a memory of how wide it used to be.
+  */
+  { id: 'ramp-circuit-jump', x: -64.3, z: 71.6, rotation: -0.05, length: 16, width: CIRCUIT.width, height: 2.4, size: 'medium' },
+  /* A starter bump on the landing forecourt, aimed at open ground. */
+  /* A starter bump. It stood on the LANDING forecourt, which on a 266 m
+     island has no twelve-metre hole left in it, and then on the open run
+     towards the labyrinth — which turned out to be the labyrinth's own
+     approach the moment that approach became a footprint anything could
+     see. East of the maze road, on open ground, is where it fits. */
+  { id: 'ramp-landing', x: 104, z: 8, rotation: Math.PI * 0.92, length: 12, width: 7, height: 2.2, size: 'small' },
 ]
 
 /* ============================================================
    TIMELINE STRIP
-   Four year plates near the hub. Driving them in order unlocks
-   TIME TRAVELLER.
+   Four year plates on the landing forecourt. Driving them in
+   order unlocks TIME TRAVELLER.
    ============================================================ */
 
 export const timelinePlates = [
-  { year: '2023', x: 17.9, z: 24.8 },
-  { year: '2024', x: 4.2, z: 25.5 },
-  { year: '2025', x: 10.4, z: 25.7 },
-  { year: '2026', x: 41.5, z: 2.6 },
+  // WEST of the south spine, on open forecourt: landing on a plate
+  // fires TIME TRAVELLER, and a plate under a road fires it every time
+  // you drive past.
+  { year: '2023', x: 35.8, z: 13.4 },
+  { year: '2024', x: 24.5, z: 13.3 },
+  { year: '2025', x: 26.6, z: 20.3 },
+  { year: '2026', x: 33.6, z: 22.4 },
 ]
 
 /* ============================================================
    DEV NOTES
-   Short hidden notes, found by driving over their marker. Local
-   replacement for upstream's server-backed visitor whispers.
+   Short hidden notes, found by driving over their marker.
    ============================================================ */
 
 export const devNotes: { id: string; x: number; z: number; text: string }[] = [
-  { id: 'note-1', x: 26.9, z: -15.8, text: 'Built this at 2am. It shows in the commit messages.' },
-  { id: 'note-2', x: 20.7, z: -32.7, text: 'Data Structures was the module that made the rest make sense.' },
-  { id: 'note-3', x: 81.9, z: -48.6, text: 'Two degrees, one city, no plan to stop.' },
-  { id: 'note-4', x: 5.3, z: -97.8, text: 'Half a million documents. I read approximately none of them.' },
-  { id: 'note-5', x: 60.1, z: 29.3, text: 'The captions were harder than the video.' },
-  { id: 'note-6', x: 114.5, z: 23.1, text: 'Fourteen sites, six people, two weeks early. Once.' },
-  { id: 'note-7', x: -0.9, z: 72.9, text: 'This bug took longer than the feature.' },
-  { id: 'note-8', x: 107.7, z: -59.5, text: 'The maze has one solution. I checked.' },
-  { id: 'note-9', x: -27.4, z: 101, text: 'Do not take the inside line here. Or do.' },
-  { id: 'note-13', x: 20, z: -92, text: 'It is further than it looks. Take a run-up.' },
-  { id: 'note-10', x: 38.9, z: 84.6, text: 'Some of these are scaffolds. They are in the archive anyway.' },
-  { id: 'note-11', x: 67.3, z: -20.2, text: 'Do not hit the red button. There is no red button.' },
-  { id: 'note-12', x: 115.6, z: 1.3, text: 'Every chunk here is one integer away from a different world.' },
+  { id: 'note-1', x: 49, z: 4.2, text: 'Built this at 2am. It shows in the commit messages.' },
+  { id: 'note-2', x: 21, z: -23.8, text: 'The bridge took longer than the river.' },
+  { id: 'note-3', x: -8.4, z: -53.2, text: 'Two degrees, one city, no plan to stop.' },
+  { id: 'note-4', x: 9.8, z: -72.8, text: 'I have never bowled a real strike. This one counts.' },
+  { id: 'note-5', x: 64.4, z: -42, text: 'Some of these are scaffolds. They are in the archive anyway.' },
+  { id: 'note-6', x: 78.4, z: -14, text: 'Take a run-up. Then take a longer one.' },
+  { id: 'note-7', x: 54.6, z: 33.6, text: 'This bug took longer than the feature.' },
+  { id: 'note-8', x: 96.6, z: 53.2, text: 'The maze has one solution. I checked.' },
+  { id: 'note-9', x: -72.8, z: 43.4, text: 'Do not take the inside line here. Or do.' },
+  { id: 'note-10', x: -109.2, z: -8.4, text: 'The fastest part of the lap is also the narrowest.' },
+  { id: 'note-11', x: -46.2, z: -19.6, text: 'Half a million documents. I read approximately none of them.' },
+  { id: 'note-12', x: 70, z: 51.8, text: 'It does not go anywhere. It goes when.' },
+  { id: 'note-13', x: -68.6, z: -54.6, text: 'Nothing escapes. Except the racing line.' },
 ]
 
 /* ============================================================
@@ -1104,7 +706,6 @@ export const projectsBySlugForWorld = projectBySlug
 export function landmarksOf(district: DistrictId) {
   return landmarks.filter((l) => l.district === district)
 }
-
 /** Resolves a landmark's `ref` into display copy from the content layer. */
 export interface ResolvedPanel {
   title: string
@@ -1205,108 +806,126 @@ if (process.env.NODE_ENV === 'development') {
   }
 }
 
-/* ============================================================
-   GENERATED PLACEMENTS
 
-   These run LAST on purpose. They ask `world-layout` where there is
-   free ground, and the registry it builds reads roads, ramps,
-   respawns and the timeline plates — all of which are declared
-   above. Move this block up the file and the generators run against
-   half an island.
+/* ============================================================
+   THE PROJECTS ARCHIVE
+
+   The island used to give nine projects a district each and put
+   the rest on islands in an archive ring — twenty-six separate
+   places for one body of work. The drawing has one PROJECTS, so
+   this is one place: a terminal you press ENTER on, which opens
+   the whole archive as an overlay, and a ring of plinths around
+   it carrying the eight featured pieces so the place has
+   something in it to drive at.
+
+   NO PROJECT DATA IS LOST. `projects/*` is untouched, every
+   project is in `PROJECT_GROUPS` below, and the scroll journey at
+   `/` still renders all of it. What went away is districts.
    ============================================================ */
 
-function towerRing(index: number, total: number): { angle: number; radius: number } {
-  return { angle: (index / total) * Math.PI * 2 + 0.4, radius: 17 + (index % 3) * 10 }
+export interface ProjectGroup {
+  id: string
+  label: string
+  slugs: string[]
 }
 
+const GROUP_ORDER: { id: string; label: string; match: (p: (typeof projects)[number]) => boolean }[] = [
+  { id: 'featured', label: 'FEATURED', match: (p) => p.importance === 'featured' || p.importance === 'hero' },
+  { id: 'ai-ml', label: 'AI & ML', match: (p) => p.category === 'ai-ml' || p.category === 'data' },
+  { id: 'software', label: 'SOFTWARE', match: (p) => p.category === 'software' || p.category === 'mobile' },
+  { id: 'web', label: 'WEB', match: (p) => p.category === 'web' },
+  { id: '3d', label: '3D', match: (p) => p.category === '3d' },
+  { id: 'university', label: 'UNIVERSITY', match: (p) => p.source === 'university' || p.category === 'university' },
+  { id: 'client', label: 'CLIENT WORK', match: (p) => p.source === 'client' || p.category === 'client-work' },
+  { id: 'experiments', label: 'EXPERIMENTS', match: (p) => p.category === 'experiment' },
+]
+
+/** Every project, grouped for the archive overlay. A project appears in
+ *  FEATURED and in its category — the overlay is a browser, not a
+ *  partition, and hiding a featured project from AI & ML would be a
+ *  strange thing to do to someone looking for it there. */
+export const PROJECT_GROUPS: ProjectGroup[] = GROUP_ORDER.map((group) => ({
+  id: group.id,
+  label: group.label,
+  slugs: projects.filter(group.match).map((p) => p.slug),
+})).filter((group) => group.slugs.length > 0)
+
 /**
- * CLIENT CITY's towers, arranged in three rings around the district.
+ * The eight that get a physical plinth.
  *
- * The placement used to be `centre + polar(angle, radius)` with a
- * twelve-pass radial nudge that only knew about PLAY_SPOTS — so
- * `aula-impulsa` was generated four metres under Mirror Lake,
- * `fpe-europea` shared 1.2 m of ground with the FOCUS phone, and six
- * of the fifteen ended up 50–92 m from the city they belong to.
- *
- * `findNear` sweeps either side of the authored bearing and grows the
- * ring only as far as it must, asking the one occupancy registry about
- * water, roads, plates, ramps, landmarks and everything else. Towers
- * stay near where they were authored, and none of them stands in a lake.
+ * EIGHT, capped. `importance` is 'hero' or 'featured' on eighteen of the
+ * forty-three, and eighteen four-metre plinths around a twenty-metre
+ * ring is not a courtyard, it is a wall of pale discs with no way
+ * through it — which is what it looked like from above. The other
+ * thirty-five are in the terminal, which is the whole reason the
+ * island stopped needing a district each.
  */
-export interface ClientTower {
-  id: string; project: string; x: number; z: number
-  rotation: number; height: number; accent: string
+export const FEATURED_SLUGS: string[] = projects
+  .filter((p) => p.importance === 'hero' || p.importance === 'featured')
+  .sort((a, b) => (a.importance === b.importance ? 0 : a.importance === 'hero' ? -1 : 1))
+  .slice(0, 8)
+  .map((p) => p.slug)
+
+export interface ProjectPlinth {
+  id: string
+  project: string
+  x: number
+  z: number
+  rotation: number
+  scale: number
 }
-let clientTowerCache: ClientTower[] | null = null
+
+let plinthCache: ProjectPlinth[] | null = null
 
 /**
  * LAZY, and it has to be: `world-layout` imports this module, so
- * running the generators at module-evaluation time would call into a
- * half-initialised registry. Computing them on first use puts the call
+ * running the generator at module-evaluation time would call into a
+ * half-initialised registry. Computing it on first use puts the call
  * safely after both modules have finished loading. Memoised, so the
  * layout is identical every time it is asked for.
  */
-export function clientTowers(): ClientTower[] {
-  if (clientTowerCache) return clientTowerCache
-  const placedTowers: Zone[] = []
-  clientTowerCache = projects
-  .filter((p) => p.source === 'client')
-  .map((project, i, all) => {
-    const { angle, radius } = towerRing(i, all.length)
+export function projectPlinths(): ProjectPlinth[] {
+  if (plinthCache) return plinthCache
+  const placed: Zone[] = []
+  const centre = districtById.projects
+  plinthCache = FEATURED_SLUGS.map((slug, i, all) => {
+    // Two rings, so eight plinths read as a courtyard rather than a
+    // fence: the odd ones sit further out and between their neighbours.
+    const angle = (i / all.length) * Math.PI * 2 + 0.35
+    const radius = i % 2 === 0 ? 19 : 30
     const spot = findNear(
-      districtById.client.x, districtById.client.z, radius, angle,
-      { clearance: 3.5, allow: ['respawn'], margin: { water: 6, road: 1.5 }, extra: placedTowers },
+      centre.x, centre.z, radius, angle,
+      { clearance: 3.5, allow: ['respawn', 'plate', 'district'], margin: { water: 6, road: 2 }, extra: placed },
     )
-    // A tower is 8 m across the face, so 6.5 m of footprint plus 3.5 m
-    // of clearance leaves a car's width of street between two of them.
-    // Tighter than it was, because a client CITY wants to read as one.
-    placedTowers.push({ id: project.slug, kind: 'landmark', x: spot.x, z: spot.z, radius: 6.5 })
+    placed.push({ id: slug, kind: 'landmark', x: spot.x, z: spot.z, radius: 5.5 })
     return {
-      id: `client-tower-${project.slug}`,
-      project: project.slug,
+      id: `project-${slug}`,
+      project: slug,
       x: spot.x,
       z: spot.z,
       rotation: -angle + Math.PI * 0.5,
-      height: project.importance === 'featured' ? 16 : 11,
-      accent: project.accent ?? '#a8683f',
+      scale: 0.45,
     }
   })
-  return clientTowerCache
+  return plinthCache
 }
 
-/** Everything not otherwise placed becomes an island in the archive ring.
- *
- *  The old version computed an avoided X and then threw it away, writing
- *  `z` straight back from the un-avoided polar coordinate — up to 62 m of
- *  correction discarded on one axis, which is how two islands came to
- *  stand in the middle of other districts. */
-export interface ArchiveIsland {
-  id: string; project: string; x: number; z: number; rotation: number; scale: number
-}
-let archiveIslandCache: ArchiveIsland[] | null = null
+/*
+  NO PROJECT MAY FALL OUT OF THE ISLAND.
 
-/** Lazy and memoised, for the same reason as `clientTowers`. */
-export function archiveIslands(): ArchiveIsland[] {
-  if (archiveIslandCache) return archiveIslandCache
-  const placedIslands: Zone[] = []
-  archiveIslandCache = projects
-  .filter((p) => p.source !== 'client' && !PLACED.has(p.slug))
-  .map((project, i, all) => {
-    const angle = (i / all.length) * Math.PI * 2
-    const radius = 30 + ((i * 7) % 3) * 12
-    const spot = findNear(
-      districtById.archive.x, districtById.archive.z, radius, angle,
-      { clearance: 4, allow: ['respawn'], margin: { water: 5 }, extra: placedIslands },
+  The whole justification for deleting nine districts is that every one
+  of their projects is still reachable — from one terminal instead of
+  from nine places. That is a claim about a filter chain, and a filter
+  chain is exactly the sort of thing that silently drops an entry when
+  a category is renamed. So it is checked.
+*/
+if (process.env.NODE_ENV === 'development') {
+  const reachable = new Set(PROJECT_GROUPS.flatMap((group) => group.slugs))
+  const lost = projects.filter((project) => !reachable.has(project.slug))
+  if (lost.length) {
+    console.warn(
+      `[world] ${lost.length} project(s) are in no archive group and cannot be reached from the world:`,
+      lost.map((p) => p.slug),
     )
-    placedIslands.push({ id: project.slug, kind: 'landmark', x: spot.x, z: spot.z, radius: 10 })
-    return {
-      id: `archive-${project.slug}`,
-      project: project.slug,
-      x: spot.x,
-      z: spot.z,
-      rotation: -angle,
-      scale: project.importance === 'featured' ? 0.85 : 0.62,
-    }
-  })
-  return archiveIslandCache
+  }
 }

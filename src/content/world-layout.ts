@@ -1,11 +1,11 @@
 import {
-  districts, districtById, landmarks, ramps, respawns, roads,
-  timelinePlates, WORLD_RADIUS,
+  districts, districtById, landmarks, ramps, respawns, roads, timelinePlates,
 } from './world'
 import {
-  BRIDGES, CIRCUIT, CIRCUIT_TRACK, FOREST_POCKETS, LAKES, PLAY_SPOTS,
-  RELAY_POINTS, RIVER, WATERFALL, coastRadius, inlandWater, lineDistance,
+  BRIDGES, CIRCUIT, CIRCUIT_TRACK, LAKES, PLAY_SPOTS, RIVER,
+  VEGETATION_EXCLUSIONS, VEGETATION_ZONES, coastInset, inlandWater, lineDistance,
 } from './world-environment'
+import { ZONES, pointInPolygon, polygonEdgeDistance, type Poly } from './world-map'
 
 /* ============================================================
    WHAT IS WHERE
@@ -63,6 +63,19 @@ export type ZoneKind =
   | 'letters'
   /** Woodland. Soft: this is where vegetation is WANTED. */
   | 'forest'
+  /**
+   * Built ground nothing may GROW on: the landing forecourt, the
+   * bowling precinct, the maze floor.
+   *
+   * Soft, and it has to be. It deliberately covers roads, venues and
+   * respawns — that is the point of it — so a hard `noveg` zone
+   * reported every one of them as a collision and told
+   * `validateRespawns` that the spawn point was inside something. It
+   * suppresses vegetation and nothing else: `Ecology` asks for it by
+   * name through `vegetationSuppressed`, and the GPU lawn reads the
+   * same polygons out of the terrain mask.
+   */
+  | 'noveg'
 
 export interface Zone {
   id: string
@@ -77,9 +90,12 @@ export interface Zone {
   radius: number
   /** A corridor footprint: distance is measured to this polyline. */
   points?: readonly (readonly number[])[]
-  /** Elliptical footprints (lakes). Overrides `radius` when present. */
+  /** Elliptical footprints (lakes, woodland). Overrides `radius`. */
   rx?: number
   rz?: number
+  /** A CLOSED filled area: inside is blocked, outside measures to the
+   *  edge. `points` is a corridor; this is a region. */
+  polygon?: Poly
   /**
    * Soft zones overlap freely and are excluded from
    * `validateLayout`'s conflict report. A district disc is soft; the
@@ -109,18 +125,23 @@ export interface Zone {
  */
 export function landmarkFootprint(visual: string, scale = 1): number {
   const base: Record<string, number> = {
-    monument: 2.6, sign: 1.2, billboard: 5.4, browserTower: 4.6,
-    // The FOCUS phone stands on a walled 34 x 17 m plinth, not a 6.5 m
-    // pad — and the spine was authored straight into its corner because
-    // this number said otherwise.
-    device: 17, idCard: 5.2, graphSculpture: 7, processBlocks: 6,
-    cipherWall: 7.4, databaseTower: 4, moduleStack: 4.4,
-    // The corpus is 24 m of instanced pillars with NO colliders — you
-    // drive through it. Its footprint is what it stands on, not what
-    // it covers, or it would sterilise a third of the AI Lab.
-    researchShell: 7, dataField: 5, chessboard: 9, orderBook: 8,
-    station: 5, gate: 9.5, island: 9, terminal: 2.4, duck: 1.6,
-    bracket: 4,
+    monument: 2.6, sign: 1.2, billboard: 5.4, idCard: 5.2,
+    island: 9, terminal: 2.4, bracket: 4,
+    /*
+      A GATE IS A HOLE. It stands on two 1.1 m posts sixteen metres
+      apart and the middle of it is the thing you drive through — which
+      is the whole point of a start line and a maze mouth. As a 9.5 m
+      disc every road that arrived at one was reported as running into
+      it, and the fix would have been to stop the roads short of the
+      gates they exist to reach.
+    */
+    gate: 3.2,
+    // The camera is a head on a tripod: three legs on a 4.4 m spread.
+    camera: 4.4,
+    // A star on a plinth, and the plinth is what stands on the ground.
+    trophy: 4.6,
+    // The event horizon ring, not the pull radius.
+    singularity: 7,
   }
   return (base[visual] ?? 4) * scale
 }
@@ -129,8 +150,24 @@ export function landmarkFootprint(visual: string, scale = 1): number {
  * The labyrinth's real extent, kept in step with `Labyrinth.ts` by
  * hand — there is no way to import it without pulling THREE.js into
  * the content layer. `CELLS * CORRIDOR + (CELLS + 1) * WALL`.
+ *
+ * The drawing puts a SQUARE maze in the south-east corner, so it is
+ * five by five cells of 7 m corridor now rather than five by three of
+ * 9.4 — 42.2 m on a side, against 54 x 33.
  */
-export const MAZE = { width: 5 * 9.4 + 6 * 1.2, depth: 3 * 9.4 + 4 * 1.2 }
+/*
+  THE LABYRINTH'S FOOTPRINT, and the second of three places this number
+  is written down.
+
+  `Labyrinth.ts` computes it from CELLS x CORRIDOR + (CELLS + 1) x WALL
+  and `ZONES.maze.size` carries it through the map emitter's hold-list.
+  All three must say 46. This copy is what keeps roads from being
+  routed through the maze, and it has been wrong before: the registry
+  reported the labyrinth as a 30 m disc, the road network was authored
+  straight through it, and the only symptom was a car stopping dead
+  against a wall nobody had modelled.
+*/
+export const MAZE = { width: 7 * 4.6 + 8 * 1.2, depth: 7 * 4.6 + 8 * 1.2 }
 
 let cache: Zone[] | null = null
 
@@ -163,7 +200,6 @@ export function zones(): Zone[] {
     out.push({ id: `water-${lake.id}`, kind: 'water', x: lake.x, z: lake.z, radius: Math.max(lake.rx, lake.rz), rx: lake.rx, rz: lake.rz, label: lake.id })
   }
   out.push({ id: 'water-river', kind: 'water', x: RIVER.points[0][0], z: RIVER.points[0][1], radius: RIVER.width * 0.5, points: RIVER.points, label: 'the river' })
-  out.push({ id: 'water-waterfall', kind: 'water', x: WATERFALL.x, z: WATERFALL.z, radius: 15, label: 'the waterfall' })
 
   for (const b of BRIDGES) {
     // A corridor, not a disc. A forty-metre deck modelled as a
@@ -181,12 +217,44 @@ export function zones(): Zone[] {
   }
 
   for (const r of ramps) {
-    // A ramp needs its run-up kept clear as well as its lip.
-    out.push({ id: `ramp-${r.id}`, kind: 'ramp', x: r.x, z: r.z, radius: r.length * 0.5 + 6, label: r.id })
+    /*
+      A RAMP NEEDS ITS RUN-UP KEPT CLEAR AS WELL AS ITS LIP, and a run-up
+      is a corridor rather than a disc.
+
+      As a disc of `length/2 + 6` this reserved 21 m around the east
+      ramp — which is its own deck and nothing else. The twenty-two
+      metres of approach in front of it, the only ground from which the
+      jump can be taken at speed, was open to everything: the
+      decoration pass put crates and bales across it and `world-qa`
+      measured anything between 2.5 m and 5.5 m of air off the same
+      5.6 m ramp depending on what the car had hit on the way in.
+
+      A capsule from 11 m before the foot to the lip, as wide as the
+      deck plus a margin, is what the sentence above always meant.
+      Eleven and not more because the east ramp's approach crosses
+      the LANDING: at 24 the corridor reached the physical name, the
+      projects terminal and the river, and a reservation that has to
+      move a district is a reservation that is wrong.
+    */
+    const cos = Math.cos(r.rotation)
+    const sin = Math.sin(r.rotation)
+    const lip = [r.x + cos * (r.length / 2), r.z - sin * (r.length / 2)] as [number, number]
+    const start = [r.x - cos * (r.length / 2 + 11), r.z + sin * (r.length / 2 + 11)] as [number, number]
+    out.push({
+      id: `ramp-${r.id}`, kind: 'ramp', x: r.x, z: r.z,
+      radius: r.width / 2 + 4, points: [start, lip], label: r.id,
+    })
   }
 
   for (const l of landmarks) {
-    out.push({ id: `landmark-${l.id}`, kind: 'landmark', x: l.x, z: l.z, radius: landmarkFootprint(l.visual, l.scale ?? 1), label: l.label })
+    out.push({
+      id: `landmark-${l.id}`, kind: 'landmark', x: l.x, z: l.z,
+      radius: landmarkFootprint(l.visual, l.scale ?? 1),
+      // A gate is soft: it is two posts with a hole between them, and
+      // the road that reaches it is meant to go through it.
+      soft: l.visual === 'gate',
+      label: l.label,
+    })
   }
 
   /*
@@ -198,17 +266,53 @@ export function zones(): Zone[] {
     authored straight through it, and the only thing that ever noticed
     was a car stopping dead against a wall nobody had modelled.
   */
-  {
-    const d = districtById.labyrinth
-    out.push({
-      id: 'maze', kind: 'play', x: d.x, z: d.z,
-      radius: Math.max(MAZE.width, MAZE.depth) / 2,
-      rx: MAZE.width / 2, rz: MAZE.depth / 2,
-      label: 'the maze',
-    })
-  }
+  /*
+    THE LABYRINTH REGISTERS ITSELF THROUGH ITS PLAY SPOT NOW.
+
+    This stood a second footprint on the maze, hand-built from `MAZE`,
+    because the spot's own pad was invisible: `lineDistance` returned
+    NaN for the degenerate capsule a SQUARE pad produces, so every
+    check quietly skipped it. With that fixed the pad is the footprint,
+    and two overlapping copies of the same 42 m square is not a
+    conflict worth reporting forty-four metres of. `MAZE` stays
+    exported: the generator and the map emitter still have to agree
+    with it.
+  */
 
   for (const p of PLAY_SPOTS) {
+    if ('pad' in p && p.pad) {
+      // A RECTANGLE, because the bowling venue is one: 62 m of lane and
+      // apron in a 12 m corridor. Registered as a disc it claimed a
+      // 44 m circle centred on a point 15 m from its own middle — so
+      // the apron sat outside every clearance in the world, and the
+      // prop scatter dropped crates on it.
+      const cos = Math.cos(p.pad.rotation)
+      const sin = Math.sin(p.pad.rotation)
+      const hx = (p.pad.length / 2 - p.pad.width / 2) * cos
+      const hz = (p.pad.length / 2 - p.pad.width / 2) * sin
+      /*
+        THE FOOTPRINT IS WHAT STANDS THERE, NOT WHAT IS LEVELLED.
+
+        This took the capsule's radius from the levelling pad, and a pad
+        is deliberately larger than its venue: the bowling alley is 12 m
+        wide and its pad is 30, so the registry claimed a 15 m capsule
+        down the whole 74 m of it. That single disc is what deleted all
+        seventeen of SOCIAL's scattered props — the neighbouring
+        district, forty metres away — and forced the SOCIAL dressing to
+        carry a negative play margin to build anything at all.
+
+        A spot may state its own `footprint`; otherwise the pad's half
+        width stands, which is right for the venues whose structures
+        fill their pad (the labyrinth's walls do).
+      */
+      out.push({
+        id: `play-${p.id}`, kind: 'play', x: p.pad.x, z: p.pad.z,
+        radius: 'footprint' in p ? p.footprint : p.pad.width / 2,
+        points: [[p.pad.x - hx, p.pad.z - hz], [p.pad.x + hx, p.pad.z + hz]],
+        label: p.label,
+      })
+      continue
+    }
     // `flat` is the ground it levels; `radius` is where its game
     // starts. Whichever is larger is the ground it owns.
     out.push({ id: `play-${p.id}`, kind: 'play', x: p.x, z: p.z, radius: Math.max(p.radius, 'flat' in p ? p.flat : 0), label: p.label })
@@ -217,11 +321,19 @@ export function zones(): Zone[] {
   for (const r of respawns) {
     out.push({ id: `respawn-${r.id}`, kind: 'respawn', x: r.x, z: r.z, radius: 7, label: r.id })
   }
-  for (const [x, z] of RELAY_POINTS) {
-    out.push({ id: `relay-${x}-${z}`, kind: 'play', x, z, radius: 8, label: 'relay point' })
-  }
+  /*
+    THE YEAR PLATES ARE PAINT, AND PAINT IS SOFT.
+
+    `World.buildTimeline` draws each one as a 6 m PlaneGeometry lying on
+    the ground at y + 0.05 with `depthWrite: false` and no collider at
+    all — you drive over them, and driving over them in order is what
+    unlocks TIME TRAVELLER. Registering them hard meant the registry
+    reported a road running over a decal as a defect and the only
+    available fix was to move the decal off the road the visitor is
+    supposed to be driving when they hit it.
+  */
   for (const p of timelinePlates) {
-    out.push({ id: `timeline-${p.year}`, kind: 'landmark', x: p.x, z: p.z, radius: 4, label: `${p.year} plate` })
+    out.push({ id: `timeline-${p.year}`, kind: 'landmark', soft: true, x: p.x, z: p.z, radius: 4, label: `${p.year} plate` })
   }
 
   // The physical name. Two rows of letters at the hub; the extent is
@@ -230,12 +342,36 @@ export function zones(): Zone[] {
   out.push({
     id: 'letters', kind: 'letters',
     x: letters.x, z: letters.z,
-    radius: Math.max(LETTERS.widthAlejandro, LETTERS.widthNewport) * 0.5 + 4,
+    radius: Math.max(LETTERS.widthAlejandro, LETTERS.widthNewport) * 0.5 + 3,
+    // An ELLIPSE. Two rows of capitals are 30 m across and 12 deep; as
+    // a disc the name claimed a nineteen-metre circle and reported the
+    // bridge road, which passes eight metres north of the top row, as
+    // standing inside it.
+    rx: Math.max(LETTERS.widthAlejandro, LETTERS.widthNewport) * 0.5 + 3,
+    rz: LETTERS.rowPitch + LETTERS.size * 0.5 + 3,
     label: 'ALEJANDRO NEWPORT',
   })
 
-  for (const [x, z, r] of FOREST_POCKETS) {
-    out.push({ id: `forest-${x}-${z}`, kind: 'forest', x, z, radius: r, soft: true, label: 'woodland' })
+  // The drawing's green masses, as ellipses. Soft: this is where
+  // vegetation is WANTED, so nothing is kept out of them.
+  for (const v of VEGETATION_ZONES) {
+    out.push({
+      id: `forest-${v.id}`, kind: 'forest', x: v.x, z: v.z,
+      radius: Math.max(v.rx, v.rz), rx: v.rx, rz: v.rz,
+      soft: true, label: 'woodland',
+    })
+  }
+
+  // …and the built ground the drawing leaves white, which nothing may
+  // grow on. These are regions, not corridors: a polygon traced with
+  // `points` would only exclude a ribbon along its outline.
+  for (const zone of VEGETATION_EXCLUSIONS) {
+    out.push({
+      id: `noveg-${zone.id}`, kind: 'noveg', soft: true,
+      x: zone.polygon.reduce((t, p) => t + p[0], 0) / zone.polygon.length,
+      z: zone.polygon.reduce((t, p) => t + p[1], 0) / zone.polygon.length,
+      radius: 0, polygon: zone.polygon, label: `${zone.id} (no planting)`,
+    })
   }
 
   cache = out
@@ -251,7 +387,17 @@ export function zones(): Zone[] {
    number.
    ------------------------------------------------------------ */
 
-const LETTER_SIZE = 3.9
+/*
+  3.1 m, down from 3.9.
+
+  The name is 9 characters on the top row: at 3.9 it reserves a 33 m
+  ellipse, which on a 266 m island reaches the river's near bank, the
+  bridge deck, the landing respawn AND the road-ramp respawn all at
+  once. Everything else on the island lost 30%; the letters lose 20%,
+  which is enough to fit and still leaves each capital taller than the
+  car is long.
+*/
+const LETTER_SIZE = 3.1
 const GLYPH_PITCH = 0.72
 
 export const LETTERS = {
@@ -259,8 +405,9 @@ export const LETTERS = {
   size: LETTER_SIZE,
   /** Vertical gap between the two rows, metres. */
   rowPitch: LETTER_SIZE * 1.44,
-  /** How far north of the hub centre the two rows are set. */
-  offsetZ: -5.7,
+  /** Where the two rows stand, straight out of the plan. */
+  x: ZONES.nameLetters.x,
+  z: ZONES.nameLetters.z,
   widthAlejandro: 9 * LETTER_SIZE * GLYPH_PITCH * 1.2,
   widthNewport: 7 * LETTER_SIZE * GLYPH_PITCH * 1.2,
 } as const
@@ -269,7 +416,7 @@ export const LETTERS = {
  *  imports this module, so nothing here may read its exports at
  *  module-evaluation time. */
 export function lettersOrigin(): { x: number; z: number } {
-  return { x: districtById.hub.x, z: districtById.hub.z + LETTERS.offsetZ }
+  return { x: LETTERS.x, z: LETTERS.z }
 }
 
 /* ------------------------------------------------------------
@@ -277,6 +424,10 @@ export function lettersOrigin(): { x: number; z: number } {
    ------------------------------------------------------------ */
 
 function distanceToZone(zone: Zone, x: number, z: number): number {
+  if (zone.polygon) {
+    const edge = polygonEdgeDistance(x, z, zone.polygon)
+    return (pointInPolygon(x, z, zone.polygon) ? -edge : edge) - zone.radius
+  }
   if (zone.points) return lineDistance(x, z, zone.points) - zone.radius
   if (zone.rx && zone.rz) {
     // Distance to an ellipse, approximated by scaling to a circle.
@@ -314,7 +465,15 @@ export interface PlacementRules {
   extra?: readonly Zone[]
 }
 
-const SOFT: ZoneKind[] = ['district', 'forest']
+/*
+  Kinds nothing is ever kept out of. `noveg` belongs here: it is a
+  planting mask that deliberately covers the forecourt, the bowling
+  precinct and the maze floor, so treating it as an obstacle reported
+  every road, venue and spawn point inside it as a collision — and told
+  `validateRespawns` the LANDING spawn was standing in something.
+  `Ecology` asks for it by name instead, through `vegetationSuppressed`.
+*/
+const SOFT: ZoneKind[] = ['district', 'forest', 'noveg']
 
 /**
  * The zone blocking this point, or null if the ground is free.
@@ -326,7 +485,7 @@ export function blockedBy(x: number, z: number, rules: PlacementRules = {}): Zon
   const clearance = rules.clearance ?? 0
   const allow = new Set<ZoneKind>([...SOFT, ...(rules.allow ?? [])])
 
-  if (Math.hypot(x, z) > coastRadius(x, z, WORLD_RADIUS) - (rules.coastMargin ?? 8)) {
+  if (coastInset(x, z) < (rules.coastMargin ?? 8)) {
     return { id: 'coast', kind: 'water', x, z, radius: 0, label: 'the sea' }
   }
   if (rules.dry !== false) {
@@ -375,7 +534,7 @@ export function pushClear(
     pz += (dz / length) * step
     // Past the coast, walk back INWARDS instead: there is nothing
     // further out to find.
-    if (Math.hypot(px, pz) > coastRadius(px, pz, WORLD_RADIUS) - 12) {
+    if (coastInset(px, pz) < 12) {
       px = x
       pz = z
       step = -Math.abs(step)
@@ -453,9 +612,8 @@ export function validateLayout(): LayoutConflict[] {
     const both = new Set([a.kind, b.kind])
     // Everything a district's own paving is paved FOR.
     if (both.has('plate') && !both.has('water')) return true
-    // The waterfall is the head of the river; RIVER RUN is played in it.
+    // Two water zones are one body of water where they meet.
     if (a.kind === 'water' && b.kind === 'water') return true
-    if (both.has('water') && both.has('play')) return true
     // A bridge is the crossing: it is on the water and on the road.
     if (both.has('bridge') && (both.has('water') || both.has('road') || both.has('ramp'))) return true
     // …and a road may cross water WHERE A BRIDGE CARRIES IT. Anywhere
@@ -473,6 +631,49 @@ export function validateLayout(): LayoutConflict[] {
     if (kinds === 'respawn+road' || kinds === 'circuit+respawn') return true
     // A venue contains its own entrance landmark and its own respawn.
     if (kinds === 'landmark+play' || kinds === 'play+respawn') return true
+    /*
+      ONE VENUE MAY BE TWO RECTANGLES. The labyrinth levels its square
+      and, separately, the twelve metres of approach in front of its
+      mouth, because a rectangle is centred and growing the square
+      northwards pulls its south edge inside the back wall. They touch
+      by construction; `mazeApproach` names its parent.
+    */
+    if (a.kind === 'play' && b.kind === 'play') {
+      const ids = [a.id.replace(/^play-/, ''), b.id.replace(/^play-/, '')]
+      if (ids[0].startsWith(ids[1]) || ids[1].startsWith(ids[0])) return true
+    }
+    /*
+      A ROAD MAY ARRIVE AT A VENUE, and only arrive.
+
+      A venue you cannot drive to is not a venue: the spur to the maze
+      ends at its mouth, which is six metres outside a forty-two-metre
+      square of solid wall, and the bowling road ends on the apron. But
+      a road that crosses a venue in the MIDDLE is the defect this
+      check exists for — a carriageway down the bowling lane — so the
+      exemption is exactly "one of the road's ends is in there".
+    */
+    if (kinds === 'play+road') {
+      const road = a.kind === 'road' ? a : b
+      const venue = a.kind === 'road' ? b : a
+      const ends = road.points ? [road.points[0], road.points[road.points.length - 1]] : []
+      return ends.some(([x, z]) => distanceToZone(venue, x, z) < road.radius)
+    }
+    /*
+      A ROAD MAY ARRIVE AT A LANDMARK, and only arrive.
+
+      The same rule as `play+road` above and for the same reason: the
+      road to PROJECTS ends at the PROJECTS terminal, the road out of
+      SOCIAL starts at the camera, and reporting those as defects means
+      the fix is to stop every road short of the thing it exists to
+      reach. A road that passes a landmark in the MIDDLE is still a
+      road running through a signpost, and is still reported.
+    */
+    if (kinds === 'landmark+road') {
+      const road = a.kind === 'road' ? a : b
+      const mark = a.kind === 'road' ? b : a
+      const ends = road.points ? [road.points[0], road.points[road.points.length - 1]] : []
+      return ends.some(([x, z]) => distanceToZone(mark, x, z) < road.radius)
+    }
     // The name is a playground: roads run to it and it is meant to be hit.
     if (both.has('letters') && (both.has('road') || both.has('ramp') || both.has('landmark'))) return true
     return false
@@ -489,13 +690,23 @@ export function validateLayout(): LayoutConflict[] {
       // Corridor-to-corridor needs a sampled test; centre distance
       // means nothing for two polylines.
       let gap: number
-      if (a.points && b.points) {
+      const aPath = a.points ?? a.polygon
+      const bPath = b.points ?? b.polygon
+      if (aPath && bPath) {
         gap = Infinity
-        for (const [x, z] of a.points) gap = Math.min(gap, distanceToZone(b, x, z) - a.radius)
+        for (const [x, z] of aPath) gap = Math.min(gap, distanceToZone(b, x, z) - a.radius)
       } else if (a.points) {
         gap = distanceToZone(a, b.x, b.z) - b.radius
       } else if (b.points) {
         gap = distanceToZone(b, a.x, a.z) - a.radius
+      } else if (a.rx || b.rx) {
+        // One of them is an ELLIPSE. Centre distance minus two radii is
+        // wrong for a shape whose radius depends on the bearing: the
+        // physical name is 36 m across and 21 deep, and as a 21 m disc
+        // it reported the bridge road — which passes ten metres north
+        // of the top row — as standing inside it.
+        const [oval, other] = a.rx ? [a, b] : [b, a]
+        gap = distanceToZone(oval, other.x, other.z) - other.radius
       } else {
         gap = Math.hypot(a.x - b.x, a.z - b.z) - a.radius - b.radius
       }
@@ -516,7 +727,7 @@ export function validateRespawns(): string[] {
   for (const r of respawns) {
     const water = inlandWater(r.x, r.z)
     if (water && water.edge > -2) problems.push(`respawn ${r.id} is in the water`)
-    if (Math.hypot(r.x, r.z) > coastRadius(r.x, r.z, WORLD_RADIUS) - 6) {
+    if (coastInset(r.x, r.z) < 6) {
       problems.push(`respawn ${r.id} is past the coastline`)
     }
     const blocker = blockedBy(r.x, r.z, {
