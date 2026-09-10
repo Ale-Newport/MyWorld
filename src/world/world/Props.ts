@@ -6,6 +6,8 @@ import type { Ticker } from '../core/Ticker'
 import type { Physical, Physics } from '../physics/Physics'
 import type { Materials } from './materials'
 import { chamferedBox } from './geometry'
+import { DECOR_KINDS, buildDecorShape, mergeParts, type DecorCollider } from './decorGeometry'
+import type { DecorKindId } from '@/content/world-decor'
 
 /* ============================================================
    PHYSICAL PROPS
@@ -18,17 +20,30 @@ import { chamferedBox } from './geometry'
    InstancedMesh per prop kind, with transforms written from
    physics after the step — four hundred cones cost four draw
    calls, not four hundred. The second is that mass is the whole
-   design: a cone at 0.6 kg scatters, a crate at 6 kg shifts, and
-   a bench at 40 kg barely moves. Getting those three tiers right
-   is most of what makes a physics playground feel physical.
+   design: a cone at 0.6 kg scatters, a crate at 6 kg shifts and a
+   panel at 11 kg barely moves. Getting those three tiers right is
+   most of what makes a physics playground feel physical — and the
+   scale they are read against is the 2.5 kg chassis, not the real
+   world, which is why the bench here is 9 kg and not 40.
 
    Sleeping bodies are skipped. Rapier puts a settled prop to
    sleep and it stops moving; rewriting its matrix every frame
    afterwards is pure waste, and with several hundred props it is
    measurable.
+
+   PER-INSTANCE SCALE AND COLOUR are what turn ten kinds into a
+   world's worth of things. A draw call is spent per KIND and not
+   per instance, so the expensive way to vary decoration is to add
+   geometries and the cheap way is to vary the instances of the
+   ones already reserved — a crate at 0.6 in hay yellow and the
+   same crate at 1.3 in paper grey are two objects for one draw.
+   The scale is UNIFORM and it is applied to the collider and to
+   the mass as well as to the matrix: a prop you cannot hit where
+   you can see it is worse than one that never varied.
    ============================================================ */
 
-export type PropKind =
+/** The ten kinds the playground was built with. */
+export type BasePropKind =
   | 'cone'
   | 'barrier'
   | 'crate'
@@ -39,6 +54,9 @@ export type PropKind =
   | 'domino'
   | 'drum'
   | 'panel'
+
+/** …and the fourteen the decoration manifest adds on top of them. */
+export type PropKind = BasePropKind | DecorKindId
 
 interface PropSpec {
   /** Built once and shared by every instance. */
@@ -52,17 +70,22 @@ interface PropSpec {
   linearDamping: number
   angularDamping: number
   /** Rapier collider description, in the geometry's own frame. */
-  collider: () => {
-    shape: 'cuboid' | 'ball' | 'cylinder' | 'cone'
-    parameters: number[]
-    position?: { x: number; y: number; z: number }
-  }
+  collider: () => DecorCollider
   /** Contact force above which a hit is worth a sound. */
   contactThreshold: number
   castShadow: boolean
+  /**
+   * Placed asleep. Decoration is meant to be exactly where it was
+   * put until something hits it, and a settling pass over eight
+   * hundred props on sloping ground is eight hundred props that
+   * have all slid a little way downhill by the time the car
+   * arrives. Rapier wakes a sleeping body on contact, so nothing
+   * is lost but the drift.
+   */
+  sleeping?: boolean
 }
 
-const SPECS: Record<PropKind, PropSpec> = {
+const BASE_SPECS: Record<BasePropKind, PropSpec> = {
   // Light and tall: falls over from almost any contact, which is
   // exactly what a traffic cone is for.
   cone: {
@@ -112,20 +135,26 @@ const SPECS: Record<PropKind, PropSpec> = {
 
   bench: {
     geometry: () => {
-      const group = new THREE.BufferGeometry()
       const seat = chamferedBox(2.6, 0.16, 0.7, 0.04)
       seat.translate(0, 0.52, 0)
+      // A BACKREST, because this geometry now has to stand in for the
+      // lake and coast benches `SceneryDetails` used to build out of
+      // merged boxes. Those had one and their replacement should: a
+      // backless slab beside the water reads as a kerb.
+      const back = chamferedBox(2.6, 0.5, 0.1, 0.03)
+      back.translate(0, 0.85, -0.3)
       const legA = chamferedBox(0.16, 0.52, 0.62, 0.03)
       legA.translate(-1.0, 0.26, 0)
       const legB = chamferedBox(0.16, 0.52, 0.62, 0.03)
       legB.translate(1.0, 0.26, 0)
-      const merged = mergeGeometries([seat, legA, legB])
-      seat.dispose(); legA.dispose(); legB.dispose()
-      group.dispose()
-      return merged
+      return mergeParts([seat, back, legA, legB])
     },
     color: palette.concreteDark, roughness: 0.8, metalness: 0.05,
-    mass: 40, friction: 0.8, restitution: 0.04,
+    // NINE, NOT FORTY. A bench at 40 kg against a 2.5 kg car is a
+    // brick: the car stops dead on it, which is the single most
+    // common way this world said 'you may not go there' by accident.
+    // Nine shoves, slides and eventually tips.
+    mass: 9, friction: 0.8, restitution: 0.04,
     linearDamping: 0.5, angularDamping: 0.8,
     collider: () => ({ shape: 'cuboid', parameters: [1.3, 0.34, 0.35], position: { x: 0, y: 0.34, z: 0 } }),
     contactThreshold: 22, castShadow: true,
@@ -134,7 +163,10 @@ const SPECS: Record<PropKind, PropSpec> = {
   block: {
     geometry: () => chamferedBox(1.6, 1.6, 1.6, 0.08),
     color: palette.ink2, roughness: 0.6, metalness: 0.1,
-    mass: 14, friction: 0.7, restitution: 0.05,
+    // Eight. At 14 it was the second wall in this table — heavier
+    // than a crate, and the maze and black-hole scatters are made of
+    // it. `panel` at 11 is the one deliberate immovable left.
+    mass: 8, friction: 0.7, restitution: 0.05,
     linearDamping: 0.3, angularDamping: 0.5,
     collider: () => ({ shape: 'cuboid', parameters: [0.8, 0.8, 0.8] }),
     contactThreshold: 16, castShadow: true,
@@ -183,25 +215,52 @@ const SPECS: Record<PropKind, PropSpec> = {
   },
 }
 
-/** Minimal geometry merge — enough for the few multi-part props. */
-function mergeGeometries(list: THREE.BufferGeometry[]): THREE.BufferGeometry {
-  const positions: number[] = []
-  const normals: number[] = []
-  for (const geometry of list) {
-    const source = geometry.index ? geometry.toNonIndexed() : geometry
-    const p = source.getAttribute('position')
-    const n = source.getAttribute('normal')
-    for (let i = 0; i < p.count; i++) {
-      positions.push(p.getX(i), p.getY(i), p.getZ(i))
-      normals.push(n.getX(i), n.getY(i), n.getZ(i))
-    }
-    if (source !== geometry) source.dispose()
-  }
-  const out = new THREE.BufferGeometry()
-  out.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3))
-  out.setAttribute('normal', new THREE.Float32BufferAttribute(normals, 3))
-  return out
-}
+/*
+  THE FOURTEEN DECORATION KINDS, built from the manifest.
+
+  Their numbers live in `content/world-decor.ts` — which holds no
+  THREE import, so the headless checker can read every mass and
+  count without a renderer — and their shapes in `decorGeometry.ts`,
+  where each is authored beside its own collider. Nothing about them
+  is repeated here: this is only the join.
+*/
+const DECOR_SPECS = Object.fromEntries(
+  DECOR_KINDS.map((kind): [string, PropSpec] => {
+    /*
+      THE GEOMETRY IS BUILT FRESH AND THE COLLIDER IS CACHED, and the
+      asymmetry is not an oversight.
+
+      A `Bin` disposes every geometry it was given when the game is
+      torn down, and a hot reload builds a second `Props` immediately
+      afterwards. Handing that second one a module-level geometry the
+      first one has already disposed gives an empty mesh and no error
+      at all. The collider is plain numbers, so it survives — and it
+      has to be cached, because `add` asks for one per instance and
+      there are eight hundred of them.
+    */
+    let collider: DecorCollider | null = null
+    return [kind.id, {
+      geometry: () => buildDecorShape(kind).geometry,
+      color: kind.colours[0],
+      roughness: kind.roughness,
+      metalness: kind.metalness,
+      mass: kind.mass,
+      friction: kind.friction,
+      restitution: kind.restitution,
+      linearDamping: kind.linearDamping,
+      angularDamping: kind.angularDamping,
+      // A shallow copy, which is enough: `add` REPLACES `parameters`
+      // and `position` when it scales them rather than writing into
+      // them, so the cached arrays are never touched.
+      collider: () => ({ ...(collider ??= buildDecorShape(kind).collider) }),
+      contactThreshold: kind.contactThreshold,
+      castShadow: kind.castShadow,
+      sleeping: true,
+    }]
+  }),
+) as Record<DecorKindId, PropSpec>
+
+const SPECS: Record<PropKind, PropSpec> = { ...BASE_SPECS, ...DECOR_SPECS }
 
 export interface PropInstance {
   kind: PropKind
@@ -211,15 +270,38 @@ export interface PropInstance {
   tag?: string
   /** True once the prop has been moved from where it started. */
   disturbed: boolean
+  /** Uniform, and shared by the mesh, the collider and the mass. */
+  scale: number
+}
+
+/** What varies from one instance of a kind to the next. */
+export interface PropOptions {
+  rotation?: number
+  tag?: string
+  tilt?: number
+  /**
+   * Uniform scale. It multiplies the collider's half-extents and its
+   * offset as well as the matrix, and the mass by its CUBE — a crate
+   * at 0.5 that still weighs six kilograms is a paving slab the size
+   * of a shoebox, and it stops the car.
+   */
+  scale?: number
+  /** Per-instance tint, multiplied into the kind's own material. */
+  colour?: string
+  /** Overrides the kind's default. See `PropSpec.sleeping`. */
+  sleeping?: boolean
 }
 
 interface Group {
   kind: PropKind
   spec: PropSpec
+  geometry: THREE.BufferGeometry
   mesh: THREE.InstancedMesh
   instances: PropInstance[]
   /** Instances whose matrix still needs writing even while asleep. */
   dirty: Set<number>
+  /** Set once any instance of the kind asked for its own colour. */
+  tinted: boolean
 }
 
 export type PropHitHandler = (
@@ -242,6 +324,7 @@ export class Props {
   private readonly position = new THREE.Vector3()
   private readonly quaternion = new THREE.Quaternion()
   private readonly scale = new THREE.Vector3(1, 1, 1)
+  private readonly colour = new THREE.Color()
 
   constructor(
     private physics: Physics,
@@ -258,22 +341,67 @@ export class Props {
     this.bin.object3D(this.group)
   }
 
-  /** Pre-allocates an instanced mesh for a kind. Call before `add`. */
+  /**
+   * Pre-allocates an instanced mesh for a kind, or GROWS the one
+   * that is already there.
+   *
+   * The early return this replaces made capacity first-come: whoever
+   * reserved a kind first fixed it forever, so once `SceneryDetails`
+   * and `Decor` both wanted benches, the second one to ask spent its
+   * whole set on `ran out of "bench" instances` warnings in dev and
+   * on silence in production. An InstancedMesh cannot be resized, so
+   * growing means a new one — the geometry and the material are
+   * shared with the old, every instance is marked dirty, and the next
+   * tick rewrites the matrices it already had.
+   */
   reserve(kind: PropKind, capacity: number): void {
-    if (this.groups.has(kind)) return
     const spec = SPECS[kind]
-    const geometry = spec.geometry()
+    const existing = this.groups.get(kind)
+    if (existing && existing.mesh.instanceMatrix.count >= capacity) return
+
+    const geometry = existing ? existing.geometry : spec.geometry()
     const material = this.materials.tinted(spec.color, spec.roughness, spec.metalness)
     const mesh = new THREE.InstancedMesh(geometry, material, capacity)
     mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage)
     mesh.castShadow = this.castShadows && spec.castShadow
     mesh.receiveShadow = false
-    mesh.count = 0
+    mesh.count = existing ? existing.instances.length : 0
     mesh.frustumCulled = false
     this.group.add(mesh)
-    this.bin.add(() => geometry.dispose())
 
-    this.groups.set(kind, { kind, spec, mesh, instances: [], dirty: new Set() })
+    if (!existing) {
+      this.bin.add(() => geometry.dispose())
+      this.groups.set(kind, {
+        kind, spec, geometry, mesh, instances: [], dirty: new Set(), tinted: false,
+      })
+      return
+    }
+
+    // Carry the colours across before the old mesh goes, or a grown
+    // kind loses every tint it had been given.
+    if (existing.tinted && existing.mesh.instanceColor) {
+      for (let i = 0; i < existing.instances.length; i++) {
+        this.colour.fromArray(existing.mesh.instanceColor.array, i * 3)
+        mesh.setColorAt(i, this.colour)
+      }
+      if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true
+    }
+    this.group.remove(existing.mesh)
+    existing.mesh.dispose()
+    existing.mesh = mesh
+    for (const instance of existing.instances) existing.dirty.add(instance.index)
+  }
+
+  /** How many instances of a kind are still unplaced. */
+  headroom(kind: PropKind): number {
+    const group = this.groups.get(kind)
+    return group ? group.mesh.instanceMatrix.count - group.instances.length : 0
+  }
+
+  /** How many are already standing. A second builder reserving the
+   *  same kind adds to this rather than replacing it. */
+  countOf(kind: PropKind): number {
+    return this.groups.get(kind)?.instances.length ?? 0
   }
 
   /**
@@ -285,7 +413,7 @@ export class Props {
     x: number,
     y: number,
     z: number,
-    options: { rotation?: number; tag?: string; tilt?: number } = {},
+    options: PropOptions = {},
   ): PropInstance | null {
     const group = this.groups.get(kind)
     if (!group) {
@@ -302,7 +430,23 @@ export class Props {
     }
 
     const spec = group.spec
+    const scale = options.scale ?? 1
     const collider = spec.collider()
+    // The collider is described in the geometry's frame, so a uniform
+    // scale is a uniform scale of every half-extent, radius and
+    // offset in it — and of nothing else, which is why `scale` here
+    // is a number and not a Vector3. A cylinder scaled 1.4 on X only
+    // is not a cylinder any more and Rapier has no shape for it.
+    if (scale !== 1) {
+      collider.parameters = collider.parameters.map((n) => n * scale)
+      if (collider.position) {
+        collider.position = {
+          x: collider.position.x * scale,
+          y: collider.position.y * scale,
+          z: collider.position.z * scale,
+        }
+      }
+    }
     const index = group.instances.length
 
     const rotation = new THREE.Quaternion().setFromEuler(
@@ -314,25 +458,63 @@ export class Props {
       index,
       tag: options.tag,
       disturbed: false,
+      scale,
       physical: this.physics.add({
         type: 'dynamic',
         position: { x, y, z },
         rotation,
-        mass: spec.mass,
+        // Volume scales with the cube, and so does anything that is
+        // going to feel right when the car hits it. Floored at 0.15 kg
+        // so a heavily shrunk prop is still something rather than a
+        // body Rapier has to integrate at absurd accelerations.
+        mass: Math.max(0.15, spec.mass * scale * scale * scale),
         friction: spec.friction,
         restitution: spec.restitution,
         linearDamping: spec.linearDamping,
         angularDamping: spec.angularDamping,
         contactThreshold: spec.contactThreshold,
+        sleeping: options.sleeping ?? spec.sleeping ?? false,
         colliders: [collider],
         onCollision: (force, at) => this.handleHit(instance, force, at),
       }),
+    }
+
+    if (options.colour) {
+      group.tinted = true
+      group.mesh.setColorAt(index, this.colour.set(options.colour))
+      if (group.mesh.instanceColor) group.mesh.instanceColor.needsUpdate = true
     }
 
     group.instances.push(instance)
     group.mesh.count = group.instances.length
     group.dirty.add(index)
     return instance
+  }
+
+  /**
+   * A whole set at once.
+   *
+   * The saving is not the loop, it is the flags: `add` marks the
+   * instance matrix dirty on every call, and eight hundred separate
+   * calls at build time is eight hundred buffer uploads scheduled
+   * for a frame that has not started yet. One `needsUpdate` at the
+   * end of the batch is the same picture.
+   */
+  addMany(
+    kind: PropKind,
+    placements: readonly { x: number; y: number; z: number; options?: PropOptions }[],
+  ): PropInstance[] {
+    const out: PropInstance[] = []
+    for (const p of placements) {
+      const instance = this.add(kind, p.x, p.y, p.z, p.options)
+      if (instance) out.push(instance)
+    }
+    const group = this.groups.get(kind)
+    if (group) {
+      group.mesh.instanceMatrix.needsUpdate = true
+      if (group.mesh.instanceColor) group.mesh.instanceColor.needsUpdate = true
+    }
+    return out
   }
 
   private handleHit(
@@ -401,7 +583,7 @@ export class Props {
         if (sleeping && !group.dirty.has(instance.index)) continue
 
         this.physics.sample(instance.physical, alpha, this.position, this.quaternion)
-        this.matrix.compose(this.position, this.quaternion, this.scale)
+        this.matrix.compose(this.position, this.quaternion, this.scale.setScalar(instance.scale))
         group.mesh.setMatrixAt(instance.index, this.matrix)
         wrote = true
 

@@ -19,6 +19,21 @@ import type { Bin } from '../core/Disposal'
    ============================================================ */
 
 export type MaterialName =
+  /* ---- the dressing palette -------------------------------
+     Seven names added for the per-district set dressing. They are
+     NAMED rather than left to `tinted()` because each is used by
+     dozens of meshes across several files, and a cached one-off keyed
+     by its hex string is a material nobody can find by grepping for a
+     word. Nothing here is a district accent: an accent belongs on one
+     or two objects in a place, not on all of them, or the plates go
+     back to reading alike. */
+  | 'hedge'
+  | 'foliageLight'
+  | 'timber'
+  | 'sandbag'
+  | 'brass'
+  | 'hazard'
+  | 'emissiveCool'
   | 'paper'
   | 'paperDark'
   | 'concrete'
@@ -54,6 +69,20 @@ interface Spec {
 }
 
 const SPECS: Record<MaterialName, Spec> = {
+  // Clipped box hedge, and the lighter green of new growth on top of it.
+  hedge: { color: '#5e7f4f', roughness: 0.95, metalness: 0 },
+  foliageLight: { color: '#729651', roughness: 0.95, metalness: 0 },
+  // Bare softwood: pallets, barriers, the labyrinth's signs, crates.
+  // Matches the wood bucket SceneryDetails already uses, so dressing
+  // and scenery do not disagree about what a plank looks like.
+  timber: { color: '#9f875f', roughness: 0.88, metalness: 0 },
+  sandbag: { color: '#b9ad86', roughness: 0.95, metalness: 0 },
+  // The time machine's rings were building this ad hoc every boot.
+  brass: { color: '#c2b974', roughness: 0.4, metalness: 0.45 },
+  hazard: { color: '#e2b33a', roughness: 0.7, metalness: 0 },
+  // The one COOL light on a warm island: the black hole's, and
+  // anything else that is supposed to look wrong.
+  emissiveCool: { color: '#9fd7ff', kind: 'basic' },
   paper: { color: palette.paper, roughness: 0.92, metalness: 0 },
   paperDark: { color: palette.paper3, roughness: 0.94, metalness: 0 },
   concrete: { color: palette.concrete, roughness: 0.88, metalness: 0 },

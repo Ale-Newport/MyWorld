@@ -38,10 +38,11 @@ const COLOURS: Record<ZoneKind, string> = {
   respawn: '#28c07a',
   letters: '#8d8467',
   forest: '#4d7a3a',
+  noveg: '#a03030',
 }
 
 /** Kinds drawn faintly: they overlap everything by design. */
-const SOFT: ZoneKind[] = ['district', 'forest']
+const SOFT: ZoneKind[] = ['district', 'forest', 'noveg']
 
 export class LayoutDebug {
   private group: THREE.Group | null = null

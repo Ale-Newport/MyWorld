@@ -19,9 +19,6 @@ export class Playground {
   readonly letters: (Actor & { down: boolean; char: string })[] = []
   readonly crates: Explosive[] = []
   readonly actors: Actor[] = []
-  readonly chips: Actor[] = []
-  readonly cargo: Actor
-  readonly altar = new THREE.Vector3()
 
   /** Where a set piece stands. The geography owns the position; this
    *  file owns what is built on it. Hard-coding a coordinate here is
@@ -32,15 +29,12 @@ export class Playground {
     if (!found) throw new Error(`[world] no play spot '${id}'`)
     return found
   }
-  private cabin!: Actor
-  private chipCursor = 0
-  private chipActive = new Set<number>()
-  private chipCooldown = 0
   private lastImpact = 0
   private exploded = 0
   private flash: THREE.Mesh
-  private beam: THREE.Mesh
   private machine: THREE.Group
+  private blackHole: THREE.Group
+  private pullUntil = 0
   private machineUntil = 0
   private machineTarget = .5
   private machinePhase = 0
@@ -54,21 +48,8 @@ export class Playground {
     this.buildTnt()
     this.flash = new THREE.Mesh(new THREE.SphereGeometry(1, 12, 8), new THREE.MeshBasicMaterial({ color: '#ffdc8a', transparent: true, opacity: 0, depthWrite: false }))
     this.flash.visible=false;this.group.add(this.flash)
-    const altarSpot=Playground.spot('deployment')
-    this.altar.set(altarSpot.x,0,altarSpot.z)
-    const y=game.world.terrain.colliderHeightAt(this.altar.x,this.altar.z)
-    this.altar.y=y
-    const platform=new THREE.Mesh(new THREE.CylinderGeometry(5,6,.35,8),new THREE.MeshStandardMaterial({color:'#8aa897',metalness:.25,roughness:.65}))
-    platform.position.copy(this.altar).add(new THREE.Vector3(0,.12,0));this.group.add(platform)
-    // A nearly flush altar pad has no step to beach a delivery package.
-    this.cargo=this.box(new THREE.Vector3(this.altar.x+13,y+1.1,this.altar.z+5),new THREE.Vector3(2,2,2),'#cab57f',1.1)
-    this.label('RELEASE',this.cargo.mesh,new THREE.Vector3(0,.1,1.01),1.9,.6)
-    this.beam=new THREE.Mesh(new THREE.CylinderGeometry(3,4,32,24,1,true),new THREE.MeshBasicMaterial({color:'#b8eac5',transparent:true,opacity:0,depthWrite:false,side:THREE.DoubleSide}))
-    this.beam.position.copy(this.altar).add(new THREE.Vector3(0,16,0));this.group.add(this.beam)
-    this.label('DEPLOYMENT ALTAR',this.group,new THREE.Vector3(this.altar.x,y+6,this.altar.z-5),14,2)
-    this.buildDispenser()
-    this.buildCabin()
     this.machine=this.buildTimeMachine()
+    this.blackHole=this.buildBlackHole()
     game.renderer.scene.add(this.group);bin.object3D(this.group)
     const tick=()=>this.update();game.ticker.events.on('tick',tick,12);bin.add(()=>game.ticker.events.off('tick',tick))
   }
@@ -110,7 +91,10 @@ export class Playground {
       movable letters, but no longer filling the frame from every
       approach.
     */
-    const handle=this.game.world.landmarks.get('hub-name');if(!handle)return
+    // `landing-name`, not `hub-name`: the district was renamed with the
+    // island and this lookup fails SILENTLY — the whole physical name
+    // simply did not build, and nothing said so.
+    const handle=this.game.world.landmarks.get('landing-name');if(!handle)return
     const SIZE=LETTERS.size, HALF=SIZE/2, PITCH=LETTERS.rowPitch
     const origin=handle.group.position,rotation=handle.group.quaternion
     for(const [row,line] of ['ALEJANDRO','NEWPORT'].entries()) {
@@ -151,7 +135,10 @@ export class Playground {
     const map=new THREE.CanvasTexture(canvas);map.magFilter=THREE.NearestFilter;map.minFilter=THREE.NearestFilter;map.colorSpace=THREE.SRGBColorSpace
     const material=new THREE.MeshStandardMaterial({map,roughness:.83})
     for(let i=0;i<18;i++) {
-      const x=quarry.x-15.2+(i%9)*3.8,z=quarry.z-2.6+Math.floor(i/9)*5.3,y=this.game.world.terrain.colliderHeightAt(x,z)+1.06
+      // THREE ABREAST, SIX DEEP, along the verge. Nine abreast made a
+      // thirty-metre row on a twenty-metre strip of land: its west end
+      // stood on the racing line and its east end was in the lake.
+      const x=quarry.x+(i%3-1)*3.8,z=quarry.z+(Math.floor(i/3)-2.5)*4.2,y=this.game.world.terrain.colliderHeightAt(x,z)+1.06
       const actor=this.box(new THREE.Vector3(x,y,z),new THREE.Vector3(2.1,2.1,2.1),'#bb4d36',.85)
       ;((actor.mesh as THREE.Mesh).material as THREE.Material).dispose();(actor.mesh as THREE.Mesh).material=material
       const crate:Explosive={...actor,fuse:-1,exploded:false,armedAt:2}
@@ -187,36 +174,6 @@ export class Playground {
     if(proximity&&this.game.ticker.elapsed-this.lastTntSound>.1){this.lastTntSound=this.game.ticker.elapsed;this.game.audio.environment('explosion',proximity);if(!this.game.reducedMotion)this.game.view.kick(proximity*.3)}
   }
 
-  private buildDispenser():void {
-    const shop=Playground.spot('chipRelay')
-    const sx=shop.x,sz=shop.z
-    const y=this.game.world.terrain.colliderHeightAt(sx,sz)
-    const oven=new THREE.Mesh(new THREE.BoxGeometry(6,5,4),new THREE.MeshStandardMaterial({color:'#627f69',roughness:.7}));oven.position.set(sx-9,y+2.5,sz);this.group.add(oven)
-    this.game.physics.add({type:'fixed',category:'object',position:oven.position,colliders:[{shape:'cuboid',parameters:[3,2.5,2]}]})
-    this.label('CHIP SHOP',oven,new THREE.Vector3(0,1,2.02),5,1.1)
-    this.label('[ DISPENSE ]',oven,new THREE.Vector3(0,-.7,2.03),3.8,1)
-    for(let i=0;i<12;i++) {
-      const chip=this.box(new THREE.Vector3(sx-9,y+1,sz+4),new THREE.Vector3(.7,.2,.9),'#d5b465',.08)
-      chip.physical.body.setEnabled(false);chip.mesh.visible=false;this.chips.push(chip)
-    }
-    this.game.interactions.add({id:'chip-shop',position:new THREE.Vector3(sx-9,y,sz+3.5),radius:6,label:'DISPENSE A CHIP',sublabel:'Collect the falling silicon snacks.',onInteract:()=>this.dispense()})
-  }
-
-  dispense():void {
-    if(this.game.ticker.elapsed<this.chipCooldown)return
-    this.chipCooldown=this.game.ticker.elapsed+.5
-    const index=this.chipCursor++%this.chips.length,chip=this.chips[index]
-    this.game.physics.reset(chip.physical);chip.physical.body.applyImpulse({x:(Math.random()-.5)*.1,y:.2,z:.18},true);chip.mesh.visible=true;this.chipActive.add(index);this.game.audio.blip(.9)
-  }
-
-  private buildCabin():void {
-    const hut=Playground.spot('cabin'),x=hut.x,z=hut.z,y=this.game.world.terrain.colliderHeightAt(x,z)
-    this.cabin=this.box(new THREE.Vector3(x,y+2,z),new THREE.Vector3(3.2,4,3.2),'#668d80',1.5)
-    this.label('OUT OF\nOFFICE',this.cabin.mesh,new THREE.Vector3(0,.3,1.61),2.6,2)
-    const roof=new THREE.Mesh(new THREE.ConeGeometry(2.8,1.2,4),new THREE.MeshStandardMaterial({color:'#c7bf9e'}));roof.position.y=2.5;roof.rotation.y=Math.PI/4;this.cabin.mesh.add(roof)
-    this.game.interactions.add({id:'reset-cabin',position:new THREE.Vector3(x+6,y,z+3),radius:5,label:'UPRIGHT THE CABIN',onInteract:()=>this.game.physics.reset(this.cabin.physical)})
-  }
-
   private buildTimeMachine():THREE.Group {
     const machine=Playground.spot('timeMachine')
     const group=new THREE.Group(),y=this.game.world.terrain.colliderHeightAt(machine.x,machine.z);group.position.set(machine.x,y,machine.z);this.group.add(group)
@@ -239,15 +196,58 @@ export class Playground {
     return group
   }
 
-  deploymentPulse():void { (this.beam.material as THREE.MeshBasicMaterial).opacity=.3;this.game.particles.burst(this.altar.clone().add(new THREE.Vector3(0,2,0)),35,'confetti');this.game.audio.play('achievement') }
+  /* ------------------------------------------------------------
+     THE BLACK HOLE
+
+     Inside the circuit's north loop, which is the whole point: you
+     go around it every lap and never touch it. The pull is an
+     INTERACTION, not a field — a force that reached the racing
+     surface would be a physics bug wearing a costume — so it lasts
+     four seconds, only from the prompt, and only inside the ring.
+     ------------------------------------------------------------ */
+  private buildBlackHole():THREE.Group {
+    const spot=Playground.spot('blackHole')
+    const group=new THREE.Group(),y=this.game.world.terrain.colliderHeightAt(spot.x,spot.z)
+    group.position.set(spot.x,y,spot.z);this.group.add(group)
+    // The event horizon: a black sphere with no specular at all, so it
+    // reads as absence rather than as a dark ball.
+    const core=new THREE.Mesh(new THREE.SphereGeometry(3.4,32,24),new THREE.MeshBasicMaterial({color:'#07070a'}))
+    core.position.y=5.2;group.add(core)
+    // The accretion disc: three flat rings, each turning at its own
+    // rate, brighter towards the middle.
+    const disc:THREE.Mesh[]=[]
+    for(let i=0;i<3;i++) {
+      const ring=new THREE.Mesh(
+        new THREE.RingGeometry(4.4+i*2.1,6.1+i*2.1,64),
+        new THREE.MeshBasicMaterial({color:i===0?'#f0a95c':i===1?'#c96f4a':'#7d5590',transparent:true,opacity:.78-i*.16,side:THREE.DoubleSide}),
+      )
+      ring.rotation.x=-Math.PI/2+ (i-1)*.09
+      ring.position.y=5.2
+      group.add(ring);disc.push(ring)
+    }
+    // The lip of the crater, so the ground says something is here.
+    const rim=new THREE.Mesh(new THREE.TorusGeometry(spot.radius-2,.5,6,64),new THREE.MeshStandardMaterial({color:'#3b3b45',roughness:.9}))
+    rim.rotation.x=-Math.PI/2;rim.position.y=.35;group.add(rim)
+    this.label('BLACK HOLE',group,new THREE.Vector3(0,12,0),13,2)
+    group.userData.disc=disc
+    this.game.interactions.add({
+      id:'black-hole',position:group.position.clone(),radius:spot.radius-1,
+      label:'FALL IN',sublabel:'Four seconds of somebody else\'s gravity. The pull stops at the rim.',
+      onInteract:()=>{
+        this.pullUntil=this.game.ticker.elapsed+4
+        this.game.audio.play('interact')
+        this.game.achievements.set('blackHole',1)
+        this.game.recordSecret('blackHole')
+      },
+    })
+    return group
+  }
 
   reset():void {
     for(const actor of this.actors)this.game.physics.reset(actor.physical)
-    this.resetName();this.resetTnt();this.chipActive.clear()
-    for(const chip of this.chips){chip.physical.body.setEnabled(false);chip.mesh.visible=false}
-    this.timeActive=false;this.machineUntil=0
+    this.resetName();this.resetTnt()
+    this.timeActive=false;this.machineUntil=0;this.pullUntil=0
     if(this.machineDuration)this.game.lighting.duration=this.machineDuration
-    ;(this.beam.material as THREE.MeshBasicMaterial).opacity=0
   }
 
   private update():void {
@@ -263,18 +263,37 @@ export class Playground {
       if(crate.fuse<=0)this.explode(crate)
     }
     if(this.flash.visible){const m=this.flash.material as THREE.MeshBasicMaterial;m.opacity=Math.max(0,m.opacity-dt*4);this.flash.scale.multiplyScalar(1+dt*4);if(m.opacity===0)this.flash.visible=false}
-    const beam=this.beam.material as THREE.MeshBasicMaterial;beam.opacity=Math.max(0,beam.opacity-dt*.035)
-    for(const index of this.chipActive) {
-      const chip=this.chips[index]
-      if(chip.physical.current.position.distanceTo(p)<2.8){this.chipActive.delete(index);chip.mesh.visible=false;chip.physical.body.setEnabled(false);this.stats.collected++;this.game.achievements.add('chips',1);this.game.audio.blip(1.8)}
+    // The accretion disc always turns; the pull only when asked for.
+    for(const [i,ring] of (this.blackHole.userData.disc as THREE.Mesh[]).entries())ring.rotation.z=now*(.5+i*.35)*(i%2?-1:1)
+    if(now<this.pullUntil) {
+      const dx=this.blackHole.position.x-p.x,dz=this.blackHole.position.z-p.z
+      const distance=Math.hypot(dx,dz)
+      if(distance>1.2&&distance<40) {
+        // Falls off with distance, capped, and applied as an impulse on
+        // the chassis rather than a teleport — the car keeps its own
+        // handling all the way in, which is what makes it fun.
+        const chassis=this.game.vehicle.chassis
+        const strength=Math.min(1,26/(distance*distance))*22*chassis.mass*dt
+        chassis.physical.body.applyImpulse({x:(dx/distance)*strength,y:0,z:(dz/distance)*strength},true)
+        if(now>(this.blackHole.userData.sparkAt??0)){this.blackHole.userData.sparkAt=now+.1;this.game.particles.burst(p.clone(),2,'spark')}
+      }
     }
-    const q=this.cabin.physical.current.quaternion
-    if(1-2*(q.x*q.x+q.z*q.z)<.4){this.game.achievements.set('cabin',1);this.game.recordSecret('cabin')}
     if(this.timeActive) {
+      /*
+        `setPhase`, not `phase =`.
+
+        Assigning the field moved the sun for exactly as long as the
+        sweep held `duration` at zero: `Lighting.update` recomputes
+        `phase` from its `daylight` accumulator, and `daylight` never
+        moved — so the moment the sweep ended and the duration came
+        back, the sun snapped to where it had started and the whole
+        journey through time undid itself in one frame. `setPhase`
+        exists for this and says so: it moves the accumulator too.
+      */
       const t=Math.max(0,Math.min(1,1-(this.machineUntil-now)/5)),ease=t*t*(3-2*t)
-      this.game.lighting.phase=this.machinePhase+(this.machineTarget-this.machinePhase)*ease
+      this.game.lighting.setPhase(this.machinePhase+(this.machineTarget-this.machinePhase)*ease)
       this.machine.children.slice(1,4).forEach((ring,i)=>{ring.rotation.x=now*(i+1);ring.rotation.y=now*.7+i})
-      if(t>=1){this.timeActive=false;this.game.lighting.phase=this.machineTarget;this.game.lighting.duration=this.machineDuration;this.game.particles.burst(this.machine.position.clone().add(new THREE.Vector3(0,4,0)),30,'confetti')}
+      if(t>=1){this.timeActive=false;this.game.lighting.setPhase(this.machineTarget);this.game.lighting.duration=this.machineDuration;this.game.particles.burst(this.machine.position.clone().add(new THREE.Vector3(0,4,0)),30,'confetti')}
     }
   }
 }

@@ -82,7 +82,8 @@ export const palette = {
   /** Lane and edge markings. Bone, not white — white flares. */
   roadLine: '#d8d4c6',
   /** Unsurfaced tracks: the dirt run out to the stunt ramp. */
-  roadDirt: '#a08d6f',
+  roadDirt: '#b08a55',
+  roadDirtEdge: '#8e6d3f',
 
   /* Sky and light. */
   skyDay: '#dfe4e8',
