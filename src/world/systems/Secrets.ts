@@ -3,7 +3,7 @@ import { palette } from '../core/palette'
 import { clamp } from '../core/maths'
 import type { Bin } from '../core/Disposal'
 import type { Game } from '../Game'
-import { districtById, landmarkById, timelinePlates } from '@/content/world'
+import { ramps, timelinePlates } from '@/content/world'
 import { profile, contact } from '@/content/profile'
 import { projects } from '@/content/projects'
 
@@ -44,15 +44,14 @@ export class Secrets {
   private timelineOrder: string[] = []
   private timelineDone = false
 
-  private phoneHopArmed = false
-  private phoneHopPeak = 0
+  private airborneArmed = false
+  private airbornePeak = 0
 
   constructor(private game: Game, bin: Bin) {
     this.bindKonami(bin)
     this.bindTimeline()
     this.bindCones()
-    this.bindPhoneHop(bin)
-    this.bindHiddenIsland()
+    this.bindAirborne(bin)
     this.printConsoleNote()
 
     const tick = () => this.update()
@@ -189,69 +188,43 @@ export class Secrets {
   }
 
   /* ========================================================
-     OVER THE PHONE — clear the Focus device in one jump
+     AIRBORNE — clear the big ramp on the east coast
+
+     The old version of this watched a jump over the FOCUS phone,
+     which was a landmark in a district the drawing does not have.
+     The ramp survives; the achievement follows it.
      ======================================================== */
 
-  private bindPhoneHop(bin: Bin): void {
-    const device = landmarkById['focus-device']
-    if (!device) return
-
+  private bindAirborne(bin: Bin): void {
+    const ramp = ramps.find((r) => r.achievement === 'airborne')
+    if (!ramp) return
+    // The zone sits PAST the lip, on the landing side, so it arms when
+    // the car is already committed rather than while it is queueing.
+    const x = ramp.x + Math.cos(ramp.rotation) * (ramp.length * 0.5 + 14)
+    const z = ramp.z + Math.sin(ramp.rotation) * (ramp.length * 0.5 + 14)
     const zone = this.game.zones.create(
-      'phone-hop',
+      'airborne',
       'cylinder',
-      new THREE.Vector3(
-        device.x,
-        this.game.world.terrain.colliderHeightAt(device.x, device.z),
-        device.z,
-      ),
-      22,
-      'phoneHop',
+      new THREE.Vector3(x, this.game.world.terrain.colliderHeightAt(x, z), z),
+      26,
+      'airborne',
     )
 
     zone.events.on('enter', () => {
-      this.phoneHopArmed = true
-      this.phoneHopPeak = 0
+      this.airborneArmed = true
+      this.airbornePeak = 0
     })
     zone.events.on('leave', () => {
       // Cleared it only if the car was properly airborne over the
-      // device and is now out the other side.
-      if (this.phoneHopArmed && this.phoneHopPeak > 6) {
-        this.game.achievements.set('phoneHop', 1)
+      // landing area and is now out the other side.
+      if (this.airborneArmed && this.airbornePeak > 5) {
+        this.game.achievements.set('airborne', 1)
       }
-      this.phoneHopArmed = false
+      this.airborneArmed = false
     })
 
     bin.add(() => {
-      this.phoneHopArmed = false
-    })
-  }
-
-  /* ========================================================
-     THE VOID — a hidden island, reachable only by a long jump
-     ======================================================== */
-
-  private bindHiddenIsland(): void {
-    const district = districtById.void
-    const zone = this.game.zones.create(
-      'void-arrival',
-      'cylinder',
-      new THREE.Vector3(
-        district.x,
-        this.game.world.terrain.colliderHeightAt(district.x, district.z),
-        district.z,
-      ),
-      district.radius,
-      'void',
-    )
-
-    zone.events.on('enter', () => {
-      this.game.achievements.set('hiddenIsland', 1)
-      this.game.store.getState().notify({
-        kind: 'info',
-        title: '404',
-        body: 'Nothing is supposed to be rendered here. And yet.',
-        duration: 6,
-      })
+      this.airborneArmed = false
     })
   }
 
@@ -306,11 +279,11 @@ export class Secrets {
       this.endKonami()
     }
 
-    // Airborne height over the Focus device, for the phone hop.
-    if (this.phoneHopArmed) {
+    // Airborne height off the east ramp.
+    if (this.airborneArmed) {
       const position = this.game.player.position
       const ground = this.game.world.terrain.colliderHeightAt(position.x, position.z)
-      this.phoneHopPeak = Math.max(this.phoneHopPeak, position.y - ground)
+      this.airbornePeak = Math.max(this.airbornePeak, position.y - ground)
     }
 
     // A tiny thing: the dev-room terminal only appears in bad weather.

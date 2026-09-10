@@ -59,6 +59,11 @@ const HYDRAULICS_ACTIONS = [
   'hydraulicsBackLeft',
 ] as const
 
+/** How far the car is lifted when it is set back on its wheels in
+ *  place. A little more than the chassis half-height, so the body it
+ *  was resting its roof on is clear before gravity takes over. */
+const RIGHTING_LIFT = 1.4
+
 export class Player {
   readonly events = new Events<PlayerEvent>()
 
@@ -214,20 +219,52 @@ export class Player {
      VEHICLE EVENTS
      ======================================================== */
   private bindVehicle(bin: Bin): void {
+    /*
+      Three kicks, then a hand.
+
+      The kick is `PhysicsVehicle.jump`: an upward impulse and a roll
+      torque, which rights the car in the open in about a second. In a
+      seven-metre labyrinth corridor it does not — there is nowhere to
+      roll to, so the car lands back on its roof and the loop tried the
+      same thing again for ever. The tour found one upside down between
+      two walls and drove the remaining three stops on its roof; the
+      same thing happens against the bowling shell and under the ramp.
+
+      So the loop is bounded. After three kicks the car is set back on
+      its wheels WHERE IT STANDS, facing the way it was already facing.
+      That is not a respawn: it does not move you, it does not fire the
+      respawn event, it does not fade, and it cannot fail. If the car
+      is genuinely buried rather than merely inverted, the beached path
+      below still ends in `respawn()`.
+    */
+    let kicks = 0
+
     const onRightSideUp = () => {
       this.unstuckDelay?.kill()
       this.unstuckDelay = null
+      kicks = 0
     }
 
     const waitAndTest = () => {
       this.unstuckDelay = this.tweens.delay(3, () => {
         this.unstuckDelay = null
         if (this.state !== 'default') return
-        if (!this.vehicle.upsideDown.active) return
+        if (!this.vehicle.upsideDown.active) {
+          kicks = 0
+          return
+        }
 
         // Kick it back over rather than making the visitor find R.
-        this.vehicle.jump()
-        this.events.trigger('hydraulics', [4, 'high'])
+        if (kicks < 3) {
+          kicks++
+          this.vehicle.jump()
+          this.events.trigger('hydraulics', [4, 'high'])
+          waitAndTest()
+          return
+        }
+
+        kicks = 0
+        this.rightItself()
         waitAndTest()
       })
     }
@@ -299,6 +336,29 @@ export class Player {
   /* ========================================================
      ACTIONS
      ======================================================== */
+
+  /**
+   * Sets the car back on its wheels without moving it.
+   *
+   * The last resort of the upside-down loop. `moveTo` is the same call
+   * `respawn` makes, but with THIS position and THIS heading rather
+   * than a respawn point's: the car keeps its place on the island and
+   * only loses its inversion. It is lifted by its own ride height
+   * first, because a chassis re-oriented in place starts intersecting
+   * the ground it was resting its roof on, and Rapier resolves that by
+   * firing it somewhere.
+   */
+  private rightItself(): void {
+    // `rotationY` is measured off +X with the sign flipped (see
+    // `updatePostPhysics`), and `moveTo` wants the angle it was
+    // flipped from — so take the heading off the forward vector.
+    const heading = Math.atan2(-this.vehicle.forward.z, this.vehicle.forward.x)
+    this.vehicle.moveTo(
+      { x: this.position.x, y: this.position.y + RIGHTING_LIFT, z: this.position.z },
+      heading,
+    )
+    this.events.trigger('hydraulics', [4, 'mid'])
+  }
 
   respawn(name: string | null = null): void {
     if (name === null && this.onRespawnRequest?.()) return

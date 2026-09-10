@@ -22,9 +22,13 @@ import { Ecology } from './world/Ecology'
 import { Grass } from './world/Grass'
 import { Water } from './world/Water'
 import { Playground } from './world/Playground'
+import { Attractions } from './world/Attractions'
 import { buildSceneryDetails } from './world/SceneryDetails'
+import { Decor } from './world/Decor'
+import { buildDressing } from './world/dressing'
 import { Tracks } from './world/Tracks'
 import { LayoutDebug } from './world/LayoutDebug'
+import { MapCalibration } from './world/MapCalibration'
 import { Particles } from './world/Particles'
 import { Respawns } from './systems/Respawns'
 import { Zones } from './systems/Zones'
@@ -36,22 +40,13 @@ import { Secrets } from './systems/Secrets'
 import { Minigames } from './minigames/Minigame'
 import { CircuitRace } from './minigames/CircuitRace'
 import { Labyrinth } from './minigames/Labyrinth'
-import { ChessPuzzle } from './minigames/ChessPuzzle'
-import { VideoPipeline } from './minigames/VideoPipeline'
-import { Retrieval } from './minigames/Retrieval'
-import { OrderRush } from './minigames/OrderRush'
-import { GymCircuit } from './minigames/GymCircuit'
-import { ThreeBody } from './minigames/ThreeBody'
-import { PacketRun } from './minigames/PacketRun'
+import * as geography from '@/content/world-environment'
 import { Bowling } from './minigames/Bowling'
-import { IslandChallenge } from './minigames/IslandChallenges'
-import { AnimationStudio } from './world/districts/AnimationStudio'
-import { VoxelField } from './world/districts/VoxelField'
-import { LabInstallations } from './world/districts/LabInstallations'
+import { TntDomino } from './minigames/TntDomino'
 import { Save } from './systems/Save'
 import type { Terrain } from './world/Terrain'
 import type { WorldStore } from './state/store'
-import { districtById, landmarkById, projectsBySlugForWorld, resolvePanel, type DistrictId, type Landmark } from '@/content/world'
+import { SPAWN_RESPAWN, districtById, landmarkById, projectsBySlugForWorld, resolvePanel, type DistrictId, type Landmark } from '@/content/world'
 
 /* ============================================================
    THE GAME
@@ -136,6 +131,11 @@ export class Game {
   grass!: Grass
   water!: Water
   playground!: Playground
+  /** Fourteen things to do that are not about the work. */
+  attractions!: Attractions
+  /** Themed knockable decoration. Built after the scenery details, so
+   *  it can see the furniture it must not stand in. */
+  decor!: Decor
   lighting!: Lighting
   vehicle!: PhysicsVehicle
   player!: Player
@@ -152,6 +152,8 @@ export class Game {
   nipple!: Nipple
   /** Development only. See `LayoutDebug`. */
   layoutDebug?: LayoutDebug
+  /** Development only. See `MapCalibration`. */
+  mapCalibration?: MapCalibration
 
   readonly store: WorldStore
   private host: HTMLElement
@@ -258,7 +260,11 @@ export class Game {
     ui.setStep('world', true)
 
     /* ---- vehicle ---------------------------------------- */
-    this.respawns = new Respawns('hub')
+    // `SPAWN_RESPAWN`, not a literal: `Respawns.getDefault()` throws if
+    // no respawn carries this id, and it is called before the vehicle
+    // exists — so a rename that missed this line would not be a wrong
+    // spawn, it would be a world that does not boot.
+    this.respawns = new Respawns(SPAWN_RESPAWN)
     const spawn = this.respawns.getDefault()
     // Drop the car onto the actual ground rather than a guessed height.
     spawn.position.y = this.world.terrain.colliderHeightAt(spawn.position.x, spawn.position.z) + 3
@@ -332,13 +338,6 @@ export class Game {
     // that already exists.
     this.minigames.register(new CircuitRace(this, this.bin))
     this.minigames.register(new Labyrinth(this, this.bin))
-    this.minigames.register(new ChessPuzzle(this, this.bin))
-    this.minigames.register(new VideoPipeline(this, this.bin))
-    this.minigames.register(new Retrieval(this, this.bin))
-    this.minigames.register(new OrderRush(this, this.bin))
-    this.minigames.register(new GymCircuit(this, this.bin))
-    this.minigames.register(new ThreeBody(this, this.bin))
-    this.minigames.register(new PacketRun(this, this.bin))
     this.startMinigame = (id) => this.minigames.start(id)
     this.water = new Water(this, this.bin)
     this.ecology = new Ecology(this, this.bin)
@@ -370,15 +369,21 @@ export class Game {
       this.bin.add(() => this.ticker.events.off('tick', follow))
     }
     this.playground = new Playground(this, this.bin)
-    new LabInstallations(this, this.bin)
+    // Fourteen things to do that are not about the work. It wants
+    // terrain, physics, zones, interactions, particles, tweens,
+    // weather and the visual vehicle; all of them exist by here.
+    this.attractions = new Attractions(this, this.bin)
     buildSceneryDetails(this, this.bin)
+    // Decoration last of the world layers: it places through the same
+    // `isFree` oracle everything else does, and it passes the pieces it
+    // has already placed back in as footprints, so it can only space
+    // itself against things that already exist.
+    this.decor = new Decor(this)
+    // …and the set dressing after it, so a themed silhouette can see
+    // the clutter it must not stand in.
+    buildDressing(this, this.bin)
     this.minigames.register(new Bowling(this, this.bin))
-    for (const id of ['debugDash', 'riverRun', 'chipRelay', 'domino', 'deployment'] as const) this.minigames.register(new IslandChallenge(this, this.bin, id))
-
-    // District set pieces: places rather than games. They have no
-    // completion state and nothing to cancel.
-    new AnimationStudio(this, this.bin).build()
-    new VoxelField(this, this.bin).build()
+    this.minigames.register(new TntDomino(this, this.bin))
 
     // A timed run has to be comparable with the last one, so the
     // weather is held still for its duration.
@@ -415,12 +420,15 @@ export class Game {
       console.info('[world] respawn points adjusted:\n  ' + moved.join('\n  '))
     }
 
-    // Development only: SHIFT+L draws every footprint the occupancy
-    // registry knows about, and prints the conflict report. Stripped
-    // from production by the branch, and it builds nothing until the
-    // first toggle.
+    // Development only, both of them, and stripped from production by
+    // the branch. SHIFT+L draws every footprint the occupancy registry
+    // knows about and prints the conflict report; SHIFT+M puts the
+    // camera where the hand-drawn plan was drawn from and lays the
+    // plan over the world so the two can be compared. Neither builds
+    // anything until its first toggle.
     if (process.env.NODE_ENV === 'development') {
       this.layoutDebug = new LayoutDebug(this, this.bin)
+      this.mapCalibration = new MapCalibration(this, this.bin)
     }
 
     // Secrets last: it reaches into landmarks, zones and the vehicle,
@@ -437,6 +445,17 @@ export class Game {
 
     if (process.env.NODE_ENV === 'development') {
       // A handle for the browser console during tuning. Never in production.
+      /*
+        The QA harnesses drive the world through this handle, and half
+        of them need the GEOGRAPHY as well as the engine — the shore
+        check walks every waterline, the road clearance walks every
+        carriageway. They used to carry their own copies of the lake
+        and river tables, which went stale the moment the island was
+        re-drawn: all six of the shore check's waterlines named water
+        that no longer existed, so it reported "never reaches the
+        water" six times and passed by measuring nothing.
+      */
+      ;(this as unknown as { geography: typeof geography }).geography = geography
       ;(window as unknown as { __world?: Game }).__world = this
       this.bin.add(() => {
         delete (window as unknown as { __world?: Game }).__world
@@ -584,6 +603,21 @@ export class Game {
       return
     }
 
+    // The two hub interactions. Both are overlays over the whole
+    // archive rather than a panel about one thing, which is the point
+    // of consolidating nine districts into one terminal.
+    if (landmark.interaction === 'projects') {
+      this.store.getState().setOverlay('projects')
+      this.recordLandmark(landmark.id)
+      if (landmark.achievement) this.achievements.set(landmark.achievement, landmark.id)
+      return
+    }
+    if (landmark.interaction === 'achievements') {
+      this.store.getState().setOverlay('achievements')
+      this.recordLandmark(landmark.id)
+      return
+    }
+
     if (landmark.interaction === 'minigame' && landmark.minigame) {
       this.events.trigger('interact', [landmark.id, landmark.minigame])
       // Mini-games are registered by the Minigames system; if one is
@@ -614,7 +648,7 @@ export class Game {
 
     this.achievements.set('projects', id)
     const handle = this.world.landmarks.get(id)
-    if (handle?.landmark.district === 'archive') this.achievements.set('archivist', id)
+    if (handle?.landmark.district === 'projects') this.achievements.set('archivist', id)
   }
 
   recordSecret(id: string): void {
@@ -862,7 +896,11 @@ export class Game {
       )
       this.player.elevation = elevation
       if (elevation > 3) this.achievements.set('goHigh', Math.floor(elevation))
-      if (Math.hypot(this.player.position.x, this.player.position.z) > 360) {
+      // Forty metres past the waterline, which is past the shelf and
+      // into water the car cannot drive out of. The threshold used to
+      // be a radius from the origin, which on a rectangular island was
+      // dry land on one bearing and open sea on another.
+      if (geography.coastInset(this.player.position.x, this.player.position.z) < -28) {
         this.achievements.set('sea', 1)
       }
     }
@@ -976,6 +1014,7 @@ export class Game {
     this.minigames?.resetAll()
     this.world?.resetObjects()
     this.playground?.reset()
+    this.attractions?.reset()
   }
 
   markOnboarded(): void {

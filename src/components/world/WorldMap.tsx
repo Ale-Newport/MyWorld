@@ -1,21 +1,28 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, type MouseEvent as ReactMouseEvent } from 'react'
 import { useStore } from 'zustand'
 import type { WorldStore } from '@/world/state/store'
 import type { Game } from '@/world/Game'
 import {
-  archiveIslands,
-  clientTowers,
   districts,
   landmarks,
+  projectPlinths,
   ramps,
   roads,
-  WORLD_RADIUS,
   type DistrictId,
 } from '@/content/world'
 import styles from './map.module.css'
-import { BRIDGES, CIRCUIT, CIRCUIT_TRACK, FOREST_POCKETS, PLAY_SPOTS, WATERFALL, coastRadius } from '@/content/world-environment'
+import {
+  BRIDGES,
+  CIRCUIT,
+  CIRCUIT_TRACK,
+  MAP_DEPTH,
+  MAP_WIDTH,
+  PLAY_SPOTS,
+  VEGETATION_ZONES,
+  coastInset,
+} from '@/content/world-environment'
 
 /* ============================================================
    MAP
@@ -47,12 +54,32 @@ interface Props {
   getGame: () => Game | null
 }
 
-/** World metres → map pixels. The map is square and world-centred. */
-const SPAN = WORLD_RADIUS * 2.05
+/* World metres → map pixels.
+
+   The island is a 380 × 285 m RECTANGLE traced from the drawing, not a
+   disc, so the map is that rectangle. A square canvas has to fit the
+   long axis, which spends a sixth of its height at the top and another
+   at the bottom on ocean nothing is ever drawn in — and, because the
+   frame is height-capped, shrinks the island to fund it.
+
+   The margin is a sea border, not slack: the drawing's own edge runs
+   within about ten metres of the coast in places, and a shoreline that
+   touches the frame reads as a cropped map rather than an island. */
+const MARGIN = 1.08
+const SPAN_X = MAP_WIDTH * MARGIN
+const SPAN_Z = MAP_DEPTH * MARGIN
+/** Canvas height per unit width: 4:3, because the drawing is. */
+const ASPECT = SPAN_Z / SPAN_X
+
+/* Free functions rather than closures, because the click hit-test needs
+   the same projection the draw loop uses and runs outside its effect. */
+const mapX = (x: number, width: number) => ((x + SPAN_X / 2) / SPAN_X) * width
+const mapY = (z: number, height: number) => ((z + SPAN_Z / 2) / SPAN_Z) * height
 
 export function WorldMap({ store, getGame }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
-  const [size, setSize] = useState(560)
+  const [width, setWidth] = useState(560)
+  const height = width * ASPECT
   const currentDistrict = useStore(store, (s) => s.district)
 
   useEffect(() => {
@@ -62,13 +89,18 @@ export function WorldMap({ store, getGame }: Props) {
 
     const measure = () => {
       const rect = canvas.parentElement?.getBoundingClientRect()
-      if (rect) setSize(Math.max(240, Math.min(rect.width, rect.height)))
+      if (!rect) return
+      // Fit whichever axis runs out first. The wrapper carries the same
+      // 4:3 so that is normally the width, but `max-height` on a short
+      // viewport makes it the height, and fitting to the width there
+      // would push the legend off the bottom of the panel.
+      setWidth(Math.max(240, Math.min(rect.width, rect.height / ASPECT)))
     }
     measure()
 
     const dpr = Math.min(2, window.devicePixelRatio || 1)
-    canvas.width = size * dpr
-    canvas.height = size * dpr
+    canvas.width = Math.round(width * dpr)
+    canvas.height = Math.round(height * dpr)
     const ctx = canvas.getContext('2d')
     if (!ctx) return
     ctx.scale(dpr, dpr)
@@ -77,8 +109,12 @@ export function WorldMap({ store, getGame }: Props) {
     const foundSecrets = new Set(game.save.data.progress.secrets)
 
     /* World → map pixel. */
-    const px = (x: number) => ((x + SPAN / 2) / SPAN) * size
-    const py = (z: number) => ((z + SPAN / 2) / SPAN) * size
+    const px = (x: number) => mapX(x, width)
+    const py = (z: number) => mapY(z, height)
+    /** Pixels per metre. One number for both axes: the canvas is the
+     *  drawing's own proportions, so a circle on the island is a circle
+     *  on the map and widths do not need an axis picking for them. */
+    const perMetre = width / SPAN_X
 
     const css = getComputedStyle(document.documentElement)
     const ink = css.getPropertyValue('--ink').trim() || '#0c0c0d'
@@ -92,9 +128,10 @@ export function WorldMap({ store, getGame }: Props) {
        the materials sample; reading it here is what keeps the map and
        the island the same shape. */
     const groundLayer = document.createElement('canvas')
-    const GROUND = 320
-    groundLayer.width = GROUND
-    groundLayer.height = GROUND
+    const GROUND_W = 320
+    const GROUND_H = Math.round(GROUND_W * ASPECT)
+    groundLayer.width = GROUND_W
+    groundLayer.height = GROUND_H
     {
       const gctx = groundLayer.getContext('2d')
       const mask = game.world.terrain.mask
@@ -102,15 +139,15 @@ export function WorldMap({ store, getGame }: Props) {
       const maskSize = mask.image.width
       const extent = game.world.terrain.maskExtent
       if (gctx) {
-        const out = gctx.createImageData(GROUND, GROUND)
-        for (let j = 0; j < GROUND; j++) {
-          for (let i = 0; i < GROUND; i++) {
+        const out = gctx.createImageData(GROUND_W, GROUND_H)
+        for (let j = 0; j < GROUND_H; j++) {
+          for (let i = 0; i < GROUND_W; i++) {
             // Map pixel → world metres → mask texel.
-            const wx = ((i + 0.5) / GROUND) * SPAN - SPAN / 2
-            const wz = ((j + 0.5) / GROUND) * SPAN - SPAN / 2
+            const wx = ((i + 0.5) / GROUND_W) * SPAN_X - SPAN_X / 2
+            const wz = ((j + 0.5) / GROUND_H) * SPAN_Z - SPAN_Z / 2
             const u = Math.round(((wx + extent) / (extent * 2)) * maskSize)
             const v = Math.round(((wz + extent) / (extent * 2)) * maskSize)
-            const o = (j * GROUND + i) * 4
+            const o = (j * GROUND_W + i) * 4
             if (u < 0 || v < 0 || u >= maskSize || v >= maskSize) {
               out.data[o] = 0x3f; out.data[o + 1] = 0x77; out.data[o + 2] = 0x8b; out.data[o + 3] = 255
               continue
@@ -119,16 +156,19 @@ export function WorldMap({ store, getGame }: Props) {
             const paved = data[m] / 255
             const grass = data[m + 1] / 255
             const depth = data[m + 2] / 255
-            const height = (data[m + 3] / 255) * game.world.terrain.maskHeightScale
+            const elevation = (data[m + 3] / 255) * game.world.terrain.maskHeightScale
               + game.world.terrain.maskHeightBias
 
-            const radius = Math.hypot(wx, wz)
-            const coast = coastRadius(wx, wz, WORLD_RADIUS)
+            // Metres inside the coastline, negative at sea. The old
+            // `hypot(x, z) > coastRadius` test can only describe a
+            // star-shaped island: on this coast it fills the north-east
+            // bay in with land and paints the islet's water green.
+            const inset = coastInset(wx, wz)
             let r: number, g: number, b: number
-            if (radius > coast) {
+            if (inset < 0) {
               // Open sea, shelving away from the shore. The shallows
               // ring the island the way they do in the world.
-              const off = Math.min(1, (radius - coast) / 40)
+              const off = Math.min(1, -inset / 40)
               r = 104 - off * 62; g = 178 - off * 96; b = 190 - off * 74
             } else if (depth > 0.03) {
               // Inland water: the lakes and the river, deepening.
@@ -137,8 +177,8 @@ export function WorldMap({ store, getGame }: Props) {
             } else {
               // Land. Green that lightens with elevation, sand at the
               // shore, warm pale where the ground is paved.
-              const lift = Math.max(0, Math.min(1, (height + 2) / 15))
-              const shore = Math.max(0, 1 - Math.min(1, (coast - radius) / 18))
+              const lift = Math.max(0, Math.min(1, (elevation + 2) / 15))
+              const shore = Math.max(0, 1 - Math.min(1, inset / 18))
               r = 128 + lift * 52; g = 156 + lift * 40; b = 92 + lift * 44
               r = r * (1 - shore) + 226 * shore
               g = g * (1 - shore) + 210 * shore
@@ -159,24 +199,37 @@ export function WorldMap({ store, getGame }: Props) {
       }
     }
 
+    // Hoisted: the generator behind it is memoised, but it also walks
+    // the occupancy registry on first call, which is not work for a
+    // frame loop even once.
+    const plinths = projectPlinths()
+
     let raf = 0
 
     const draw = () => {
       raf = requestAnimationFrame(draw)
-      ctx.clearRect(0, 0, size, size)
+      ctx.clearRect(0, 0, width, height)
       // The island, its water and its paving, straight off the mask the
       // world itself reads.
       ctx.imageSmoothingEnabled = true
-      ctx.drawImage(groundLayer, 0, 0, size, size)
+      ctx.drawImage(groundLayer, 0, 0, width, height)
 
       // Woodland masses sit on top: they are placement data, not ground.
-      for (const [x, z, radius] of FOREST_POCKETS) {
-        ctx.beginPath(); ctx.ellipse(px(x), py(z), radius / SPAN * size, radius / SPAN * size * .85, -.3, 0, Math.PI * 2)
-        ctx.fillStyle = 'rgba(84,112,68,0.30)'; ctx.fill()
-        ctx.beginPath(); ctx.arc(px(x), py(z), radius / SPAN * size * .5, 0, Math.PI * 2)
-        ctx.fillStyle = 'rgba(70,96,58,0.28)'; ctx.fill()
+      // Drawn as the ellipses the drawing actually has — collapsing them
+      // to a mean-radius circle puts the 56 × 28 m infield belt over the
+      // south run of the circuit at both ends.
+      for (const zone of VEGETATION_ZONES) {
+        const x = px(zone.x)
+        const y = py(zone.z)
+        const rx = zone.rx * perMetre
+        const rz = zone.rz * perMetre
+        ctx.beginPath(); ctx.ellipse(x, y, rx, rz, 0, 0, Math.PI * 2)
+        ctx.fillStyle = `rgba(84,112,68,${(0.16 + zone.density * 0.2).toFixed(3)})`; ctx.fill()
+        // A darker core, so the drawing's denser greens read as denser
+        // rather than merely larger.
+        ctx.beginPath(); ctx.ellipse(x, y, rx * 0.55, rz * 0.55, 0, 0, Math.PI * 2)
+        ctx.fillStyle = `rgba(70,96,58,${(0.12 + zone.density * 0.18).toFixed(3)})`; ctx.fill()
       }
-      ctx.fillStyle = '#e9f3da'; ctx.fillRect(px(WATERFALL.x)-3,py(WATERFALL.z)-2,6,4)
 
       /* ---- roads --------------------------------------- */
       ctx.strokeStyle = ink4
@@ -184,7 +237,7 @@ export function WorldMap({ store, getGame }: Props) {
       ctx.lineCap = 'round'
       ctx.lineJoin = 'round'
       for (const road of roads) {
-        ctx.lineWidth = Math.max(1.5, road.width / SPAN * size)
+        ctx.lineWidth = Math.max(1.5, road.width * perMetre)
         ctx.beginPath()
         road.points.forEach(([x, z], i) => {
           if (i === 0) ctx.moveTo(px(x), py(z))
@@ -198,7 +251,7 @@ export function WorldMap({ store, getGame }: Props) {
       for (const bridge of BRIDGES) {
         const dx = Math.cos(bridge.rotation) * bridge.length / 2
         const dz = Math.sin(bridge.rotation) * bridge.length / 2
-        ctx.strokeStyle = '#f4e8c9'; ctx.lineWidth = bridge.width / SPAN * size
+        ctx.strokeStyle = '#f4e8c9'; ctx.lineWidth = bridge.width * perMetre
         ctx.beginPath()
         ctx.moveTo(px(bridge.x - dx), py(bridge.z - dz))
         ctx.lineTo(px(bridge.x + dx), py(bridge.z + dz))
@@ -215,7 +268,7 @@ export function WorldMap({ store, getGame }: Props) {
         else ctx.moveTo(px(x), py(z))
       })
       ctx.strokeStyle = '#4c4b4f'
-      ctx.lineWidth = Math.max(2, CIRCUIT.width / SPAN * size)
+      ctx.lineWidth = Math.max(2, CIRCUIT.width * perMetre)
       ctx.stroke()
 
       /* ---- districts ----------------------------------- */
@@ -251,9 +304,9 @@ export function WorldMap({ store, getGame }: Props) {
 
         if (seen) {
           const label = district.short
-          const width = ctx.measureText(label).width
+          const plate = ctx.measureText(label).width
           ctx.fillStyle = 'rgba(250,249,245,0.82)'
-          ctx.fillRect(x - width / 2 - 3, y + pin + 2, width + 6, 11)
+          ctx.fillRect(x - plate / 2 - 3, y + pin + 2, plate + 6, 11)
           ctx.fillStyle = here ? accent : ink
           ctx.fillText(label, x, y + pin + 8)
         } else {
@@ -269,9 +322,6 @@ export function WorldMap({ store, getGame }: Props) {
       ctx.strokeStyle = '#b8703a'
       ctx.lineWidth = 1.2
       for (const ramp of ramps) {
-        // The stunt ramp is how the hidden island is reached; it stays
-        // off the map until that island has been found.
-        if (ramp.id === 'ramp-stunt' && !foundSecrets.has('hiddenIsland')) continue
         const x = px(ramp.x)
         const y = py(ramp.z)
         const a = ramp.rotation
@@ -284,20 +334,14 @@ export function WorldMap({ store, getGame }: Props) {
         ctx.restore()
       }
 
-      /* ---- generated buildings and islands --------------
-         Fifteen client towers and seven archive islands are placed by
-         generator rather than authored, and none of them was drawn.
-         They are most of what fills those two districts. */
+      /* ---- the project plinths -------------------------
+         Eight featured projects stand on plinths around the PROJECTS
+         terminal, placed by the layout registry rather than authored.
+         They are what is physically IN that district, so without them
+         its marker stands on apparently empty ground. */
       ctx.fillStyle = 'rgba(120,110,96,0.85)'
-      for (const tower of clientTowers()) {
-        const w = tower.height > 13 ? 3.2 : 2.4
-        ctx.fillRect(px(tower.x) - w / 2, py(tower.z) - w / 2, w, w)
-      }
-      ctx.fillStyle = 'rgba(110,120,104,0.8)'
-      for (const island of archiveIslands()) {
-        ctx.beginPath()
-        ctx.arc(px(island.x), py(island.z), 2.4, 0, Math.PI * 2)
-        ctx.fill()
+      for (const plinth of plinths) {
+        ctx.fillRect(px(plinth.x) - 1.4, py(plinth.z) - 1.4, 2.8, 2.8)
       }
 
       /* ---- landmarks the visitor has opened ------------ */
@@ -363,11 +407,19 @@ export function WorldMap({ store, getGame }: Props) {
       cancelAnimationFrame(raf)
       window.removeEventListener('resize', measure)
     }
-  }, [getGame, size, currentDistrict])
+  }, [getGame, width, height, currentDistrict])
 
   const game = getGame()
   const visited = new Set(game?.save.data.progress.districts ?? [])
-  const signposted = districts.filter((d) => d.signposted)
+  const foundSecrets = new Set(game?.save.data.progress.secrets ?? [])
+  /* Every place on the drawing, less the secret ones until they have
+     been found — the same rule the markers follow, so the index and
+     the map cannot disagree about what the island contains. */
+  const listed = districts.filter((d) => !d.secret || foundSecrets.has(d.id))
+  /** Fast travel needs somewhere to set the car down. TNT and the
+   *  BLACK HOLE sit on the racing surface and have no respawn of their
+   *  own, so they are places you reach on wheels, not from here. */
+  const reachable = (id: DistrictId) => visited.has(id) && Boolean(game?.respawns.getByName(id))
 
   const travelTo = (id: DistrictId) => {
     const game = getGame()
@@ -379,15 +431,38 @@ export function WorldMap({ store, getGame }: Props) {
     store.getState().setOverlay(null)
   }
 
+  /** Click a marker to travel to it. The hit test projects with the same
+   *  two spans the draw does: x and z no longer share a denominator, and
+   *  reusing one of them for both axes puts the south shore fifty pixels
+   *  below where its marker is drawn. */
+  const travelAtPoint = (event: ReactMouseEvent<HTMLCanvasElement>) => {
+    const rect = event.currentTarget.getBoundingClientRect()
+    const cx = event.clientX - rect.left
+    const cy = event.clientY - rect.top
+    let closest: DistrictId | null = null
+    // Generous, because a diamond is four pixels across and the marks
+    // around PROJECTS are denser than a fingertip.
+    let best = 16
+    for (const district of listed) {
+      if (!reachable(district.id)) continue
+      const d = Math.hypot(mapX(district.x, rect.width) - cx, mapY(district.z, rect.height) - cy)
+      if (d < best) { best = d; closest = district.id }
+    }
+    if (closest) travelTo(closest)
+  }
+
   return (
     <div className={styles.map}>
       <p className="label">Map</p>
       <h2 className={styles.title}>Alejandro&rsquo;s world</h2>
 
+      {/* The frame carries the drawing's proportions so that `measure`
+          reads a box the map fills rather than one it letterboxes. */}
       <div className={styles.canvasWrap}>
         <canvas
           ref={canvasRef}
-          style={{ width: size, height: size }}
+          style={{ width, height }}
+          onClick={travelAtPoint}
           role="img"
           aria-label="Map of the world showing the districts you have discovered and your current position"
         />
@@ -395,16 +470,16 @@ export function WorldMap({ store, getGame }: Props) {
 
       <p className={styles.hint}>
         Green: woodland · Teal: water · ○ activity · ◆ safe return · Orange: you.<br />
-        {visited.size} of {districts.length} districts discovered. Travel moves the car to a
-        district&rsquo;s entrance.
+        {visited.size} of {districts.length} districts discovered. Click a place you have
+        been, or its name below, to move the car to its entrance.
       </p>
 
       <ul className={styles.legend}>
-        {signposted.map((district) => {
+        {listed.map((district) => {
           const seen = visited.has(district.id)
           return (
-            <li key={district.id} data-seen={seen}>
-              <button type="button" onClick={() => travelTo(district.id)} disabled={!seen}>
+            <li key={district.id} data-seen={reachable(district.id)}>
+              <button type="button" onClick={() => travelTo(district.id)} disabled={!reachable(district.id)}>
                 <span className={styles.legendName}>{seen ? district.label : '· · ·'}</span>
                 <span className={styles.legendShort}>{seen ? district.short : '?'}</span>
               </button>

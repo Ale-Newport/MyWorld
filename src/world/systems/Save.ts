@@ -1,3 +1,9 @@
+import { achievementById } from '@/content/achievements'
+import { PLAY_SPOTS } from '@/content/world-environment'
+import {
+  districts, landmarks, devNotes, respawns, FEATURED_SLUGS, SPAWN_RESPAWN,
+  type MinigameId,
+} from '@/content/world'
 import type { QualityPreference } from '../core/Quality'
 
 /* ============================================================
@@ -21,15 +27,16 @@ import type { QualityPreference } from '../core/Quality'
 
 export const SAVE_KEY = 'alejandro-world-save-v1'
 /**
- * Bumped to 2 for the circuit leaderboard.
+ * 2 was the circuit leaderboard. 3 is the redrawn island: ten places
+ * where there were nineteen, and eight mini-games deleted along with
+ * the districts that housed them.
  *
  * `coerce` used to DISCARD the whole blob on any version mismatch, so
  * changing this number threw away every visitor's districts, notes,
- * secrets, achievements and best times. It now migrates instead: a
- * version-1 blob is read as it always was, and its bare list of race
- * times becomes leaderboard entries with an unknown date.
+ * secrets, achievements and best times. It migrates instead — see the
+ * fix-up section at the end of `coerce`.
  */
-const SAVE_VERSION = 2
+const SAVE_VERSION = 3
 const WRITE_DEBOUNCE_MS = 700
 
 export interface SaveData {
@@ -110,6 +117,124 @@ function numberOr(value: unknown, fallback: number): number {
   return typeof value === 'number' && Number.isFinite(value) ? value : fallback
 }
 
+/* ============================================================
+   VERSION 2 → 3 — THE DRAWN ISLAND
+
+   The map was redrawn from the hand-drawn plan and the island
+   lost nine of its nineteen districts, eight mini-games, the
+   client city, the archive ring and the waterfall. A version-2
+   blob still names every one of them.
+
+   The engine ignores ids it does not recognise, so none of this
+   crashes — but "ignores" is not good enough:
+
+     - EXPLORER counts unique district ids. Thirteen dead ones
+       satisfy the new target of eight without the visitor
+       entering a single place that still exists.
+     - ARCHIVIST and READING UP count unique landmark ids, and
+       the old archive ring alone would unlock both from
+       landmarks that are now open water.
+     - a best time and a "completed" flag for a mini-game that no
+       longer exists are rows the map and the HUD read back and
+       that nothing can ever clear.
+
+   So stored ids are filtered against what the world actually
+   builds today. Everything the drawing kept is kept: settings,
+   every race time, distance, time played, and every achievement
+   still on the list.
+   ============================================================ */
+
+/**
+ * The ids the world can still produce. Built on demand rather than at
+ * module scope: `content/world` sits in an import cycle with
+ * `world-layout`, and reading its exports while it is mid-evaluation
+ * is how that cycle turns into a set full of `undefined`.
+ */
+function liveIds() {
+  const districtIds = new Set<string>(districts.map((d) => d.id))
+  const noteIds = new Set<string>(devNotes.map((n) => n.id))
+
+  const landmarkIds = new Set<string>(landmarks.map((l) => l.id))
+  // The plinth ring and the play spots are landmarks the engine
+  // synthesises at load, so they are not in `landmarks` and would
+  // otherwise be stripped out of a save that legitimately holds them.
+  for (const slug of FEATURED_SLUGS) landmarkIds.add(`project-${slug}`)
+  for (const spot of PLAY_SPOTS) landmarkIds.add(`play-${spot.id}`)
+
+  const secretIds = new Set<string>()
+  for (const landmark of landmarks) if (landmark.secret) secretIds.add(landmark.id)
+  for (const district of districts) if (district.secret) secretIds.add(district.id)
+  // Playground files these two by hand rather than through a landmark.
+  secretIds.add('timeMachine')
+  secretIds.add('blackHole')
+
+  return { districtIds, landmarkIds, noteIds, secretIds }
+}
+
+/**
+ * Exhaustive by construction: adding a `MinigameId` without adding it
+ * here is a type error. A hand-kept list is the only part of this
+ * migration that could silently drift behind the mini-games folder,
+ * and a drifted entry would delete a real best time.
+ */
+const LIVE_MINIGAMES: Record<MinigameId, true> = {
+  circuit: true,
+  labyrinth: true,
+  bowling: true,
+  domino: true,
+}
+
+function migrateToDrawnIsland(out: SaveData): void {
+  const { districtIds, landmarkIds, noteIds, secretIds } = liveIds()
+  const progress = out.progress
+
+  progress.districts = progress.districts.filter((id) => districtIds.has(id))
+  progress.landmarks = progress.landmarks.filter((id) => landmarkIds.has(id))
+  progress.notes = progress.notes.filter((id) => noteIds.has(id))
+  progress.secrets = progress.secrets.filter((id) => secretIds.has(id))
+
+  // Set-typed achievements persist the ids they counted, so each one is
+  // filtered against the same inventory its counter is fed from — the
+  // stored array IS the progress, and an unfiltered one is progress
+  // towards places that no longer exist. CONES is deliberately absent:
+  // its members are `cone-<index>` against a field the world still
+  // regenerates, so the count it holds still means something.
+  const countedIds: Record<string, Set<string>> = {
+    explorer: districtIds,
+    projects: landmarkIds,
+    archivist: landmarkIds,
+    notes: noteIds,
+  }
+  for (const [id, live] of Object.entries(countedIds)) {
+    const stored = progress.achievements[id]
+    if (Array.isArray(stored)) progress.achievements[id] = stored.filter((v) => live.has(v))
+  }
+
+  // Whole awards whose trigger left with its district. `Achievements`
+  // already refuses ids it does not know, so this changes nothing the
+  // visitor can see; it stops the blob carrying a tail of dead awards
+  // into every future version, on a storage that has a quota.
+  // `hasOwn`, not a truthiness test: a blob is arbitrary JSON, and an
+  // id of "constructor" would otherwise read as a live achievement off
+  // `Object.prototype`.
+  for (const id of Object.keys(progress.achievements)) {
+    if (!Object.hasOwn(achievementById, id)) delete progress.achievements[id]
+  }
+
+  for (const id of Object.keys(progress.bestTimes)) {
+    if (!Object.hasOwn(LIVE_MINIGAMES, id)) delete progress.bestTimes[id]
+  }
+  progress.completedGames = progress.completedGames.filter((id) => Object.hasOwn(LIVE_MINIGAMES, id))
+
+  // To a visitor a stored respawn is a PLACE, and half the named places
+  // on the old island are open water on this one. Anything that is not
+  // still a respawn point goes back to the landing rather than putting
+  // a returning car down in the sea.
+  if (!progress.lastRespawn || !respawns.some((r) => r.id === progress.lastRespawn)) {
+    progress.lastRespawn = SPAWN_RESPAWN
+  }
+}
+
 /** Rebuilds a full `SaveData` from whatever was in storage. */
 function coerce(raw: unknown): SaveData {
   const out = defaults()
@@ -155,9 +280,6 @@ function coerce(raw: unknown): SaveData {
     ? progress.raceHistory.filter((v): v is number => typeof v === 'number' && Number.isFinite(v) && v > 0).sort((a, b) => a - b).slice(0, 5)
     : []
 
-  // The leaderboard, either read back or migrated from the version-1
-  // list of bare times. `at: 0` means "before this site kept dates",
-  // which the board renders as a dash rather than as 1 January 1970.
   const board = Array.isArray(progress.raceBoard) ? progress.raceBoard : []
   out.progress.raceBoard = board
     .filter(isRecord)
@@ -165,9 +287,6 @@ function coerce(raw: unknown): SaveData {
     .filter((entry) => Number.isFinite(entry.time) && entry.time > 0)
     .sort((a, b) => a.time - b.time)
     .slice(0, 10)
-  if (!out.progress.raceBoard.length && out.progress.raceHistory.length) {
-    out.progress.raceBoard = out.progress.raceHistory.map((time) => ({ time, at: 0 }))
-  }
   out.progress.distanceDriven = Math.max(0, numberOr(progress.distanceDriven, 0))
   out.progress.timePlayed = Math.max(0, numberOr(progress.timePlayed, 0))
   out.progress.lastRespawn =
@@ -180,6 +299,27 @@ function coerce(raw: unknown): SaveData {
       }
     }
   }
+
+  /* ---- version fix-ups -------------------------------------
+     Applied to the COERCED result rather than to `raw`, so each one
+     starts from a fully typed blob and only has to think about the
+     one thing its version changed. Never a wholesale discard: the
+     visitor has no account, so their save file is the only copy of
+     everything they have done here.
+     ---------------------------------------------------------- */
+
+  // 1 → 2: the circuit leaderboard. A version-1 blob kept a bare list
+  // of times with no dates; `at: 0` means "before this site kept
+  // dates", which the board renders as a dash rather than as 1
+  // January 1970. Left ungated on purpose — it is a no-op on any blob
+  // that already has a board, and cheap insurance for one that was
+  // written between the two fields.
+  if (!out.progress.raceBoard.length && out.progress.raceHistory.length) {
+    out.progress.raceBoard = out.progress.raceHistory.map((time) => ({ time, at: 0 }))
+  }
+
+  // 2 → 3: the island was redrawn from the hand-drawn map.
+  if (version < 3) migrateToDrawnIsland(out)
 
   return out
 }

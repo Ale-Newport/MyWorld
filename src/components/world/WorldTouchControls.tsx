@@ -150,9 +150,13 @@ export function WorldTouchControls({ store, getGame }: Props) {
           style={{ left: `${prompt.x * 100}%`, top: `${prompt.y * 100}%` }}
           onPointerDown={(event) => {
             event.preventDefault()
-            const game = getGame()
-            const id = game?.interactions.current
-            if (game && id) game.openLandmark(id)
+            /* `interactions.trigger()`, not `openLandmark(id)`.
+               openLandmark returns silently for any id that is not a
+               landmark, so every prompt the world registers itself —
+               the mini-games, the playground, the black hole — did
+               nothing at all when tapped. This is the same call ENTER
+               makes. */
+            getGame()?.interactions.trigger()
           }}
         >
           <span className={styles.interactLabel}>{prompt.label}</span>

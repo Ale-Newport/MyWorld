@@ -8,13 +8,13 @@ import type { Ticker } from '../core/Ticker'
 import type { Materials } from './materials'
 import { textTexture } from './materials'
 import { Terrain } from './Terrain'
+import { Roads } from './Roads'
 import { Props, type PropKind } from './Props'
 import { buildLandmark } from './Landmarks'
 import { rampGeometry } from './geometry'
 import { CIRCUIT, CIRCUIT_TRACK, PLAY_SPOTS, lineDistance } from '@/content/world-environment'
 import {
-  archiveIslands,
-  clientTowers,
+  projectPlinths,
   devNotes,
   districtById,
   districts,
@@ -29,7 +29,7 @@ import {
 
 /** How far back down a ramp's approach the run-up is kept clear. A big
  *  jump needs the whole run-up, not just the ground beside the lip. */
-const RAMP_RUNUP = 74
+const RAMP_RUNUP = 52
 
 /* ============================================================
    THE WORLD
@@ -41,8 +41,10 @@ const RAMP_RUNUP = 74
 
    That separation is the point of the whole route. Adding a
    project to `src/content/projects/personal.ts` puts it in the
-   scroll journey AND, if it is unplaced, on an island in the
-   archive — with no change to this file.
+   scroll journey AND in the PROJECTS archive — with no change to
+   this file. The island's SHAPE comes from a step further back
+   again: `src/content/world-map.ts` is a hand-drawn plan compiled
+   to metres, and the two content files above read it.
 
    Build order is by cost: terrain first (everything measures its
    height), then landmarks, then the scatter. Districts far from
@@ -81,6 +83,7 @@ export class World {
 
   readonly group = new THREE.Group()
   readonly terrain: Terrain
+  readonly roads: Roads
   readonly props: Props
 
   readonly landmarks = new Map<string, LandmarkHandle>()
@@ -98,13 +101,21 @@ export class World {
     this.terrain = new Terrain(physics, quality, materials, bin)
     this.group.add(this.terrain.group)
 
+    // The dirt tracks, as geometry with their own tiling material
+    // instead of a stroke on the ground canvas, where one texel is a
+    // quarter of a metre and an eight-metre road is thirty-three of
+    // them. Built here because it needs the terrain's own height
+    // sampler, and it carries no collider: the heightfield already
+    // holds the road's height.
+    this.roads = new Roads(this.terrain, quality, materials, bin)
+    this.group.add(this.roads.group)
+
     this.props = new Props(physics, ticker, materials, bin, quality.settings.shadows)
     this.group.add(this.props.group)
 
     this.buildSky()
     this.buildLandmarks()
-    this.buildClientCity()
-    this.buildArchive()
+    this.buildProjectPlinths()
     this.buildRamps()
     this.buildTimeline()
     this.buildNotes()
@@ -198,79 +209,39 @@ export class World {
   }
 
   /* ========================================================
-     CLIENT CITY
-     Fourteen browser towers, one per live client site, laid out
-     from the project inventory rather than by hand.
+     THE PROJECTS ARCHIVE
+
+     Eight plinths around one terminal, generated from the same
+     inventory the Project Universe uses. The other thirty-five
+     projects are not absent — they are inside the terminal, which
+     is the whole reason the island stopped needing a district per
+     project.
      ======================================================== */
 
-  private buildClientCity(): void {
+  private buildProjectPlinths(): void {
     const context = {
       materials: this.materials, physics: this.physics,
       quality: this.quality, bin: this.bin, groundY: 0,
     }
 
-    for (const tower of clientTowers()) {
-      const project = projectsBySlugForWorld[tower.project]
+    for (const plinth of projectPlinths()) {
+      const project = projectsBySlugForWorld[plinth.project]
       if (!project) continue
-      const y = this.terrain.colliderHeightAt(tower.x, tower.z)
-      const at = new THREE.Vector3(tower.x, y, tower.z)
+      const y = this.terrain.colliderHeightAt(plinth.x, plinth.z)
+      const at = new THREE.Vector3(plinth.x, y, plinth.z)
 
       const landmark: Landmark = {
-        id: tower.id,
-        district: 'client',
-        label: project.shortTitle ?? project.title,
-        sublabel: project.subcategory,
-        x: tower.x,
-        z: tower.z,
-        rotation: tower.rotation,
-        visual: 'browserTower',
-        interaction: 'project',
-        radius: 10,
-        scale: tower.height / 14,
-        ref: { kind: 'project', id: project.slug },
-      }
-
-      const built = buildLandmark({ ...context, groundY: y }, landmark, at)
-      this.group.add(built.group)
-      this.landmarks.set(landmark.id, {
-        landmark,
-        group: built.group,
-        anchor: built.anchor.clone().add(at),
-        radius: 10,
-      })
-    }
-  }
-
-  /* ========================================================
-     ARCHIVE ISLANDS
-     Everything not otherwise placed, generated from the same
-     inventory the Project Universe uses.
-     ======================================================== */
-
-  private buildArchive(): void {
-    const context = {
-      materials: this.materials, physics: this.physics,
-      quality: this.quality, bin: this.bin, groundY: 0,
-    }
-
-    for (const island of archiveIslands()) {
-      const project = projectsBySlugForWorld[island.project]
-      if (!project) continue
-      const y = this.terrain.colliderHeightAt(island.x, island.z)
-      const at = new THREE.Vector3(island.x, y, island.z)
-
-      const landmark: Landmark = {
-        id: island.id,
-        district: 'archive',
+        id: plinth.id,
+        district: 'projects',
         label: project.shortTitle ?? project.title,
         sublabel: project.year,
-        x: island.x,
-        z: island.z,
-        rotation: island.rotation,
-        visual: 'monument',
+        x: plinth.x,
+        z: plinth.z,
+        rotation: plinth.rotation,
+        visual: 'island',
         interaction: 'project',
         radius: 8,
-        scale: island.scale,
+        scale: plinth.scale,
         ref: { kind: 'project', id: project.slug },
       }
 
@@ -291,9 +262,33 @@ export class World {
 
   private buildRamps(): void {
     for (const ramp of ramps) {
-      // The terrain flattens a pad under every ramp, so its centre
-      // height is also the height of its whole footprint.
-      const y = this.terrain.colliderHeightAt(ramp.x, ramp.z)
+      /*
+        THE FOOT, NOT THE CENTRE.
+
+        The terrain flattens a pad under every ramp, and this used to
+        take the pad's height from the ramp's middle on the assumption
+        that the pad held the whole footprint level. It does not always:
+        a road flattened AFTER the pad drags it down wherever it passes,
+        and `landing-projects` runs seven metres off the east ramp's
+        foot. Measured there, the pad held 4.70 m under the deck and
+        3.69 m at the low end — a metre of step exactly where the car
+        arrives. `world-qa` recorded 2.7 m of air off a 5.6 m ramp and
+        the tour wedged the car against the lip for a whole leg.
+
+        Building from the FOOT cannot produce that step: the low end is
+        on the ground by construction, and the rest of the wedge is
+        above it by definition, which is what a ramp is. It costs a
+        little height at the lip when the pad is not level, and a lip
+        in the air is not a defect.
+      */
+      const foot = {
+        x: ramp.x - Math.cos(ramp.rotation) * (ramp.length / 2 - 1),
+        z: ramp.z + Math.sin(ramp.rotation) * (ramp.length / 2 - 1),
+      }
+      const y = Math.min(
+        this.terrain.colliderHeightAt(foot.x, foot.z),
+        this.terrain.colliderHeightAt(ramp.x, ramp.z),
+      )
       const { geometry, hull } = rampGeometry(ramp.length, ramp.width, ramp.height)
 
       const mesh = new THREE.Mesh(geometry, this.materials.get('concrete'))
@@ -413,7 +408,6 @@ export class World {
 
   private buildDistrictFurniture(): void {
     for (const district of districts) {
-      if (district.id === 'void') continue
       const y = this.terrain.colliderHeightAt(district.x, district.z)
 
       // A ring on the ground marking the district boundary.
@@ -536,16 +530,16 @@ export class World {
     }
 
     /* ---- the landing area -------------------------------
-       Everything here is placed RELATIVE TO THE HUB, because the
-       hub moves. Written as absolute coordinates, this whole
-       arrangement stayed behind the last time the island was
+       Everything here is placed RELATIVE TO THE LANDING, because
+       the landing moves. Written as absolute coordinates, this
+       whole arrangement stayed behind the last time the island was
        rebuilt and the spawn ended up on bare paving.
 
        The arrangement itself follows the reference's landing area:
        the name to drive at, something to knock over immediately,
        and enough clutter that the opening frame is full. */
-    const hub = districtById.hub
-    const at = (dx: number, dz: number) => [hub.x + dx, hub.z + dz] as const
+    const landing = districtById.landing
+    const at = (dx: number, dz: number) => [landing.x + dx, landing.z + dz] as const
 
     // A cone field, offset south so it sits between the spawn and the
     // name rather than on top of either.
@@ -581,24 +575,24 @@ export class World {
 
     /* ---- per-district scatter --------------------------- */
     const scatter: Partial<Record<string, { kind: PropKind; count: number; tag?: string }[]>> = {
-      kcl: [{ kind: 'crate', count: 12 }, { kind: 'cone', count: 14, tag: 'cones' }, { kind: 'bench', count: 5 }],
-      teaching: [{ kind: 'block', count: 14, tag: 'bugs' }, { kind: 'drum', count: 6 }],
-      algorithms: [{ kind: 'block', count: 12 }, { kind: 'ball', count: 8 }, { kind: 'panel', count: 6 }],
-      ucl: [{ kind: 'panel', count: 8 }, { kind: 'crate', count: 8 }],
-      lab: [{ kind: 'drum', count: 12 }, { kind: 'block', count: 10 }],
-      chess: [{ kind: 'crate', count: 8 }],
-      stock: [{ kind: 'crate', count: 14 }, { kind: 'drum', count: 8 }],
-      focus: [{ kind: 'crate', count: 12 }, { kind: 'panel', count: 6 }, { kind: 'ball', count: 6 }],
-      gym: [{ kind: 'drum', count: 12 }, { kind: 'plank', count: 8 }, { kind: 'ball', count: 6 }],
-      client: [{ kind: 'barrier', count: 16 }, { kind: 'cone', count: 20, tag: 'cones' }],
+      social: [{ kind: 'crate', count: 8 }, { kind: 'bench', count: 4 }, { kind: 'panel', count: 5 }],
+      bowling: [{ kind: 'barrier', count: 10 }, { kind: 'cone', count: 14, tag: 'cones' }, { kind: 'crate', count: 8 }],
+      projects: [{ kind: 'crate', count: 10 }, { kind: 'panel', count: 8 }, { kind: 'cone', count: 12, tag: 'cones' }],
+      achievements: [{ kind: 'cone', count: 10, tag: 'cones' }, { kind: 'ball', count: 8 }],
+      /* NOTHING. `place()` tests roads, play spots, respawns and ramps
+         and knows nothing about the labyrinth's walls, so these six
+         crates and eight blocks were dropped at 10.5-27 m from the
+         maze centre — inside a 46 m square that is 127 solid grid
+         squares out of 225 — and ejected by the solver from wherever
+         they landed. The labyrinth owns the grid, so the labyrinth
+         places its own corridor clutter. */
+      maze: [],
+      timeMachine: [{ kind: 'drum', count: 6 }, { kind: 'ball', count: 6 }],
       // Circuit scenery is placed by the race, clear of the racing line.
       circuit: [],
-      labyrinth: [{ kind: 'crate', count: 6 }],
-      voxel: [{ kind: 'block', count: 14 }],
-      network: [{ kind: 'drum', count: 6 }],
-      studio: [{ kind: 'plank', count: 10 }, { kind: 'crate', count: 6 }],
-      orbit: [{ kind: 'ball', count: 10 }],
-      archive: [{ kind: 'cone', count: 16, tag: 'cones' }, { kind: 'crate', count: 10 }],
+      // The TNT stack is the scatter here, and it is built by Playground.
+      tnt: [],
+      blackhole: [{ kind: 'block', count: 8 }],
     }
 
     for (const district of districts) {

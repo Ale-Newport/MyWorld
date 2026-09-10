@@ -86,10 +86,7 @@ export class InteractivePoints {
 
     const onInteract = (action: { active: boolean }) => {
       if (!action.active) return
-      const point = this.active
-      if (!point || !point.enabled) return
-      point.onInteract()
-      this.events.trigger('interact', [point.id])
+      this.trigger()
     }
     this.inputs.events.on('interact', onInteract as never)
 
@@ -103,6 +100,25 @@ export class InteractivePoints {
 
   setTarget(position: THREE.Vector3): void {
     this.target = position
+  }
+
+
+  /**
+   * Fire the active prompt, whatever it is.
+   *
+   * ENTER on a keyboard came through `inputs`, and the touch build
+   * called `game.openLandmark(id)` instead — which returns silently
+   * for any id that is not a landmark. Every prompt this world owns
+   * outside the content layer (RESTORE THE NAME, RESTOCK TNT, the
+   * time machine, FALL IN, BOWL A SET, RUN THE LABYRINTH, PLAY TNT
+   * DOMINO) was therefore dead on a phone, and so would every new one
+   * be. One entry point, both inputs.
+   */
+  trigger(): void {
+    const point = this.active
+    if (!point || !point.enabled) return
+    point.onInteract()
+    this.events.trigger('interact', [point.id])
   }
 
   add(options: InteractivePointOptions): void {

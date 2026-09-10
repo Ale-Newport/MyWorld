@@ -40,14 +40,24 @@ export interface AchievementGroupState {
   unlocked: boolean
 }
 
-/** Ids whose progress is a set of unique things rather than a count. */
+/**
+ * Ids whose progress is a set of unique things rather than a count.
+ *
+ * This list is the load-bearing half of persistence: `hydrate` only
+ * replays a stored ARRAY into a group that has an `ids` set, so an id
+ * missing from here has its saved array silently dropped on every
+ * reload and its progress resets to zero for the rest of time. Adding
+ * a set-typed achievement without adding it here is therefore a bug
+ * that only shows up on the visitor's second session.
+ *
+ * Every id here must also exist in `content/achievements.ts`; one that
+ * does not is dead weight, because `set()` refuses unknown ids first.
+ */
 const UNIQUE_GROUPS: Record<string, true> = {
-  labPlay: true,
   explorer: true,
   notes: true,
   projects: true,
   archivist: true,
-  debugger: true,
   cones: true,
   completionist: true,
 }

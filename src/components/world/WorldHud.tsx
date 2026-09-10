@@ -197,7 +197,13 @@ export function WorldHud({ store, getGame }: Props) {
         {notifications.map((n) => (
           <div key={n.id} className={styles.notification} data-kind={n.kind}>
             <span className={styles.notificationKind}>
-              {n.kind === 'achievement' ? 'ACHIEVEMENT' : n.kind === 'district' ? 'DISTRICT' : 'NOTE'}
+              {/* `info` used to fall through to 'NOTE', so every toast that
+                  was not an achievement or a district announced itself as a
+                  dev note the visitor had not found. */}
+              {n.kind === 'achievement' ? 'ACHIEVEMENT'
+                : n.kind === 'district' ? 'DISTRICT'
+                : n.kind === 'note' ? 'NOTE'
+                : ''}
             </span>
             <span className={styles.notificationTitle}>{n.title}</span>
             {n.body && <span className={styles.notificationBody}>{n.body}</span>}

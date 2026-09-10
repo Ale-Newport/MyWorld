@@ -26,7 +26,11 @@ export class Respawns {
   readonly items = new Map<string, RespawnPoint>()
   private defaultName: string
 
-  constructor(defaultName = 'hub', data: RespawnData[] = respawnData) {
+  /* `defaultName` has no useful default. It used to be 'hub', which
+     survived the island being re-drawn as a plausible-looking literal
+     that `getDefault()` would have thrown on — the caller passes
+     SPAWN_RESPAWN, and there is no second caller. */
+  constructor(defaultName: string, data: RespawnData[] = respawnData) {
     this.defaultName = defaultName
     for (const item of data) {
       this.items.set(item.id, {

@@ -1,11 +1,12 @@
 'use client'
 
 import Link from 'next/link'
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useStore } from 'zustand'
 import type { WorldStore } from '@/world/state/store'
 import type { Game } from '@/world/Game'
-import { landmarkById, resolvePanel } from '@/content/world'
+import { PROJECT_GROUPS, landmarkById, resolvePanel } from '@/content/world'
+import { projectBySlug } from '@/content/projects'
 import { WorldMap } from './WorldMap'
 import { WorldControls } from './WorldControls'
 import { achievementGroups } from '@/content/achievements'
@@ -64,6 +65,7 @@ export function WorldOverlays({ store, getGame }: Props) {
 
         {overlay === 'pause' && <PauseMenu store={store} getGame={getGame} />}
         {overlay === 'panel' && panelId && <ProjectPanel id={panelId} />}
+        {overlay === 'projects' && <ProjectArchive store={store} />}
         {overlay === 'achievements' && <AchievementList getGame={getGame} />}
         {overlay === 'options' && <Options store={store} getGame={getGame} />}
         {overlay === 'map' && <WorldMap store={store} getGame={getGame} />}
@@ -167,6 +169,69 @@ function ProjectPanel({ id }: { id: string }) {
         )}
       </footer>
     </article>
+  )
+}
+
+/* ============================================================
+   THE PROJECTS ARCHIVE
+
+   The island used to give nine projects a district each and put
+   the rest on islands in an archive ring. The drawing has one
+   PROJECTS, so this is where the other forty-two live: a group
+   list on the left, a project on the right, and the same
+   `resolvePanel()` copy the scroll journey renders.
+
+   NO CONTENT WAS LOST when the districts went. This is where to
+   check that: every slug in `projects/*` appears in one of
+   `PROJECT_GROUPS`, and the counts are printed.
+   ============================================================ */
+
+function ProjectArchive({ store }: { store: WorldStore }) {
+  const [group, setGroup] = useState(PROJECT_GROUPS[0]?.id ?? 'featured')
+  const active = PROJECT_GROUPS.find((g) => g.id === group) ?? PROJECT_GROUPS[0]
+  const total = new Set(PROJECT_GROUPS.flatMap((g) => g.slugs)).size
+
+  return (
+    <section className={styles.archive}>
+      <header className={styles.archiveHead}>
+        <p className={styles.panelEyebrow}>PROJECTS</p>
+        <h2 className={styles.overlayTitle}>The archive</h2>
+        <p className={styles.archiveCount}>{total} projects · {PROJECT_GROUPS.length} collections</p>
+      </header>
+
+      <nav className={styles.archiveTabs} aria-label="Project collections">
+        {PROJECT_GROUPS.map((g) => (
+          <button
+            key={g.id}
+            type="button"
+            data-active={g.id === active?.id}
+            onClick={() => setGroup(g.id)}
+          >
+            {g.label} <span>{g.slugs.length}</span>
+          </button>
+        ))}
+      </nav>
+
+      <ul className={styles.archiveList}>
+        {(active?.slugs ?? []).map((slug) => {
+          const project = projectBySlug[slug]
+          if (!project) return null
+          return (
+            <li key={slug}>
+              <Link
+                href={`/#project/${slug}`}
+                className={styles.archiveItem}
+                onClick={() => store.getState().setOverlay(null)}
+              >
+                <span className={styles.archiveYear}>{project.year}</span>
+                <span className={styles.archiveTitle}>{project.shortTitle ?? project.title}</span>
+                <span className={styles.archiveBlurb}>{project.shortDescription}</span>
+              </Link>
+            </li>
+          )
+        })}
+      </ul>
+    </section>
   )
 }
 

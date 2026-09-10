@@ -349,6 +349,25 @@ export class Physics {
       physical.previous.quaternion.copy(physical.current.quaternion)
 
       /*
+        A SLEEPING BODY PAYS NOTHING.
+
+        Everything below this line is water damping, and it was run for
+        every non-static body on the island sixty times a second whether
+        or not the body had moved since the world booted. `waterAt` is
+        five ellipse tests and an eight-segment polyline distance, so a
+        settled crate on the far side of the map cost the same as the
+        car. With a few hundred pieces of knockable decoration in the
+        world that is the frame budget, and it does not show up as a
+        draw call — it shows up as jitter.
+
+        Rapier re-applies nothing on wake, so the damping is simply set
+        again on the first step after the body stirs, which is the frame
+        it starts moving in. A car that drives into a lake still goes
+        heavy: it was never asleep.
+      */
+      if (physical.body.isSleeping()) continue
+
+      /*
         Underwater bodies get damping rather than buoyancy — the same
         trick upstream uses, and it reads correctly at speed. What it
         must NOT be is a step: the old version snapped from the body's

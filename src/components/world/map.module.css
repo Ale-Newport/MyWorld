@@ -15,7 +15,11 @@
 .canvasWrap {
   display: grid;
   place-items: center;
-  aspect-ratio: 1;
+  /* The island is 380 by 285 m, not a disc. A square wrapper letterboxed
+     the map with a quarter of its height as empty sea and shrank the
+     part anyone reads. Kept here rather than as an inline style so the
+     stylesheet stays the one place the map's shape is described. */
+  aspect-ratio: 380 / 285;
   max-height: 46vh;
   border: 1px solid var(--border);
   background: var(--paper-2);

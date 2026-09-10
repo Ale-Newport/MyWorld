@@ -1,5 +1,5 @@
 import { createStore, type StoreApi } from 'zustand/vanilla'
-import type { DistrictId } from '@/content/world'
+import type { DistrictId, MinigameId } from '@/content/world'
 import type { QualityLevel, QualityPreference } from '../core/Quality'
 import type { InputMode } from '../input/Inputs'
 
@@ -55,7 +55,21 @@ export interface PromptState {
   y: number
 }
 
-export type OverlayKind = 'panel' | 'map' | 'achievements' | 'options' | 'pause' | 'controls'
+/**
+ * `projects` is the archive browser behind the PROJECTS terminal. It is
+ * a kind of its own rather than a `panel`, because a panel is about ONE
+ * landmark and this is the whole inventory — the island stopped giving
+ * a project a district each on the condition that one terminal could
+ * still reach every one of them.
+ */
+export type OverlayKind =
+  | 'panel'
+  | 'projects'
+  | 'map'
+  | 'achievements'
+  | 'options'
+  | 'pause'
+  | 'controls'
 
 export interface WorldState {
   /* ---- boot ------------------------------------------- */
@@ -87,7 +101,15 @@ export interface WorldState {
 
   /* ---- mini-games ------------------------------------- */
   minigame: {
-    id: string
+    /**
+     * The id was a bare `string`, which let the HUD's Restart button
+     * hold the name of a mini-game that had been deleted with its
+     * district — `minigames.start()` takes a string too, so the whole
+     * path from card to manager compiled and the button just did
+     * nothing. Naming the union makes a retired game a type error
+     * here instead of a dead button at runtime.
+     */
+    id: MinigameId
     title: string
     /** Free-form lines the mini-game HUD renders. */
     lines: string[]

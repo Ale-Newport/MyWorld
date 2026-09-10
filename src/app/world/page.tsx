@@ -6,7 +6,7 @@ import { profile, siteConfig } from '@/content/profile'
 export const metadata: Metadata = {
   title: 'World',
   description:
-    `An interactive 3D world you drive through, built from the same project data as the main portfolio. Districts for ${profile.name}'s education, client work, products and AI engineering, plus a race circuit, a labyrinth and a number of things that are only there because they were fun to build.`,
+    `An interactive 3D world you drive through, built from the same project data as the main portfolio. A racing circuit, a bowling alley, a labyrinth, a black hole and ${profile.name}'s name written large enough to drive on — with every project reachable from one terminal.`,
   alternates: { canonical: '/world' },
   openGraph: {
     type: 'website',

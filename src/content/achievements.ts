@@ -6,6 +6,16 @@
    lives here. Progress is persisted per-browser (see
    `src/world/systems/Save.ts`) — there is no backend and no
    account.
+
+   EVERY ID BELOW MUST BE SET BY SOMETHING THAT IS STILL ON THE
+   ISLAND, and every target must be reachable from what the world
+   actually builds. COMPLETIONIST requires all of them, so one
+   award whose trigger left with its district — or one target
+   counted from an inventory that shrank — makes the last
+   achievement permanently unreachable and turns the panel into a
+   list nobody can finish. When a place goes, its award goes with
+   it in the same commit; when a target is a count of things,
+   the comment says where the count comes from.
    ============================================================ */
 
 export type AchievementGroup =
@@ -13,6 +23,7 @@ export type AchievementGroup =
   | 'exploration'
   | 'projects'
   | 'minigames'
+  | 'playground'
   | 'secrets'
 
 export interface Achievement {
@@ -30,21 +41,6 @@ export interface Achievement {
 }
 
 export const achievements: Achievement[] = [
-  { id: 'labPlay', label: 'EXPERIMENTAL', hint: 'Interact with all three live laboratory instruments.', group: 'exploration', target: 3 },
-  { id: 'perfectRun', label: 'CLEAN LAP', hint: 'Finish the circuit without recovering.', group: 'minigames', target: 1 },
-  { id: 'nameDrop', label: 'NAME DROP', hint: 'Topple all sixteen letters, then restore them at the name stand.', group: 'minigames', target: 16 },
-  { id: 'strike', label: 'STRIKE!', hint: 'Knock down all ten bowling pins with your first ball.', group: 'minigames', target: 1 },
-  { id: 'spare', label: 'SPARE CHANGE', hint: 'Clear the remaining pins on your second bowling throw.', group: 'minigames', target: 1 },
-  { id: 'bowling', label: 'LANE LOGIC', hint: 'Finish a frame at the bowling lane.', group: 'minigames', target: 1 },
-  { id: 'debugDash', label: 'ALL GREEN', hint: 'Clear the timed debug dash without hitting a green build.', group: 'minigames', target: 1 },
-  { id: 'riverRun', label: 'BRIDGE BUILDER', hint: 'Complete the river crossing route in order.', group: 'minigames', target: 1 },
-  { id: 'chipRelay', label: 'CACHE HIT', hint: 'Collect three chips and return each to the cache.', group: 'minigames', target: 1 },
-  { id: 'domino', label: 'CHAIN REACTION', hint: 'Detonate every crate in the TNT domino challenge.', group: 'minigames', target: 1 },
-  { id: 'deployment', label: 'DEPLOYED', hint: 'Push the release package onto the deployment altar.', group: 'minigames', target: 1 },
-  { id: 'chips', label: 'SNACK OVERFLOW', hint: 'Collect twelve chips from the dispenser.', group: 'exploration', target: 12 },
-  { id: 'cabin', label: 'OUT OF OFFICE', hint: 'Tip the little forest cabin.', group: 'secrets', target: 1, hidden: true },
-  { id: 'waterfall', label: 'QUIET COMMIT', hint: 'Look behind the waterfall.', group: 'secrets', target: 1, hidden: true },
-  { id: 'timeMachine', label: 'FUTURE COMMIT', hint: 'Start the time machine in the southern garden.', group: 'secrets', target: 1 },
   /* ---- driving ------------------------------------------- */
   { id: 'firstDrive', label: 'FIRST DRIVE', hint: 'Move the car.', group: 'driving', target: 1 },
   { id: 'takeoff', label: 'TAKEOFF', hint: 'Get all four wheels off the ground.', group: 'driving', target: 1 },
@@ -56,52 +52,92 @@ export const achievements: Achievement[] = [
   { id: 'upsideDown', label: 'ON YOUR ROOF', hint: 'End up completely upside down.', group: 'driving', target: 1 },
   { id: 'goHigh', label: 'ALTITUDE', hint: 'Reach 30 metres above the ground.', group: 'driving', target: 30, unit: 'm' },
   { id: 'distance', label: 'LONG HAUL', hint: 'Drive five kilometres in total.', group: 'driving', target: 5, unit: 'km' },
+  // Counted by unique cone, and `World.ts` tags forty-four on the
+  // landing alone before bowling, projects and achievements add
+  // thirty-six more — so twenty is a morning's demolition, not a
+  // requirement to find every cone on the island.
   { id: 'cones', label: 'CLEAN SWEEP', hint: 'Knock over twenty traffic cones.', group: 'driving', target: 20 },
-  { id: 'shipIt', label: 'SHIP IT', hint: 'Jump through the brackets.', group: 'driving', target: 1 },
+  // `Secrets.ts` arms a zone PAST the ramp's lip and only awards this
+  // if the car was more than five metres up while crossing it, so
+  // trundling off the side of the ramp is not a jump.
+  { id: 'airborne', label: 'OFF THE END', hint: 'Launch off the big east ramp and land in the shallows.', group: 'driving', target: 1 },
 
   /* ---- exploration --------------------------------------- */
-  { id: 'about', label: 'INTRODUCED', hint: 'Read the ID card at the hub.', group: 'exploration', target: 1 },
-  { id: 'kcl', label: 'FOUNDATIONS', hint: 'Visit the KCL campus.', group: 'exploration', target: 1 },
-  { id: 'ucl', label: 'NEXT', hint: 'Visit the UCL research shell.', group: 'exploration', target: 1 },
-  { id: 'lab', label: 'INSIDE THE LAB', hint: 'Reach the AI lab.', group: 'exploration', target: 1 },
-  { id: 'client', label: 'FOURTEEN', hint: 'Find the client city landmark.', group: 'exploration', target: 1 },
-  { id: 'explorer', label: 'EXPLORER', hint: 'Enter every signposted district.', group: 'exploration', target: 13 },
+  // Eight, because eight districts carry `signposted` in `world.ts` and
+  // only a signposted one calls `set('explorer', …)`. BLACK HOLE is
+  // secret and TNT is unsignposted, so neither can ever land here.
+  // The old island's thirteen left this five districts short of
+  // anything that exists, and took COMPLETIONIST down with it.
+  { id: 'explorer', label: 'EXPLORER', hint: 'Enter every signposted district.', group: 'exploration', target: 8 },
   { id: 'sea', label: 'OUT OF BOUNDS', hint: 'Drive past the edge of the world.', group: 'exploration', target: 1 },
+  // Thirteen notes are placed; six is a reward for wandering rather
+  // than a sweep of the whole map.
   { id: 'notes', label: 'MARGINALIA', hint: 'Find six dev notes.', group: 'exploration', target: 6 },
-  // The island no longer has a night, so this is the weather instead:
-  // it rains often enough to be found and rarely enough to be a find.
+  // The island has no night, so this is the weather instead: it rains
+  // often enough to be found and rarely enough to be a find.
   { id: 'nightDrive', label: 'STORM SHIFT', hint: 'Drive through the rain.', group: 'exploration', target: 1 },
 
   /* ---- projects ------------------------------------------ */
+  // Counted across the whole island, not just PROJECTS: WELCOME,
+  // ABOUT, SOCIAL, the black hole and the two hub terminals are six
+  // before a single plinth, and every plinth adds one — so ten is
+  // comfortably inside what is built.
   { id: 'projects', label: 'READING UP', hint: 'Open ten project panels.', group: 'projects', target: 10 },
-  { id: 'archivist', label: 'ARCHIVIST', hint: 'Open every archive island.', group: 'projects', target: 12 },
-  { id: 'debugger', label: 'DEBUGGER', hint: 'Knock over every FAIL block in the debug yard.', group: 'projects', target: 8 },
+  // Counted from the plinth ring and the terminal at its centre.
+  // Pinned to eight rather than to `FEATURED_SLUGS.length`, which is
+  // whatever `projects/*` currently tiers as featured or hero: tying
+  // the bar to that number means promoting a project silently raises
+  // it, and a bar above the ring takes COMPLETIONIST with it.
+  { id: 'archivist', label: 'ARCHIVIST', hint: 'Read eight of the project plinths around the terminal.', group: 'projects', target: 8 },
 
   /* ---- mini-games ---------------------------------------- */
-  { id: 'circuit', label: 'CHEQUERED FLAG', hint: 'Finish three laps of the circuit.', group: 'minigames', target: 1 },
-  // The bar is `CIRCUIT.laps * CIRCUIT.targetLapSeconds` — two laps at
-  // 60 s. The hint used to say sixty seconds for the whole race, which
-  // is a time nobody could set for two laps and made the award look
-  // broken; it is now what the code actually checks.
-  { id: 'speedDemon', label: 'SPEED DEMON', hint: 'Finish the two-lap circuit inside 2:00.', group: 'minigames', target: 1 },
+  { id: 'circuit', label: 'CHEQUERED FLAG', hint: 'Finish a lap of the circuit.', group: 'minigames', target: 1 },
+  // The bar is `CIRCUIT.laps * CIRCUIT.targetLapSeconds` — one lap of
+  // the 954 m track at 105 s. A hint that quotes a different number
+  // from the one the race checks makes the award look broken, so this
+  // one is read off the circuit and re-read whenever it changes.
+  { id: 'speedDemon', label: 'SPEED DEMON', hint: 'Finish a lap of the circuit inside 1:02.', group: 'minigames', target: 1 },
+  { id: 'perfectRun', label: 'CLEAN LAP', hint: 'Finish a lap without recovering at a checkpoint.', group: 'minigames', target: 1 },
   { id: 'pathFound', label: 'PATH FOUND', hint: 'Reach the centre of the labyrinth.', group: 'minigames', target: 1 },
-  { id: 'checkmate', label: 'ENGINE APPROVED', hint: 'Play the engine move at the chess terminal.', group: 'minigames', target: 1 },
-  { id: 'contentEngine', label: 'CONTENT ENGINE', hint: 'Complete the Focus video pipeline in order.', group: 'minigames', target: 1 },
-  { id: 'retrieval', label: 'RETRIEVAL COMPLETE', hint: 'Retrieve the right cluster in the AI lab.', group: 'minigames', target: 1 },
-  { id: 'orderRush', label: 'ORDER FILLED', hint: 'Clear the order book gates in time.', group: 'minigames', target: 1 },
-  { id: 'gymCircuit', label: 'FULL SESSION', hint: 'Complete the gym circuit.', group: 'minigames', target: 1 },
-  { id: 'chaosTheory', label: 'CHAOS THEORY', hint: 'Destabilise the three-body system.', group: 'minigames', target: 1 },
-  { id: 'tunnel', label: 'ENCRYPTED', hint: 'Run the packet gates in order.', group: 'minigames', target: 1 },
+  { id: 'strike', label: 'STRIKE!', hint: 'Knock down all ten bowling pins with your first ball.', group: 'minigames', target: 1 },
+  { id: 'spare', label: 'SPARE CHANGE', hint: 'Clear the remaining pins on your second bowling throw.', group: 'minigames', target: 1 },
+  { id: 'bowling', label: 'LANE LOGIC', hint: 'Finish a frame at the bowling lane.', group: 'minigames', target: 1 },
+  { id: 'domino', label: 'CHAIN REACTION', hint: 'Detonate every crate in the TNT domino challenge.', group: 'minigames', target: 1 },
+  // Sixteen letters in ALEJANDRO NEWPORT, which is what Playground
+  // builds and counts down; the name stand puts them back up again.
+  { id: 'nameDrop', label: 'NAME DROP', hint: 'Topple all sixteen letters, then restore them at the name stand.', group: 'minigames', target: 16 },
+
+  /* ---- playground ---------------------------------------
+     Fourteen attractions that have nothing to do with the work;
+     `src/world/world/Attractions.ts` builds every one of them and
+     awards every id below. Nothing here is a riddle and nothing here
+     can be failed — each is set the first time you use the toy, so all
+     thirteen are reachable and COMPLETIONIST stays winnable. The two
+     counts come from `src/content/attractions.ts`: twelve skittles and
+     twelve piano keys. */
+  { id: 'brassSection', label: 'BRASS SECTION', hint: 'Sound the klaxon on the landing forecourt ten times.', group: 'playground', target: 10 },
+  { id: 'siegeEngine', label: 'SIEGE ENGINE', hint: 'Sit in the catapult cradle and loose the arm.', group: 'playground', target: 1 },
+  { id: 'partyTrick', label: 'PARTY TRICK', hint: 'Burst the piñata the catapult is aimed at.', group: 'playground', target: 1 },
+  { id: 'pianoRoad', label: 'TWELVE TONE', hint: 'Drive over all twelve keys of the piano road.', group: 'playground', target: 12 },
+  { id: 'showroom', label: 'SHOWROOM CONDITION', hint: 'Drive through the car wash on the road to the bridge.', group: 'playground', target: 1 },
+  { id: 'backOfTheNet', label: 'BACK OF THE NET', hint: 'Push the big ball into the goal three times.', group: 'playground', target: 3 },
+  { id: 'turkeyShoot', label: 'TURKEY SHOOT', hint: 'Flatten all twelve skittles outside the bowling alley.', group: 'playground', target: 12 },
+  { id: 'fireInTheSky', label: 'FIRE IN THE SKY', hint: 'Light the firework battery on the bay shore.', group: 'playground', target: 1 },
+  { id: 'carillon', label: 'CARILLON', hint: 'Ring the harbour bell seven times inside ten seconds.', group: 'playground', target: 1 },
+  { id: 'boing', label: 'BOING', hint: 'Bounce three times on the trampolines without stopping.', group: 'playground', target: 1 },
+  { id: 'tilt', label: 'TILT', hint: 'Bounce off the bumpers around the trophy ten times.', group: 'playground', target: 10 },
+  { id: 'rainmaker', label: 'RAINMAKER', hint: 'Pull the weather lever and drive in the rain you ordered.', group: 'playground', target: 1 },
+  { id: 'spinCycle', label: 'SPIN CYCLE', hint: 'Ride the turntable for a full revolution.', group: 'playground', target: 1 },
 
   /* ---- secrets ------------------------------------------- */
   { id: 'curious', label: 'CURIOUS', hint: 'Find your first secret.', group: 'secrets', target: 1 },
   { id: 'konami', label: 'UP UP DOWN DOWN', hint: 'You know the one.', group: 'secrets', target: 1 },
-  { id: 'devRoom', label: 'UNDER THE SIGN', hint: 'There is a room beneath the hub.', group: 'secrets', target: 1, hidden: true },
-  { id: 'duck', label: 'RUBBER DUCK', hint: 'Consult the duck.', group: 'secrets', target: 1, hidden: true },
-  { id: 'underground', label: 'BELOW THE CHUNKS', hint: 'Something is buried in the voxel field.', group: 'secrets', target: 1, hidden: true },
-  { id: 'ticker', label: 'ANP', hint: 'Find the fictional ticker.', group: 'secrets', target: 1, hidden: true },
-  { id: 'hiddenIsland', label: 'THE VOID', hint: 'Some jumps are longer than they look.', group: 'secrets', target: 1, hidden: true },
-  { id: 'phoneHop', label: 'OVER THE PHONE', hint: 'Clear the Focus device in one jump.', group: 'secrets', target: 1, hidden: true },
+  { id: 'timeMachine', label: 'FUTURE COMMIT', hint: 'Start the time machine on the road to the labyrinth.', group: 'secrets', target: 1 },
+  // Not hidden, and deliberately: the district is secret on the map, so
+  // without a line in this list the only route to COMPLETIONIST would
+  // be to guess that the hole in the middle of the north loop can be
+  // pressed.
+  { id: 'blackHole', label: 'EVENT HORIZON', hint: 'Fall into the black hole inside the circuit\'s north loop.', group: 'secrets', target: 1 },
   { id: 'timeTraveller', label: 'TIME TRAVELLER', hint: 'Drive the years in order.', group: 'secrets', target: 1, hidden: true },
   { id: 'console', label: 'DEVTOOLS', hint: 'Open the browser console.', group: 'secrets', target: 1, hidden: true },
   { id: 'completionist', label: 'COMPLETIONIST', hint: 'Unlock everything else.', group: 'secrets', target: 1 },
@@ -114,6 +150,7 @@ export const achievementGroups: { id: AchievementGroup; label: string }[] = [
   { id: 'exploration', label: 'Exploration' },
   { id: 'projects', label: 'Projects' },
   { id: 'minigames', label: 'Mini-games' },
+  { id: 'playground', label: 'Playground' },
   { id: 'secrets', label: 'Secrets' },
 ]
 

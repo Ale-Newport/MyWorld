@@ -960,3 +960,123 @@
   .hudDistrictBlurb { display: none; }
   .notifications { bottom: 9rem; width: min(320px, 78vw); }
 }
+
+/* ---- the projects archive --------------------------------
+   One overlay in place of nine districts, so it has to hold a
+   collection list, forty-three projects and a way through them
+   without becoming a page. Two columns on a desktop; one on a
+   phone, where the tabs wrap. */
+
+.archive {
+  display: grid;
+  gap: 1.1rem;
+  min-height: 0;
+}
+
+.archiveHead {
+  display: grid;
+  gap: 0.25rem;
+}
+
+.archiveCount {
+  margin: 0;
+  font-size: 0.78rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--world-ink-3, #6f6f76);
+}
+
+.archiveTabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.archiveTabs button {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.4rem;
+  padding: 0.34rem 0.7rem;
+  border: 1px solid color-mix(in srgb, currentColor 22%, transparent);
+  border-radius: 999px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 0.74rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background 120ms ease, border-color 120ms ease;
+}
+
+.archiveTabs button span {
+  font-size: 0.68rem;
+  opacity: 0.6;
+}
+
+.archiveTabs button:hover {
+  border-color: color-mix(in srgb, currentColor 45%, transparent);
+}
+
+.archiveTabs button[data-active='true'] {
+  background: var(--world-accent, #d4491f);
+  border-color: transparent;
+  color: #fff;
+}
+
+.archiveList {
+  display: grid;
+  gap: 0.3rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  overflow-y: auto;
+  max-height: min(46vh, 26rem);
+}
+
+.archiveItem {
+  display: grid;
+  grid-template-columns: 3.4rem minmax(0, 1fr);
+  grid-template-areas: 'year title' 'year blurb';
+  gap: 0 0.8rem;
+  padding: 0.55rem 0.7rem;
+  border-radius: 0.5rem;
+  text-decoration: none;
+  color: inherit;
+  transition: background 120ms ease;
+}
+
+.archiveItem:hover,
+.archiveItem:focus-visible {
+  background: color-mix(in srgb, currentColor 8%, transparent);
+}
+
+.archiveYear {
+  grid-area: year;
+  align-self: center;
+  font-size: 0.72rem;
+  letter-spacing: 0.06em;
+  color: var(--world-ink-3, #6f6f76);
+  font-variant-numeric: tabular-nums;
+}
+
+.archiveTitle {
+  grid-area: title;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.archiveBlurb {
+  grid-area: blurb;
+  font-size: 0.8rem;
+  line-height: 1.35;
+  color: var(--world-ink-3, #6f6f76);
+}
+
+@media (max-width: 640px) {
+  .archiveItem {
+    grid-template-columns: 1fr;
+    grid-template-areas: 'year' 'title' 'blurb';
+    gap: 0.15rem;
+  }
+}
