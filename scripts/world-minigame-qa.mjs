@@ -68,10 +68,12 @@ const probe = () => page.evaluate(() => {
 /*
   Where each game is PLAYED, from the content rather than from the
   instance: `Minigame.origin` is only set once a game has been started,
-  so asking the instance where to stand put the car at (0, 0) — eighty
-  metres from the chess board — and the game cancelled itself for
-  straying before the harness had looked at it. Passed in from Node,
-  which can read `src/content` directly.
+  so asking the instance where to stand put the car at (0, 0) — a
+  hundred and thirty metres from the TNT stack — and the game cancelled
+  itself for straying before the harness had looked at it. Passed in
+  from Node by `scripts/_venues.mjs`, which reads `src/content`
+  directly: four PLAY_SPOTS and the two landmarks that carry a
+  `minigame`.
 */
 const VENUES = JSON.parse(process.env.VENUES_JSON ?? '{}')
 
@@ -99,12 +101,19 @@ for (const id of list) {
 
   for (const attempt of [1, 2, 3]) {
     if (attempt === 3) {
-      // Leave and come back before the third go.
+      /* Leave and come back before the third go. "Away" is the default
+         respawn — the LANDING — read off the engine rather than written
+         down: the literal (18, 20) this replaces was a point on an
+         island twice this size, and on the drawn one it is 60 m from
+         the landing's own forecourt, which is not leaving anywhere.
+         The landing is over 130 m from every venue, and the tightest
+         abandon radius on the island is the labyrinth's 80. */
       await page.evaluate(() => {
         const g = window.__world
-        const y = g.terrain.colliderHeightAt(18, 20) + 2
-        g.vehicle.moveTo({ x: 18, y, z: 20 }, 0)
-        g.view.focusPoint.trackedPosition.set(18, y, 20)
+        const home = g.respawns.getDefault()
+        const y = g.terrain.colliderHeightAt(home.position.x, home.position.z) + 2
+        g.vehicle.moveTo({ x: home.position.x, y, z: home.position.z }, 0)
+        g.view.focusPoint.trackedPosition.set(home.position.x, y, home.position.z)
         g.view.snapToTarget()
       })
       await page.waitForTimeout(900)

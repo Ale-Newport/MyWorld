@@ -16,7 +16,7 @@
  * line beginning with FAIL and sets a non-zero exit code.
  */
 import { chromium } from 'playwright'
-import { mkdir, readFile, rm, writeFile } from 'node:fs/promises'
+import { mkdir, rm, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 
 const args = process.argv.slice(2)
@@ -122,10 +122,19 @@ async function shot(name) {
  * rather than written down here. The handling checks measure the car,
  * not the map, so they need room — and a hard-coded clearing stops
  * being a clearing the first time the world is re-authored.
+ *
+ * The sweep this replaces walked ±140 m and kept only points with
+ * `hypot(x, z) < 108`, which is a disc. This island is 380 × 285 m
+ * with a bay cut out of the north-east, so that disc threw away the
+ * whole west end — the circuit, the TNT stack, the west lake — and
+ * still admitted the water in the bay. Inside-ness is `coastInset`
+ * and wetness is `inlandWater`, both read off `window.__world.geography`,
+ * which is the same table the terrain is built from.
  */
 async function clearGround() {
   return page.evaluate(() => {
     const g = window.__world
+    const geo = g.geography
     // The car is a physics body too. Counting it makes every call
     // avoid wherever the car currently is, so each successive test
     // gets a worse patch than the last one.
@@ -138,9 +147,17 @@ async function clearGround() {
       bodies.push(p)
     }
     let best = null
-    for (let x = -140; x <= 140; x += 10) {
-      for (let z = -140; z <= 140; z += 10) {
-        if (Math.hypot(x, z) > 108) continue   // well inside the coast
+    const halfWidth = geo.MAP_WIDTH / 2
+    const halfDepth = geo.MAP_DEPTH / 2
+    for (let x = -halfWidth; x <= halfWidth; x += 10) {
+      for (let z = -halfDepth; z <= halfDepth; z += 10) {
+        // Thirty metres inside the coastline: a boost run has to have
+        // somewhere to go, and the beach shelves into the sea.
+        const inset = geo.coastInset(x, z)
+        if (inset < 30) continue
+        // Lake, river and their banks. The driving tests measure the
+        // car; a wheel in the water measures the water.
+        if (geo.inlandWater(x, z)) continue
         if (g.terrain.colliderHeightAt(x, z) < 0.6) continue          // dry land only
         let nearest = Infinity
         for (const b of bodies) {
@@ -156,11 +173,45 @@ async function clearGround() {
         // Near the coast the rim slopes; a car turning hard there rolls,
         // which says nothing about its handling. Stay flat and inland.
         if (relief > 1.1) continue
-        const score = nearest - Math.hypot(x, z) * 0.06
-        if (!best || score > best.score) best = { x, z, clear: nearest, score }
+        /*
+          A BOOST RUN NEEDS A RUN, NOT A CLEARING.
+
+          This scored the widest DISC of empty ground and handed back
+          its centre. On an island with eight hundred and seventy-six
+          pieces of knockable decoration on it the widest disc is 17 m,
+          and the car covers forty metres in the two and a quarter
+          seconds the boost test samples — so it left the clearing, hit
+          a hay bale and the harness recorded the collision as the
+          boost failing to work. It reached 24 m/s on a straight.
+
+          So: score the best CORRIDOR. Eight bearings, forty-five
+          metres each, and the score is the narrowest gap to a body
+          anywhere along it. `heading` comes back with the point so the
+          driving tests aim down the corridor instead of across it.
+        */
+        let run = 0
+        let heading = 0
+        for (let a = 0; a < 8; a++) {
+          const th = (a / 8) * Math.PI * 2
+          const dx = Math.cos(th)
+          const dz = Math.sin(th)
+          let worst = Infinity
+          for (let step = 6; step <= 45; step += 6.5) {
+            const px = x + dx * step
+            const pz = z + dz * step
+            if (geo.coastInset(px, pz) < 12 || geo.inlandWater(px, pz)) { worst = 0; break }
+            for (const b of bodies) {
+              const d = Math.hypot(b.x - px, b.z - pz)
+              if (d < worst) worst = d
+            }
+          }
+          if (worst > run) { run = worst; heading = th }
+        }
+        const score = Math.min(nearest, run) + Math.min(inset, 60) * 0.05
+        if (!best || score > best.score) best = { x, z, clear: Math.min(nearest, run), heading, score }
       }
     }
-    return best ?? { x: 0, z: 0, clear: 0 }
+    return best ?? { x: 0, z: 0, clear: 0, heading: 0 }
   })
 }
 
@@ -236,7 +287,7 @@ if (should('drive')) {
   // That the spawn itself is drivable is covered by the respawn checks.
   const driveSpot = await clearGround()
   note(`driving tested at ${driveSpot.x}, ${driveSpot.z} — nearest object ${driveSpot.clear.toFixed(0)} m`)
-  await teleport(driveSpot.x, driveSpot.z, 0)
+  await teleport(driveSpot.x, driveSpot.z, -driveSpot.heading)
   const before = await telemetry()
   await hold('KeyW', 2500)
   const after = await telemetry()
@@ -257,7 +308,7 @@ if (should('boost')) {
   console.log('\nBOOST')
   const boostSpot = await clearGround()
   note(`boost tested at ${boostSpot.x}, ${boostSpot.z} — nearest object ${boostSpot.clear.toFixed(0)} m`)
-  await teleport(boostSpot.x, boostSpot.z, Math.PI)
+  await teleport(boostSpot.x, boostSpot.z, -boostSpot.heading)
   await page.keyboard.down('KeyW')
   await settle(900)
   const cruise = (await telemetry()).speed
@@ -318,7 +369,7 @@ if (should('brake')) {
   // not inside a district where the car stops because it hit a wall.
   const brakeSpot = await clearGround()
   note(`braking tested at ${brakeSpot.x}, ${brakeSpot.z} — nearest object ${brakeSpot.clear.toFixed(0)} m`)
-  await teleport(brakeSpot.x, brakeSpot.z, Math.PI)
+  await teleport(brakeSpot.x, brakeSpot.z, -brakeSpot.heading)
   await hold('KeyW', 1600)
   const rolling = await telemetry()
   await hold('KeyB', 900)
@@ -331,7 +382,13 @@ if (should('brake')) {
 
 if (should('jump')) {
   console.log('\nJUMP')
-  await teleport(0, 20, 0)
+  // (0, 20) used to be open grass beside the old hub. On the drawn
+  // island it is two metres from the circuit's racing line, which is
+  // raised and cambered — so the hop was being measured off the side
+  // of a banked corridor rather than off the ground.
+  const jumpSpot = await clearGround()
+  note(`jump tested at ${jumpSpot.x}, ${jumpSpot.z} — nearest object ${jumpSpot.clear.toFixed(0)} m`)
+  await teleport(jumpSpot.x, jumpSpot.z, -jumpSpot.heading)
   await settle(600)
   const before = await telemetry()
   await page.keyboard.down('Space')
@@ -356,23 +413,59 @@ if (should('jump')) {
 
 if (should('collide')) {
   console.log('\nCOLLIDE')
-  // A long boost run straight across the island, to make sure nothing
-  // tunnels through terrain or props on the way. It is aimed INWARD,
-  // at the origin: the island is now small enough that six seconds of
-  // boost aimed outward simply leaves it, and a car in the void is
-  // the OUT OF BOUNDS achievement working rather than a collision bug.
+  /*
+    A long boost run straight across the island, to make sure nothing
+    tunnels through terrain or props on the way. It is aimed INWARD:
+    six seconds of boost peaks around 36 m/s, which is 200 m — more
+    than half the width of a 380 × 285 m island — so an outward run
+    simply leaves it, and a car in the sea is the OUT OF BOUNDS
+    achievement working rather than a collision bug.
+
+    "Inward" used to mean "at the origin", which is a landmark on a
+    disc and nothing on a traced coastline: from the circuit infield
+    it points at the LANDING, and 200 m past the landing is open
+    water off the east coast. It aims at the point on the island
+    furthest INSIDE the coast instead — the deepest inland the map
+    has — so the run stays on land for its whole length.
+  */
   const edgeSpot = await clearGround()
-  await teleport(edgeSpot.x, edgeSpot.z, Math.atan2(edgeSpot.z, -edgeSpot.x))
+  const heart = await page.evaluate(() => {
+    const geo = window.__world.geography
+    let best = { x: 0, z: 0, inset: -Infinity }
+    for (let x = -geo.MAP_WIDTH / 2; x <= geo.MAP_WIDTH / 2; x += 5) {
+      for (let z = -geo.MAP_DEPTH / 2; z <= geo.MAP_DEPTH / 2; z += 5) {
+        const inset = geo.coastInset(x, z)
+        if (inset > best.inset) best = { x, z, inset }
+      }
+    }
+    return best
+  })
+  await teleport(edgeSpot.x, edgeSpot.z,
+    Math.atan2(edgeSpot.z - heart.z, heart.x - edgeSpot.x))
+  note(`boost run from ${edgeSpot.x}, ${edgeSpot.z} towards ${heart.x}, ${heart.z}` +
+    ` — the deepest inland point, ${heart.inset.toFixed(0)} m from the coast`)
   const start = await telemetry()
   await page.keyboard.down('KeyW')
   await page.keyboard.down('ShiftLeft')
   await settle(6000)
   await page.keyboard.up('ShiftLeft')
   await page.keyboard.up('KeyW')
-  // Let it come to rest first. "Still upright, still on the ground" is
-  // a statement about where the car ends up, not about which frame of
-  // a bounce the sample happened to catch.
-  await settle(1500)
+  /*
+    Let it come to rest first. "Still upright, still on the ground" is
+    a statement about where the car ends up, not about which frame of a
+    bounce the sample happened to catch.
+
+    FOURTEEN SECONDS, NOT ONE AND A HALF. Six seconds of unsteered
+    boost across an island that now carries eight hundred knockable
+    props, a dozen TNT crates and four timber barriers ends on the car's
+    roof about a third of the time — which is the world working, and
+    the recovery is what the claim is really about. `Player` kicks a
+    flipped car three times at three-second intervals and then sets it
+    back on its wheels where it stands, so a car that is still inverted
+    after fourteen seconds is one the world cannot recover, which is the
+    defect worth reporting.
+  */
+  await settle(14000)
   const end = await telemetry()
   check('never falls through the world', end.y > end.terrainY - 1.5,
     `y ${end.y.toFixed(2)} vs terrain ${end.terrainY.toFixed(2)}`)
@@ -381,7 +474,8 @@ if (should('collide')) {
   // hub runs into the brackets, the name and a cone field, which is
   // the world working. What matters is that after all of that the
   // car is still upright, still on the ground and still driveable.
-  note(`covered ${Math.hypot(end.x - start.x, end.z - start.z).toFixed(0)} m before stopping`)
+  note(`covered ${Math.hypot(end.x - start.x, end.z - start.z).toFixed(0)} m before stopping,` +
+    ` finishing at ${end.x.toFixed(0)}, ${end.z.toFixed(0)}`)
   check('survives a long boost run', !end.upsideDown && end.wheelsDown >= 2,
     `${end.wheelsDown}/4 wheels, ${end.upsideDown ? 'on its roof' : 'upright'}`)
 
@@ -392,66 +486,106 @@ if (should('collide')) {
   await shot('07-far')
 }
 
-/* ---- the hidden island ----------------------------------- */
+/* ---- the big ramp ---------------------------------------- */
 
-if (should('island')) {
-  console.log('\nHIDDEN ISLAND')
+/*
+  THE STUNT RAMP AND THE VOID ISLAND ARE GONE, and the block that
+  used to stand here went with them. It regex-parsed
+  `id: 'ramp-stunt', x: …` out of `src/content/world.ts` and
+  `VOID_ISLAND = { … }` out of `Terrain.ts`, then flew the car from
+  one to the other and asserted THE VOID unlocked. Neither literal
+  exists on the drawn island, neither does the achievement, and the
+  block threw on its own `could not read the stunt ramp` before it
+  measured anything.
 
-  // Read the ramp and the island out of the source rather than
-  // repeating their coordinates here. This test asserts a measured
-  // relationship between the two, and a fixture that has to be
-  // hand-updated when the map moves is a fixture that silently
-  // stops testing anything.
-  const worldSource = await readFile('src/content/world.ts', 'utf8')
-  const terrainSource = await readFile('src/world/world/Terrain.ts', 'utf8')
-  const rampMatch = worldSource.match(
-    /id: 'ramp-stunt', x: (-?[\d.]+), z: (-?[\d.]+), rotation: Math\.PI \* (-?[\d.]+)/)
-  const islandMatch = terrainSource.match(
-    /VOID_ISLAND = \{ x: (-?[\d.]+), z: (-?[\d.]+), radius: (-?[\d.]+)/)
-  if (!rampMatch || !islandMatch) throw new Error('could not read the stunt ramp or the void island')
-  const RAMP = { x: +rampMatch[1], z: +rampMatch[2], rotation: Math.PI * +rampMatch[3] }
-  const ISLAND = { x: +islandMatch[1], z: +islandMatch[2], radius: +islandMatch[3] }
+  What the drawing keeps is `ramp-east` on the east coast: it points
+  into the shallows rather than at another landmass, and clearing it
+  is OFF THE END. That is a jump into WATER, so it is checked where
+  the rest of the water driving is — `world-attractions-checks.mjs`
+  drives it and asserts `airborne` — and not from here, which has no
+  way to tell a landing from a ditching.
+*/
 
-  // Line up well behind the stunt ramp, on its axis, and go.
-  await page.evaluate(({ RAMP }) => {
+if (should('ramp')) {
+  console.log('\nRAMP')
+  // Line up behind the big ramp, on its axis, and go. A ramp rises
+  // along its local +X and the car drives along its own local +X too,
+  // so one rotation serves both. `ZONES.ramp` is where the drawing
+  // puts it and is the very table `ramps[0]` in `world.ts` is built
+  // from, so this harness reads the map instead of keeping a copy.
+  const ramp = await page.evaluate(() => {
+    const { x, z, rotation, length } = window.__world.geography.ZONES.ramp
+    return { x, z, rotation, length }
+  })
+  await page.evaluate(({ ramp }) => {
     const g = window.__world
-    // A ramp rises along its local +X and the car drives along its own
-    // local +X too, so one rotation serves both: line the car up behind
-    // the ramp on that axis and point it the same way.
-    const dirX = Math.cos(RAMP.rotation)
-    const dirZ = -Math.sin(RAMP.rotation)
-    const x = RAMP.x - dirX * 62
-    const z = RAMP.z - dirZ * 62
+    const dirX = Math.cos(ramp.rotation)
+    const dirZ = -Math.sin(ramp.rotation)
+    /* Eleven metres of run-up, not forty-five, and the number is the
+       registry's rather than a preference: `zones()` reserves a ramp's
+       run-up as a capsule eleven metres in front of its foot, which
+       is the ground the decoration pass is kept off. On a 266 m island
+       the old forty-five put the start inside the LANDING's forecourt
+       among the sixteen physical letters and the cone field, and the
+       car spent the sample window shouldering through them instead of
+       accelerating — the same jump measured anywhere between 2.5 m and
+       5.5 m of air depending on what it had hit on the way in. */
+    const x = ramp.x - dirX * (ramp.length * 0.5 + 11)
+    const z = ramp.z - dirZ * (ramp.length * 0.5 + 11)
     const y = g.terrain.colliderHeightAt(x, z) + 2
-    g.vehicle.moveTo({ x, y, z }, RAMP.rotation)
+    g.vehicle.moveTo({ x, y, z }, ramp.rotation)
     g.view.focusPoint.trackedPosition.set(x, y, z)
     g.view.snapToTarget()
-  }, { RAMP })
+  }, { ramp })
   await settle(900)
 
+  const before = await telemetry()
   await page.keyboard.down('KeyW')
   await page.keyboard.down('ShiftLeft')
   let peakY = -Infinity
-  let landed = null
-  for (let i = 0; i < 80; i++) {
+  let peakAir = 0
+  /* SEVENTY SAMPLES, NOT FORTY. Forty at 120 ms is 4.8 s, and the run
+     is a 45 m approach plus a 41 m ramp from a standing start: the
+     window closed with the car two thirds of the way up the slope, so
+     the harness measured the climb and called it the jump. */
+  for (let i = 0; i < 70; i++) {
     await settle(120)
     const t = await telemetry()
     peakY = Math.max(peakY, t.y)
-    const toIsland = Math.hypot(t.x - ISLAND.x, t.z - ISLAND.z)
-    if (toIsland < ISLAND.radius * 0.8 && t.wheelsDown >= 2) { landed = t; break }
+    peakAir = Math.max(peakAir, t.y - t.terrainY)
   }
   await page.keyboard.up('ShiftLeft')
   await page.keyboard.up('KeyW')
 
-  check('the stunt ramp can reach the hidden island', landed !== null,
-    landed ? `landed ${Math.hypot(landed.x - ISLAND.x, landed.z - ISLAND.z).toFixed(0)} m from centre`
-           : `peaked at y ${peakY.toFixed(1)}`)
+  /*
+    HOW FAR THE RAMP LIFTED IT, not how far it was above whatever
+    happened to be under it at the apex.
 
-  if (landed) {
-    const unlocked = await page.evaluate(() => window.__world.achievements.isUnlocked('hiddenIsland'))
-    check('reaching it unlocks THE VOID', unlocked)
-  }
-  await shot('13-island')
+    `peakAir` is `y - terrainY` sampled together, and the ground under
+    a car at the top of a 6.6 m ramp is the ramp's own levelled pad,
+    4.7 m up. The same jump therefore read 8.6 m when the apex fell
+    over the sea and 2.9 m when it fell over the pad — the metric moved
+    with the horizontal position, not with the jump. Rise above the
+    start is what the check is named after and it does not move: 5.6 m,
+    repeatably, off a ramp that is 6.6 m tall.
+  */
+  const rise = peakY - before.y
+  check('the big ramp launches the car', rise > 4,
+    `rose ${rise.toFixed(1)} m, to y ${peakY.toFixed(1)} from ${before.y.toFixed(1)}`
+    + ` (${peakAir.toFixed(1)} m over the ground beneath it)`)
+
+  /* Four seconds, not two and a half. The ramp is 6.6 m tall now and
+     the car leaves it 10.8 m above where it started: the old wait
+     sampled the landing while the car was still in the air, upright
+     with no wheels down, and reported it as a landing it had not
+     survived. */
+  await settle(4000)
+  const after = await telemetry()
+  // The landing is water on purpose. What must not happen is the car
+  // ending the jump under the world or on its roof with no way out.
+  check('the car survives the landing', !after.upsideDown && after.y > after.terrainY - 1.5,
+    `y ${after.y.toFixed(2)} vs terrain ${after.terrainY.toFixed(2)}, ${after.wheelsDown}/4 wheels`)
+  await shot('13-ramp')
 }
 
 /* ---- respawn --------------------------------------------- */
@@ -520,9 +654,18 @@ if (should('circuit')) {
   const built = await page.evaluate(() => {
     const g = window.__world
     const race = g.minigames.get('circuit')
-    return race ? { gates: race.gates?.length ?? null, best: race.bestTime } : null
+    const circuit = g.geography.CIRCUIT
+    return race
+      ? { gates: race.gates?.length ?? null, best: race.bestTime, wanted: circuit.gates, laps: circuit.laps }
+      : null
   })
   check('circuit is registered', Boolean(built))
+  // The checkpoint count used to be the literal 12, written out in
+  // eleven places; it is `CIRCUIT.gates` now, and the only way to know
+  // the race actually reads it is to compare what it built against
+  // what the geography asks for.
+  check('the race builds one gate per checkpoint', built.gates === built.wanted,
+    `${built.gates} gates for CIRCUIT.gates ${built.wanted}, ${built.laps} lap(s)`)
 
   const started = await page.evaluate(() => window.__world.minigames.start('circuit'))
   check('circuit starts', started === true)
@@ -581,7 +724,28 @@ if (should('minigames')) {
   const ids = await page.evaluate(() =>
     Array.from(window.__world.minigames['items'].keys()),
   )
-  check('all fifteen mini-games are registered', ids.length === 15, ids.join(', '))
+  // Four, not fifteen. Chess, pipeline, retrieval, order rush, the gym
+  // circuit, the three-body problem, packets, debug dash, river run,
+  // the chip relay and deployment were each tied to a district the
+  // drawing does not have, and left with them.
+  check('the four mini-games are registered', ids.length === 4, ids.join(', '))
+
+  // And they are the four the CONTENT points at. A landmark whose
+  // `minigame` names nothing the engine built is a gate you can press
+  // ENTER on that does nothing, which is exactly how the old
+  // `labyrinth-entry` gate behaved for months.
+  const promised = await page.evaluate(() => {
+    const g = window.__world
+    const want = new Set()
+    for (const [, handle] of g.world.landmarks) {
+      if (handle.landmark.minigame) want.add(handle.landmark.minigame)
+    }
+    for (const spot of g.geography.PLAY_SPOTS) if (spot.game) want.add(spot.game)
+    return [...want]
+  })
+  const unbuilt = promised.filter((id) => !ids.includes(id))
+  check('every mini-game the content points at is registered', unbuilt.length === 0,
+    unbuilt.length ? unbuilt.join(', ') : `${promised.length} named by landmarks and play spots`)
 
   for (const id of ids) {
     const problems = []
@@ -659,7 +823,23 @@ if (should('minigames')) {
     await hold('KeyW', 1200)
     const moved = await telemetry()
     const travelled = Math.hypot(moved.x - before.x, moved.z - before.z)
-    if (travelled < 3) problems.push(`car will not drive afterwards (${travelled.toFixed(1)} m)`)
+    if (travelled < 3) {
+      // Name the respawn R chose. Without it a trapped respawn point
+      // reads as a broken mini-game, and the two failures — here and
+      // in "every respawn point can be driven away from" below — look
+      // like two defects rather than one.
+      const at = await page.evaluate(({ x, z }) => {
+        const g = window.__world
+        let best = null
+        for (const point of g.respawns.items.values()) {
+          const d = Math.hypot(point.position.x - x, point.position.z - z)
+          if (!best || d < best.d) best = { id: point.name, d }
+        }
+        return best
+      }, { x: before.x, z: before.z })
+      problems.push(
+        `car will not drive afterwards (${travelled.toFixed(1)} m from the "${at.id}" respawn)`)
+    }
 
     check(`${id}: starts, runs and releases the player`, problems.length === 0,
       problems.join(' | '))
@@ -679,19 +859,18 @@ if (should('world')) {
 
   const problems = []
   for (const district of districts) {
-    // The void island is a cliff on purpose — you reach it by jumping
-    // it, and dropping onto its rim SHOULD roll the car off. It has
-    // its own check above.
-    if (district.id === 'void') continue
-
     // Land at the district's edge and drive into it. This is the
     // check the brief asks for: no accidental holes, no impossible
     // slopes, no invisible blocking colliders.
-    await page.evaluate(({ id, x, z, r }) => {
+    //
+    // Every district on the drawn island is approached the same way.
+    // The two exceptions this replaces — skipping `void` because its
+    // rim is a deliberate cliff, and stepping sixteen metres east at
+    // `kcl` to miss a module stack — named places that no longer
+    // exist, so both branches were dead code guarding nothing.
+    await page.evaluate(({ x, z, r }) => {
       const g = window.__world
-      // KCL's south-centre is the physical module stack. Its entrance road
-      // passes sixteen metres east of it.
-      const px = x + (id === 'kcl' ? 16 : 0)
+      const px = x
       const pz = z + r * 0.85
       // Some authored district rims contain physical structures: place above
       // their actual top rather than dropping the chassis inside a module.
@@ -719,11 +898,21 @@ if (should('world')) {
     const drop = after.y - after.terrainY
     const travelled = Math.hypot(after.x - landed.x, after.z - landed.z)
     if (drop < -3) problems.push(`${district.id}: fell through the ground (${drop.toFixed(1)} m)`)
-    // Rolling the car after ramming a tower, a voxel stack or a chess
-    // piece at full throttle is the world working — that is what those
-    // things are for. Rolling it having hit NOTHING is the terrain, and
-    // that is what this check is here to catch.
-    if (after.upsideDown && travelled > 15) {
+    /*
+      Rolling the car after ramming a tower at full throttle is the
+      world working — that is what those things are for. Rolling it
+      having hit NOTHING is the terrain, and that is what this check is
+      here to catch.
+
+      AND IT HAS TO STILL BE IN THE DISTRICT. Two and a bit seconds of
+      boost carries the car well past a district that is eleven metres
+      across: BLACK HOLE reported "rolled on open ground after 110 m",
+      which is the car leaving the district, crossing the racing surface
+      and meeting one of the TNT crates that were put there on purpose.
+      Past forty-five metres this is not measuring the ground it was
+      asked about.
+    */
+    if (after.upsideDown && travelled > 15 && travelled < 45) {
       problems.push(`${district.id}: rolled on open ground after ${travelled.toFixed(0)} m`)
     }
     if (!Number.isFinite(after.terrainY)) problems.push(`${district.id}: no ground under it`)
@@ -767,11 +956,14 @@ if (should('world')) {
       const ground = g.terrain.colliderHeightAt(x, z)
       // A landmark sitting in a hole, on a spike, or past the edge.
       if (!Number.isFinite(ground)) { bad.push(`${id}: no ground`); continue }
-      // The void island is deliberately past the edge of the map.
-      if (handle.landmark.district !== 'void' && Math.hypot(x, z) > 372) {
-        bad.push(`${id}: outside the world`)
-        continue
-      }
+      /* Off the island. The test this replaces was `hypot(x, z) > 372`,
+         which is a radius from a world twice this size and could not
+         fail: the drawn island's furthest corner is 190 m out. The
+         coast is a traced polygon now, so "on the island" is a signed
+         distance to it — negative is sea, and the islet in the bay
+         counts as land because it is one of the LANDMASSES. */
+      const inset = g.geography.coastInset(x, z)
+      if (inset < 0) { bad.push(`${id}: ${(-inset).toFixed(0)} m out to sea`); continue }
       // Steepness: sample a ring around it and look for a cliff.
       let min = Infinity
       let max = -Infinity
@@ -781,11 +973,8 @@ if (should('world')) {
         min = Math.min(min, h)
         max = Math.max(max, h)
       }
-      // The void island is meant to be surrounded by a drop; every
-      // other landmark should stand on ground you can drive onto.
-      if (max - min > 9 && handle.landmark.district !== 'void') {
-        bad.push(`${id}: ${(max - min).toFixed(1)} m of relief within 8 m`)
-      }
+      // Every landmark should stand on ground you can drive onto.
+      if (max - min > 9) bad.push(`${id}: ${(max - min).toFixed(1)} m of relief within 8 m`)
     }
     return bad
   })

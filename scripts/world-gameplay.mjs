@@ -68,23 +68,50 @@ for (const id of ids) {
         }
         await wait(1800)
       } else if (id === 'labyrinth') {
+        /* WALK THE MAZE'S OWN FLOOD FILL, DOWNHILL FROM THE MOUTH.
+           Nothing here is a literal. The version this replaces hard-coded
+           a grid width of 15, a grid length of 165 and a start index of
+           10*15+7 — all from a 7x5 maze retired two rebuilds ago — so the
+           first `m.distance` lookup was out of range, no downhill neighbour
+           was ever found, and the branch drove exactly one point before
+           breaking. It had been a silent no-op for two rebuilds.
+           The stride is the axis array's own length, the entry is the
+           mouth zone's own position mapped back through the same axes the
+           game uses, and the horizontal step is guarded against wrapping
+           onto the previous row, which `at-1` does at every gx === 0. */
         const path = await page.evaluate(() => {
-          const m=window.__world.minigames.get('labyrinth'), points=[]
-          let at=10*15+7
-          for(let i=0;i<200;i++) {
-            const x=at%15,z=Math.floor(at/15)
+          const g=window.__world, m=g.minigames.get('labyrinth')
+          const w=m.xAxis.centre.length, h=m.zAxis.centre.length
+          const index=(axis,local)=>{for(let i=0;i<axis.min.length;i++) if(local>=axis.min[i]&&local<axis.max[i]) return i; return -1}
+          const mouth=g.zones.items.find(z=>z.id==='labyrinth-mouth').position
+          const gx=index(m.xAxis,mouth.x-m.centre.x), gz=index(m.zAxis,mouth.z-m.centre.z)
+          if(gx<0||gz<0) return []
+          let at=gz*w+gx
+          const points=[]
+          for(let i=0;i<w*h;i++) {
+            const x=at%w, z=(at-x)/w
             points.push({x:m.centre.x+m.xAxis.centre[x],z:m.centre.z+m.zAxis.centre[z]})
             if(m.distance[at]===0) break
-            const next=[at-1,at+1,at-15,at+15].find(n=>n>=0&&n<165&&m.distance[n]>=0&&m.distance[n]<m.distance[at])
-            if(next===undefined) break
-            at=next
+            const step=[x>0?at-1:-1, x<w-1?at+1:-1, at-w, at+w]
+              .find(n=>n>=0&&n<w*h&&m.distance[n]>=0&&m.distance[n]<m.distance[at])
+            if(step===undefined) break
+            at=step
           }
           return points
         })
-        // Straight approach through each corridor cell; walls stay enabled.
-        for(let i=1;i<path.length;i++) {
-          const a=path[i-1], b=path[i]
-          await approach({...b,rotation:Math.atan2(-(b.z-a.z),b.x-a.x)},Math.min(6,Math.hypot(b.x-a.x,b.z-a.z)),600)
+        /* Collapsed to its corners before driving. Seed 5236's route is 83
+           grid steps; teleport-and-nudge at every one of them is a hundred
+           seconds per attempt and most of those steps are the middle of a
+           straight. Walls stay enabled either way. */
+        const legs=[path[0]]
+        for(let i=1;i<path.length-1;i++) {
+          const a=path[i-1], b=path[i], c=path[i+1]
+          if(Math.sign(b.x-a.x)!==Math.sign(c.x-b.x)||Math.sign(b.z-a.z)!==Math.sign(c.z-b.z)) legs.push(b)
+        }
+        if(path.length>1) legs.push(path[path.length-1])
+        for(let i=1;i<legs.length;i++) {
+          const a=legs[i-1], b=legs[i], run=Math.hypot(b.x-a.x,b.z-a.z)
+          await approach({...b,rotation:Math.atan2(-(b.z-a.z),b.x-a.x)},Math.min(8,run),Math.round(420+run*45))
         }
       } else if (id === 'gymCircuit') {
         const points=await page.evaluate(() => window.__world.minigames.get('gymCircuit').stations.map(s=>({x:s.position.x,z:s.position.z})))

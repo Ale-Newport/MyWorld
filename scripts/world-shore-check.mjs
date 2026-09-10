@@ -84,47 +84,73 @@ const results = await page.evaluate(({ MAX_SLOPE, WADE_DEPTH }) => {
     })
   }
 
+  /*
+    The waterlines come out of the RUNNING WORLD, not out of a list.
+    They used to be three lakes and three river stations written down
+    here by hand, and after the island was re-drawn all six named water
+    that no longer existed — every one of them reported "never reaches
+    the water" and the check passed by measuring nothing.
+  */
   const OCEAN = -2.5
-  for (let i = 0; i < 8; i++) {
-    const a = (i / 8) * Math.PI * 2
-    transect(`ocean @ ${Math.round(a * 180 / Math.PI)}°`,
-      Math.cos(a) * 130, Math.sin(a) * 130, Math.cos(a) * 200, Math.sin(a) * 200, OCEAN)
+  // Twelve bearings, walking outwards from the middle of the island
+  // rather than from a fixed radius: the island is 380 by 285 and a
+  // 130 m start was already at sea on the short axis.
+  for (let i = 0; i < 12; i++) {
+    const a = (i / 12) * Math.PI * 2
+    transect(`ocean @ ${String(Math.round(a * 180 / Math.PI)).padStart(3)}°`,
+      Math.cos(a) * 40, Math.sin(a) * 40, Math.cos(a) * 260, Math.sin(a) * 260, OCEAN)
   }
-  // Four bearings per lake. A tarn in the highlands is allowed one
-  // steep side; what matters is that there is a way in and out.
-  for (const lake of [{ id: 'mirror-lake', x: 78, z: -10, r: 18, level: -0.7 },
-                      { id: 'willow-lake', x: 90, z: 108, r: 15, level: -0.65 },
-                      { id: 'cold-tarn', x: -28, z: -106, r: 15, level: -0.8 }]) {
+  // Four bearings per lake ELLIPSE. A lake is allowed one steep side;
+  // what matters is that there is a way in and out.
+  for (const lake of g.geography.LAKES) {
+    const r = Math.max(lake.rx, lake.rz)
     for (let i = 0; i < 4; i++) {
       const a = (i / 4) * Math.PI * 2
       transect(`${lake.id} @ ${Math.round(a * 180 / Math.PI)}°`,
-        lake.x + Math.cos(a) * (lake.r + 20), lake.z + Math.sin(a) * (lake.r + 20),
+        lake.x + Math.cos(a) * (r + 22), lake.z + Math.sin(a) * (r + 22),
         lake.x, lake.z, lake.level)
     }
   }
-  for (const [x, z] of [[-34, -72], [-32, -22], [-29, 24]]) {
-    transect(`river @ z=${z}`, x - 20, z, x, z, -0.7)
+  // Across the river at three stations along its own polyline, on its
+  // own normal — a transect in world X misses a river that runs east.
+  const river = g.geography.RIVER
+  for (const t of [0.2, 0.5, 0.8]) {
+    const i = Math.min(river.points.length - 2, Math.floor(t * (river.points.length - 1)))
+    const [ax, az] = river.points[i]
+    const [bx, bz] = river.points[i + 1]
+    const len = Math.hypot(bx - ax, bz - az) || 1
+    const nx = -(bz - az) / len
+    const nz = (bx - ax) / len
+    transect(`river @ ${Math.round(t * 100)}%`,
+      ax + nx * 26, az + nz * 26, ax, az, river.level)
   }
   return out
 }, { MAX_SLOPE, WADE_DEPTH })
 
 console.log(`\nSHORE PROFILES — max slope ${MAX_SLOPE}°, wadeable depth ${WADE_DEPTH} m at 4 m in\n`)
 let failures = 0
-// A lake passes if ANY of its four approaches is drivable.
+/*
+  A LAKE passes if ANY of its four approaches is drivable: a tarn is
+  allowed one steep side, and what matters is that there is a way in
+  and out. THE OCEAN IS NOT A LAKE. It surrounds the whole island and
+  the brief's rule is that the beach is drivable — so one good bearing
+  out of twelve excusing the other eleven is how a 42° step in the sand
+  went unreported.
+*/
 const lakeGroups = new Map()
 for (const r of results) {
-  const m = /^(\S+-\S+) @/.exec(r.name)
-  if (!m || r.skipped) continue
+  const m = /^(\S+) @/.exec(r.name)
+  if (!m || r.skipped || m[1] === 'ocean') continue
   const ok = r.okSlope && r.okWade
   lakeGroups.set(m[1], (lakeGroups.get(m[1]) ?? false) || ok)
 }
 for (const r of results) {
-  if (r.skipped) { console.log(`  skip  ${r.name.padEnd(18)} ${r.skipped}`); continue }
-  const lake = /^(\S+-\S+) @/.exec(r.name)?.[1]
+  if (r.skipped) { console.log(`  skip  ${r.name.padEnd(20)} ${r.skipped}`); continue }
+  const lake = /^(\S+) @/.exec(r.name)?.[1]
   const excused = lake ? lakeGroups.get(lake) : false
   const flags = [r.okSlope ? '' : 'STEEP', r.okWade ? '' : 'DEEP'].filter(Boolean).join(' ')
   if (flags && !excused) failures++
-  console.log(`  ${flags ? (excused ? 'note' : 'FAIL') : 'ok  '}  ${r.name.padEnd(18)} steepest ${String(r.worst).padStart(5)}° at ${String(r.worstAt).padStart(6)} m from the waterline   depth +4 m: ${String(r.wade).padStart(5)} m   +12 m: ${String(r.deep).padStart(5)} m ${flags}`)
+  console.log(`  ${flags ? (excused ? 'note' : 'FAIL') : 'ok  '}  ${r.name.padEnd(20)} steepest ${String(r.worst).padStart(5)}° at ${String(r.worstAt).padStart(6)} m from the waterline   depth +4 m: ${String(r.wade).padStart(5)} m   +12 m: ${String(r.deep).padStart(5)} m ${flags}`)
 }
 console.log(`\n${failures} failing transect(s)\n`)
 await browser.close()
