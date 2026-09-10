@@ -37,11 +37,15 @@ for (const [name, x, z] of probes) {
     }
   }
   const w = E.inlandWater(x, z)
-  if (w) claims.push(`WATER-CARVE ${w.flow>0.9?'river':'lake'} bank ${smoothstep(w.edge,-BANK_WIDTH,0).toFixed(2)} depth ${w.depth}`)
-  // river apron
+  if (w) claims.push(`WATER-CARVE ${w.flow>0.9?'river':'lake'} bank ${smoothstep(w.edge,-BANK_WIDTH,0).toFixed(2)} depth ${w.depth.toFixed(2)}`)
+  // river apron — INCLUDING the end fade, without which this reports a
+  // disc that no longer exists and sends the reader after a fixed bug.
   const along = E.lineDistance(x, z, E.RIVER.points)
   const bankStart = E.RIVER.width/2 + BANK_WIDTH, ap = bankStart + 14
-  if (along < ap) claims.push(`RIVER-APRON ${(1-smoothstep(along,bankStart,ap)).toFixed(2)} (${along.toFixed(1)} m out)`)
+  const past = E.polylineOverrun(x, z, E.RIVER.points)
+  const span = 1 - smoothstep(past, 0, 12)
+  const apronW = (1 - smoothstep(along, bankStart, ap)) * span
+  if (apronW > 0.001) claims.push(`RIVER-APRON ${apronW.toFixed(2)} (${along.toFixed(1)} m out, ${past.toFixed(1)} m past the end)`)
   // ramp pads
   for (const r of W.ramps) {
     const cos=Math.cos(r.rotation), sin=Math.sin(r.rotation)

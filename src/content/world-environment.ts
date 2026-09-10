@@ -613,6 +613,61 @@ export function lineDistance(x: number, z: number, points: readonly (readonly nu
   return best
 }
 
+/**
+ * How far PAST a polyline's ends a point lies, measured along the
+ * terminal segments' own outward tangents. Zero anywhere beside the
+ * line; positive only beyond the first or last vertex.
+ *
+ * `lineDistance` measures to a CAPSULE — the segments plus a round cap
+ * at each end — and for a river that is wrong in a way that cost this
+ * island four blockers. `RIVER_LINE` starts and finishes inland, so
+ * both caps sit on dry ground, and every consumer that treated
+ * "within N metres of the river" as "beside the river" was in fact
+ * painting a half-disc of riverbank onto a hillside. The east cap
+ * alone projected a 28.4 m disc of "flatten to 0.80 m" across the
+ * PROJECTS plate and the three roads at its junction, and reached the
+ * toe of the east ramp twenty metres further on.
+ *
+ * A capsule is still the right shape for asking "how close is the
+ * water". This is the second question — "and am I actually alongside
+ * it" — which the round cap cannot answer.
+ */
+export function polylineOverrun(x: number, z: number, points: readonly (readonly number[])[]): number {
+  if (points.length < 2) return 0
+  const beyond = (from: readonly number[], toward: readonly number[]) => {
+    const dx = from[0] - toward[0]
+    const dz = from[1] - toward[1]
+    const length = Math.hypot(dx, dz)
+    if (length <= 0) return 0
+    // Positive when the point is further out than `from` along the
+    // direction that leaves the line.
+    return ((x - from[0]) * dx + (z - from[1]) * dz) / length
+  }
+  return Math.max(
+    0,
+    beyond(points[0], points[1]),
+    beyond(points[points.length - 1], points[points.length - 2]),
+  )
+}
+
+/** Cubic ease, clamped. The same curve `Terrain` blends every stage with. */
+function ease(v: number, a: number, b: number): number {
+  const t = Math.max(0, Math.min(1, (v - a) / (b - a)))
+  return t * t * (3 - 2 * t)
+}
+
+/**
+ * How much river there is at a point, 0..1, as a function of how far
+ * past the drawn ends it lies. Six metres, because the carve is what
+ * digs the bed: faded over any less and the bed ends in a step, over
+ * any more and the dry trench at each terminus comes back.
+ */
+export const RIVER_END_FADE = 6
+
+export function riverPresence(x: number, z: number): number {
+  return 1 - ease(polylineOverrun(x, z, RIVER.points), 0, RIVER_END_FADE)
+}
+
 export function inlandWater(x: number, z: number): { level: number; depth: number; edge: number; flow: number } | null {
   let region: { level: number; depth: number; edge: number; flow: number } | null = null
   for (const lake of LAKES) {
@@ -628,8 +683,17 @@ export function inlandWater(x: number, z: number): { level: number; depth: numbe
     }
   }
   const distance = lineDistance(x, z, RIVER.points)
-  if (distance < RIVER.width / 2 + BANK_WIDTH) {
-    const river = { level: RIVER.level, depth: RIVER.depth, edge: RIVER.width / 2 - distance, flow: 1 }
+  /*
+    The river NARROWS AND SHALLOWS past its drawn ends rather than
+    stopping at a round cap. `presence` is 1 along the whole drawn
+    length and eases to 0 six metres beyond either terminus, so the bed
+    finishes as a bed finishes instead of as a disc — see
+    `polylineOverrun` for the four blockers the disc was causing.
+  */
+  const presence = riverPresence(x, z)
+  const half = (RIVER.width / 2) * presence
+  if (presence > 0 && distance < half + BANK_WIDTH) {
+    const river = { level: RIVER.level, depth: RIVER.depth * presence, edge: half - distance, flow: 1 }
     // Unite the beds at confluences. A lake's outer bank must not dam a river
     // whose centreline continues through it.
     const depth = (w: typeof river) => {

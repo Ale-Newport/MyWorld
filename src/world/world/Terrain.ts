@@ -6,7 +6,7 @@ import type { Quality } from '../core/Quality'
 import type { Physics } from '../physics/Physics'
 import type { Materials } from './materials'
 import { districts, ramps, roads, type Ramp } from '@/content/world'
-import { inlandWater, coastInset, CIRCUIT, CIRCUIT_TRACK, VEGETATION_ZONES, VEGETATION_EXCLUSIONS, BRIDGES, PLAY_SPOTS, OCEAN_LEVEL, BANK_WIDTH, LAKES, RIVER, lineDistance } from '@/content/world-environment'
+import { inlandWater, coastInset, CIRCUIT, CIRCUIT_TRACK, VEGETATION_ZONES, VEGETATION_EXCLUSIONS, BRIDGES, PLAY_SPOTS, OCEAN_LEVEL, BANK_WIDTH, LAKES, RIVER, lineDistance, polylineOverrun } from '@/content/world-environment'
 import { ISLAND, ISLET, pointInPolygon } from '@/content/world-map'
 
 /* ============================================================
@@ -203,6 +203,10 @@ const DUNE = { from: 43.4, peak: 23.8, fade: 8.4, height: 3.4 }
 const ROAD_PROOF_RAMPS = ramps.filter(
   (ramp) => closestOnPolyline(ramp.x, ramp.z, CIRCUIT_TRACK).distance > CIRCUIT.width * 1.5 + 10,
 )
+
+/** How far past the river's drawn ends its apron survives. See the
+ *  RIVER APRON block, and `polylineOverrun` for why it must end. */
+const APRON_END_FADE = 12
 
 const RAMP_PAD_SHOULDER = 16
 const RAMP_PAD_SIDE = 8
@@ -929,8 +933,29 @@ export class Terrain {
       const along = lineDistance(x, z, RIVER.points)
       const bankStart = RIVER.width / 2 + BANK_WIDTH
       const apron = bankStart + 14
-      if (along < apron) {
-        const inside = 1 - smoothstep(along, bankStart, apron)
+      /*
+        AND IT STOPS WHERE THE RIVER STOPS.
+
+        `lineDistance` measures to a capsule, so past the last drawn
+        vertex this apron was a 28.4 m DISC of "flatten to 0.80 m"
+        standing on dry ground — and the river is drawn ending inland
+        at both ends, so there were two of them. The east one sits on
+        the hillside the PROJECTS district is built on. Four separate
+        surveys measured it and gave it four different names: 4.50 m
+        out of the projects plate; 4.03, 3.66 and 3.46 m of camber
+        across the three roads at that junction; the projects respawn
+        5.72 m below the terminal it is meant to serve; and, twenty
+        metres further on, 1.13 m out of the east ramp's pad — which is
+        where that ramp's unjumpable 0.83 m step came from.
+
+        Twelve metres of fade rather than the carve's six: an apron is
+        a shoulder, and a shoulder that ends abruptly is the thing the
+        apron exists to prevent.
+      */
+      const past = polylineOverrun(x, z, RIVER.points)
+      const span = 1 - smoothstep(past, 0, APRON_END_FADE)
+      if (span > 0 && along < apron) {
+        const inside = (1 - smoothstep(along, bankStart, apron)) * span
         height = height * (1 - inside) + (RIVER.level + 1.5) * inside
       }
     }
