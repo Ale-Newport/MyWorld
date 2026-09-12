@@ -254,22 +254,37 @@ export function WorldPortal() {
     return () => cancelAnimationFrame(raf)
   }, [])
 
-  /* The canopy's code is fetched once the page has settled — a few
-     kilobytes, and the HOMEPAGE's own transition, never anything of
-     the world — so reaching the foot never waits on a download. */
-  useEffect(() => {
-    if (reducedMotion || !settings.options.worldEntrance) return
-    const w = window as Window & { requestIdleCallback?: (cb: () => void, o?: { timeout: number }) => number; cancelIdleCallback?: (h: number) => void }
-    const fetchCanopy = () => void import('@/components/home/room/canopy/CanopyCover').catch(() => {})
-    const timer = window.setTimeout(() => {
-      if (w.requestIdleCallback) w.requestIdleCallback(fetchCanopy, { timeout: 4000 })
-      else fetchCanopy()
-    }, 2500)
-    return () => window.clearTimeout(timer)
-  }, [reducedMotion, settings.options.worldEntrance])
-
   const leafCharge = settings.options.leafCharge
   const editing = useEditing()
+
+  /* The HOMEPAGE's own transition — never anything of the world — is
+     made ready once the page has settled: its code fetched, and, on
+     any device not judged slow, the canopy itself prepared (mounted at
+     no charge: invisible, letting every click through) in idle
+     moments. A visitor who flings straight to the foot then finds the
+     leaves ready to answer the first push; one who never gets there
+     has spent a few idle milliseconds and one more context. On a slow
+     device the canopy waits for the last chapter (PREPARE_VH). */
+  useEffect(() => {
+    if (reducedMotion || !settings.options.worldEntrance) return
+    if (!transitionAllowed(editing)) return
+    const w = window as Window & { requestIdleCallback?: (cb: () => void, o?: { timeout: number }) => number }
+    const later = (fn: () => void, timeout: number) => (w.requestIdleCallback ? w.requestIdleCallback(fn, { timeout }) : window.setTimeout(fn, 0))
+    let cancelled = false
+    const timer = window.setTimeout(() => {
+      later(() => {
+        void import('@/components/home/room/canopy/CanopyCover').then(() => {
+          if (cancelled || (forcedTier() ?? useJourney.getState().performanceTier) === 'low') return
+          later(() => { if (!cancelled && !inTransition()) garden.show({ initial: 0, budget: 1 }) }, 3000)
+        }).catch(() => {})
+      }, 4000)
+    }, 2500)
+    return () => {
+      cancelled = true
+      window.clearTimeout(timer)
+    }
+  }, [reducedMotion, settings.options.worldEntrance, editing])
+
   useEffect(() => {
     if (reducedMotion || !settings.options.worldEntrance) return
     // Scrolling the admin's preview must not carry the editor off to /world.
