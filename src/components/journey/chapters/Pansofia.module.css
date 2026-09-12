@@ -177,7 +177,7 @@
      its foot, and an open band between the two. The rail rejoins the
      flow rather than hanging off the bottom edge, so the two can never
      come to sit on top of one another however tall the type runs. */
-  .stage { align-content: space-between; }
+  .stage { --stage-align: space-between; }
   .head, .stack, .count { opacity: 1 !important; transform: none !important; }
   .stack, .count { display: none; }
 

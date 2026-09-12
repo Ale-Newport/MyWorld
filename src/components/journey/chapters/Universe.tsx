@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { Chapter } from '@/components/journey/Chapter'
 import { Reveal } from '@/components/typography/Reveal'
@@ -9,51 +9,53 @@ import { universeFilters, categoryAccent } from '@/content/project-meta'
 import { useSite } from '@/cms/context'
 import { E, useCms, useCmsText } from '@/cms/editable'
 import { useJourney } from '@/state/journey'
+import { SectionAnimation } from '@/sections/SectionAnimation'
 import shared from './chapters.module.css'
 import styles from './Universe.module.css'
 
 /* ============================================================
    HOME · 38 – 52%  PROJECT UNIVERSE
-   Every project, in one structure. The WebGL layer draws the
-   constellation; this layer owns filters, labels and the
-   accessible list — because the archive has to be usable by
-   someone who never sees the canvas at all.
+   Every project, in one structure. The section's animation draws
+   the archive in the region between the heading and the footer;
+   this layer owns the filters, the label and the accessible list,
+   because the archive has to be usable by someone who never sees
+   the animation at all.
+
+   Four rows that never overlap: heading and filters, the
+   animation, the footer. On a phone the filters get a row of
+   their own and scroll sideways instead of wrapping into the
+   animation's space.
    ============================================================ */
 
 export function Universe() {
   const { projects, chapterById, journeys } = useSite()
   const titleCms = useCms('universe.title', { kind: 'heading', label: 'Title' })
   const title = useCmsText('universe.title', 'Everything\nI have built')
+  const tag = useCmsText('universe.tag', 'PROJECT UNIVERSE')
   const [filter, setFilter] = useState('all')
-  const [hovered, setHovered] = useState(-1)
+  const [hovered, setHovered] = useState<string | null>(null)
   const [listOpen, setListOpen] = useState(false)
   const setActiveProject = useJourney((s) => s.setActiveProject)
-  const stageRef = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    window.dispatchEvent(new CustomEvent('universe:filter', { detail: { id: filter } }))
-  }, [filter])
-
-  useEffect(() => {
-    const h = (e: Event) => setHovered((e as CustomEvent<{ index: number }>).detail.index)
-    window.addEventListener('universe:hover', h)
-    return () => window.removeEventListener('universe:hover', h)
-  }, [])
 
   const active = universeFilters.find((f) => f.id === filter)
-  const visible = active ? projects.filter(active.match) : projects
-  const hoveredProject = hovered >= 0 ? projects[hovered] : null
+  const visibleList = useMemo(() => (active ? projects.filter(active.match) : projects), [active, projects])
+  const visible = useMemo(() => new Set(visibleList.map((p) => p.id)), [visibleList])
+  const hoveredProject = hovered ? projects.find((p) => p.slug === hovered) ?? null : null
+
+  const onOpen = useCallback((slug: string) => setActiveProject(slug), [setActiveProject])
+  const onHover = useCallback((slug: string | null) => setHovered(slug), [])
+  const extra = useMemo(() => ({ projects, visible, filter, onOpen, onHover }), [projects, visible, filter, onOpen, onHover])
 
   return (
     <Chapter id="universe" labelledBy="universe-title">
-      <div className={`${shared.stage} ${styles.stage}`} ref={stageRef}>
+      <div className={`${shared.stage} ${styles.stage}`}>
         <E cms="universe.head" as="div" kind="container" label="Heading block" className={styles.head}>
-          <E cms="universe.tag" label="Chapter tag"><TagRow items={[chapterById['universe'].number, 'PROJECT UNIVERSE']} /></E>
+          <E cms="universe.tag" kind="container" label="Chapter tag"><TagRow items={[chapterById['universe'].number, tag]} /></E>
           <Reveal as="h2" mode="mask" className={styles.title} id="universe-title" attrs={titleCms}>
             {title}
           </Reveal>
           <p className={styles.count} data-count-line="">
-            {visible.length} of {projects.length} projects
+            {visibleList.length} of {projects.length} projects
           </p>
         </E>
 
@@ -75,32 +77,27 @@ export function Universe() {
           ))}
         </E>
 
-        {/* Contextual label — one DOM node, not one per project. */}
-        <div className={styles.label} data-on={Boolean(hoveredProject)} aria-hidden="true">
-          {hoveredProject && (
-            <>
-              <span className={styles.labelName}>{hoveredProject.title}</span>
-              <span className={styles.labelMeta} style={{ color: hoveredProject.accent ?? categoryAccent[hoveredProject.category] }}>
-                {hoveredProject.category} · {hoveredProject.year}
-              </span>
-              <span className={styles.labelDesc}>{hoveredProject.shortDescription}</span>
-            </>
-          )}
-        </div>
+        <SectionAnimation section="universe" className={styles.visual} extra={extra} reserve />
 
         <E cms="universe.footer" as="div" kind="container" label="Footer" className={styles.footer}>
-          <E cms="universe.hint" as="p" label="Hint" className={styles.hint}>
-            Drag to rotate · click a node to open it
-          </E>
-          {/* The constellation is the index; the other journey is the
-              reading. A visitor who has just been told this is
-              everything he has built should not have to find the
-              route to it in the chrome, so the doorway stands here,
-              at the end of the archive, pointing at the seven that
-              are worth a chapter each. It names its destination in
-              its own text: out of context — in a screen reader's
-              list of links, beside "Enter my world" and "Open as
-              list" — "7 of them" identified nothing. */}
+          {/* The project under the pointer or focus takes the hint's
+              place, so its name is read beside the archive and never
+              printed over it. */}
+          <div className={styles.readout} aria-live="polite">
+            {hoveredProject ? (
+              <p className={styles.label}>
+                <span className={styles.labelName}>{hoveredProject.title}</span>
+                <span className={styles.labelMeta} style={{ color: hoveredProject.accent ?? categoryAccent[hoveredProject.category] }}>
+                  {hoveredProject.category} · {hoveredProject.year}
+                </span>
+                <span className={styles.labelDesc}>{hoveredProject.shortDescription}</span>
+              </p>
+            ) : (
+              <E cms="universe.hint" as="p" label="Hint" className={styles.hint}>
+                Point at a project to read it · select one to open it
+              </E>
+            )}
+          </div>
           <div className={styles.actions}>
             <E
               cms="universe.cross"
@@ -127,10 +124,10 @@ export function Universe() {
           </div>
         </E>
 
-        {/* Full text alternative to the 3D archive. */}
+        {/* Full text alternative to the animated archive. */}
         <div className={styles.list} data-open={listOpen}>
           <ul>
-            {visible.map((p) => (
+            {visibleList.map((p) => (
               <li key={p.id}>
                 <button
                   type="button"
@@ -138,6 +135,7 @@ export function Universe() {
                   onClick={() => setActiveProject(p.slug)}
                   style={{ ['--row-accent' as string]: p.accent ?? categoryAccent[p.category] }}
                   data-cursor="view"
+                  tabIndex={listOpen ? 0 : -1}
                 >
                   <span className={styles.listYear}>{p.year}</span>
                   <span className={styles.listName}>{p.title}</span>

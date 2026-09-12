@@ -1,25 +1,21 @@
 /* Elements added in the editor. They borrow the site's tokens so a
    new heading or table reads as part of the page, not a widget. */
 
-.slot {
-  position: absolute;
-  inset: 0;
-  /* Above the chapter's own content (--z-content), under the HUD and overlays. The slot
-     itself lets every click through; only what was added in it takes the pointer. */
-  z-index: calc(var(--z-content, 10) + 2);
+.flow {
+  position: relative;
+  z-index: var(--z-content, 10);
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  justify-content: center;
-  gap: var(--space-4, 1rem);
-  padding: clamp(5rem, 9vh, 7rem) var(--gutter, clamp(1.25rem, 4vw, 3.5rem));
-  pointer-events: none;
+  gap: var(--sp-5, 1.5rem);
+  width: 100%;
+  max-width: min(100%, 72rem);
+  margin-inline: auto;
+  padding: clamp(5rem, 12vh, 8rem) var(--gutter, clamp(1.25rem, 4vw, 3.5rem));
 }
-.slot:empty { display: none; }
-.slot > *, .container > *, .card > * { pointer-events: auto; }
 
-.block { max-width: min(100%, 64rem); }
-.anchored { position: absolute; top: 12%; left: 8%; }
+.block { max-width: 100%; }
+.container > *, .card > * { min-width: 0; }
 
 .heading {
   margin: 0;
@@ -53,7 +49,7 @@
 }
 
 .figure { margin: 0; width: min(100%, 36rem); }
-.figure img, .figure video { display: block; width: 100%; height: auto; border-radius: 4px; }
+.figure img, .figure video { display: block; width: 100%; height: auto; max-height: 70svh; object-fit: contain; border-radius: 4px; }
 .figure figcaption { margin-top: 0.6rem; font-family: var(--font-mono); font-size: 0.7rem; letter-spacing: 0.08em; color: var(--text-muted); }
 .placeholder {
   display: grid;

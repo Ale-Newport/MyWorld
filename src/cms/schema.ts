@@ -12,15 +12,22 @@ import { z } from 'zod'
    migrated from (src/content/*), so a component that used to
    import `profile` now reads `site.profile` and nothing else
    about it changes. On top of that data it carries what the
-   visual editor adds: section order and visibility, per-element
-   overrides (content, responsive style, visibility), elements
-   added to sections, and element groups.
+   content editor adds: section visibility, text that replaces
+   what the code renders, each animated section's choice of
+   animation, and the Tech Toolbox's display options.
+
+   It deliberately carries NO layout. Positions, sizes, spacing
+   and type are the site's code, which composes every screen size
+   itself. Schema v1 also stored per-element styles and freely
+   placed elements from a visual page builder; v2 retired that
+   editor, and migrate.ts keeps the text it held while dropping
+   the geometry.
 
    Bump SCHEMA_VERSION and add a step to migrate.ts whenever a
    change here is not backwards compatible.
    ============================================================ */
 
-export const SCHEMA_VERSION = 1
+export const SCHEMA_VERSION = 2
 
 const id = z.string().min(1).max(120).regex(/^[a-z0-9][a-z0-9._:-]*$/i, 'Use letters, numbers, dots, dashes or colons')
 const shortText = z.string().max(400)
@@ -58,63 +65,14 @@ export const textRun = z.object({
 export const richText = z.union([z.string().max(20_000), z.array(textRun).max(400)])
 export type RichText = z.infer<typeof richText>
 
-/* ---- style ---------------------------------------------------- */
-export const styleProps = z.object({
-  fontFamily: z.enum(['display', 'mono', 'serif', 'inherit']).optional(),
-  fontSize: length.optional(),
-  fontWeight: z.enum(['300', '400', '500', '600', '700', '800']).optional(),
-  fontStyle: z.enum(['normal', 'italic']).optional(),
-  lineHeight: z.string().max(20).regex(/^(normal|\d*\.?\d+(px|rem|em|%)?)$/).optional(),
-  letterSpacing: z.string().max(20).regex(/^(normal|-?\d*\.?\d+(px|rem|em))$/).optional(),
-  textTransform: z.enum(['none', 'uppercase', 'lowercase', 'capitalize']).optional(),
-  textAlign: z.enum(['left', 'center', 'right', 'justify']).optional(),
-  color: color.optional(),
-  background: color.optional(),
-  width: length.optional(),
-  maxWidth: length.optional(),
-  minHeight: length.optional(),
-  height: length.optional(),
-  padding: length.optional(),
-  margin: length.optional(),
-  gap: length.optional(),
-  borderRadius: length.optional(),
-  /** Visual offset from where the element sits in its layout (CSS `translate`, composes with animations). */
-  translateX: length.optional(),
-  translateY: length.optional(),
-  rotate: z.number().min(-360).max(360).optional(),
-  opacity: z.number().min(0).max(1).optional(),
-  zIndex: z.number().int().min(-10).max(100).optional(),
-  display: z.enum(['block', 'inline-block', 'flex', 'grid', 'none']).optional(),
-  flexDirection: z.enum(['row', 'column', 'row-reverse', 'column-reverse']).optional(),
-  flexWrap: z.enum(['nowrap', 'wrap']).optional(),
-  justifyContent: z.enum(['flex-start', 'center', 'flex-end', 'space-between', 'space-around', 'space-evenly', 'stretch']).optional(),
-  alignItems: z.enum(['flex-start', 'center', 'flex-end', 'stretch', 'baseline']).optional(),
-  gridTemplateColumns: z.string().max(200).regex(/^[\w\s().,%-]+$/).optional(),
-  /** Anchored elements: distance from the chosen edges of their section. */
-  top: length.optional(),
-  right: length.optional(),
-  bottom: length.optional(),
-  left: length.optional(),
-})
-export type StyleProps = z.infer<typeof styleProps>
-
-/** `base` applies everywhere; `tablet` (≤ 1024 px) and `mobile` (≤ 640 px) override it below those widths. */
-export const responsiveStyle = z.object({
-  base: styleProps.optional(),
-  tablet: styleProps.optional(),
-  mobile: styleProps.optional(),
-})
-export type ResponsiveStyle = z.infer<typeof responsiveStyle>
-export type Breakpoint = keyof ResponsiveStyle
-
 /* ---- elements --------------------------------------------------- */
-/** Changes to an element the code already renders (identified by its `data-cms-id`). */
+/** Changes to text the code already renders (identified by its `data-cms-id`). */
 export const elementOverride = z.object({
   text: richText.optional(),
+  /** Optional lines (corner notes, hints) can be switched off. */
   hidden: z.boolean().optional(),
-  locked: z.boolean().optional(),
-  style: responsiveStyle.optional(),
-  props: z.record(z.string(), z.unknown()).optional(),
+  /** Where a link the code renders points. */
+  href: safeHref.optional(),
 })
 export type ElementOverride = z.infer<typeof elementOverride>
 
@@ -129,17 +87,19 @@ export const tableData = z.object({
 })
 export type TableData = z.infer<typeof tableData>
 
+/**
+ * Content kept from schema v1's page builder: elements an administrator
+ * added to a section. They are rendered in normal flow after the
+ * section, styled by the site, and their text stays editable; no new
+ * ones are created.
+ */
 export interface ElementNode {
   id: string
   type: ElementType
   name: string
   text?: RichText
   props: Record<string, unknown>
-  style: ResponsiveStyle
-  /** `flow` sits in its container's layout; `anchored` is placed against the section's edges. */
-  layout: { mode: 'flow' | 'anchored' }
   hidden?: boolean
-  locked?: boolean
   children?: ElementNode[]
 }
 export const elementNode: z.ZodType<ElementNode> = z.lazy(() => z.object({
@@ -148,14 +108,25 @@ export const elementNode: z.ZodType<ElementNode> = z.lazy(() => z.object({
   name: shortText,
   text: richText.optional(),
   props: z.record(z.string(), z.unknown()),
-  style: responsiveStyle,
-  layout: z.object({ mode: z.enum(['flow', 'anchored']) }),
   hidden: z.boolean().optional(),
-  locked: z.boolean().optional(),
   children: z.array(elementNode).max(200).optional(),
 }))
 
-export const elementGroup = z.object({ id, name: shortText, members: z.array(z.string().max(160)).min(2).max(100) })
+/* ---- section animations ------------------------------------------ */
+/** An animated section's choice (src/sections/catalog.ts). Ids are checked against the catalogue in references.ts. */
+export const sectionAnimation = z.object({
+  id: z.string().min(1).max(80).regex(/^[a-z0-9][a-z0-9.-]*$/),
+  intensity: z.number().min(0).max(1).optional(),
+  speed: z.number().min(0.5).max(1.5).optional(),
+})
+export type SectionAnimation = z.infer<typeof sectionAnimation>
+
+/** The Tech Toolbox's details, each switched on or off for the whole section (a tool may override either). */
+export const toolboxDisplay = z.object({
+  showCounts: z.boolean(),
+  showNames: z.boolean(),
+})
+export type ToolboxDisplay = z.infer<typeof toolboxDisplay>
 
 /* ---- sections & journeys ---------------------------------------- */
 export const section = z.object({
@@ -170,6 +141,10 @@ export const section = z.object({
   /** Scroll length in viewport heights, and in Quick View. */
   vh: z.number().min(0.5).max(20),
   quickVh: z.number().min(0.5).max(20),
+  /** Animated sections only (about, universe, contact). Absent: the section's default. */
+  animation: sectionAnimation.optional(),
+  /** The Tech Toolbox section only. Absent: counts and names both shown. */
+  toolbox: toolboxDisplay.optional(),
 })
 export type Section = z.infer<typeof section>
 
@@ -219,6 +194,9 @@ export const experienceEntry = z.object({
 export const techNode = z.object({
   id, name: shortText, group: z.enum(['language', 'framework', 'ai', 'data', 'cloud', 'tooling', 'design']),
   evidence: z.array(z.string().max(120)).max(80), weight: z.number().min(1).max(3), note: shortText.optional(),
+  /** Per-tool overrides of the Tech Toolbox section's settings; absent inherits the section's. */
+  showCounts: z.boolean().optional(),
+  showNames: z.boolean().optional(),
 })
 
 export const MOTION_COMPONENTS = ['ChessMotion', 'StockMotion', 'ThreeBodyMotion', 'VpnMotion', 'GymMotion', 'FocusMotion', 'KeyframesMotion', 'LabyrinthMotion', 'PrimesMotion', 'VoxelMotion', 'CardsMotion', 'DotsBoxesMotion', 'TrainingMotion', 'CatanMotion', 'VideoPlayerMotion', 'WebsiteMotion', 'LibraryMotion', 'JobBoardMotion', 'GenericProjectMotion'] as const
@@ -302,7 +280,6 @@ export const siteDocument = z.object({
   collections: z.record(z.string().max(80), z.array(z.string().max(120)).max(100)),
   elements: z.record(z.string().max(160), elementOverride),
   additions: z.record(z.string().max(120), z.array(elementNode).max(200)),
-  groups: z.record(z.string().max(120), z.array(elementGroup).max(50)),
 })
 export type SiteDocument = z.infer<typeof siteDocument>
 export type ProjectEntity = Project

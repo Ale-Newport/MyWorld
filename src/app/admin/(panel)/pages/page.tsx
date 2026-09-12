@@ -1,7 +1,5 @@
-import { PageEditor } from '@/admin/pages/PageEditor'
-
-export const metadata = { title: 'Page editor' }
+export const metadata = { title: 'Website' }
 
 export default function PagesPage() {
-  return <PageEditor />
+  return <main className="a-page"><p className="a-sub">The content editor is being rebuilt.</p></main>
 }

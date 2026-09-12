@@ -2,7 +2,7 @@
 
 import { Suspense, lazy, useMemo } from 'react'
 import { useJourney } from '@/state/journey'
-import type { ChapterId } from '@/content/types'
+import type { ChapterId, JourneyId } from '@/content/types'
 import { journeys } from '@/content/chapters'
 
 /* Each heavy scene is a separate chunk, mounted only in a window
@@ -11,9 +11,7 @@ const FieldScene     = lazy(() => import('./FieldScene').then((m) => ({ default:
 const MetaviewScene  = lazy(() => import('./MetaviewScene').then((m) => ({ default: m.MetaviewScene })))
 const ChessScene     = lazy(() => import('./ChessScene').then((m) => ({ default: m.ChessScene })))
 const StockScene     = lazy(() => import('./StockScene').then((m) => ({ default: m.StockScene })))
-const UniverseScene  = lazy(() => import('./UniverseScene').then((m) => ({ default: m.UniverseScene })))
 const ToolboxScene   = lazy(() => import('./ToolboxScene').then((m) => ({ default: m.ToolboxScene })))
-const ContactScene   = lazy(() => import('./ContactScene').then((m) => ({ default: m.ContactScene })))
 
 /** Which chapters keep a given scene alive. */
 const SCENE_MAP: { id: string; chapters: ChapterId[]; Comp: React.ComponentType }[] = [
@@ -24,9 +22,10 @@ const SCENE_MAP: { id: string; chapters: ChapterId[]; Comp: React.ComponentType 
   { id: 'metaview',   chapters: ['metaview'], Comp: MetaviewScene },
   { id: 'chess',      chapters: ['chess'], Comp: ChessScene },
   { id: 'stock',      chapters: ['stock'], Comp: StockScene },
-  { id: 'universe',   chapters: ['universe'], Comp: UniverseScene },
   { id: 'toolbox',    chapters: ['toolbox'], Comp: ToolboxScene },
-  { id: 'contact',    chapters: ['contact'], Comp: ContactScene },
+  /* The universe and the finale are no longer scenes of this canvas:
+     each is now the section's own animation, chosen in the admin
+     (src/sections). */
 ]
 
 /* ============================================================
@@ -48,26 +47,28 @@ const SCENE_MAP: { id: string; chapters: ChapterId[]; Comp: React.ComponentType 
    time this resolves a window the running order is already this
    route's and never the other one's.
    ============================================================ */
+/** The scenes that should be mounted while `chapter` is active on `journeyId`. */
+export function scenesFor(chapter: ChapterId, journeyId: JourneyId) {
+  const list = journeys[journeyId].chapters
+  const indexOf = (id: ChapterId) => list.findIndex((c) => c.id === id)
+  // A chapter belonging to the other story means the store has not
+  // caught up yet; the head of this one is the honest answer.
+  const active = Math.max(0, indexOf(chapter))
+  return SCENE_MAP.filter((s) =>
+    // Mount if the active chapter is within one step of any owner
+    // chapter present here: the next scene is warm before the
+    // visitor arrives, and absent chapters are simply not owners.
+    s.chapters.some((c) => {
+      const i = indexOf(c)
+      return i >= 0 && Math.abs(i - active) <= 1
+    }),
+  )
+}
+
 export function SceneManager() {
   const chapter = useJourney((s) => s.chapter)
   const journeyId = useJourney((s) => s.journeyId)
-
-  const mounted = useMemo(() => {
-    const list = journeys[journeyId].chapters
-    const indexOf = (id: ChapterId) => list.findIndex((c) => c.id === id)
-    // A chapter belonging to the other story means the store has not
-    // caught up yet; the head of this one is the honest answer.
-    const active = Math.max(0, indexOf(chapter))
-    return SCENE_MAP.filter((s) =>
-      // Mount if the active chapter is within one step of any owner
-      // chapter present here: the next scene is warm before the
-      // visitor arrives, and absent chapters are simply not owners.
-      s.chapters.some((c) => {
-        const i = indexOf(c)
-        return i >= 0 && Math.abs(i - active) <= 1
-      }),
-    )
-  }, [chapter, journeyId])
+  const mounted = useMemo(() => scenesFor(chapter, journeyId), [chapter, journeyId])
 
   return (
     <>
