@@ -5,7 +5,7 @@ import { signIn } from './admin-session.mjs'
 
 const SIZES = [[390, 844], [768, 1024], [1440, 900], [2560, 1440], [3440, 1440]]
 const PUBLIC = [['home', '/'], ['projects', '/projects'], ['project', '/projects/focus'], ['world', '/world']]
-const ADMIN = [['admin-dashboard', '/admin'], ['admin-pages', '/admin/pages'], ['admin-projects', '/admin/projects'], ['admin-library', '/admin/library'], ['admin-world', '/admin/world'], ['admin-media', '/admin/media'], ['admin-audience', '/admin/analytics'], ['admin-settings', '/admin/settings']]
+const ADMIN = [['admin-pages', '/admin/pages'], ['admin-projects', '/admin/projects'], ['admin-world', '/admin/world'], ['admin-media', '/admin/media'], ['admin-history', '/admin/history'], ['admin-audience', '/admin/analytics'], ['admin-settings', '/admin/settings']]
 const browser = await launch()
 const errors = []
 for (const [w, h] of SIZES) {

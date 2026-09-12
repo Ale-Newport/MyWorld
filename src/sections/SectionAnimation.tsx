@@ -1,6 +1,7 @@
 'use client'
 
-import { Component, Suspense, lazy, useEffect, useMemo, useRef, useState, useSyncExternalStore, type ComponentType, type ReactNode } from 'react'
+import { Component, Suspense, useEffect, useMemo, useRef, useState, useSyncExternalStore, type ComponentType, type ReactNode } from 'react'
+import dynamic from 'next/dynamic'
 import { useSite } from '@/cms/context'
 import { useChapterFrame } from '@/hooks/useChapterProgress'
 import { useJourney } from '@/state/journey'
@@ -33,7 +34,7 @@ import type { SectionAnimationProps } from './types'
    ============================================================ */
 
 const LAZY: Record<string, ComponentType<SectionAnimationProps & Record<string, unknown>>> = Object.fromEntries(
-  Object.entries(LOADERS).map(([id, load]) => [id, lazy(load)]),
+  Object.entries(LOADERS).map(([id, load]) => [id, dynamic(load, { ssr: false, loading: () => null })]),
 )
 
 class Contain extends Component<{ id: string; children: ReactNode }, { failed: boolean }> {

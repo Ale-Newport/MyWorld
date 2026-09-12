@@ -1,18 +1,20 @@
 # The admin (`/admin`)
 
-The portfolio has its own content management. You can edit pages, projects, animations, settings, media and the 3D world in the browser. Everything is kept as revisions: a draft you can preview, publish when it is ready, and restore later. The public site only ever shows what has been **published**.
+The portfolio has its own content management. You can edit the website's text and its section animations, the projects, the media, a few site-wide settings and the 3D world in the browser. Everything is kept as revisions: a draft you can preview, publish when it is ready, and restore later. The public site only ever shows what has been **published**.
 
-| Section | Path | What it is for |
+The admin has four places:
+
+| Place | Path | What it is for |
 | --- | --- | --- |
-| Dashboard | `/admin` | Publishing state, recent activity, last 7 days of audience |
-| Page editor | `/admin/pages` | Visual editor for the home page, the projects page and the project-page template |
-| Projects | `/admin/projects` | Create, edit, order, hide, publish, archive and delete projects |
-| Animation library | `/admin/library` | Every effect the site uses, with live previews and controls; place effects in sections |
-| World editor | `/admin/world` | The HelloWorld world studio (2D map, 3D, test drive) saving into the portfolio |
-| Media | `/admin/media` | Uploads, alt text, where each file is used, safe deletion |
-| Audience | `/admin/analytics` | First-party, cookieless statistics: what was actually recorded |
-| Settings | `/admin/settings` | Title, description, sharing image, favicon, navigation, world entrance, leaf transition, analytics |
-| History | `/admin/history` | Every revision of the site and the world, restore, the activity log, storage clean-up |
+| **Website** | `/admin/pages` | The pages' text and section animations, section by section, with a live preview |
+| ↳ Projects | `/admin/projects` | Create, edit, order, hide, publish, archive and delete projects |
+| ↳ Media | `/admin/media` | Uploads, alt text, where each file is used, safe deletion |
+| ↳ History | `/admin/history` | Every revision of the website and the world, restore, the activity log, storage clean-up |
+| **World** | `/admin/world` | The world editor (map, 3D, terrain, test drive) inside the admin |
+| **Audience** | `/admin/analytics` | First-party, cookieless statistics: what was actually recorded |
+| **Settings** | `/admin/settings` | Title, description, sharing image, favicon, navigation, world entrance, leaf transition, analytics |
+
+The website editor edits **content**, not layout. Where each section's text and animation sit, how big the type is and how everything adapts from a 320 px phone to a 3440 px ultrawide screen is the site's code; nothing in the admin can move, resize or restyle it. (The world editor is different: there, moving, rotating and scaling 3D objects and painting terrain is the point.)
 
 The admin is not linked from the public site. That is not what protects it; see [Security](#security).
 
@@ -86,59 +88,48 @@ The first save in the admin imports these as revision 1, and nothing is lost.
 
 ### Previewing
 
-Every editor shows the real public page in a frame, rendered in Next's Draft Mode. The server re-checks your session before it serves a draft; the cookie alone is not enough. The edits you make appear in the frame before you save.
+Every editor shows the real public page in a frame, rendered in Next's Draft Mode: the same components and the same responsive layout a visitor gets, at a real phone (390 × 844), tablet (820 × 1180), laptop (1280 × 800), desktop (1440 × 900) or ultrawide (2560 × 1080) viewport, scaled to fit. The server re-checks your session before it serves a draft; the cookie alone is not enough. The edits you make appear in the frame before you save.
+
+**View site** in the navigation leaves Draft Mode first, so it shows the live site as visitors see it; signing out ends Draft Mode too.
 
 ---
 
-## Page editor
+## Website › Pages
 
-**Left panel:**
-- **Layers** — the page's editable elements, grouped by section. Here you can select, hide, lock and reorder elements; added elements can also be dragged to a new position.
-- **Sections** — reorder, hide, rename, add and delete added sections.
-- **Insert** — headings, paragraphs, buttons, images, video, tables, cards, rows, columns, grids, animations, dividers and spacers. Drag them onto the page or click to add.
-- **Assets** — the media library.
+Pages → a section → its text and its animation → the preview → save or publish.
 
-**Centre:** the real page.
+- **Left:** the page (Home or the Projects page) and its sections, in their order, each with a line saying what it holds. On narrower screens this is a choice at the top of the form.
+- **Middle:** the selected section's form.
+  - **Text** — every piece of text in the section, named in words (*Summary*, *Chapter tag*, *Closing answer*…), with a line of help where it matters. Text that belongs to the portfolio's data (your summary, your contact links) is edited at its source, so it changes everywhere it appears. A counter shows the length the design expects; longer text is accepted and the layout adapts to it (it is set smaller or wrapped), but the counter says so. Optional lines (corner notes, hints, the colophon) have a *Show on the site* switch. *Default* puts back the site's own text.
+  - **Lists** — through-lines, rotating roles, universities and their modules, contact links.
+  - **Animation** — for *A little about me*, *Project universe* and *End of journey* (see below).
+  - **Technology details** — for the Tech Toolbox (see below).
+  - **Section** — whether it is shown, and its name, label and subtitle in the index.
+- **Right:** the live preview, with the screen-size switch. Selecting a section scrolls the preview to it; clicking a section in the preview selects it in the form. On narrow screens the preview opens with the **Preview** button.
 
-**Right:** the inspector. It covers content, layout (in flow or anchored, size, spacing, flex and grid), position, typography, appearance and breakpoint overrides.
+**Save draft** (<kbd>⌘S</kbd>), undo and redo (<kbd>⌘Z</kbd> / <kbd>⇧⌘Z</kbd>) and **Publish** are in the header, with the draft's state in words: *Unsaved changes*, *Draft differs from the live site* or *Live site is up to date*.
 
-**Breakpoints.** The device buttons choose where style changes are written:
+### Section animations
 
-| Device | Where changes apply |
+Three sections have a choice of five animations each. Each option has a still thumbnail and a sentence; the chosen one plays in the preview. Two knobs adjust it: **intensity** (what it changes is named under the slider for each option) and **speed**. Visitors who ask their device for reduced motion see a still, composed version of whichever option is chosen.
+
+| Section | Options |
 | --- | --- |
-| Desktop | All sizes |
-| Tablet | 1024 px and narrower |
-| Mobile | 640 px and narrower |
+| A little about me | Journey ribbon (default) · Assembling identity · Layered profile frame · Interest constellation · Typographic identity |
+| Project universe | Orbital system (default) · Project constellation · Dimensional gallery · Magnetic mosaic · Layered field |
+| End of journey | Botanical gateway (default) · Converging paths · Stepping path · Contour horizon · Ribbon aperture |
 
-Values you leave empty are inherited. Each field's placeholder shows the inherited or computed value. Lengths accept `px`, `rem`, `%`, viewport units and `clamp()`. The ⤢ button builds a fluid `clamp()` from two sizes.
+The animations draw only real content — your milestones, roles, skills and projects — and keep clear of the section's text at every size. The *End of journey* animation is separate from the leaf transition into the world, which works the same with every option; **Test it in the preview** runs that transition inside the frame.
 
-**Mouse:**
-- Click to select. <kbd>⇧</kbd>-click adds to the selection. <kbd>⌘</kbd>-click selects inside a group. <kbd>⌥</kbd>-click picks what is underneath.
-- Double-click text to edit it in place.
-- Drag to move: guides snap to edges and centres. Hold <kbd>⌥</kbd> to drag without snapping, <kbd>⇧</kbd> to stay on one axis.
-- Drag the handles to resize.
+A choice that no longer exists (a retired option in an old revision) falls back to the section's default when the page is shown.
 
-**Keyboard:**
+### Tech Toolbox details
 
-| Keys | Action |
-| --- | --- |
-| Arrows | Nudge 1 px (with <kbd>⇧</kbd>, 10 px) |
-| <kbd>⌘D</kbd> | Duplicate |
-| <kbd>⌘C</kbd> / <kbd>⌘V</kbd> | Copy / paste |
-| <kbd>⌘G</kbd> / <kbd>⇧⌘G</kbd> | Group / ungroup |
-| <kbd>⌘L</kbd> | Lock |
-| <kbd>⌫</kbd> | Delete an added element; hide a built-in one |
-| <kbd>⌘Z</kbd> / <kbd>⇧⌘Z</kbd> | Undo / redo |
+Two independent switches decide what the wall says about each technology when it is pointed at, focused or tapped: **project counts** (the number on each tile and the "3 projects" line) and **project names** (the list of projects in the readout). Under *Per-technology overrides* each technology can inherit the section's setting, always show or always hide either detail. A detail that is off is not rendered at all — no badge, no line, no label, no tooltip. Only published, listed projects are ever counted or named. Hovering a technology never fades the others.
 
-**Built-in versus added elements.** Elements the site's code renders can be:
-- restyled, moved, resized, hidden and grouped
-- given new text — text bound to the portfolio's data, such as the thesis or a project title, changes everywhere that data appears
+### Content from the old page builder
 
-They cannot be deleted, because the code would render them again. Elements you add can be anything from the Insert panel.
-
-**Modes:**
-- **Preview** turns the selection layer off, so the page behaves exactly as for a visitor.
-- **Test transition** runs the full leaf transition into `/world` inside the frame. Anywhere else in the editor, scrolling to the foot of the page never takes you to `/world`.
+Schema v1 had a visual page builder. Documents saved with it are migrated when they are read: edited text, hidden lines and link targets are kept; per-element styles, positions, locks and groups are dropped, because the layout is the code's. Elements that had been added to a section are kept, with their text, in a content section of their own right after it, where they read in one responsive column; their text stays editable and they can be removed.
 
 ## Projects
 
@@ -167,23 +158,6 @@ The same entity feeds:
 - the case-study overlay
 
 The preview can show the project page, the listing or the home page.
-
-## Animation library
-
-The library has two kinds of entries.
-
-**Built into the site:** the leaf transition, the chapter scenes, the backgrounds, the cursor, navigation and so on. Each entry documents:
-- where the effect lives in the code
-- its current inputs
-- its behaviour under reduced motion
-- its cost
-- a live look at the real page
-
-The leaf transition's growth and parting speeds can be changed here or in Settings. Neither can make the cover incomplete: the world only starts loading after the cover has been measured covering the whole screen.
-
-**Placeable effects:** the site's own reveal, counter and project visuals, plus 17 added effects across text, data, shapes, particles, backgrounds, interaction, scroll and transitions. Every control works on the preview, and the preview can show the reduced-motion version. *Add to the draft* places the effect in a section, where the page editor positions it.
-
-Effects are code in this repository. Their parameters are data: numbers, choices, colours and short text, validated again when they render. Nothing in the admin runs script. Public pages download only the effects they actually use.
 
 ## World editor
 
@@ -300,12 +274,10 @@ The end-to-end checks in `scripts/qa/` drive a real browser against `npm run dev
 | --- | --- |
 | `admin-auth.mjs` | Sign-in, CSRF, sessions, lockout |
 | `admin-projects-e2e.mjs` | Projects: create, edit, table sections, publish |
-| `page-editor-e2e.mjs` | Select, breakpoints, move, nudge, resize, inline text, insert, duplicate, group, hide, undo, publish |
-| `page-editor-structure-e2e.mjs` | Sections, drag-and-drop, align and distribute, copy and paste, layer reordering, preview, transition test |
+| `content-editor-e2e.mjs` | No layout tools; text in the preview, not live after saving, live after publishing; five animations per section; Toolbox counts/names and per-tool overrides; refused unauthenticated and CSRF-less writes |
 | `admin-settings-e2e.mjs` | Settings reach the public site, including the leaf-growth speed |
 | `admin-media-e2e.mjs` | Uploads, SVG sanitising, usage, delete safeguards |
 | `analytics.mjs` | What the browser sends; what the server refuses |
-| `library-effects.mjs` | Every added effect renders, animates, responds to a control and holds still under reduced motion |
 | `world-editor-e2e.mjs`, `world-studio.mjs` | Studio save, publish, map |
 | `world-activities.mjs` | Both activities, start to finish |
 | `world-terrain.mjs` | Painted land collides; erased land is sea |
