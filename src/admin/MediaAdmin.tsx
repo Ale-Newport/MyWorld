@@ -3,6 +3,7 @@
 import { useMemo, useState, type DragEvent } from 'react'
 import { api } from './api'
 import { toast } from './toast'
+import { PageHeader, Tabs, WEBSITE_TABS } from './ui/kit'
 import { uploadMedia, useMedia, type MediaRow } from './fields'
 
 /* ============================================================
@@ -72,19 +73,18 @@ export function MediaAdmin() {
 
   return (
     <main className="a-page" style={{ maxWidth: 1400 }}>
-      <header className="a-head">
-        <div>
-          <p className="a-label">Site</p>
-          <h1 className="a-title">Media</h1>
-          <p className="a-sub">{items ? `${items.length} files · ${fmtSize(total)}` : 'Loading…'} · PNG, JPEG, WebP, AVIF, GIF, SVG, ICO, MP4, WebM, GLB</p>
-        </div>
-        <div className="row">
+      <PageHeader
+        eyebrow="Website"
+        title="Media"
+        description={<>{items ? `${items.length} files · ${fmtSize(total)}` : 'Loading…'} · PNG, JPEG, WebP, AVIF, GIF, SVG, ICO, MP4, WebM, GLB</>}
+        actions={<>
           <select className="input" style={{ width: 'auto' }} value={uploadAs} onChange={(e) => setUploadAs(e.target.value as typeof uploadAs)} aria-label="Upload images as">
             <option value="image">Images as images</option><option value="texture">Images as textures</option><option value="icon">Images as icons</option>
           </select>
           <label className="btn btn-primary">{uploading.length ? `Uploading ${uploading.length}…` : 'Upload files'}<input type="file" multiple hidden onChange={(e) => { if (e.target.files) void upload(e.target.files); e.target.value = '' }} /></label>
-        </div>
-      </header>
+        </>}
+        tabs={<Tabs label="Website" tabs={WEBSITE_TABS} />}
+      />
 
       <div style={{ display: 'grid', gridTemplateColumns: current ? 'minmax(0, 1fr) 360px' : '1fr', gap: 16, alignItems: 'start' }}>
         <section
