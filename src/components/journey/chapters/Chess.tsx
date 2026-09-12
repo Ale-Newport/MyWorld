@@ -26,6 +26,7 @@ export function Chess() {
   const { projectById, chapterById } = useSite()
   const titleCms = useCms('chess.title', { kind: 'heading', label: 'Title' })
   const title = useCmsText('chess.title', 'Chess\nAssistant')
+  const tag = useCmsText('chess.tag', 'SEEING THE BOARD')
   const project = projectById['chess-assistant']
   const reducedMotion = useJourney((s) => s.reducedMotion)
   const [progress, setProgress] = useState(0)
@@ -72,7 +73,7 @@ export function Chess() {
         </div>
 
         <div className={styles.head}>
-          <E cms="chess.tag" label="Chapter tag"><TagRow items={[chapterById['chess'].number, 'SEEING THE BOARD', '2025']} /></E>
+          <E cms="chess.tag" kind="container" label="Chapter tag"><TagRow items={[chapterById['chess'].number, tag, '2025']} /></E>
           <Reveal as="h2" mode="mask" className={styles.title} id="chess-title" attrs={titleCms}>
             {title}
           </Reveal>

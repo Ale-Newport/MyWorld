@@ -5,20 +5,26 @@ import { usePathname } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { setCsrf, api } from './api'
 import { useToasts } from './toast'
+import { Icon, type IconName } from './ui/icons'
 
-const NAV: { group?: string; href: string; label: string; icon: string }[] = [
-  { href: '/admin', label: 'Dashboard', icon: '◧' },
-  { group: 'Content', href: '/admin/pages', label: 'Page editor', icon: '▤' },
-  { href: '/admin/projects', label: 'Projects', icon: '▣' },
-  { href: '/admin/world', label: 'World editor', icon: '◭' },
-  { group: 'Site', href: '/admin/media', label: 'Media', icon: '▨' },
-  { href: '/admin/analytics', label: 'Audience', icon: '◔' },
-  { href: '/admin/settings', label: 'Settings', icon: '⚙' },
-  { href: '/admin/history', label: 'History', icon: '↺' },
+/* ============================================================
+   ONE ADMIN, FOUR PLACES
+
+   The navigation is the four things there are to do: edit the
+   website, edit the world, read the audience, change the few
+   site-wide settings. Everything else lives inside one of them —
+   projects, media and history are tabs of the website; the world's
+   own history is reached from the world editor.
+   ============================================================ */
+const NAV: { href: string; label: string; icon: IconName; match: RegExp }[] = [
+  { href: '/admin/pages', label: 'Website', icon: 'website', match: /^\/admin(\/(pages|projects|media|history)(\/.*)?)?$/ },
+  { href: '/admin/world', label: 'World', icon: 'world', match: /^\/admin\/world/ },
+  { href: '/admin/analytics', label: 'Audience', icon: 'audience', match: /^\/admin\/analytics/ },
+  { href: '/admin/settings', label: 'Settings', icon: 'settings', match: /^\/admin\/settings/ },
 ]
 
 /** Editors want the whole screen: the navigation folds to a rail there. */
-const COMPACT = [/^\/admin\/pages/, /^\/admin\/world/, /^\/admin\/projects\/[^/]+/, /^\/admin\/library/]
+const COMPACT = [/^\/admin\/pages/, /^\/admin\/world/, /^\/admin\/projects\/[^/]+/]
 
 export function AdminShell({ user, csrf, children }: { user: { name: string; email: string }; csrf: string; children: React.ReactNode }) {
   const pathname = usePathname()
@@ -35,27 +41,27 @@ export function AdminShell({ user, csrf, children }: { user: { name: string; ema
   return (
     <div className="a-shell" data-compact={compact}>
       <nav className="a-nav" aria-label="Admin">
-        <Link href="/admin" className="a-brand">
+        <Link href="/admin/pages" className="a-brand" title="Portfolio admin">
           <span className="a-mark" aria-hidden="true">AN</span>
-          <span><b>Portfolio admin</b><small>Draft · publish · world</small></span>
+          <span className="a-brand-text"><b>Portfolio admin</b><small>{user.name}</small></span>
         </Link>
-        {NAV.map((item) => (
-          <div key={item.href} style={{ display: 'contents' }}>
-            {item.group && <p className="a-group a-label">{item.group}</p>}
-            <Link href={item.href} className="a-item" aria-current={(item.href === '/admin' ? pathname === '/admin' : pathname.startsWith(item.href)) ? 'page' : undefined} title={item.label}>
-              <span className="a-icon" aria-hidden="true">{item.icon}</span>
+        <div className="a-nav-items">
+          {NAV.map((item) => (
+            <Link key={item.href} href={item.href} className="a-item" aria-current={item.match.test(pathname) ? 'page' : undefined} title={item.label}>
+              <Icon name={item.icon} />
               <span className="a-text">{item.label}</span>
             </Link>
-          </div>
-        ))}
+          ))}
+        </div>
         <div className="a-nav-foot">
-          <a className="a-item" href="/" target="_blank" rel="noreferrer" title="Open the public site">
-            <span className="a-icon" aria-hidden="true">↗</span><span className="a-text">View site</span>
+          {/* Leaves Draft Mode first, so the site shows what visitors see. */}
+          <a className="a-item" href="/admin/view-site" target="_blank" rel="noreferrer" title="View the live site">
+            <Icon name="external" />
+            <span className="a-text">View site</span>
           </a>
-          <span className="a-user a-text" title={user.email}>{user.name}</span>
           <button
             type="button"
-            className="btn btn-sm"
+            className="a-item"
             disabled={signingOut}
             onClick={async () => {
               setSigningOut(true)
@@ -64,9 +70,10 @@ export function AdminShell({ user, csrf, children }: { user: { name: string; ema
               // eslint-disable-next-line @next/next/no-location-assign-relative-destination
               window.location.assign('/admin/login')
             }}
-            title="Sign out"
+            title={`Sign out (${user.email})`}
           >
-            <span aria-hidden="true">⏻</span><span className="a-text">Sign out</span>
+            <Icon name="signout" />
+            <span className="a-text">{signingOut ? 'Signing out…' : 'Sign out'}</span>
           </button>
         </div>
       </nav>

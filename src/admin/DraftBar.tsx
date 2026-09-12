@@ -1,8 +1,10 @@
 'use client'
 
-import { useEffect, useRef, type ReactNode } from 'react'
+import { useEffect, type ReactNode } from 'react'
 import { useDirty, useSiteStore, useUnpublished } from './store/site'
 import { typingTarget } from './keys'
+import { Dialog, SaveState } from './ui/kit'
+import { Icon } from './ui/icons'
 
 /* Save · undo · redo · publish, the draft's state in words, and the
    conflict dialog. Cmd/Ctrl+S saves and Cmd/Ctrl+Z / Shift+Cmd+Z undo
@@ -12,12 +14,6 @@ export function DraftBar({ children, compact = false }: { children?: ReactNode; 
   const s = useSiteStore()
   const dirty = useDirty()
   const unpublished = useUnpublished()
-  const dialog = useRef<HTMLDialogElement>(null)
-
-  useEffect(() => {
-    if (s.conflict) dialog.current?.showModal()
-    else dialog.current?.close()
-  }, [s.conflict])
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -37,32 +33,32 @@ export function DraftBar({ children, compact = false }: { children?: ReactNode; 
     return () => window.removeEventListener('beforeunload', onLeave)
   }, [])
 
-  const state = dirty ? { tone: 'warn', text: 'Unsaved changes' } : unpublished ? { tone: 'accent', text: 'Draft differs from the live site' } : { tone: 'ok', text: 'Live site is up to date' }
   return (
     <>
-      <div className="row" role="toolbar" aria-label="Draft">
+      <div className="a-publishbar" role="toolbar" aria-label="Draft">
         {children}
-        <span className="badge" data-tone={state.tone} role="status">{state.text}</span>
+        <SaveState dirty={dirty} unpublished={unpublished} />
         <div className="btn-group">
-          <button type="button" className="btn btn-icon" onClick={() => s.undo()} disabled={!s.past.length} title="Undo (⌘Z)" aria-label="Undo">↶</button>
-          <button type="button" className="btn btn-icon" onClick={() => s.redo()} disabled={!s.future.length} title="Redo (⇧⌘Z)" aria-label="Redo">↷</button>
+          <button type="button" className="btn btn-icon" onClick={() => s.undo()} disabled={!s.past.length} title="Undo (⌘Z)" aria-label="Undo"><Icon name="undo" size={16} /></button>
+          <button type="button" className="btn btn-icon" onClick={() => s.redo()} disabled={!s.future.length} title="Redo (⇧⌘Z)" aria-label="Redo"><Icon name="redo" size={16} /></button>
         </div>
         <button type="button" className="btn" onClick={() => void s.save()} disabled={!dirty || s.saving} title="Save draft (⌘S)">{s.saving ? 'Saving…' : compact ? 'Save' : 'Save draft'}</button>
         <button type="button" className="btn btn-accent" onClick={() => void s.publish()} disabled={s.publishing || (!dirty && !unpublished)}>{s.publishing ? 'Publishing…' : 'Publish'}</button>
       </div>
-      <dialog ref={dialog} className="a-dialog" onClose={() => s.dismissConflict()} aria-labelledby="conflict-title">
-        <div className="stack">
-          <h2 id="conflict-title" style={{ fontSize: 17, fontWeight: 600 }}>Someone else saved this draft</h2>
-          <p className="a-sub">{s.conflict?.message} Latest save: {s.conflict?.head.draft ? `${new Date(s.conflict.head.draft.createdAt).toLocaleString()} by ${s.conflict.head.draft.authorName ?? 'unknown'}` : 'unknown'}.</p>
-          <p className="a-sub">Load their version (your unsaved edits here are discarded), or keep yours and save it on top of theirs.</p>
-          <div className="row">
-            <button type="button" className="btn" onClick={() => void s.load(true)}>Load the latest draft</button>
-            <button type="button" className="btn btn-danger" onClick={() => void s.save('Overwrote a concurrent edit', { force: true })}>Keep mine and overwrite</button>
-            <span className="spacer" />
-            <button type="button" className="btn btn-ghost" onClick={() => s.dismissConflict()}>Cancel</button>
-          </div>
-        </div>
-      </dialog>
+      <Dialog
+        open={!!s.conflict}
+        onClose={() => s.dismissConflict()}
+        title="Someone else saved this draft"
+        actions={<>
+          <button type="button" className="btn" onClick={() => void s.load(true)}>Load the latest draft</button>
+          <button type="button" className="btn btn-danger" onClick={() => void s.save('Overwrote a concurrent edit', { force: true })}>Keep mine and overwrite</button>
+          <span className="spacer" />
+          <button type="button" className="btn btn-ghost" onClick={() => s.dismissConflict()}>Cancel</button>
+        </>}
+      >
+        <p className="a-sub">{s.conflict?.message} Latest save: {s.conflict?.head.draft ? `${new Date(s.conflict.head.draft.createdAt).toLocaleString()} by ${s.conflict.head.draft.authorName ?? 'unknown'}` : 'unknown'}.</p>
+        <p className="a-sub">Load their version (your unsaved edits here are discarded), or keep yours and save it on top of theirs.</p>
+      </Dialog>
     </>
   )
 }

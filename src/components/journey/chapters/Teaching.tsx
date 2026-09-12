@@ -54,6 +54,7 @@ export function Teaching() {
   const { experienceById, chapterById } = useSite()
   const titleCms = useCms('teaching.title', { kind: 'heading', label: 'Title' })
   const title = useCmsText('teaching.title', 'First I learned how systems work.\nThen I learned how to explain them.')
+  const tag = useCmsText('teaching.tag', 'LEARNING BY TEACHING')
   const role = experienceById['kcl-gta']
   const reducedMotion = useJourney((s) => s.reducedMotion)
   const [passing, setPassing] = useState(0)
@@ -94,7 +95,7 @@ export function Teaching() {
     <Chapter id="teaching" labelledBy="teaching-title">
       <div className={`${shared.stage} ${styles.stage}`}>
         <div className={styles.head}>
-          <E cms="teaching.tag" label="Chapter tag"><TagRow items={[chapterById['teaching'].number, 'LEARNING BY TEACHING', role.dates]} /></E>
+          <E cms="teaching.tag" kind="container" label="Chapter tag"><TagRow items={[chapterById['teaching'].number, tag, role.dates]} /></E>
           <Reveal as="h2" mode="words" className={styles.title} id="teaching-title" attrs={titleCms}>
             {title}
           </Reveal>

@@ -6,7 +6,7 @@ import { TagRow, ScrollHint } from '@/components/journey/parts'
 import { useJourneyRoute } from '@/components/journey/JourneyProvider'
 import { totalVh } from '@/content/chapters'
 import { useSite } from '@/cms/context'
-import { E } from '@/cms/editable'
+import { E, useCmsText } from '@/cms/editable'
 import { useChapterFrame } from '@/hooks/useChapterProgress'
 import { useJourney } from '@/state/journey'
 import { clamp, range } from '@/lib/math'
@@ -33,6 +33,7 @@ const MINUTES_PER_VH = 0.15
 
 export function Prelude() {
   const { profile } = useSite()
+  const tag = useCmsText('prelude.tag', 'PORTFOLIO')
   const [firstName, ...rest] = profile.name.split(' ')
   const reducedMotion = useJourney((s) => s.reducedMotion)
   /* The corner counts THIS journey, not the archive. The prelude
@@ -90,8 +91,8 @@ export function Prelude() {
   return (
     <Chapter id="prelude" labelledBy="prelude-title">
       <div className={`${shared.stage} ${styles.stage}`} ref={shellRef}>
-        <E cms="prelude.tag" as="div" label="Portfolio tag" className={`${shared.corner} ${shared.cornerTL}`}>
-          <TagRow items={['PORTFOLIO', profile.year]} />
+        <E cms="prelude.tag" as="div" kind="container" label="Portfolio tag" className={`${shared.corner} ${shared.cornerTL}`}>
+          <TagRow items={[tag, profile.year]} />
         </E>
         <E cms="prelude.location" as="div" label="Location" className={`${shared.corner} ${shared.cornerTR}`}>
           {profile.location}
@@ -102,7 +103,7 @@ export function Prelude() {
         <div className={styles.center}>
           {/* The document's single <h1> is the profile summary that ships
               in the SSR HTML; this is the visible chapter heading. */}
-          <E cms="prelude.name" as="h2" kind="heading" label="Name" id="prelude-title" className={`${styles.name} ${shared.driven}`} ref={nameRef}>
+          <E cms="prelude.name" as="h2" kind="container" label="Name" id="prelude-title" className={`${styles.name} ${shared.driven}`} ref={nameRef}>
             <E cms="prelude.name.first" kind="heading" label="Name — first line" className={styles.nameLine}>{firstName}</E>
             <E cms="prelude.name.last" kind="heading" label="Name — second line" className={styles.nameLine}>{rest.join(' ')}</E>
           </E>
@@ -130,7 +131,7 @@ export function Prelude() {
         </div>
         {/* Derived, not typed: a hardcoded count is a promise the
             content file can break silently. */}
-        <E cms="prelude.length" as="div" label="Journey length" className={`${shared.corner} ${shared.cornerBR}`}>
+        <E cms="prelude.length" as="div" kind="container" label="Journey length" className={`${shared.corner} ${shared.cornerBR}`}>
           {chapters.length} CHAPTERS
           <br />
           ~{minutes} MINUTES

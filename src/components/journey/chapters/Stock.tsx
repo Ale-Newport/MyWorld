@@ -41,6 +41,7 @@ export function Stock() {
   const { projectById, chapterById } = useSite()
   const titleCms = useCms('stock.title', { kind: 'heading', label: 'Title' })
   const title = useCmsText('stock.title', 'Order book')
+  const tag = useCmsText('stock.tag', 'CONCURRENCY')
   const project = projectById['stock-market-simulator']
   const reducedMotion = useJourney((s) => s.reducedMotion)
   const [progress, setProgress] = useState(0)
@@ -70,7 +71,7 @@ export function Stock() {
         </div>
 
         <div className={styles.head}>
-          <E cms="stock.tag" label="Chapter tag"><TagRow items={[chapterById['stock'].number, 'CONCURRENCY', '2025']} /></E>
+          <E cms="stock.tag" kind="container" label="Chapter tag"><TagRow items={[chapterById['stock'].number, tag, '2025']} /></E>
           <Reveal as="h2" mode="perspective" className={styles.title} id="stock-title" attrs={titleCms}>
             {title}
           </Reveal>
