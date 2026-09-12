@@ -1,4 +1,3 @@
-import * as THREE from 'three'
 import { ROOM_CONFIG } from '../config'
 import type { RoomPlan } from '../scene/compositions'
 import { clamp, fbm, noise, random, smooth } from '../lib/random'
@@ -25,25 +24,33 @@ import { clamp, fbm, noise, random, smooth } from '../lib/random'
 
    Nothing here depends on the viewport: a resize never moves a
    colony, and a given seed always grows the same moss.
+
+   This module is plain arithmetic on typed arrays — no three.js, no
+   DOM — so the room can run it in a worker (fields.worker.ts) while
+   the main thread builds the hall and the GPU gathers its light.
+   fieldTextures.ts turns the result into textures.
    ============================================================ */
 
-export interface SurfaceFields {
-  wall: THREE.DataTexture
-  floor: THREE.DataTexture
-  weather: THREE.DataTexture
+/** One baked map: RGBA bytes, `w` × `h`. */
+export interface FieldMap { data: Uint8Array; w: number; h: number }
+
+export interface SurfaceFieldData {
+  wall: FieldMap
+  floor: FieldMap
+  weather: FieldMap
   /** x0, y0, width, height of the wall map, metres. */
-  wallRect: THREE.Vector4
+  wallRect: [number, number, number, number]
   /** x0, z0, width, depth of the floor map, metres. */
-  floorRect: THREE.Vector4
+  floorRect: [number, number, number, number]
 }
 
 const enc = (birth: number) => Math.round(clamp(birth / 2) * 255)
 
-export async function buildSurfaceFields(
+export async function computeSurfaceFields(
   plan: RoomPlan, soffit: number, floorDepth: number, seed: number,
-  /** Called between the stages, to give the main thread back. */
+  /** Called between the stages, to give the main thread back (not needed in a worker). */
   pause: () => Promise<void> = async () => {},
-): Promise<SurfaceFields> {
+): Promise<SurfaceFieldData> {
   // Give the thread back every few milliseconds, row by row, so no
   // single slice of this runs long enough to delay an input.
   let slice = performance.now()
@@ -248,23 +255,11 @@ export async function buildSurfaceFields(
     }
   }
 
-  const tex = (data: Uint8Array, w: number, h: number) => {
-    const t = new THREE.DataTexture(data, w, h, THREE.RGBAFormat, THREE.UnsignedByteType)
-    t.magFilter = THREE.LinearFilter
-    t.minFilter = THREE.LinearMipmapLinearFilter
-    t.generateMipmaps = true
-    t.wrapS = THREE.ClampToEdgeWrapping
-    t.wrapT = THREE.ClampToEdgeWrapping
-    t.colorSpace = THREE.NoColorSpace
-    t.anisotropy = 8
-    t.needsUpdate = true
-    return t
-  }
   return {
-    wall: tex(wall, wx, wy),
-    floor: tex(floor, fx, fz),
-    weather: tex(weather, vx, vy),
-    wallRect: new THREE.Vector4(-W / 2, 0, W, soffit),
-    floorRect: new THREE.Vector4(-W / 2, 0, W, floorDepth),
+    wall: { data: wall, w: wx, h: wy },
+    floor: { data: floor, w: fx, h: fz },
+    weather: { data: weather, w: vx, h: vy },
+    wallRect: [-W / 2, 0, W, soffit],
+    floorRect: [-W / 2, 0, W, floorDepth],
   }
 }

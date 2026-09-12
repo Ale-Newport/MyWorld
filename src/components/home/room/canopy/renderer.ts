@@ -74,6 +74,8 @@ export class CanopyRenderer {
   private onLostCallback?: () => void
   /** The plants are built and their programs compiled: it can draw. */
   ready = false
+  /** performance.now() when it first became ready (QA probe). */
+  readyAt = 0
   lost = false
   private disposed = false
 
@@ -191,6 +193,7 @@ export class CanopyRenderer {
     this.renderer.compile(this.scene, this.camera)
     this.renderer.compile(this.outScene, this.camera)
     this.ready = this.layers.length > 0
+    if (this.ready) this.readyAt ||= performance.now()
   }
 
   /** The work of building a view's canopy, cut into slices. */
@@ -272,6 +275,7 @@ export class CanopyRenderer {
     }
     if (this.disposed || this.lost) return
     this.ready = true
+    this.readyAt ||= performance.now()
     if (this.charge >= 0) this.draw()
   }
 

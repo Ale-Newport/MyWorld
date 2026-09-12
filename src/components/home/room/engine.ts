@@ -10,7 +10,7 @@ import { blitFrag, depthOnlyFrag, depthOnlyVert } from './render/natureShaders'
 import { WallRelief } from './nature/relief'
 import { buildBotany, prune, type Botany, type FieldProbe } from './nature/botany'
 import { buildLitter, FRAME_ORDER, Vegetation, type VegetationUniforms } from './nature/vegetation'
-import { buildSurfaceFields, type SurfaceFields } from './nature/fields'
+import { FieldBaker, fieldsToTextures, type SurfaceFields } from './nature/fieldTextures'
 import { createLeafAtlas, createMossSheet, type LeafAtlas } from './nature/sprites'
 import { sampleSlice, sliceFor, type ReadingField } from './layout/readingField'
 import { roomView } from './view'
@@ -50,16 +50,43 @@ interface Built {
   arch: BuiltArchitecture
   relief: WallRelief
   plan: Botany
-  fields: SurfaceFields
+  /** Baked in a worker while the light gathers; null until it lands. */
+  fields: SurfaceFields | null
   litter: ReturnType<typeof buildLitter>
 }
 
-/** Resolve in the browser's next idle period (or soon after). */
-const idle = () =>
+/* ============================================================
+   START-UP, IN PARALLEL
+
+   The first frame is the finished room — light converged, plants
+   pruned around the copy — never a partial one; what can be made
+   faster is everything before it. So the preparation runs as three
+   things at once instead of one queue:
+
+     · the GPU gathers the hall's light from the moment the hall's
+       geometry exists (a few milliseconds in);
+     · a worker bakes the surface fields (the largest piece of
+       arithmetic) at the same time;
+     · the main thread builds the plan of growth, the procedural
+       sheets and the plants' buffers, and has the shaders compiled,
+       in short slices that yield to the page between them.
+
+   The slices yield; they do not wait for the browser to go idle —
+   on a busy phone an idle period can take a long time to come, and
+   six of them in a row was most of the wait for the first frame.
+   ============================================================ */
+
+/** Give the thread back for a moment (input, rendering), then carry on. */
+const yieldTask = () =>
   new Promise<void>((resolve) => {
-    const w = window as Window & { requestIdleCallback?: (cb: () => void, o?: { timeout: number }) => number }
-    if (w.requestIdleCallback) w.requestIdleCallback(() => resolve(), { timeout: 150 })
-    else setTimeout(resolve, 16)
+    const s = (globalThis as { scheduler?: { yield?: () => Promise<void> } }).scheduler
+    if (s?.yield) {
+      void s.yield().then(resolve)
+      return
+    }
+    const ch = new MessageChannel()
+    ch.port1.onmessage = () => resolve()
+    ch.port2.postMessage(0)
   })
 
 /** Thrown out of a staged build when the engine is torn down mid-way. */
@@ -130,6 +157,12 @@ export class RoomEngine {
   private floorBand: readonly [number, number] | undefined = undefined
   /** Start-up costs, ms (main thread, per stage), for the QA probe. */
   readonly timings: Record<string, number> = {}
+  /** Milliseconds since the engine was made at which each start-up milestone was reached (QA probe). */
+  readonly milestones: Record<string, number> = {}
+  private born = performance.now()
+  private baker: FieldBaker
+  private compiled = false
+  private compiling = false
   quality: QualityName
 
   constructor(
@@ -221,6 +254,7 @@ export class RoomEngine {
       depthWrite: false,
       uniforms: { tColor: { value: null }, tRead: { value: this.readTex }, uDebug: { value: 0 }, uDither: { value: 1 / 255 } },
     })
+    this.baker = new FieldBaker(this.pause)
     this.makeTargets()
     for (const [scene, mat, order] of [[this.frameScene, this.blitMat, FRAME_ORDER.room], [this.outScene, this.outMat, 0]] as const) {
       const m = new THREE.Mesh(this.quad, mat)
@@ -274,10 +308,16 @@ export class RoomEngine {
     if (!this.disposed) this.options.onContextRestored?.()
   }
 
-  /** An idle slice, or an abort if the engine was torn down meanwhile. */
+  /** A yield, or an abort if the engine was torn down meanwhile. */
   private pause = async () => {
-    await idle()
+    await yieldTask()
     if (this.disposed) throw new Aborted()
+  }
+
+  private mark(name: string) {
+    if (this.milestones[name] !== undefined) return
+    this.milestones[name] = Math.round(performance.now() - this.born)
+    try { performance.mark(`room:${name}`) } catch { /* marks are a courtesy */ }
   }
 
   private lap(key: string, since: number) {
@@ -289,17 +329,17 @@ export class RoomEngine {
 
   /** The procedural sheets, each in its own idle slice. */
   private async boot() {
-    await idle()
+    await yieldTask()
     if (this.disposed) return
     let t = performance.now()
     const detail = createDetailTexture(256, ROOM_CONFIG.seed)
     t = this.lap('detail', t)
-    await idle()
+    await yieldTask()
     if (this.disposed) return detail.dispose()
     t = performance.now()
     this.atlas = createLeafAtlas(ATLAS_SEED)
     t = this.lap('leafAtlas', t)
-    await idle()
+    await yieldTask()
     if (this.disposed) return
     t = performance.now()
     const M = ROOM_CONFIG.moss
@@ -315,37 +355,30 @@ export class RoomEngine {
     u.tMossAlbedo.value = moss.albedo
     u.tMossData.value = moss.data
     this.booted = true
+    this.mark('booted')
   }
 
-  /** The hall and its plan of growth for a layout class, in stages. */
+  /** The hall and its plan of growth for a layout class, in stages (see START-UP, IN PARALLEL). */
   private async rebuild(comp: Composition) {
-    await idle()
+    await yieldTask()
     if (this.disposed) return
     let t = performance.now()
     const arch = buildArchitecture(comp.plan, ROOM_CONFIG.seed)
     const relief = new WallRelief(comp.plan, arch)
     t = this.lap('architecture', t)
-    await idle()
+    // The fields go to the worker now and come back while the rest is made.
+    const baking = this.baker.bake(comp.plan, arch.levels.soffit, comp.camera.distance, ROOM_CONFIG.seed)
+    await yieldTask()
     if (this.disposed) return arch.geometry.dispose()
     t = performance.now()
     const plan = buildBotany(comp.plan, relief, ROOM_CONFIG.seed)
     const litter = buildLitter(comp.plan, ROOM_CONFIG.seed, ROOM_CONFIG.weather.litter)
     t = this.lap('botany', t)
-    await idle()
-    if (this.disposed) return arch.geometry.dispose()
-    t = performance.now()
-    let fields: SurfaceFields
-    try {
-      fields = await buildSurfaceFields(comp.plan, arch.levels.soffit, comp.camera.distance, ROOM_CONFIG.seed, this.pause)
-    } catch (e) {
-      arch.geometry.dispose()
-      if (e instanceof Aborted) return
-      throw e
-    }
-    this.lap('fields', t)
-    // Swap in the new hall in one step.
+    // Swap in the new hall in one step — without its fields yet: the
+    // light needs only the geometry, so it starts gathering now.
     this.disposeBuilt()
-    this.built = { comp, arch, relief, plan, fields, litter }
+    const built: Built = { comp, arch, relief, plan, fields: null, litter }
+    this.built = built
     const q = ROOM_CONFIG.quality[this.quality]
     this.cache = new LightingCache(this.renderer, arch.geometry, q, this.floatable)
     this.roomMesh = new THREE.Mesh(arch.geometry, this.roomMat)
@@ -358,13 +391,82 @@ export class RoomEngine {
     const u = this.roomMat.uniforms
     const s = comp.plan.slab
     u.uSlab.value.set(s, -Math.ceil(comp.plan.width / 2 / s) * s, 0)
+    u.uSoffitH.value = arch.levels.soffit
+    this.dirtyPlants = true
+    this.needsRelight = true
+    this.mark('hall')
+    this.options.onBuilt?.()
+    // The procedural sheets (first time only), then the plants' buffers.
+    if (!this.booted) await this.boot()
+    if (this.disposed || this.built !== built) return
+    await yieldTask()
+    if (this.disposed || this.built !== built) return
+    this.prepareVegetation()
+    // Programs compile while the fields are still being baked.
+    void this.compileAll()
+    let raw
+    try {
+      t = performance.now()
+      raw = await baking
+      this.lap('fields', t)
+    } catch (e) {
+      if (e instanceof Aborted) return
+      throw e
+    }
+    if (this.disposed || this.built !== built) return
+    const fields = fieldsToTextures(raw)
+    built.fields = fields
     u.tWallField.value = fields.wall
     u.tFloorField.value = fields.floor
     u.tWeather.value = fields.weather
     u.uWallRect.value.copy(fields.wallRect)
-    u.uSoffitH.value = arch.levels.soffit
     u.uFloorRect.value.copy(fields.floorRect)
-    this.dirtyPlants = true
+    this.dirtyRoom = true
+    this.mark('fields')
+  }
+
+  /** The plants' buffers for this hall and tier (pruning comes later, against the copy). */
+  private prepareVegetation() {
+    const b = this.built
+    if (!b || !this.atlas || this.vegetation) return
+    const t0 = performance.now()
+    const q = ROOM_CONFIG.quality[this.quality]
+    this.vegetation = new Vegetation(b.plan, b.litter, this.atlas, this.vegUniforms, q)
+    this.vegetation.setWild(this.takeover > 0)
+    for (const m of this.vegetation.meshes) this.frameScene.add(m)
+    this.lap('vegetation', t0)
+    this.compiled = false
+  }
+
+  /** Every program the first frame will use, compiled before it is drawn (in parallel where the driver can). */
+  private async compileAll() {
+    if (this.compiling || this.compiled || this.disposed) return
+    this.compiling = true
+    const t0 = performance.now()
+    try {
+      // Each scene is compiled for the target it is drawn into: the two
+      // passes render to linear float targets, the last one to the
+      // canvas, and a program compiled for the wrong one is simply
+      // compiled again at the first draw.
+      const r = this.renderer
+      const previous = r.getRenderTarget()
+      r.setRenderTarget(this.roomRT)
+      const room = r.compileAsync(this.roomScene, this.camera)
+      r.setRenderTarget(this.frameRT)
+      const frame = r.compileAsync(this.frameScene, this.camera)
+      r.setRenderTarget(null)
+      const out = r.compileAsync(this.outScene, this.camera)
+      r.setRenderTarget(previous)
+      await Promise.all([room, frame, out])
+      this.compiled = true
+      this.lap('compile', t0)
+      this.mark('compiled')
+    } catch {
+      // Compiling at first draw instead is slower, never wrong.
+      this.compiled = true
+    } finally {
+      this.compiling = false
+    }
   }
 
   /** Bring the hall in line with the viewport, one job at a time. */
@@ -388,15 +490,12 @@ export class RoomEngine {
   }
 
   private async sync() {
-    if (!this.booted) await this.boot()
     if (this.disposed) return
     const comp = compositionFor(this.width, this.height)
-    if (!this.built || comp.id !== this.built.comp.id) {
-      await this.rebuild(comp)
-      if (this.disposed) return
-      this.options.onBuilt?.()
-    }
-    this.needsRelight = true
+    // A new layout class: a new hall (which asks for its own light).
+    // The same class at a new size: the same hall, relit for it.
+    if (!this.built || comp.id !== this.built.comp.id) await this.rebuild(comp)
+    else this.needsRelight = true
   }
 
   /* ---- inputs ---------------------------------------------------- */
@@ -660,14 +759,8 @@ export class RoomEngine {
   private replant() {
     const b = this.built
     if (!b || !this.atlas) return
-    const t0 = performance.now()
-    if (!this.vegetation) {
-      const q = ROOM_CONFIG.quality[this.quality]
-      this.vegetation = new Vegetation(b.plan, b.litter, this.atlas, this.vegUniforms, q)
-      this.vegetation.setWild(this.takeover > 0)
-      for (const m of this.vegetation.meshes) this.frameScene.add(m)
-      this.lap('vegetation', t0)
-    }
+    if (!this.vegetation) this.prepareVegetation()
+    if (!this.vegetation) return
     const field = this.reading
     const cam = this.camera
     const ty = Math.tan(THREE.MathUtils.degToRad(cam.fov / 2))
@@ -716,9 +809,21 @@ export class RoomEngine {
     }
     this.time += dt
     if (!this.cache.complete) {
-      this.cache.step(8, this.samplesPerFrame)
+      // Before the first frame nothing else is being drawn: the light
+      // may take a larger share of each frame and arrive sooner.
+      const first = !this.readyFired
+      this.cache.step(first ? 12 : 8, first ? Math.round(this.samplesPerFrame * 1.6) : this.samplesPerFrame)
       if (!this.cache.complete) return false
+      this.mark('light')
       this.dirtyRoom = true
+    }
+    // The first frame waits for every part of the finished room — the
+    // fields, the sheets, the plants pruned around the measured copy —
+    // so what appears first is what stays.
+    if (!this.readyFired && (!this.built.fields || !this.booted || !this.reading || !this.vegetation)) return false
+    if (!this.readyFired && !this.compiled) {
+      void this.compileAll()
+      if (this.compiling) return false
     }
     if (this.dirtyPlants) this.replant()
     // Ambient air, capped in rate, only where something can move, and
@@ -763,6 +868,7 @@ export class RoomEngine {
     this.draws++
     if (!this.readyFired) {
       this.readyFired = true
+      this.mark('ready')
       this.options.onReady?.()
     }
     return true
@@ -788,6 +894,7 @@ export class RoomEngine {
       fovY: +this.camera.fov.toFixed(2),
       lost: this.lost,
       draws: this.draws,
+      milestones: this.milestones,
       timings: this.timings,
       gpu: {
         geometries: this.renderer.info.memory.geometries,
@@ -803,9 +910,9 @@ export class RoomEngine {
     if (this.depthMesh) this.frameScene.remove(this.depthMesh)
     this.dropVegetation()
     this.built.arch.geometry.dispose()
-    this.built.fields.wall.dispose()
-    this.built.fields.floor.dispose()
-    this.built.fields.weather.dispose()
+    this.built.fields?.wall.dispose()
+    this.built.fields?.floor.dispose()
+    this.built.fields?.weather.dispose()
     this.cache?.dispose()
     this.cache = null
     this.built = null
@@ -817,6 +924,7 @@ export class RoomEngine {
     this.canvas.removeEventListener('webglcontextlost', this.onLost, false)
     this.canvas.removeEventListener('webglcontextrestored', this.onRestored, false)
     this.disposeBuilt()
+    this.baker.dispose()
     for (const m of [this.roomMat, this.depthMat, this.blitMat, this.outMat]) m.dispose()
     this.roomRT.dispose()
     this.frameRT.dispose()

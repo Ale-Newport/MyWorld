@@ -1,4 +1,8 @@
 import { z } from 'zod'
+import { isSafeHref, isSafeSrc } from './safe.ts'
+import { MOTION_COMPONENTS } from './motion.ts'
+
+export { MOTION_COMPONENTS }
 
 /* ============================================================
    THE SITE DOCUMENT — schema v1
@@ -34,17 +38,10 @@ const shortText = z.string().max(400)
 const longText = z.string().max(20_000)
 
 /** A URL a visitor may follow: http(s), mailto, tel, or a site-relative path. Never javascript: or data:. */
-export const safeHref = z.string().max(2000).refine((v) => {
-  if (v === '' || v.startsWith('/') || v.startsWith('#')) return !v.startsWith('//')
-  try {
-    return ['http:', 'https:', 'mailto:', 'tel:'].includes(new URL(v).protocol)
-  } catch {
-    return false
-  }
-}, 'Links must be http(s), mailto:, tel: or a path on this site')
+export const safeHref = z.string().max(2000).refine(isSafeHref, 'Links must be http(s), mailto:, tel: or a path on this site')
 
 /** Media the site may load: site-relative, or https. */
-export const safeSrc = z.string().max(2000).refine((v) => v === '' || (v.startsWith('/') && !v.startsWith('//')) || v.startsWith('https://'), 'Use an uploaded file, a site path or an https URL')
+export const safeSrc = z.string().max(2000).refine(isSafeSrc, 'Use an uploaded file, a site path or an https URL')
 
 const color = z.string().max(64).regex(/^(#[0-9a-f]{3,8}|rgba?\([\d\s.,%]+\)|hsla?\([\d\s.,%deg]+\)|var\(--[a-z0-9-]+\)|transparent|currentColor|inherit)$/i, 'Use a hex, rgb(), hsl() or var(--token) colour')
 /** CSS lengths the editor writes: numbers with units, keywords and clamp()/min()/max()/calc() of those. */
@@ -199,7 +196,6 @@ export const techNode = z.object({
   showNames: z.boolean().optional(),
 })
 
-export const MOTION_COMPONENTS = ['ChessMotion', 'StockMotion', 'ThreeBodyMotion', 'VpnMotion', 'GymMotion', 'FocusMotion', 'KeyframesMotion', 'LabyrinthMotion', 'PrimesMotion', 'VoxelMotion', 'CardsMotion', 'DotsBoxesMotion', 'TrainingMotion', 'CatanMotion', 'VideoPlayerMotion', 'WebsiteMotion', 'LibraryMotion', 'JobBoardMotion', 'GenericProjectMotion'] as const
 
 export const projectSection = z.object({
   id,
