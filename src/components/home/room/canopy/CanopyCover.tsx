@@ -163,8 +163,19 @@ export function CanopyCover({ initial = 0, budget = 1, reduced = false, partScal
       s.renderer = r
       r.applyCharge(s.charge)
       void r.setView(view(), pause)
+      // Read-only probe for the QA scripts: when the canopy was made and when it could first draw.
+      const madeAt = performance.now()
+      ;(window as unknown as { __canopy?: () => unknown }).__canopy = () => ({ madeAt, ready: r.ready, readyAt: r.readyAt, lost: r.lost })
     }
-    const idleId = window.setTimeout(make, 0)
+    /* The context and the plan are made in an idle moment: the cover is
+       mounted (at no charge, invisible) a chapter before the foot, so
+       there is time to wait for one rather than take a frame from the
+       scroll. An arrival that needs it at once (a link into the world)
+       gets it within a few frames regardless. */
+    const win = window as IdleWindow
+    const idleId = typeof win.requestIdleCallback === 'function'
+      ? win.requestIdleCallback(() => make(), { timeout: 120 })
+      : window.setTimeout(make, 0)
 
     let timer = 0
     const onResize = () => {
@@ -192,7 +203,8 @@ export function CanopyCover({ initial = 0, budget = 1, reduced = false, partScal
 
     return () => {
       disposed = true
-      window.clearTimeout(idleId)
+      if (typeof win.requestIdleCallback === 'function') (win as IdleWindow & { cancelIdleCallback: (h: number) => void }).cancelIdleCallback(idleId)
+      else window.clearTimeout(idleId)
       window.clearTimeout(retry)
       window.clearTimeout(timer)
       window.removeEventListener('resize', onResize)

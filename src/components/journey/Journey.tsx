@@ -7,7 +7,6 @@ import { Hud } from '@/components/navigation/Hud'
 import { IndexOverlay } from '@/components/navigation/IndexOverlay'
 import { Cursor } from '@/components/ui/Cursor'
 import { ProjectOverlay } from '@/components/ui/ProjectOverlay'
-import { Vegetation } from '@/components/vegetation/Vegetation'
 import { useJourney } from '@/state/journey'
 import { useSound } from '@/hooks/useSound'
 import { useEasterEggs } from '@/hooks/useEasterEggs'
@@ -34,6 +33,11 @@ const HomeRoom = dynamic(
   () => import('@/components/home/room/HomeRoom').then((m) => m.HomeRoom),
   { ssr: false },
 )
+
+/* The projects journey's sprig sheet: its own chunk, so the homepage —
+   which never draws it — does not download it. Server-rendered on
+   /projects as before. */
+const Vegetation = dynamic(() => import('@/components/vegetation/Vegetation').then((m) => m.Vegetation))
 
 /* ============================================================
    THE CHAPTER REGISTRY

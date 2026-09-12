@@ -1,6 +1,6 @@
 import type { ComponentType } from 'react'
 import type { EffectProps } from './types'
-import { MOTION_COMPONENTS } from '@/cms/schema'
+import { MOTION_COMPONENTS } from '@/cms/motion'
 
 /* ============================================================
    EFFECT LOADERS — the only part of the library a public page

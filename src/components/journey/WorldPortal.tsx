@@ -94,7 +94,17 @@ const RELEASE_S = 0.35
     measured from the foot so `?quick` and a phone's address bar give
     the same answer. */
 const REVEAL_VH = 1.35
-/** Put the canopy (and its WebGL context) away after this long well away from the foot. */
+/** Viewport heights from the foot at which the canopy is PREPARED:
+    mounted at no charge (invisible, letting every click through), its
+    plants planned and its programs compiled in idle moments, so that
+    the leaves start on the very next frame once someone pushes — even
+    after a fast scroll straight to the foot. Roughly the start of the
+    last chapter. */
+const PREPARE_VH = 3.4
+/** On a device judged slow, put the prepared canopy (and its WebGL
+    context) away after this long well away from the foot; elsewhere it
+    is kept for the rest of the visit, so coming back to the foot finds
+    it ready again. */
 const PARK_MS = 4000
 
 /* ---- resistance -------------------------------------------
@@ -243,6 +253,20 @@ export function WorldPortal() {
     raf = requestAnimationFrame(settle)
     return () => cancelAnimationFrame(raf)
   }, [])
+
+  /* The canopy's code is fetched once the page has settled — a few
+     kilobytes, and the HOMEPAGE's own transition, never anything of
+     the world — so reaching the foot never waits on a download. */
+  useEffect(() => {
+    if (reducedMotion || !settings.options.worldEntrance) return
+    const w = window as Window & { requestIdleCallback?: (cb: () => void, o?: { timeout: number }) => number; cancelIdleCallback?: (h: number) => void }
+    const fetchCanopy = () => void import('@/components/home/room/canopy/CanopyCover').catch(() => {})
+    const timer = window.setTimeout(() => {
+      if (w.requestIdleCallback) w.requestIdleCallback(fetchCanopy, { timeout: 4000 })
+      else fetchCanopy()
+    }, 2500)
+    return () => window.clearTimeout(timer)
+  }, [reducedMotion, settings.options.worldEntrance])
 
   const leafCharge = settings.options.leafCharge
   const editing = useEditing()
@@ -438,19 +462,21 @@ export function WorldPortal() {
 
       /* ---- the approach ------------------------------------ */
       const reveal = overlaid() ? 0 : clamp(1 - remaining() / (vh * REVEAL_VH))
-      /* The canopy only exists near the foot: a WebGL context is not
-         something to carry through the whole journey. It is built on
-         the approach, so it is ready before anyone pushes. */
-      if (reveal > 0.02) {
+      /* The canopy only exists in the last chapter: a WebGL context is
+         not something to carry through the whole journey. It is
+         prepared well before the foot, so it is ready before anyone
+         pushes (see PREPARE_VH). */
+      const prepare = !overlaid() && remaining() < vh * PREPARE_VH
+      // The tier is read now, not subscribed to: a demotion in the
+      // middle of a push must not re-run (and reset) this gesture.
+      const low = (forcedTier() ?? useJourney.getState().performanceTier) === 'low'
+      if (prepare) {
         parkedSince = 0
         if (!isNear) {
           isNear = true
-          // The tier is read now, not subscribed to: a demotion in the
-          // middle of a push must not re-run (and reset) this gesture.
-          const low = (forcedTier() ?? useJourney.getState().performanceTier) === 'low'
           garden.show({ initial: 0, budget: low ? 0.6 : 1 })
         }
-      } else if (isNear) {
+      } else if (isNear && low) {
         parkedSince ||= performance.now()
         if (performance.now() - parkedSince > PARK_MS) {
           isNear = false
