@@ -1,6 +1,6 @@
 'use client'
 
-import type { TechNode } from '@/content/types'
+import type { ToolboxTech } from '@/cms/derive'
 import { techLogos } from '@/content/tech-logos'
 import styles from './tech-tile.module.css'
 
@@ -20,7 +20,8 @@ import styles from './tech-tile.module.css'
    ============================================================ */
 
 interface TechTileProps {
-  node: TechNode
+  /** With what it may show resolved: the section's settings and the tool's own override. */
+  node: ToolboxTech
   /** The technology currently previewed or pinned, if any. */
   active: string | null
   pinned: boolean
@@ -34,19 +35,23 @@ export function TechTile({ node, active, pinned, onPreview, onToggle }: TechTile
   const on = active === node.id
 
   /* The name leads, so the wall is navigable by name alone; the
-     evidence follows it, for anyone who can read neither the
-     count badge nor the dashed edge. */
-  const label = `${node.name} — ${count > 0 ? `${count} project${count === 1 ? '' : 's'}` : 'no public repository yet'}`
+     evidence follows it — when the tool shows its count at all —
+     for anyone who can read neither the badge nor the dashed edge.
+     A count the administrator switched off is not leaked through
+     the label, the tooltip or the plate either. */
+  const label = node.showCount ? `${node.name} — ${count > 0 ? `${count} project${count === 1 ? '' : 's'}` : 'no public repository yet'}` : node.name
 
+  /* Hovering, focusing or pinning a tile lifts THAT tile — its own
+     edge, colour and a small rise. The others keep exactly their
+     normal look: nothing on the wall is faded to make a point. */
   return (
     <button
       type="button"
       className={styles.tile}
       data-on={on}
       data-pinned={pinned}
-      data-dim={active !== null && !on}
       data-weight={node.weight}
-      data-evidence={count > 0}
+      data-evidence={node.showCount ? count > 0 : undefined}
       aria-pressed={pinned}
       aria-label={label}
       title={node.name}
@@ -70,7 +75,7 @@ export function TechTile({ node, active, pinned, onPreview, onToggle }: TechTile
             <HouseGlyph id={node.id} name={node.name} />
           )}
         </span>
-        {count > 0 && <span className={styles.count} aria-hidden="true">{count}</span>}
+        {node.showCount && count > 0 && <span className={styles.count} aria-hidden="true">{count}</span>}
       </span>
       <span className={styles.name}>{node.name}</span>
     </button>
