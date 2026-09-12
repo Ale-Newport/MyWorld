@@ -25,7 +25,6 @@
   color: var(--text-muted);
   transition:
     color var(--dur-mid) var(--ease-out-expo),
-    opacity var(--dur-fast) linear,
     transform var(--dur-mid) var(--ease-out-expo);
 }
 
@@ -136,11 +135,8 @@
   border-style: dashed;
 }
 
-.tile[data-dim='true'] { opacity: 0.26; }
-
 .tile:hover, .tile[data-on='true'] {
   color: var(--accent);
-  opacity: 1;
   transform: translateY(-2px);
 }
 .tile:hover .plate, .tile[data-on='true'] .plate { border-color: var(--accent); }
