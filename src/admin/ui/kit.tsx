@@ -51,7 +51,7 @@ export function PageHeader({ eyebrow, title, description, actions, tabs, compact
         <div className="a-pagehead-text">
           {eyebrow && <p className="a-label">{eyebrow}</p>}
           <h1 className="a-title">{title}</h1>
-          {description && <p className="a-sub">{description}</p>}
+          {description && <div className="a-sub">{description}</div>}
         </div>
         {actions && <div className="a-pagehead-actions">{actions}</div>}
       </div>
@@ -96,7 +96,7 @@ export function Panel({ title, description, actions, children, id }: { title: Re
       <header className="a-panel-head">
         <div>
           <h2 id={id ? `${id}-title` : undefined}>{title}</h2>
-          {description && <p className="a-sub">{description}</p>}
+          {description && <div className="a-sub">{description}</div>}
         </div>
         {actions}
       </header>

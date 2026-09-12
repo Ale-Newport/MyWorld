@@ -3,6 +3,7 @@
 import { useEffect } from 'react'
 import { useSiteStore } from './store/site'
 import { DraftBar } from './DraftBar'
+import { Loading, PageHeader } from './ui/kit'
 import { ColorInput, Field, MediaInput, SelectInput, StringList, TextInput, Toggle, newId } from './fields'
 import { safeHref } from '@/cms/schema'
 
@@ -20,7 +21,7 @@ import { safeHref } from '@/cms/schema'
 export function SettingsAdmin() {
   const { status, doc, load, apply } = useSiteStore()
   useEffect(() => { void load() }, [load])
-  if (status !== 'ready' || !doc) return <main className="a-page"><p className="a-sub">Loading…</p></main>
+  if (status !== 'ready' || !doc) return <main className="a-page"><Loading label="Loading the draft…" /></main>
   const s = doc.settings
   const world = s.navigation.findIndex((n) => n.id === 'world')
   const extra = s.navigation.map((n, i) => ({ n, i })).filter(({ n }) => n.id !== 'world')
@@ -28,14 +29,12 @@ export function SettingsAdmin() {
 
   return (
     <main className="a-page">
-      <header className="a-head">
-        <div>
-          <p className="a-label">Site</p>
-          <h1 className="a-title">Settings</h1>
-          <p className="a-sub">Part of the same draft as every other edit: save, then publish to apply them.</p>
-        </div>
-        <DraftBar />
-      </header>
+      <PageHeader
+        eyebrow="Site"
+        title="Settings"
+        description="Site-wide essentials. Part of the same draft as every other edit: save, then publish to apply them."
+        actions={<DraftBar />}
+      />
       <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(280px, 380px)', gap: 18, alignItems: 'start' }}>
         <div className="stack">
           <section className="card stack">

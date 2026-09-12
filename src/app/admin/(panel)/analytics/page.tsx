@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { PageHeader } from '@/admin/ui/kit'
 import { report } from '@/server/analytics'
 import { publishedSite } from '@/server/site'
 import { deriveSite } from '@/cms/derive'
@@ -73,14 +74,12 @@ export default async function Audience({ searchParams }: { searchParams: Promise
 
   return (
     <main className="a-page">
-      <header className="a-head">
-        <div>
-          <p className="a-label">Site</p>
-          <h1 className="a-title">Audience</h1>
-          <p className="a-sub">{from} – {to} · first-party, cookieless · {collecting ? 'collection is on' : <b>collection is off</b>} (<Link href="/admin/settings">Settings</Link>)</p>
-        </div>
-        <nav className="btn-group" aria-label="Period">{RANGES.map((x) => <Link key={x.days} href={`/admin/analytics?days=${x.days}`} className="btn btn-sm" aria-current={x.days === days ? 'page' : undefined} aria-pressed={x.days === days}>{x.label}</Link>)}</nav>
-      </header>
+      <PageHeader
+        eyebrow="Site"
+        title="Audience"
+        description={<>{from} – {to} · first-party, cookieless · {collecting ? 'collection is on' : <b>collection is off</b>} (<Link href="/admin/settings">Settings</Link>)</>}
+        actions={<nav className="a-seg" aria-label="Period">{RANGES.map((x) => <Link key={x.days} href={`/admin/analytics?days=${x.days}`} className="a-seg-link" aria-current={x.days === days ? 'page' : undefined}>{x.label}</Link>)}</nav>}
+      />
 
       <p className="notice" style={{ marginBottom: 16 }}>
         What is counted: page views and a few named events (journey progress, project opens, entering the world and how it loaded, the world map, world activities). Visits from signed-in administrators, the admin’s previews, automation and browsers asking not to be tracked are never recorded. <b>Visitors</b> are daily-unique estimates from a key that changes every day and cannot be reversed: someone returning tomorrow counts again, and people sharing a connection and browser count once.
