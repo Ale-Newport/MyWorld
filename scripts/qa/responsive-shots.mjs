@@ -10,7 +10,8 @@
 
      overflow   the document is wider than the viewport (a horizontal
                 scrollbar), with the widest offending elements
-     clipped    text boxes that leave the viewport horizontally
+     clipped    text boxes that leave the viewport horizontally (text in
+                a row that deliberately scrolls sideways is not counted)
 */
 import { chromium, firefox, webkit } from 'playwright'
 import fs from 'node:fs'
@@ -74,6 +75,10 @@ for (const w of WIDTHS) {
         if (!el || el.closest('[aria-hidden="true"], .sr-only')) continue
         const cs = getComputedStyle(el)
         if (cs.visibility === 'hidden' || Number(cs.opacity) === 0) continue
+        // A row that scrolls sideways on purpose (the filter chips on a phone) is not clipping.
+        let scroller = el.parentElement
+        while (scroller && !['auto', 'scroll'].includes(getComputedStyle(scroller).overflowX)) scroller = scroller.parentElement
+        if (scroller && scroller !== document.documentElement && scroller !== document.body) continue
         range.selectNodeContents(n)
         for (const r of range.getClientRects()) {
           if (r.width === 0 || r.bottom < 0 || r.top > innerHeight) continue

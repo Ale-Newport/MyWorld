@@ -52,7 +52,7 @@ export function About() {
           <TagRow items={[chapterById['about'].number, tag]} />
         </E>
 
-        <div className={`${styles.intro} ${shared.driven}`} ref={introRef} data-about-intro="">
+        <div className={`${styles.intro} ${shared.driven}`} ref={introRef} data-about-intro="" data-room-travel="0 2rem">
           <Reveal as="h2" mode="mask" className={styles.summary} id="about-title" attrs={{ ...summaryCms, 'data-length': lengthClass(profile.summary) }}>
             {profile.summary}
           </Reveal>
@@ -65,7 +65,7 @@ export function About() {
           </ul>
         </div>
 
-        <SectionAnimation section="about" className={styles.visual} reserve />
+        <SectionAnimation section="about" className={styles.visual} />
 
         <E cms="about.corner" as="div" kind="text" label="Corner note" className={`${shared.corner} ${shared.cornerBR} ${styles.corner}`}>
           THE PATH BELOW

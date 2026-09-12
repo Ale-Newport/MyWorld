@@ -103,7 +103,7 @@ export function Prelude() {
         <div className={styles.center}>
           {/* The document's single <h1> is the profile summary that ships
               in the SSR HTML; this is the visible chapter heading. */}
-          <E cms="prelude.name" as="h2" kind="container" label="Name" id="prelude-title" className={`${styles.name} ${shared.driven}`} ref={nameRef}>
+          <E cms="prelude.name" as="h2" kind="container" label="Name" id="prelude-title" data-room-travel="10vh 0" className={`${styles.name} ${shared.driven}`} ref={nameRef}>
             <E cms="prelude.name.first" kind="heading" label="Name — first line" className={styles.nameLine}>{firstName}</E>
             <E cms="prelude.name.last" kind="heading" label="Name — second line" className={styles.nameLine}>{rest.join(' ')}</E>
           </E>
@@ -121,7 +121,7 @@ export function Prelude() {
             {profile.roles.join(', ')}. {profile.summary}
           </p>
 
-          <E cms="prelude.thesis" as="p" label="Thesis" bind="profile.thesis" className={`${styles.thesis} ${shared.driven}`} ref={thesisRef}>
+          <E cms="prelude.thesis" as="p" label="Thesis" bind="profile.thesis" data-room-travel="0 1.6rem" className={`${styles.thesis} ${shared.driven}`} ref={thesisRef}>
             {profile.thesis}
           </E>
         </div>

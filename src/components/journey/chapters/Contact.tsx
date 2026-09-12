@@ -163,17 +163,17 @@ export function Contact() {
         </E>
 
         <div className={styles.center}>
-          <E cms="contact.question" as="p" kind="heading" label="Closing question" bind="profile.closing.question" className={`${styles.question} ${shared.driven}`} ref={questionRef} aria-hidden="true" data-safe="headline">
+          <E cms="contact.question" as="p" kind="heading" label="Closing question" bind="profile.closing.question" className={`${styles.question} ${shared.driven}`} ref={questionRef} aria-hidden="true" data-safe="headline" data-room-travel="3.2rem 2.4rem">
             {profile.closing.question}
           </E>
-          <p className={`${styles.answer} ${shared.driven}`} ref={answerRef} data-safe="headline">
+          <p className={`${styles.answer} ${shared.driven}`} ref={answerRef} data-safe="headline" data-room-travel="3.2rem 2.4rem">
             <Reveal as="span" mode="chars" className={styles.answerText} id="contact-title" attrs={answerCms}>
               {profile.closing.answer}
             </Reveal>
           </p>
         </div>
 
-        <E cms="contact.links" as="ul" kind="list" label="Contact links" className={styles.links} ref={linksRef} data-safe="">
+        <E cms="contact.links" as="ul" kind="list" label="Contact links" className={styles.links} ref={linksRef} data-safe="" data-room-travel="3.2rem 1.4rem" data-room-reserve="0">
           {contact.map((c, i) => {
             const pending = c.id === 'cv' && c.dataStatus === 'placeholder'
             const external = c.href.startsWith('http')

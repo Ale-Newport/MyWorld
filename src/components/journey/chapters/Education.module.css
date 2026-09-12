@@ -133,6 +133,26 @@
   .moduleBlurb { display: none; }
 }
 
+/* A phone on its side, or any very short window: the two cards stand
+   side by side again (there is width, not height), their modules
+   become a compact two-column list of names, and the credentials
+   line gives way. */
+@media (max-height: 560px) and (orientation: landscape) {
+  .stage { --stage-top: 4.5rem; --stage-bottom: 3.75rem; --stage-row-gap: 0.5rem; }
+  .title { font-size: clamp(1.3rem, 6vh, 2.2rem); }
+  .cards { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.75rem; }
+  .card { padding: 0.6rem 0.8rem; gap: 0.2rem; }
+  .institution { font-size: 1rem; }
+  .degree, .standing { font-size: var(--fs-nano); }
+  .moduleBlurb { display: none; }
+  .modules { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: var(--sp-3); }
+  .module { grid-template-columns: 18px minmax(0, 1fr); column-gap: 0.35rem; padding: 0.12rem 0; border-bottom: 0; }
+  .glyph { width: 18px; height: 18px; grid-row: auto; }
+  .glyph svg { width: 16px; height: 16px; }
+  .moduleName { font-size: var(--fs-nano); }
+  .foot { display: none; }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .head, .card, .foot, .module { opacity: 1 !important; transform: none !important; }
   .glyph { color: var(--leaf); }

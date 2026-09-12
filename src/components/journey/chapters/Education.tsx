@@ -85,14 +85,14 @@ export function Education() {
   return (
     <Chapter id="education" labelledBy="education-title">
       <div className={`${shared.stage} ${styles.stage}`}>
-        <E cms="education.head" as="div" kind="container" label="Heading block" className={`${styles.head} ${shared.driven}`} ref={headRef}>
+        <E cms="education.head" as="div" kind="container" label="Heading block" className={`${styles.head} ${shared.driven}`} ref={headRef} data-room-travel="0 1.4rem">
           <E cms="education.tag" kind="container" label="Chapter tag"><TagRow items={[chapterById['education'].number, tag, 'LONDON · 2023 — 2027']} /></E>
           <Reveal as="h2" mode="mask" className={styles.title} id="education-title" attrs={titleCms}>
             {title}
           </Reveal>
         </E>
 
-        <E cms="education.cards" as="div" kind="container" label="University cards" className={styles.cards} ref={cardsRef}>
+        <E cms="education.cards" as="div" kind="container" label="University cards" className={styles.cards} ref={cardsRef} data-room-travel="0 2.2rem" data-room-reserve="0">
           {[...education].sort(byStart).map((school, index) => {
             const id = school.id
             const at = `education.${education.indexOf(school)}`

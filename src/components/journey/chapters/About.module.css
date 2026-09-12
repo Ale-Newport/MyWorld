@@ -50,7 +50,7 @@
 }
 
 /* Below this the two regions stack: summary, then animation. */
-@media (max-width: 1023px), (max-aspect-ratio: 11/10) {
+@media (max-width: 700px), (max-aspect-ratio: 11/10) {
   .stage {
     --stage-rows: auto minmax(0, 1fr);
     --stage-row-gap: clamp(1.25rem, 4vh, 2.75rem);
@@ -68,6 +68,8 @@
 @media (max-height: 520px) and (orientation: landscape) {
   .stage { --stage-top: 5.5rem; --stage-bottom: 4.5rem; }
   .corner { display: none; }
+  .intro { grid-column: 1 / span 6; }
+  .visual { grid-column: 7 / span 6; }
 }
 
 @media (prefers-reduced-motion: reduce) {
