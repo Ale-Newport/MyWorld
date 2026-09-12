@@ -59,7 +59,7 @@ export function Universe() {
           </p>
         </E>
 
-        <E cms="universe.filters" as="div" kind="container" label="Filters" className={styles.filters} role="group" aria-label="Filter projects">
+        <E cms="universe.filters" as="div" kind="container" label="Filters" className={styles.filters} role="group" aria-label="Filter projects" data-room-reserve="0">
           {universeFilters.map((f) => (
             <button
               key={f.id}
@@ -77,7 +77,7 @@ export function Universe() {
           ))}
         </E>
 
-        <SectionAnimation section="universe" className={styles.visual} extra={extra} reserve />
+        <SectionAnimation section="universe" className={styles.visual} extra={extra} />
 
         <E cms="universe.footer" as="div" kind="container" label="Footer" className={styles.footer}>
           {/* The project under the pointer or focus takes the hint's

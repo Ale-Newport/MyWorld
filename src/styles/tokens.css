@@ -110,7 +110,9 @@
   --fs-h3:     clamp(1.5rem, 1.1rem + 1.6vw, 2.25rem);
   --fs-h2:     clamp(2.25rem, 1.4rem + 3.6vw, 4.5rem);
   --fs-h1:     clamp(3rem, 1.2rem + 8vw, 9rem);
-  --fs-mega:   clamp(3.4rem, 0.5rem + 13.2vw, 14rem);
+  /* Capped by the height as well as the width: a phone on its side
+     sets the name to fit its 390 px, not its 844. */
+  --fs-mega:   clamp(3rem, min(0.5rem + 13.2vw, 25vh), 14rem);
 
   --lh-tight:  0.86;
   --lh-snug:   1.06;
@@ -126,7 +128,16 @@
   --sp-5: 1.5rem;   --sp-6: 2rem;     --sp-7: 3rem;     --sp-8: 4rem;
   --sp-9: 6rem;     --sp-10: 8rem;    --sp-11: 12rem;   --sp-12: 16rem;
 
-  --gutter: clamp(1.25rem, 4vw, 4.5rem);
+  /* The page's composed width. Past it (ultrawide screens) the copy
+     stays a readable, centred composition and the extra width becomes
+     margin — the hall's side bays, where the ivy grows — instead of
+     stretching lines and scattering the corners across 3440 px.
+     Safe-area insets (a notch in landscape) are added on top. */
+  --frame-max: 1760px;
+  --gutter-base: clamp(1.25rem, 4vw, 4.5rem);
+  --gutter: max(var(--gutter-base), calc((100vw - var(--frame-max)) / 2));
+  --gutter-left: max(var(--gutter), calc(env(safe-area-inset-left, 0px) + 0.75rem));
+  --gutter-right: max(var(--gutter), calc(env(safe-area-inset-right, 0px) + 0.75rem));
   --measure: 34ch;
   --measure-wide: 52ch;
 

@@ -24,7 +24,17 @@ import { ROOM_CONFIG } from '../config'
    field from becoming one exclusion mask over the whole viewport.
 
    Measurement happens on real layout events — fonts loading, a
-   resize, chapters arriving — never per frame.
+   resize, chapters arriving, the copy changing — never per frame.
+
+   Copy that MOVES is measured with its whole range of movement:
+   an element carrying `data-room-travel="<up> <down>"` (CSS lengths,
+   e.g. "14vh 0" or "3.2rem 2.4rem") has every line inflated upward
+   and downward by that much, so growth keeps clear of every pose the
+   scroll can put it in, not only the one it had when measured.
+
+   The HUD's footer is read as a BAND, not as its words: the progress
+   row is reserved across the width of its content, so nothing grows
+   across the progress line between the chapter name and the count.
    ============================================================ */
 
 export interface ReadingBox {
@@ -83,9 +93,35 @@ export function settledRects(node: Text, range = document.createRange()): DOMRec
 }
 
 /** All text the home journey can show, in viewport px when pinned. */
+/** A CSS length in px: px, rem, em (of `el`), vh, svh, lvh, dvh. */
+function lengthPx(value: string, el: Element): number {
+  const m = /^(-?\d*\.?\d+)(px|rem|em|vh|svh|lvh|dvh)?$/.exec(value.trim())
+  if (!m) return 0
+  const n = Number(m[1])
+  switch (m[2]) {
+    case 'rem': return n * (parseFloat(getComputedStyle(document.documentElement).fontSize) || 16)
+    case 'em': return n * (parseFloat(getComputedStyle(el).fontSize) || 16)
+    case 'vh': case 'svh': case 'lvh': case 'dvh': return (n / 100) * window.innerHeight
+    default: return n
+  }
+}
+
+/** How far an element's copy travels up and down with the scroll (`data-room-travel`). */
+function travelOf(el: Element, cache: Map<Element, [number, number]>): [number, number] {
+  const host = el.closest<HTMLElement>('[data-room-travel]')
+  if (!host) return [0, 0]
+  const hit = cache.get(host)
+  if (hit) return hit
+  const [up = '0', down = '0'] = (host.dataset.roomTravel ?? '').split(/\s+/)
+  const t: [number, number] = [lengthPx(up, host), lengthPx(down, host)]
+  cache.set(host, t)
+  return t
+}
+
 export function measureReadingBoxes(root: ParentNode = document): ReadingBox[] {
   const boxes: ReadingBox[] = []
   const range = document.createRange()
+  const travel = new Map<Element, [number, number]>()
   const push = (node: Text, ox: number, oy: number, chapter: string, shifts: number[] = [0]) => {
     const el = node.parentElement
     if (!el || !node.textContent || !node.textContent.trim()) return
@@ -95,9 +131,10 @@ export function measureReadingBoxes(root: ParentNode = document): ReadingBox[] {
     const cs = getComputedStyle(el)
     if (cs.visibility === 'hidden' || cs.display === 'none') return
     const px = parseFloat(cs.fontSize) || 16
+    const [up, down] = travelOf(el, travel)
     for (const r of settledRects(node, range)) {
       if (r.width < 1 || r.height < 1) continue
-      for (const dy of shifts) boxes.push({ x: r.left - ox, y: r.top - oy + dy, w: r.width, h: r.height, px, chapter })
+      for (const dy of shifts) boxes.push({ x: r.left - ox, y: r.top - oy + dy - up, w: r.width, h: r.height + up + down, px, chapter })
     }
   }
   const sections = Array.from(root.querySelectorAll<HTMLElement>('#journey section[data-chapter]'))
@@ -128,6 +165,21 @@ export function measureReadingBoxes(root: ParentNode = document): ReadingBox[] {
     const walker = document.createTreeWalker(hud, NodeFilter.SHOW_TEXT)
     let n: Node | null
     while ((n = walker.nextNode())) push(n as Text, 0, 0, 'hud', footer?.contains(n) ? shifts : [0])
+    // The footer's row as one band, edge to edge of its content: the
+    // progress line has no words to measure, and nothing should grow
+    // across it.
+    for (const row of [footer]) {
+      if (!row) continue
+      let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity
+      for (const el of Array.from(row.querySelectorAll<HTMLElement>('a, button, span, p, [role="slider"]'))) {
+        const r = el.getBoundingClientRect()
+        if (r.width < 1 || r.height < 1 || getComputedStyle(el).visibility === 'hidden') continue
+        x0 = Math.min(x0, r.left); y0 = Math.min(y0, r.top); x1 = Math.max(x1, r.right); y1 = Math.max(y1, r.bottom)
+      }
+      if (!Number.isFinite(x0)) continue
+      const px = 12
+      for (const dy of row === footer ? shifts : [0]) boxes.push({ x: x0, y: y0 + dy, w: x1 - x0, h: y1 - y0, px, chapter: 'hud' })
+    }
     // A label whose words change with the chapter (the HUD's chapter
     // title) keeps the ground of its longest text, whatever it says when
     // the copy is measured: `data-room-reserve-text` names that text, and
