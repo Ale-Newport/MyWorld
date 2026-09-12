@@ -4,6 +4,8 @@ import Link from 'next/link'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { api } from './api'
 import { toast } from './toast'
+import { Dialog, Notice, PageHeader } from './ui/kit'
+import { Icon } from './ui/icons'
 
 interface Rev { id: string; createdAt: number; authorName: string | null; publishedAt: number | null }
 interface Draft { revision: string | null; head: { draft: Rev | null; published: Rev | null }; world: { url: string; sha: string; size: number }; assets: { url: string; sha: string; size: number } }
@@ -23,9 +25,10 @@ const hex = (b: ArrayBuffer) => [...new Uint8Array(b)].map((x) => x.toString(16)
    ============================================================ */
 export function WorldAdmin() {
   const frame = useRef<HTMLIFrameElement>(null)
-  const conflictDialog = useRef<HTMLDialogElement>(null)
-  const problemsDialog = useRef<HTMLDialogElement>(null)
   const fileInput = useRef<HTMLInputElement>(null)
+  const [dirty, setDirty] = useState(false)
+  const dirtyRef = useRef(false)
+  const [focus, setFocus] = useState(false)
   const [draft, setDraft] = useState<Draft | null>(null)
   const [ready, setReady] = useState(false)
   const [progress, setProgress] = useState('Opening the studio')
@@ -48,8 +51,9 @@ export function WorldAdmin() {
       if (d.type === 'archipelago:progress') setProgress(String(d.stage ?? ''))
       if (d.type === 'archipelago:ready') setReady(true)
       if (d.type === 'archipelago:error') { setProgress(`Error: ${d.message}`); toast(`The studio could not start: ${d.message}`, 'danger') }
-      if (d.type === 'archipelago:saved') { void refresh(); toast('World draft saved', 'ok') }
-      if (d.type === 'archipelago:conflict') { setConflict(String(d.message ?? 'Someone else saved this world.')); conflictDialog.current?.showModal() }
+      if (d.type === 'archipelago:saved') { void refresh(); setDirty(false); dirtyRef.current = false; toast('World draft saved', 'ok') }
+      if (d.type === 'archipelago:conflict') setConflict(String(d.message ?? 'Someone else saved this world.'))
+      if (d.type === 'archipelago:dirty') { const v = !!(d as { dirty?: boolean }).dirty; setDirty(v); dirtyRef.current = v }
     }
     window.addEventListener('message', onMessage)
     return () => window.removeEventListener('message', onMessage)
@@ -63,7 +67,6 @@ export function WorldAdmin() {
     try {
       const { problems } = await api<{ problems: Problem[] }>('/api/admin/world/validate')
       setProblems(problems)
-      problemsDialog.current?.showModal()
     } catch (e) { toast((e as Error).message, 'danger') } finally { setBusy(null) }
   }
   const publish = async () => {
@@ -113,51 +116,93 @@ export function WorldAdmin() {
     } catch (e) { toast((e as Error).message, 'danger') } finally { setBusy(null); if (fileInput.current) fileInput.current.value = '' }
   }
 
-  return (
-    <div style={{ display: 'grid', gridTemplateRows: 'auto minmax(0, 1fr)', height: '100vh' }}>
-      <header className="row" style={{ padding: '10px 14px', borderBottom: '1px solid var(--a-line)', background: 'var(--a-panel)', gap: 10 }}>
-        <div style={{ display: 'grid', gap: 2, marginRight: 8 }}>
-          <span className="a-label">World editor</span>
-          <b style={{ fontSize: 15 }}>Archipiélago</b>
-        </div>
-        {draft && (unpublished
-          ? <span className="badge" data-tone="accent" title={`Draft saved ${when(draft.head.draft?.createdAt)} by ${draft.head.draft?.authorName ?? '—'}`}>Draft not published · saved {when(draft.head.draft?.createdAt)}</span>
-          : <span className="badge" data-tone="ok">/world shows this draft</span>)}
-        {!ready && <span className="badge">{progress || 'Loading…'}</span>}
-        <span className="spacer" />
-        <button type="button" className="btn btn-sm" onClick={() => studio('archipelago:save')} disabled={!ready}>Save draft</button>
-        <button type="button" className="btn btn-sm" onClick={() => void validate()} disabled={busy !== null}>{busy === 'validate' ? 'Checking…' : 'Validate'}</button>
-        <button type="button" className="btn btn-sm" onClick={exportFiles} disabled={!draft} title="Download the draft world document and asset definitions">Export</button>
-        <button type="button" className="btn btn-sm" onClick={() => fileInput.current?.click()} disabled={busy !== null} title="Replace the draft with a world document exported from here or from HelloWorld">{busy === 'import' ? 'Importing…' : 'Import'}</button>
-        <input ref={fileInput} type="file" accept=".json,.gz,application/json,application/gzip" multiple hidden onChange={(e) => void importFiles(e.target.files)} />
-        <Link className="btn btn-sm" href="/admin/history">History</Link>
-        <a className="btn btn-sm" href="/world" target="_blank" rel="noreferrer">Open /world ↗</a>
-        <button type="button" className="btn btn-sm btn-accent" onClick={() => void publish()} disabled={busy !== null || !unpublished}>{busy === 'publish' ? 'Publishing…' : 'Publish world'}</button>
-      </header>
-      <iframe key={reloadKey} ref={frame} src="/admin/world-studio" title="World studio" style={{ width: '100%', height: '100%', border: 0, display: 'block', background: '#141b21' }} allow="fullscreen; gamepad" />
+  /* The studio reports whether it holds edits it has not saved yet
+     (`archipelago:dirty`); until it says, nothing is assumed. */
+  useEffect(() => {
+    const onLeave = (e: BeforeUnloadEvent) => { if (dirtyRef.current) e.preventDefault() }
+    window.addEventListener('beforeunload', onLeave)
+    return () => window.removeEventListener('beforeunload', onLeave)
+  }, [])
 
-      <dialog ref={conflictDialog} className="a-dialog" onClose={() => setConflict(null)}>
-        <div className="stack">
-          <h2 style={{ fontSize: 17, fontWeight: 600 }}>Someone else saved this world</h2>
-          <p className="a-sub">{conflict} Reload to continue from their version (your unsaved studio edits are lost), or overwrite their draft with yours.</p>
-          <div className="row">
-            <button type="button" className="btn" onClick={() => { conflictDialog.current?.close(); setReady(false); setReloadKey((k) => k + 1) }}>Reload their version</button>
-            <button type="button" className="btn btn-danger" onClick={() => { conflictDialog.current?.close(); studio('archipelago:save', { force: true }) }}>Overwrite with mine</button>
-          </div>
+  /* Full screen: the admin's navigation and this header step aside
+     for the canvas; the studio itself is never reloaded by it, so
+     nothing in progress is lost. Escape (outside the studio) or the
+     button in the corner brings everything back. */
+  useEffect(() => {
+    const shell = document.querySelector<HTMLElement>('.a-shell')
+    if (shell) shell.dataset.focus = focus ? 'true' : 'false'
+    if (!focus) return
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setFocus(false) }
+    window.addEventListener('keydown', onKey)
+    return () => {
+      window.removeEventListener('keydown', onKey)
+      if (shell) shell.dataset.focus = 'false'
+    }
+  }, [focus])
+
+  const draftState = !draft ? null : dirty ? 'Unsaved changes in the studio' : unpublished ? `Draft differs from the live world · saved ${when(draft.head.draft?.createdAt)}` : 'Live world is up to date'
+  const tone = dirty ? 'warn' : unpublished ? 'accent' : 'ok'
+
+  return (
+    <div className="wa" data-focus={focus || undefined}>
+      <div className="wa-head">
+        <PageHeader
+          compact
+          eyebrow="World"
+          title="Archipiélago"
+          description="The world's map, terrain, objects, places and activities. Save a draft, test-drive it, then publish."
+          actions={
+            <div className="a-publishbar" role="toolbar" aria-label="World draft">
+              {!ready && <span className="badge" role="status">{progress || 'Loading…'}</span>}
+              {draftState && <span className="badge" data-tone={tone} role="status" title={draft?.head.draft ? `Saved ${when(draft.head.draft.createdAt)} by ${draft.head.draft.authorName ?? '—'}` : undefined}>{draftState}</span>}
+              <details className="a-menu">
+                <summary className="btn btn-sm">More<Icon name="chevron" size={14} /></summary>
+                <div className="a-menu-list" role="menu">
+                  <button type="button" role="menuitem" onClick={() => void validate()} disabled={busy !== null}>{busy === 'validate' ? 'Checking…' : 'Check the draft'}</button>
+                  <button type="button" role="menuitem" onClick={exportFiles} disabled={!draft}>Export world files</button>
+                  <button type="button" role="menuitem" onClick={() => fileInput.current?.click()} disabled={busy !== null}>{busy === 'import' ? 'Importing…' : 'Import world files…'}</button>
+                  <Link role="menuitem" href="/admin/history?tab=world">World history</Link>
+                  <a role="menuitem" href="/world" target="_blank" rel="noreferrer">Open /world <Icon name="external" size={14} /></a>
+                </div>
+              </details>
+              <input ref={fileInput} type="file" accept=".json,.gz,application/json,application/gzip" multiple hidden onChange={(e) => void importFiles(e.target.files)} />
+              <button type="button" className="btn btn-sm" onClick={() => setFocus(true)} title="Give the canvas the whole window"><Icon name="expand" size={15} />Full screen</button>
+              <button type="button" className="btn" onClick={() => studio('archipelago:save')} disabled={!ready}>Save draft</button>
+              <button type="button" className="btn btn-accent" onClick={() => void publish()} disabled={busy !== null || !unpublished || dirty}>{busy === 'publish' ? 'Publishing…' : 'Publish world'}</button>
+            </div>
+          }
+        />
+      </div>
+      {focus && (
+        <div className="wa-focusbar" role="toolbar" aria-label="Full screen">
+          <button type="button" className="btn btn-sm" onClick={() => setFocus(false)}><Icon name="collapse" size={15} />Back to the admin</button>
+          {draftState && <span className="badge" data-tone={tone} role="status">{draftState}</span>}
+          <button type="button" className="btn btn-sm" onClick={() => studio('archipelago:save')} disabled={!ready}>Save draft</button>
         </div>
-      </dialog>
-      <dialog ref={problemsDialog} className="a-dialog">
-        <div className="stack">
-          <h2 style={{ fontSize: 17, fontWeight: 600 }}>Draft world checks</h2>
-          {problems && (problems.length === 0 ? <p className="notice" data-tone="ok">No problems: the draft can be published.</p> : (
-            <ul className="stack" style={{ paddingLeft: 18, margin: 0 }}>
-              {problems.map((p, i) => <li key={i} style={{ color: p.severity === 'error' ? 'var(--a-danger)' : 'var(--a-warn)' }}>{p.severity === 'error' ? 'Error' : 'Warning'}: {p.message}</li>)}
-            </ul>
-          ))}
-          <p className="a-sub">Checks run on the last saved draft. Save first if you have unsaved edits in the studio.</p>
-          <div className="row"><span className="spacer" /><button type="button" className="btn" onClick={() => problemsDialog.current?.close()}>Close</button></div>
-        </div>
-      </dialog>
+      )}
+      <iframe key={reloadKey} ref={frame} src="/admin/world-studio" title="World studio" className="wa-frame" allow="fullscreen; gamepad" />
+
+      <Dialog
+        open={conflict !== null}
+        onClose={() => setConflict(null)}
+        title="Someone else saved this world"
+        actions={<>
+          <button type="button" className="btn" onClick={() => { setConflict(null); setReady(false); setReloadKey((k) => k + 1) }}>Reload their version</button>
+          <button type="button" className="btn btn-danger" onClick={() => { setConflict(null); studio('archipelago:save', { force: true }) }}>Overwrite with mine</button>
+          <span className="spacer" />
+          <button type="button" className="btn btn-ghost" onClick={() => setConflict(null)}>Cancel</button>
+        </>}
+      >
+        <p className="a-sub">{conflict} Reload to continue from their version (your unsaved studio edits are lost), or overwrite their draft with yours.</p>
+      </Dialog>
+      <Dialog open={problems !== null} onClose={() => setProblems(null)} title="Draft world checks" actions={<><span className="spacer" /><button type="button" className="btn" onClick={() => setProblems(null)}>Close</button></>}>
+        {problems && (problems.length === 0 ? <Notice tone="ok">No problems: the draft can be published.</Notice> : (
+          <ul className="stack" style={{ paddingLeft: 18, margin: 0 }}>
+            {problems.map((p, i) => <li key={i} style={{ color: p.severity === 'error' ? 'var(--a-danger)' : 'var(--a-warn)' }}>{p.severity === 'error' ? 'Error' : 'Warning'}: {p.message}</li>)}
+          </ul>
+        ))}
+        <p className="a-sub">Checks run on the last saved draft. Save first if you have unsaved edits in the studio.</p>
+      </Dialog>
     </div>
   )
 }
