@@ -107,9 +107,9 @@
      padding is what reserves the colophon and the portal's rule;
      the top padding clears the corner chrome. */
   .stage {
-    grid-template-rows: 1fr auto;
-    padding-top: clamp(8rem, 17vh, 10rem);
-    padding-bottom: 9rem;
+    --stage-rows: 1fr auto;
+    --stage-top: clamp(8rem, 17vh, 10rem);
+    --stage-bottom: 9rem;
   }
   /* The 40vh floor is a desktop measure: here it would push the
      links out through the foot of the pinned stage. */

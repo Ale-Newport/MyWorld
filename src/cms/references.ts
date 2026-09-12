@@ -1,10 +1,11 @@
 import type { ElementNode, SiteDocument } from './schema'
 import { CHAPTER_IDS } from './chapters.ts'
+import { ANIMATION_BY_ID, isAnimatedSection } from '../sections/catalog.ts'
 
 /* Cross-reference checks the schema cannot express: unique ids
    and slugs, evidence pointing at real projects, sections that
-   exist, groups whose members exist. Run before every save and
-   again before publishing. */
+   exist, animations that belong to their section. Run before
+   every save and again before publishing. */
 
 export interface ReferenceProblem {
   path: string
@@ -40,6 +41,12 @@ export function validateSiteReferences(doc: SiteDocument): ReferenceProblem[] {
       if (sectionIds.has(s.id)) problems.push({ path: `journeys.${key}.sections.${i}`, message: `Section “${s.id}” appears twice` })
       sectionIds.add(s.id)
       if (s.kind === 'chapter' && !CHAPTER_IDS.includes(s.id as never)) problems.push({ path: `journeys.${key}.sections.${i}`, message: `“${s.id}” is not a chapter this site can render` })
+      if (s.animation) {
+        const option = ANIMATION_BY_ID[s.animation.id]
+        if (!isAnimatedSection(s.id)) problems.push({ path: `journeys.${key}.sections.${i}.animation`, message: `“${s.title}” has no choice of animation` })
+        else if (!option || option.section !== s.id) problems.push({ path: `journeys.${key}.sections.${i}.animation`, message: `“${s.animation.id}” is not one of the animations for “${s.title}”` })
+      }
+      if (s.toolbox && s.id !== 'toolbox') problems.push({ path: `journeys.${key}.sections.${i}.toolbox`, message: `Toolbox settings belong to the Tech Toolbox section, not “${s.title}”` })
     })
     if (!doc.journeys[key].sections.some((s) => !s.hidden)) problems.push({ path: `journeys.${key}`, message: `The ${key} page would have no visible sections` })
   }
@@ -50,9 +57,6 @@ export function validateSiteReferences(doc: SiteDocument): ReferenceProblem[] {
       if (elementIds.has(n.id)) problems.push({ path: `additions.${sectionId}`, message: `Two added elements share the id “${n.id}”` })
       elementIds.add(n.id)
     })
-  }
-  for (const sectionId of Object.keys(doc.groups)) {
-    if (!sectionIds.has(sectionId)) problems.push({ path: `groups.${sectionId}`, message: `A group belongs to a section that no longer exists (${sectionId})` })
   }
   return problems
 }

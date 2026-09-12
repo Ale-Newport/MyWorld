@@ -4,8 +4,7 @@
    bringing a ground of its own. */
 
 .stage {
-  align-content: center;
-  row-gap: clamp(1rem, 2.6vh, 2rem);
+  --stage-row-gap: clamp(1rem, 2.6vh, 2rem);
 }
 
 .head {

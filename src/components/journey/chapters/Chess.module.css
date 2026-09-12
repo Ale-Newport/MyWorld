@@ -113,9 +113,9 @@
      it takes whatever the words leave it, which is what keeps the
      column inside a stage that clips. */
   .stage {
-    padding-top: clamp(3.5rem, 6.5vh, 5rem);
-    grid-template-rows: auto minmax(9rem, 23rem) auto auto;
-    row-gap: var(--sp-4);
+    --stage-top: clamp(3.5rem, 6.5vh, 5rem);
+    --stage-rows: auto minmax(9rem, 23rem) auto auto;
+    --stage-row-gap: var(--sp-4);
   }
   .head, .visual, .pipeline, .metric {
     position: static;

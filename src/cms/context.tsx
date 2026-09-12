@@ -1,7 +1,6 @@
 'use client'
 
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
-import { compileStyles } from './css'
 import { deriveSite, type SiteContent } from './derive'
 import type { SiteDocument } from './schema'
 import { setJourneyContent } from '@/state/content'
@@ -14,7 +13,8 @@ import { setJourneyContent } from '@/state/content'
    imports from here. In the admin's live preview (Draft Mode plus
    a verified session, decided on the server) the provider also
    accepts documents posted by the editor in the parent frame, so
-   an edit shows up in the real page before it is saved.
+   an edit shows up in the real page before it is saved — the
+   preview IS the public renderer, never an approximation of it.
    ============================================================ */
 
 const SiteContext = createContext<SiteContent | null>(null)
@@ -41,24 +41,22 @@ export function SiteContentProvider({ doc, editing = false, children }: { doc: S
     return () => window.removeEventListener('message', onMessage)
   }, [editing])
 
-  /* The editor's selection layer, only inside the admin's frame. */
+  /* The editor can point at a section: the frame brings it into view.
+     Read-only — the preview never takes edits of its own. */
   useEffect(() => {
-    if (!editing || window.parent === window || !new URLSearchParams(window.location.search).has('cms-edit')) return
+    if (!editing || window.parent === window) return
     let dispose: (() => void) | undefined
     let cancelled = false
-    void import('./edit/bridge').then((m) => { if (!cancelled) dispose = m.startBridge() })
+    void import('./edit/preview').then((m) => { if (!cancelled) dispose = m.startPreviewLink() })
     return () => { cancelled = true; dispose?.() }
   }, [editing])
 
   const value = useMemo(() => deriveSite(live, { preview: editing }), [live, editing])
   // Non-React readers (the journey store, the canvas scenes) see the same content.
   useMemo(() => setJourneyContent(value), [value])
-  const css = useMemo(() => compileStyles(live, { editing }), [live, editing])
   return (
     <EditingContext.Provider value={editing}>
       <SiteContext.Provider value={value}>
-        {/* Every visual edit, compiled; values were validated against the schema. */}
-        {css && <style data-cms-styles="" dangerouslySetInnerHTML={{ __html: css }} />}
         {children}
       </SiteContext.Provider>
     </EditingContext.Provider>

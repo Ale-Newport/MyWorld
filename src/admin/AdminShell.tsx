@@ -10,7 +10,6 @@ const NAV: { group?: string; href: string; label: string; icon: string }[] = [
   { href: '/admin', label: 'Dashboard', icon: '◧' },
   { group: 'Content', href: '/admin/pages', label: 'Page editor', icon: '▤' },
   { href: '/admin/projects', label: 'Projects', icon: '▣' },
-  { href: '/admin/library', label: 'Animation library', icon: '✦' },
   { href: '/admin/world', label: 'World editor', icon: '◭' },
   { group: 'Site', href: '/admin/media', label: 'Media', icon: '▨' },
   { href: '/admin/analytics', label: 'Audience', icon: '◔' },

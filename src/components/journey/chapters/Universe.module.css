@@ -1,14 +1,29 @@
-.stage { align-content: center; }
+/* ============================================================
+   PROJECT UNIVERSE — four rows, no overlaps
+
+   Heading and filters share the top row on wide screens; the
+   animation has every pixel between them and the footer; the
+   footer holds the readout and the two ways onward. Nothing is
+   absolutely positioned except the list sheet, which covers the
+   whole stage on purpose when it is opened.
+   ============================================================ */
+
+.stage {
+  --stage-rows: auto minmax(0, 1fr) auto;
+  --stage-align: stretch;
+  --stage-row-gap: clamp(1rem, 2.6vh, 2rem);
+  --stage-top: clamp(5rem, 11vh, 7.5rem);
+  --stage-bottom: clamp(5.25rem, 11vh, 7rem);
+}
 
 .head {
-  position: absolute;
-  top: clamp(6rem, 15vh, 9rem);
-  left: var(--gutter);
+  grid-column: 1 / span 5;
+  grid-row: 1;
   display: flex; flex-direction: column; gap: var(--sp-3);
-  max-width: min(30ch, 44vw);
+  min-width: 0;
 }
 .title {
-  font-size: clamp(1.7rem, 1rem + 2.8vw, 3.4rem);
+  font-size: clamp(1.7rem, 1rem + 2.6vw, 3.4rem);
   font-weight: 500; letter-spacing: -0.042em; line-height: 0.92;
   white-space: pre-line;
 }
@@ -19,82 +34,73 @@
 }
 
 .filters {
-  position: absolute;
-  top: clamp(4.5rem, 10vh, 7rem);
-  right: var(--gutter);
+  grid-column: 6 / span 7;
+  grid-row: 1;
+  align-self: start;
+  justify-self: end;
   display: flex; flex-wrap: wrap; justify-content: flex-end;
   gap: 0.3rem;
-  max-width: min(420px, 52vw);
+  max-width: 34rem;
+  min-width: 0;
 }
 .filter {
   display: inline-flex; align-items: baseline; gap: 0.35rem;
+  min-height: 2rem;
   font-family: var(--font-mono); font-size: var(--fs-nano);
   letter-spacing: var(--tracking-label); text-transform: uppercase;
   border: var(--hair) solid var(--border);
-  padding: 0.32rem 0.5rem;
+  background: color-mix(in oklab, var(--bg-primary) 70%, transparent);
+  padding: 0.4rem 0.55rem;
   color: var(--text-muted);
+  white-space: nowrap;
   transition: color var(--dur-fast), border-color var(--dur-fast);
 }
 .filter:hover { color: var(--text-primary); border-color: var(--border-strong); }
 .filter[data-on='true'] { color: var(--accent); border-color: var(--accent); }
 .filterCount { color: var(--text-faint); font-size: 9px; }
 
-.label {
-  position: absolute;
-  left: 50%; top: 50%;
-  transform: translate(-50%, 3rem);
-  display: flex; flex-direction: column; align-items: center; gap: 0.3rem;
-  text-align: center;
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity var(--dur-fast) linear, transform var(--dur-mid) var(--ease-out-expo);
-  max-width: min(40ch, 80vw);
+.visual {
+  grid-column: 1 / -1;
+  grid-row: 2;
+  position: relative;
+  min-height: 0;
 }
-.label[data-on='true'] { opacity: 1; transform: translate(-50%, 2.2rem); }
+
+.footer {
+  grid-column: 1 / -1;
+  grid-row: 3;
+  display: flex; justify-content: space-between; align-items: flex-end; gap: var(--sp-4);
+  min-height: 2.75rem;
+}
+.readout { min-width: 0; flex: 1 1 auto; }
+.hint {
+  font-family: var(--font-mono); font-size: var(--fs-nano);
+  letter-spacing: var(--tracking-label); text-transform: uppercase; color: var(--text-faint);
+}
+.label { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.2rem 0.8rem; max-width: 70ch; }
 .labelName { font-size: var(--fs-lead); font-weight: 500; letter-spacing: -0.02em; }
 .labelMeta {
   font-family: var(--font-mono); font-size: var(--fs-nano);
   letter-spacing: var(--tracking-label); text-transform: uppercase;
 }
-.labelDesc { font-size: var(--fs-tiny); color: var(--text-muted); line-height: 1.4; }
+.labelDesc { flex-basis: 100%; font-size: var(--fs-tiny); color: var(--text-muted); line-height: 1.4; }
 
-.footer {
-  position: absolute;
-  left: var(--gutter); right: var(--gutter);
-  bottom: clamp(4.5rem, 11vh, 6.5rem);
-  display: flex; justify-content: space-between; align-items: flex-end; gap: var(--sp-4);
-}
-.hint {
-  font-family: var(--font-mono); font-size: var(--fs-nano);
-  letter-spacing: var(--tracking-label); text-transform: uppercase; color: var(--text-faint);
-}
 .listToggle {
+  min-height: 2.25rem;
   font-family: var(--font-mono); font-size: var(--fs-micro);
   letter-spacing: var(--tracking-label); text-transform: uppercase;
   border: var(--hair) solid var(--border-strong);
   padding: 0.45rem 0.8rem;
+  white-space: nowrap;
   transition: background var(--dur-fast), color var(--dur-fast);
 }
 .listToggle:hover { background: var(--text-primary); color: var(--bg-primary); }
 
-/* The doorway to the projects journey sits beside the list toggle
-   rather than replacing it: one opens the archive in place, the
-   other leaves for the long version. It is set as text with a rule
-   under it, not as a second box, so the pair reads as "or" rather
-   than as two equal buttons. */
-/* Raised out of the sheet's way. `.list` is `inset: 0` and comes
-   last in the stage, so when it opens it paints over this corner and
-   swallows the pointer there — the same interception as the closed
-   list below, mirrored: the constellation could not be reached with
-   the list shut, and with it open neither "Close list" nor the way
-   across to /projects could be, while Escape closes the project
-   overlay and not the drawer. A visitor who opened the archive had
-   no way back to it. `.footer` is positioned with `z-index: auto`
-   and so raises no stacking context of its own, which is what lets
-   one index here lift the two controls clear of the sheet without
-   also lifting the hint beside them — that line talks about
-   dragging a constellation nobody can see while the list is up. */
-.actions { position: relative; z-index: 1; display: flex; align-items: center; gap: var(--sp-3); }
+/* The doorway to the projects journey sits beside the list toggle:
+   one opens the archive in place, the other leaves for the long
+   version. Raised above the list sheet, which covers the stage
+   when it is open, so both stay reachable. */
+.actions { position: relative; z-index: 1; display: flex; align-items: center; gap: var(--sp-3); flex: none; }
 .cross {
   font-family: var(--font-mono); font-size: var(--fs-micro);
   letter-spacing: var(--tracking-label); text-transform: uppercase;
@@ -156,18 +162,47 @@
   color: var(--row-accent); text-align: right;
 }
 
-@media (max-width: 860px) {
+
+/* Tablets and below: heading, then the filters on a row of their
+   own (one line that scrolls sideways — wrapping would eat the
+   animation's height), then the animation, then the footer. */
+@media (max-width: 960px) {
+  .stage {
+    --stage-rows: auto auto minmax(0, 1fr) auto;
+    --stage-top: clamp(4.75rem, 10vh, 6.5rem);
+  }
+  .head { grid-column: 1 / -1; grid-row: 1; }
+  .filters {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    justify-self: stretch;
+    justify-content: flex-start;
+    flex-wrap: nowrap;
+    max-width: none;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    scrollbar-width: none;
+    margin-inline: calc(var(--gutter) * -1);
+    padding-inline: var(--gutter);
+    mask-image: linear-gradient(90deg, transparent 0, #000 var(--gutter), #000 calc(100% - var(--gutter)), transparent 100%);
+  }
+  .filters::-webkit-scrollbar { display: none; }
+  .visual { grid-row: 3; }
+  .footer { grid-row: 4; }
+}
+
+@media (max-width: 640px) {
+  .footer { flex-direction: column; align-items: stretch; gap: var(--sp-3); }
+  .actions { justify-content: space-between; }
+  .labelDesc { display: none; }
   .listItem { grid-template-columns: 3rem 1fr auto; }
   .listDesc { display: none; }
-  .footer { flex-direction: column; align-items: flex-start; }
-  /* Stack the filters under the heading — side by side they collide
-     on any phone, and the filter row is the useful control here. */
-  .head { position: absolute; top: clamp(4rem, 9vh, 6rem); left: var(--gutter); right: var(--gutter); max-width: none; }
-  .filters {
-    position: absolute;
-    top: clamp(11rem, 24vh, 14rem);
-    left: var(--gutter); right: var(--gutter);
-    justify-content: flex-start;
-    max-width: none;
-  }
+}
+
+/* A phone on its side has almost no height: the heading shrinks to
+   its tag and title, and the count line gives way. */
+@media (max-height: 520px) and (orientation: landscape) {
+  .stage { --stage-top: 4.25rem; --stage-bottom: 3.75rem; --stage-row-gap: 0.6rem; }
+  .count { display: none; }
+  .title { font-size: 1.5rem; }
 }

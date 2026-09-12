@@ -1,9 +1,9 @@
 'use client'
 
-import { Suspense, useRef, useState } from 'react'
+import { Suspense, useEffect, useRef, useState } from 'react'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import * as THREE from 'three'
-import { SceneManager } from '@/experience/scenes/SceneManager'
+import { SceneManager, scenesFor } from '@/experience/scenes/SceneManager'
 import { JourneyCamera } from '@/experience/camera/JourneyCamera'
 import { useJourney, frame } from '@/state/journey'
 import { detectDevice, createFpsWatchdog } from '@/lib/perf'
@@ -33,9 +33,39 @@ function FpsGovernor() {
   return null
 }
 
+/** One frame on demand whenever the set of mounted scenes changes, so a scene that leaves is cleared from the canvas. */
+function Settle({ live }: { live: boolean }) {
+  const invalidate = useThree((s) => s.invalidate)
+  useEffect(() => { invalidate() }, [live, invalidate])
+  return null
+}
+
+/* Handing the GPU over: on the way into /world the portal fires
+   `journey:leaving` once the leaves cover the page, and every frame
+   this canvas would still draw is one nobody sees. The context goes
+   back now rather than when React unmounts the tree a moment later,
+   so the world's renderer never waits on ours. */
+function ReleaseOnLeave() {
+  const gl = useThree((s) => s.gl)
+  useEffect(() => {
+    const leave = () => {
+      gl.dispose()
+      gl.getContext().getExtension('WEBGL_lose_context')?.loseContext()
+    }
+    window.addEventListener('journey:leaving', leave)
+    return () => window.removeEventListener('journey:leaving', leave)
+  }, [gl])
+  return null
+}
+
 export function GlobalCanvas() {
   const [device] = useState(() => detectDevice())
   const reducedMotion = useJourney((s) => s.reducedMotion)
+  /* The canvas only draws continuously while a scene is mounted
+     near the active chapter. Between them (most of the homepage,
+     which has one scene) it holds still instead of clearing an
+     empty full-screen frame sixty times a second over the room. */
+  const live = useJourney((s) => scenesFor(s.chapter, s.journeyId).length > 0)
   const [contextLost, setContextLost] = useState(false)
 
   return (
@@ -51,7 +81,7 @@ export function GlobalCanvas() {
           }}
           dpr={device.dpr}
           camera={{ position: [0, 0, 7], fov: 42, near: 0.1, far: 400 }}
-          frameloop={reducedMotion ? 'demand' : 'always'}
+          frameloop={reducedMotion || !live ? 'demand' : 'always'}
           onCreated={({ gl, scene }) => {
             // No tone mapping: this is a flat, editorial world, not a
             // photographic one, and ACES would pull the ground colour
@@ -75,6 +105,8 @@ export function GlobalCanvas() {
             })
           }}
         >
+          <Settle live={live} />
+          <ReleaseOnLeave />
           <JourneyCamera />
           <FpsGovernor />
           <ambientLight intensity={0.5} />
