@@ -5,7 +5,9 @@ import { useRouter } from 'next/navigation'
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { useSiteStore } from '../store/site'
 import { DraftBar } from '../DraftBar'
-import { DraftPreview, DEVICES, type Device } from '../DraftPreview'
+import type { Device } from '../DraftPreview'
+import { EditorFrame, PreviewPane } from '../ui/EditorFrame'
+import { Loading, PageHeader, Segmented, Tabs, WEBSITE_TABS } from '../ui/kit'
 import { ColorInput, Field, MediaInput, MediaPicker, NumberInput, SelectInput, StringList, TableEditor, TextInput, Toggle, emptyTable, newId } from '../fields'
 import { MOTION_COMPONENTS, safeHref, type Project, type ProjectSection } from '@/cms/schema'
 
@@ -40,9 +42,9 @@ function useDebounced<T>(value: T, ms: number): T {
 
 function Group({ title, children, actions }: { title: string; children: ReactNode; actions?: ReactNode }) {
   return (
-    <section className="card stack">
-      <div className="card-head" style={{ marginBottom: 0 }}><h2>{title}</h2>{actions}</div>
-      {children}
+    <section className="a-panel">
+      <header className="a-panel-head"><div><h2>{title}</h2></div>{actions}</header>
+      <div className="a-panel-body">{children}</div>
     </section>
   )
 }
@@ -51,7 +53,7 @@ export function ProjectEditor({ id }: { id: string }) {
   const router = useRouter()
   const { status, doc, load, apply } = useSiteStore()
   const [tab, setTab] = useState<Tab>('Content')
-  const [device, setDevice] = useState<Device>('desktop')
+  const [device, setDevice] = useState<Device>('laptop')
   const [view, setView] = useState<'page' | 'index' | 'home'>('page')
   useEffect(() => { void load() }, [load])
 
@@ -60,7 +62,7 @@ export function ProjectEditor({ id }: { id: string }) {
   const at = `projects[id=${id}]`
   const slug = useDebounced(project?.slug ?? '', 700)
 
-  if (status !== 'ready' || !doc) return <main className="a-page"><p className="a-sub">Loading…</p></main>
+  if (status !== 'ready' || !doc) return <main className="a-page"><Loading label="Loading the draft…" /></main>
   if (!project) {
     return (
       <main className="a-page">
@@ -81,24 +83,20 @@ export function ProjectEditor({ id }: { id: string }) {
   }
 
   const previewPath = view === 'page' ? `/projects/${slug || project.slug}` : view === 'index' ? '/projects' : '/'
-  return (
-    <div style={{ display: 'grid', gridTemplateRows: 'auto minmax(0, 1fr)', height: '100vh' }}>
-      <header className="row" style={{ padding: '12px 16px', borderBottom: '1px solid var(--a-line)', background: 'var(--a-panel)', gap: 12 }}>
-        <Link href="/admin/projects" className="btn btn-sm btn-ghost">← Projects</Link>
-        <div style={{ minWidth: 0 }}>
-          <p className="a-label">Project</p>
-          <h1 style={{ fontSize: 17, fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 360 }}>{project.title || 'Untitled'}</h1>
-        </div>
-        <span className="badge" data-tone={project.status === 'published' ? (project.hidden ? 'warn' : 'ok') : project.status === 'draft' ? 'warn' : ''}>{project.status}{project.status === 'published' && project.hidden ? ' · hidden' : ''}</span>
-        <span className="spacer" />
-        <DraftBar compact />
-      </header>
-      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(380px, 520px) minmax(0, 1fr)', minHeight: 0 }}>
-        <div style={{ overflow: 'auto', borderRight: '1px solid var(--a-line)', background: 'var(--a-bg)' }}>
-          <nav className="row" role="tablist" aria-label="Project fields" style={{ position: 'sticky', top: 0, zIndex: 2, padding: '10px 14px', background: 'var(--a-bg)', borderBottom: '1px solid var(--a-line)', gap: 4 }}>
-            {TABS.map((t) => <button key={t} type="button" role="tab" aria-selected={tab === t} className="btn btn-sm" onClick={() => setTab(t)}>{t}</button>)}
-          </nav>
-          <div className="stack" style={{ padding: 14 }}>
+  const header = (
+    <PageHeader
+      compact
+      eyebrow="Website · Project"
+      title={<span className="ed-title"><Link href="/admin/projects" className="ed-back" aria-label="All projects">←</Link>{project.title || 'Untitled'}<span className="badge" data-tone={project.status === 'published' ? (project.hidden ? 'warn' : 'ok') : project.status === 'draft' ? 'warn' : undefined}>{project.status}{project.status === 'published' && project.hidden ? ' · hidden' : ''}</span></span>}
+      actions={<DraftBar compact />}
+      tabs={<Tabs label="Website" tabs={WEBSITE_TABS} />}
+    />
+  )
+  const form = (
+    <div className="ce-form">
+      <nav className="ed-formtabs" role="tablist" aria-label="Project fields">
+        {TABS.map((t) => <button key={t} type="button" role="tab" aria-selected={tab === t} className="a-tab" onClick={() => setTab(t)}>{t}</button>)}
+      </nav>
             {tab === 'Content' && <>
               <Group title="Summary">
                 <TextInput path={`${at}.title`} label="Title" maxLength={400} />
@@ -178,26 +176,14 @@ export function ProjectEditor({ id }: { id: string }) {
               <StackEditor id={id} />
               <Group title="Other technologies"><StringList path={`${at}.technologies`} label="Technologies" addLabel="Add technology" hint="Names shown on the page that are not in the toolbox." /></Group>
             </>}
-          </div>
-        </div>
-
-        <div style={{ display: 'grid', gridTemplateRows: 'auto minmax(0, 1fr)', minHeight: 0 }}>
-          <div className="row" style={{ padding: '8px 12px', borderBottom: '1px solid var(--a-line)', background: 'var(--a-panel)' }}>
-            <div className="btn-group" role="group" aria-label="Preview">
-              <button type="button" className="btn btn-sm" aria-pressed={view === 'page'} onClick={() => setView('page')}>Project page</button>
-              <button type="button" className="btn btn-sm" aria-pressed={view === 'index'} onClick={() => setView('index')}>Listing</button>
-              <button type="button" className="btn btn-sm" aria-pressed={view === 'home'} onClick={() => setView('home')}>Homepage</button>
-            </div>
-            <span className="spacer" />
-            <div className="btn-group" role="group" aria-label="Device">
-              {(Object.keys(DEVICES) as Device[]).map((d) => <button key={d} type="button" className="btn btn-sm" aria-pressed={device === d} onClick={() => setDevice(d)}>{DEVICES[d].label}</button>)}
-            </div>
-            {project.status === 'published' && <a className="btn btn-sm" href={`/projects/${project.slug}`} target="_blank" rel="noreferrer">Live page ↗</a>}
-          </div>
-          <DraftPreview path={previewPath} device={device} edit={false} />
-        </div>
-      </div>
     </div>
+  )
+  return (
+    <EditorFrame
+      header={header}
+      form={form}
+      preview={<PreviewPane path={previewPath} device={device} onDevice={setDevice} tools={<Segmented<'page' | 'index' | 'home'> label="Show" size="sm" value={view} onChange={setView} options={[{ value: 'page', label: 'Project page' }, { value: 'index', label: 'Listing' }, { value: 'home', label: 'Homepage' }]} />} />}
+    />
   )
 }
 

@@ -44,6 +44,7 @@ export function Education() {
   const { education, credentials, chapterById } = useSite()
   const titleCms = useCms('education.title', { kind: 'heading', label: 'Title' })
   const title = useCmsText('education.title', 'Two universities,\none direction.')
+  const tag = useCmsText('education.tag', 'EDUCATION')
   const reducedMotion = useJourney((s) => s.reducedMotion)
   const headRef = useRef<HTMLDivElement>(null)
   const cardsRef = useRef<HTMLDivElement>(null)
@@ -85,7 +86,7 @@ export function Education() {
     <Chapter id="education" labelledBy="education-title">
       <div className={`${shared.stage} ${styles.stage}`}>
         <E cms="education.head" as="div" kind="container" label="Heading block" className={`${styles.head} ${shared.driven}`} ref={headRef}>
-          <E cms="education.tag" label="Chapter tag"><TagRow items={[chapterById['education'].number, 'EDUCATION', 'LONDON · 2023 — 2027']} /></E>
+          <E cms="education.tag" kind="container" label="Chapter tag"><TagRow items={[chapterById['education'].number, tag, 'LONDON · 2023 — 2027']} /></E>
           <Reveal as="h2" mode="mask" className={styles.title} id="education-title" attrs={titleCms}>
             {title}
           </Reveal>
