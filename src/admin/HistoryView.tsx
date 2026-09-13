@@ -80,10 +80,11 @@ export function HistoryView() {
       {tab === 'audit' ? (
         <section className="card">
           {!audit ? <p className="a-sub">Loading…</p> : audit.length === 0 ? <p className="empty">Nothing recorded yet.</p> : (
+            <div className="table-scroll">
             <table className="table">
               <thead><tr><th>When</th><th>What</th><th>Who</th><th>Detail</th></tr></thead>
               <tbody>{audit.map((a) => <tr key={a.id}><td className="a-mono">{when(a.at)}</td><td>{describeAction(a.action, a.docId)}</td><td>{a.actorName ?? '—'}</td><td className="a-sub">{a.detail ?? ''}</td></tr>)}</tbody>
-            </table>
+            </table></div>
           )}
         </section>
       ) : (
@@ -91,6 +92,7 @@ export function HistoryView() {
           {!data ? <p className="a-sub">Loading…</p> : data.revisions.length === 0 ? (
             <div className="empty"><b>No revisions yet</b>The {tab === 'site' ? 'site' : 'world'} is still the version that shipped with the code. The first save creates revision one from it.</div>
           ) : (
+            <div className="table-scroll">
             <table className="table">
               <thead><tr><th>Saved</th><th>By</th><th>Note</th><th>Size</th><th>State</th><th /></tr></thead>
               <tbody>
@@ -118,7 +120,7 @@ export function HistoryView() {
                   )
                 })}
               </tbody>
-            </table>
+            </table></div>
           )}
         </section>
       )}
