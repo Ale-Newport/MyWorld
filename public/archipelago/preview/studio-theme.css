@@ -1,0 +1,214 @@
+/* ============================================================
+   THE WORLD STUDIO, DRESSED AS THE ADMIN
+
+   Loaded only by the admin's embedded studio (src/server/world-
+   studio/studio.html, body.studio-admin), never by /world. The
+   studio's own sheets (style.css, map-editor.css, asset-studio.css)
+   are dark and stand-alone; inside /admin/world the studio is one
+   part of the admin, so it takes the admin's paper, ink and lines,
+   its Geist type, its buttons, fields, panels and dialogs. Every
+   rule is prefixed with `html body.studio-admin` so it outranks the
+   studio's rules — including the ones its scripts inject later.
+
+   The 3D viewport keeps its own colours: that is the world.
+
+   The admin header above the frame saves and publishes; the
+   studio's own brand and SAVE DRAFT button are therefore hidden
+   here. On narrow screens the asset library and the inspector
+   become drawers opened from the studio's header (studio-shell.js)
+   instead of squeezing the viewport into a strip.
+   ============================================================ */
+
+@font-face { font-family: 'Geist Admin'; src: url('../assets/fonts/Geist-Variable.woff2') format('woff2'); font-weight: 100 900; font-display: swap; }
+@font-face { font-family: 'Geist Mono Admin'; src: url('../assets/fonts/GeistMono-Variable.woff2') format('woff2'); font-weight: 100 900; font-display: swap; }
+
+html body.studio-admin {
+  --s-bg: #f4f2ee;
+  --s-panel: #fbfaf7;
+  --s-sunk: #ece9e2;
+  --s-ink: #1a1712;
+  --s-ink-2: #443d31;
+  --s-muted: #6b6253;
+  --s-faint: #9a917f;
+  --s-line: rgb(26 23 18 / 0.11);
+  --s-line-strong: rgb(26 23 18 / 0.24);
+  --s-accent: #bf4f27;
+  --s-ok: #2f6f5e;
+  --s-select: #2f6cd8;
+  background: var(--s-bg);
+  color: var(--s-ink);
+  font: 13px/1.45 'Geist Admin', -apple-system, 'Segoe UI', sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ---- controls ---------------------------------------------------- */
+html body.studio-admin button {
+  min-height: 30px;
+  padding: 0 11px;
+  border: 1px solid var(--s-line-strong);
+  border-radius: 8px;
+  background: var(--s-panel);
+  color: var(--s-ink);
+  font: 500 12px/1 'Geist Admin', sans-serif;
+  letter-spacing: 0;
+}
+html body.studio-admin button:hover { background: var(--s-sunk); }
+html body.studio-admin button:focus-visible { outline: 2px solid var(--s-select); outline-offset: 2px; }
+html body.studio-admin button.active,
+html body.studio-admin .primary { background: var(--s-ink) !important; border-color: var(--s-ink) !important; color: #fff; font-weight: 500; }
+html body.studio-admin input,
+html body.studio-admin select,
+html body.studio-admin textarea {
+  border: 1px solid var(--s-line-strong);
+  border-radius: 7px;
+  background: #fff;
+  color: var(--s-ink);
+  font: 12px 'Geist Admin', sans-serif;
+}
+html body.studio-admin input:focus,
+html body.studio-admin select:focus,
+html body.studio-admin textarea:focus { border-color: var(--s-select); box-shadow: 0 0 0 3px rgb(47 108 216 / 0.16); }
+html body.studio-admin input[type='checkbox'],
+html body.studio-admin input[type='range'] { accent-color: var(--s-ink); }
+html body.studio-admin .vector input,
+html body.studio-admin #asset-studio .studio-vector input { font: 11px 'Geist Mono Admin', ui-monospace, monospace; }
+
+/* ---- the studio's header ------------------------------------------ */
+html body.studio-admin header {
+  height: 52px;
+  gap: 14px;
+  padding: 0 12px;
+  border-bottom: 1px solid var(--s-line);
+  background: var(--s-panel);
+}
+html body.studio-admin header .brand,
+html body.studio-admin #save { display: none; }
+/* MAP · 3D EDIT · DRIVE as one segmented control. */
+html body.studio-admin header nav { gap: 2px; padding: 2px; border-radius: 9px; background: var(--s-sunk); }
+html body.studio-admin header nav button { min-height: 28px; border: 0; background: transparent; color: var(--s-muted); }
+html body.studio-admin header nav button:hover { color: var(--s-ink); background: transparent; }
+html body.studio-admin header nav button.active { background: var(--s-panel) !important; color: var(--s-ink) !important; border: 0 !important; box-shadow: 0 1px 2px rgb(0 0 0 / 0.12); }
+html body.studio-admin #choose-world { border-color: transparent; background: transparent; color: var(--s-ink-2); }
+html body.studio-admin .top-right { gap: 6px; }
+html body.studio-admin .top-right > button:nth-child(-n + 2) { font-size: 16px; padding: 0 10px; }
+
+/* ---- panels ------------------------------------------------------- */
+html body.studio-admin main { height: calc(100% - 52px - 27px); }
+html body.studio-admin aside { background: var(--s-panel); }
+html body.studio-admin #assets { border-right: 1px solid var(--s-line); }
+html body.studio-admin #inspector { border-left: 1px solid var(--s-line); }
+html body.studio-admin .panel-title,
+html body.studio-admin .map-heading,
+html body.studio-admin #asset-studio h3 { font: 500 10.5px/1.2 'Geist Mono Admin', ui-monospace, monospace; letter-spacing: 0.14em; text-transform: uppercase; color: var(--s-muted); }
+html body.studio-admin .panel-title button { min-height: 24px; font-size: 11px; }
+html body.studio-admin .asset { border: 1px solid var(--s-line); border-radius: 10px; background: #fff; }
+html body.studio-admin .asset:hover { border-color: var(--s-line-strong); }
+html body.studio-admin .asset img { background: var(--s-sunk); }
+html body.studio-admin .asset span { color: var(--s-ink); font-size: 11px; }
+html body.studio-admin .library-footer,
+html body.studio-admin .muted,
+html body.studio-admin .save-options,
+html body.studio-admin .save-options span,
+html body.studio-admin .map-help,
+html body.studio-admin .map-library-help { color: var(--s-faint); }
+html body.studio-admin details { border-bottom: 1px solid var(--s-line); }
+html body.studio-admin summary { color: var(--s-ink); font-size: 12.5px; font-weight: 600; }
+html body.studio-admin details label,
+html body.studio-admin .field,
+html body.studio-admin .map-field,
+html body.studio-admin #transform-fields small,
+html body.studio-admin #asset-studio .studio-field { color: var(--s-muted); font-size: 11.5px; }
+html body.studio-admin #empty-selection { color: var(--s-muted); }
+html body.studio-admin #empty-selection > div { color: var(--s-faint); }
+html body.studio-admin #empty-selection h3 { color: var(--s-ink); font-weight: 600; }
+html body.studio-admin .file-button,
+html body.studio-admin #asset-studio .studio-file { border: 1px solid var(--s-line-strong); border-radius: 8px; background: var(--s-panel); color: var(--s-ink); }
+
+/* ---- the viewport's floating controls ------------------------------ */
+html body.studio-admin #tools,
+html body.studio-admin #map-toolbar { border: 1px solid var(--s-line-strong); border-radius: 10px; background: color-mix(in oklab, var(--s-panel) 92%, transparent); box-shadow: 0 10px 26px -16px rgb(0 0 0 / 0.4); }
+html body.studio-admin #tools i { border-top-color: var(--s-line); }
+html body.studio-admin #tools button { border-color: transparent; background: transparent; }
+html body.studio-admin #tools button:hover { background: var(--s-sunk); }
+html body.studio-admin #tools button.active { background: var(--s-ink) !important; color: #fff !important; }
+html body.studio-admin #simulation button,
+html body.studio-admin #world-checks button { background: color-mix(in oklab, var(--s-panel) 92%, transparent); }
+html body.studio-admin #notice { border-radius: 9px; background: var(--s-ink); color: #fff; font-size: 13px; box-shadow: 0 10px 30px -12px rgb(0 0 0 / 0.45); }
+html body.studio-admin #loading { background: var(--s-bg); color: var(--s-ink); }
+html body.studio-admin #loading span { color: var(--s-muted); }
+html body.studio-admin .spinner { width: 18px; height: 18px; border: 2px solid var(--s-line-strong); border-top-color: var(--s-ink); }
+html body.studio-admin #map-panel,
+html body.studio-admin #reference-panel { border: 1px solid var(--s-line-strong); background: var(--s-panel); color: var(--s-ink); }
+html body.studio-admin #map-legend { color: var(--s-muted); }
+
+/* ---- the map editor's panels ---------------------------------------- */
+html body.studio-admin.map-editing #map-library,
+html body.studio-admin.map-editing #map-inspector { background: var(--s-panel); }
+html body.studio-admin #map-library { border-right: 1px solid var(--s-line); }
+html body.studio-admin #map-inspector { border-left: 1px solid var(--s-line); }
+html body.studio-admin #map-tabs button,
+html body.studio-admin .map-world-item,
+html body.studio-admin .map-place { border-color: var(--s-line); background: #fff; color: var(--s-ink); }
+html body.studio-admin .map-place img { background: var(--s-sunk); }
+html body.studio-admin .map-section-label,
+html body.studio-admin .map-world-item small,
+html body.studio-admin .map-transform label { color: var(--s-muted); }
+html body.studio-admin .map-layer button { color: var(--s-muted); }
+html body.studio-admin.map-editing #map-status { background: var(--s-ink); color: #fff; }
+
+/* ---- the asset studio (a full-screen editor of one asset) ------------ */
+html body.studio-admin #asset-studio { background: var(--s-bg); color: var(--s-ink); }
+html body.studio-admin #asset-studio .studio-top,
+html body.studio-admin #asset-studio aside,
+html body.studio-admin #asset-studio .studio-status { background: var(--s-panel); border-color: var(--s-line); color: var(--s-ink); }
+html body.studio-admin #asset-studio .studio-top strong { color: var(--s-ink); letter-spacing: 0.04em; }
+html body.studio-admin #asset-studio .studio-top small,
+html body.studio-admin #asset-studio .studio-tree-section,
+html body.studio-admin #asset-studio .studio-check,
+html body.studio-admin #asset-studio .studio-row,
+html body.studio-admin #asset-studio .studio-json-label,
+html body.studio-admin #asset-studio .studio-clips { color: var(--s-muted); }
+html body.studio-admin #asset-studio .studio-tree-row.selected { background: var(--s-sunk); }
+html body.studio-admin #asset-studio .studio-metadata,
+html body.studio-admin #asset-studio textarea { background: #fff; border: 1px solid var(--s-line); color: var(--s-ink-2); }
+
+/* ---- footer, dialogs --------------------------------------------------- */
+html body.studio-admin footer { border-top: 1px solid var(--s-line); background: var(--s-panel); color: var(--s-muted); font-size: 11px; }
+html body.studio-admin dialog { border: 1px solid var(--s-line-strong); border-radius: 14px; background: var(--s-panel); color: var(--s-ink); line-height: 1.6; box-shadow: 0 30px 80px -30px rgb(0 0 0 / 0.5); }
+html body.studio-admin dialog::backdrop { background: rgb(20 18 14 / 0.4); }
+html body.studio-admin dialog h2 { font-size: 17px; font-weight: 600; }
+html body.studio-admin #validation-list button { background: #fff; color: var(--s-ink); }
+
+/* ---- narrow screens: drawers instead of squeezed columns ------------- */
+html body.studio-admin .studio-drawer-toggle { display: none; }
+@media (max-width: 980px) {
+  html body.studio-admin .studio-drawer-toggle { display: inline-flex; align-items: center; }
+  html body.studio-admin main,
+  html body.studio-admin.map-editing main,
+  html body.studio-admin.clean-view main { grid-template-columns: minmax(0, 1fr) !important; position: relative; }
+  html body.studio-admin #assets,
+  html body.studio-admin #inspector,
+  html body.studio-admin.map-editing #map-library,
+  html body.studio-admin.map-editing #map-inspector {
+    position: absolute;
+    z-index: 20;
+    top: 0;
+    bottom: 0;
+    width: min(300px, 86vw);
+    display: none !important;
+    box-shadow: 0 20px 50px -20px rgb(0 0 0 / 0.45);
+  }
+  html body.studio-admin #assets,
+  html body.studio-admin.map-editing #map-library { left: 0; }
+  html body.studio-admin #inspector,
+  html body.studio-admin.map-editing #map-inspector { right: 0; }
+  html body.studio-admin.show-library:not(.map-editing) #assets,
+  html body.studio-admin.show-library.map-editing #map-library { display: flex !important; }
+  html body.studio-admin.show-inspector:not(.map-editing) #inspector,
+  html body.studio-admin.show-inspector.map-editing #map-inspector { display: block !important; }
+  html body.studio-admin.show-inspector.map-editing #map-inspector { display: flex !important; }
+  html body.studio-admin header { gap: 8px; overflow-x: auto; scrollbar-width: none; }
+  html body.studio-admin #export-glb,
+  html body.studio-admin #world-status,
+  html body.studio-admin #welcome { display: none; }
+}
