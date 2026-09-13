@@ -35,7 +35,7 @@ export function SettingsAdmin() {
         description="Site-wide essentials. Part of the same draft as every other edit: save, then publish to apply them."
         actions={<DraftBar />}
       />
-      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(280px, 380px)', gap: 18, alignItems: 'start' }}>
+      <div className="a-split">
         <div className="stack">
           <section className="card stack">
             <h2>Identity</h2>
