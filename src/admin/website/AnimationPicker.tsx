@@ -2,7 +2,7 @@
 
 import { useId } from 'react'
 import { useSiteStore } from '../store/site'
-import { Panel } from '../ui/kit'
+import { Panel, radioKeys } from '../ui/kit'
 import { Icon } from '../ui/icons'
 import { ABOUT_THUMBS } from '@/sections/about/thumbs'
 import { UNIVERSE_THUMBS } from '@/sections/universe/thumbs'
@@ -49,11 +49,11 @@ export function AnimationPicker({ section, journey, onPreview }: { section: Anim
       description="Plays beside the text, never over it. Pick one; the preview shows it on the real page."
       actions={<button type="button" className="btn btn-sm" onClick={onPreview}><Icon name="eye" size={15} />Show in preview</button>}
     >
-      <div className="ce-options" role="radiogroup" aria-label="Animation">
+      <div className="ce-options" role="radiogroup" aria-label="Animation" onKeyDown={radioKeys(options.map((o) => o.id), current.id, choose)}>
         {options.map((o) => {
           const on = o.id === current.id
           return (
-            <button key={o.id} type="button" role="radio" aria-checked={on} className="ce-option" onClick={() => choose(o.id)}>
+            <button key={o.id} type="button" role="radio" aria-checked={on} tabIndex={on ? 0 : -1} className="ce-option" onClick={() => choose(o.id)}>
               <span className="ce-option-thumb" aria-hidden="true">{THUMBS[o.id] ?? <span className="ce-option-blank" />}</span>
               <span className="ce-option-text">
                 <b>{o.name}{o.id === DEFAULT_ANIMATION[section] && <span className="badge">Default</span>}</b>
