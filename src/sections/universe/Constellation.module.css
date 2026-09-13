@@ -1,0 +1,164 @@
+/* ============================================================
+   PROJECT CONSTELLATION — a star chart printed on the wall
+   ============================================================ */
+
+.root {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  contain: layout paint style;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.lines {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+/* A constellation's name, set wide and faint like a chart's. */
+.cluster {
+  position: absolute;
+  left: 0;
+  top: 0;
+  font-family: var(--font-mono);
+  font-size: 9px;
+  line-height: 12px;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: var(--ink-4);
+  pointer-events: none;
+  text-shadow: 0 0 6px var(--bg-primary);
+  transition: color var(--dur-mid) var(--ease-out-expo);
+}
+.cluster[data-on] { color: var(--accent); }
+.cluster[data-off] { color: color-mix(in oklab, var(--ink-4) 40%, transparent); }
+
+/* ---- stars ------------------------------------------------------ */
+
+.star {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 26px;
+  height: 26px;
+  margin: -13px 0 0 -13px;
+  padding: 0;
+  border-radius: 50%;
+  will-change: transform, opacity;
+  -webkit-tap-highlight-color: transparent;
+}
+.star:focus-visible { outline: none; }
+.star[data-dim] { pointer-events: none; }
+.star[data-hot],
+.star:focus-visible { z-index: 2; }
+
+.inner {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transition: opacity 700ms var(--ease-out-expo), filter 700ms var(--ease-out-expo);
+}
+.star[data-dim] .inner {
+  opacity: 0.16;
+  filter: grayscale(1);
+}
+
+.dot {
+  position: absolute;
+  left: calc(var(--d) * -0.5);
+  top: calc(var(--d) * -0.5);
+  width: var(--d);
+  height: var(--d);
+  border-radius: 50%;
+  background: var(--tone);
+  transition: box-shadow var(--dur-mid) var(--ease-out-expo);
+}
+.star[data-tier='0'] .dot {
+  box-shadow:
+    0 0 0 2px color-mix(in oklab, var(--bg-primary) 85%, transparent),
+    0 0 16px 3px color-mix(in oklab, var(--tone) 50%, transparent);
+}
+.star[data-tier='1'] .dot { box-shadow: 0 0 9px 1px color-mix(in oklab, var(--tone) 40%, transparent); }
+.star[data-hot] .dot,
+.star:focus-visible .dot {
+  box-shadow:
+    0 0 0 3px var(--bg-primary),
+    0 0 0 4.5px var(--accent),
+    0 0 16px 3px color-mix(in oklab, var(--tone) 40%, transparent);
+}
+
+/* A bright star's four fine rays. */
+.spikes {
+  position: absolute;
+  left: -15px;
+  top: -15px;
+  width: 30px;
+  height: 30px;
+  background:
+    linear-gradient(var(--tone), var(--tone)) center / 1px 100% no-repeat,
+    linear-gradient(var(--tone), var(--tone)) center / 100% 1px no-repeat;
+  opacity: 0.5;
+  -webkit-mask: radial-gradient(circle, #000 18%, transparent 68%);
+  mask: radial-gradient(circle, #000 18%, transparent 68%);
+}
+
+.name {
+  position: absolute;
+  top: var(--ly);
+  left: var(--lx);
+  max-width: 190px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  line-height: 1.25;
+  color: var(--ink-2);
+  opacity: 0;
+  text-shadow: 0 0 2px var(--bg-primary), 0 0 8px var(--bg-primary);
+  text-decoration: underline;
+  text-decoration-color: transparent;
+  text-underline-offset: 3px;
+  text-decoration-thickness: 1px;
+  transition: opacity var(--dur-mid) var(--ease-out-expo), color var(--dur-fast) linear, text-decoration-color var(--dur-fast) linear;
+}
+.star[data-side='l'] .name {
+  left: auto;
+  right: calc(var(--d) * 0.5 + 5px);
+}
+.star[data-side='c'] .name {
+  left: 0;
+  transform: translateX(-50%);
+}
+.star[data-named] .name,
+.star[data-near] .name,
+.star[data-hot] .name,
+.star:focus-visible .name { opacity: 1; }
+
+.star[data-tier='0'] .name {
+  font-size: var(--t0);
+  font-weight: 500;
+  letter-spacing: -0.016em;
+  color: var(--ink);
+}
+.star[data-tier='1'] .name {
+  font-size: var(--t1);
+  font-weight: 450;
+}
+.star[data-tier='2'] .name {
+  font-family: var(--font-mono);
+  font-size: var(--t2);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+.star[data-hot] .name,
+.star:focus-visible .name {
+  color: var(--ink);
+  text-decoration-color: var(--accent);
+}
+.star[data-near]:not([data-hot]) .name { color: var(--ink); }
