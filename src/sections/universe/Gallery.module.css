@@ -215,7 +215,7 @@
   line-height: 1.02;
   letter-spacing: -0.03em;
   color: var(--ink);
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
   overflow: hidden;
   display: -webkit-box;
   -webkit-box-orient: vertical;
