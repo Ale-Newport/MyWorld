@@ -191,9 +191,14 @@
   white-space: nowrap;
   text-overflow: ellipsis;
 }
-/* Cells too narrow for any name: the mark alone, the name in the chapter's readout. */
-.root[data-tiny] .tile[data-size='s'] .title { display: none; }
-.root[data-tiny] .tile[data-size='s'] .type { justify-content: center; }
+/* Cells too narrow for a whole name: the first letters of it, small, and the
+   whole of it in the chapter's readout when the tile is pointed at or focused. */
+.root[data-tiny] .tile[data-size='s'] .type { padding: 0 3px 0 5px; }
+.root[data-tiny] .tile[data-size='s'] .title {
+  font-size: 8.5px;
+  letter-spacing: 0;
+  text-overflow: clip;
+}
 
 /* Small cells (a phone): no year, tighter type. */
 .root[data-small] .type { padding: 6px 7px 7px; gap: 3px; }
