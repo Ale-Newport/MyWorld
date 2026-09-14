@@ -296,7 +296,7 @@ function Gallery({ projects, visible, progress, active, reducedMotion, intensity
             >
               <span className={styles.mat}>
                 <Print p={f.p} fw={f.fw} mode={f.fw >= 150 && !model.compact ? 'words' : model.caption ? 'year' : 'title'} />
-                {shot && <Shot p={f.p} narrow={f.fw < 150} className={styles.shot} width={f.fw} height={f.fh} />}
+                {shot && <Shot p={f.p} narrow={f.fw < 260} className={styles.shot} width={f.fw} height={f.fh} />}
               </span>
               {model.caption && (
                 <span className={styles.caption}>
