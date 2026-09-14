@@ -142,11 +142,17 @@ for (const id of ONLY) {
     )
     await check(`${w}×${h} every listed project is a labelled button in the tab order`, id, async () => {
       const titles = await listTitles(page)
-      const labels = await page.$$eval(`${GROUP(id)} button:not([tabindex="-1"])`, (els) => els.map((e) => e.getAttribute('aria-label') ?? ''))
+      // Tabbable for real: not only tabindex, but nothing (hidden, inert, undisplayed) keeping focus out.
+      const buttons = await page.$$eval(`${GROUP(id)} button:not([tabindex="-1"])`, (els) =>
+        els.map((e) => ({ label: e.getAttribute('aria-label') ?? '', focusable: e.checkVisibility({ visibilityProperty: true }) && !e.closest('[inert]') && !e.disabled })),
+      )
+      const labels = buttons.map((b) => b.label)
       const missing = titles.filter((t) => !labels.some((l) => l.includes(t)))
+      const blocked = buttons.filter((b) => !b.focusable)
       if (!titles.length) return 'the chapter lists no projects'
       if (missing.length) return `no button for: ${missing.slice(0, 4).join(', ')}`
       if (labels.length !== titles.length) return `${labels.length} tabbable buttons for ${titles.length} projects`
+      if (blocked.length) return `${blocked.length} buttons cannot take focus (e.g. ${blocked[0].label})`
       return true
     })
     await check(`${w}×${h} console clean`, id, () => (log.errors.length || log.warnings.length ? [...log.errors, ...log.warnings].slice(0, 3).join(' | ') : true))
@@ -197,6 +203,32 @@ for (const id of ONLY) {
       return still ? true : 'the fourth Tab left the archive'
     })
     await page.screenshot({ path: path.join(OUT, `${id}-1440x900-focus.png`) })
+
+    if (id === 'gallery') {
+      await check('arrow keys step the focus between frames', id, async () => {
+        const labels = await page.$$eval(`${group} button:not([tabindex="-1"])`, (els) => els.map((e) => e.getAttribute('aria-label')))
+        const at = () => page.evaluate(() => document.activeElement?.getAttribute('aria-label') ?? '')
+        const from = labels.indexOf(await at())
+        await page.keyboard.press('ArrowRight')
+        await page.waitForTimeout(250)
+        const right = labels.indexOf(await at())
+        await page.keyboard.press('ArrowLeft')
+        await page.keyboard.press('ArrowLeft')
+        await page.waitForTimeout(250)
+        const left = labels.indexOf(await at())
+        await page.keyboard.press('End')
+        await page.waitForTimeout(1500)
+        const end = labels.indexOf(await at())
+        await page.screenshot({ path: path.join(OUT, `${id}-1440x900-focus-end.png`) })
+        if (right !== from + 1 || left !== from - 1 || end !== labels.length - 1) return `from ${from}: right ${right}, left ${left}, end ${end}`
+        // The room has turned the last frame into view.
+        const inView = await page.evaluate(() => {
+          const r = document.activeElement.getBoundingClientRect()
+          return r.left >= 0 && r.right <= innerWidth && r.width > 20
+        })
+        return inView ? true : 'the focused frame is out of view'
+      })
+    }
 
     await check('Enter opens the case study, Escape closes it', id, async () => {
       const label = await page.evaluate(() => document.activeElement?.getAttribute('aria-label') ?? '')
