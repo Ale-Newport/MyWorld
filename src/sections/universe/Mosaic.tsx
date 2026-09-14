@@ -176,7 +176,7 @@ function Mosaic({ projects, visible, progress, active, reducedMotion, intensity,
   const { w, h } = useBoxSize(root)
   const fine = useFinePointer()
   const model = useMemo(() => (w > 0 && h > 0 ? board(projects, w, h) : null), [projects, w, h])
-  const { hot, bind } = useHot(onHover)
+  const { hot, byKeys, bind } = useHot(onHover)
 
   const els = useRef<(HTMLButtonElement | null)[]>([])
   const sim = useRef({
@@ -189,11 +189,12 @@ function Mosaic({ projects, visible, progress, active, reducedMotion, intensity,
     lean: [] as number[][],
     settled: false,
   })
-  const hotIndex = model ? model.tiles.findIndex((t) => t.p.slug === hot) : -1
+  // The focused tile plays the pointer's part only when it was reached with the keyboard.
+  const keyed = byKeys && model ? model.tiles.findIndex((t) => t.p.slug === hot) : -1
   useEffect(() => {
-    sim.current.focus = hotIndex
+    sim.current.focus = keyed
     sim.current.settled = false
-  }, [hotIndex])
+  }, [keyed])
 
   /** The pull: where the pointer (or the focused tile) is, and how strongly every tile answers it. */
   const step = (dt: number, still: boolean) => {
