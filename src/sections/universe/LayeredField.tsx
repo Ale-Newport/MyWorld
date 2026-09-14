@@ -138,8 +138,8 @@ function LayeredField({ projects, visible, progress, active, reducedMotion, inte
     model.cards.forEach((c, i) => {
       const el = els.current[i]
       if (!el) return
-      // Each card closes on the field in its own time: the nearest plane last.
-      const come = still ? 1 : smooth(-0.06 + c.lag * 0.16, 0.24 + c.lag * 0.16, t)
+      // Each card closes on the field in its own time, the middle of the field a little before its edges.
+      const come = still ? 1 : smooth(-0.1 + c.lag * 0.12, 0.2 + c.lag * 0.12, t)
       const apart = (1 - come) + leave * 0.3
       const scale = 1 + (c.depth - 0.42) * apart * 1.3 * depthGap
       const rise = ((1 - come) * 70 - leave * 46) * c.depth * depthGap
