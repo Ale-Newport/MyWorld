@@ -25,13 +25,15 @@ export function ProjectOverlay() {
   /* Audience statistics: an open case study, once per opening. */
   useEffect(() => { if (slug && project) track('project_open', { slug, from: 'overlay' }) }, [slug, project])
 
-  /* URL hash sync — deep links in and out. */
+  /* URL hash sync — deep links in and out. The query string stays:
+     it can carry a campaign's parameters or `?section-animation=`,
+     which the page keeps reading after the case study closes. */
   useEffect(() => {
+    const here = `${window.location.pathname}${window.location.search}`
     if (slug) {
-      const url = `${window.location.pathname}#project/${slug}`
-      window.history.replaceState(null, '', url)
+      window.history.replaceState(null, '', `${here}#project/${slug}`)
     } else if (window.location.hash.startsWith('#project/')) {
-      window.history.replaceState(null, '', window.location.pathname)
+      window.history.replaceState(null, '', here)
     }
   }, [slug])
 

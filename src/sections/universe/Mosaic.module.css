@@ -1,0 +1,212 @@
+/* ============================================================
+   MAGNETIC MOSAIC — plates of paper on one grid
+   ============================================================ */
+
+.root {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  overflow: clip;
+  contain: layout paint style;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.tile {
+  position: absolute;
+  left: 0;
+  top: 0;
+  padding: 0;
+  text-align: left;
+  will-change: transform, opacity;
+  -webkit-tap-highlight-color: transparent;
+}
+.tile:focus-visible { outline: none; }
+.tile[data-dim] { pointer-events: none; }
+.tile[data-hot],
+.tile:focus-visible { z-index: 2; }
+
+/* Paper pinned to the plaster: translucent enough for the wall to
+   show through, a hairline edge, a soft contact shadow. */
+.plate {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  border-radius: 3px;
+  background: color-mix(in oklab, #fbf7ef 62%, transparent);
+  box-shadow:
+    inset 0 0 0 1px color-mix(in oklab, var(--ink) 12%, transparent),
+    inset 0 1px 0 rgba(255, 255, 255, 0.5),
+    0 14px 24px -20px rgba(58, 40, 18, 0.5);
+  transition:
+    box-shadow var(--dur-mid) var(--ease-out-expo),
+    background-color var(--dur-mid) var(--ease-out-expo),
+    opacity 700ms var(--ease-out-expo),
+    filter 700ms var(--ease-out-expo),
+    transform 700ms var(--ease-out-expo);
+}
+.tile[data-tier='0'] .plate { background: color-mix(in oklab, var(--accent-p) 9%, color-mix(in oklab, #fbf7ef 70%, transparent)); }
+.tile[data-hot] .plate,
+.tile:focus-visible .plate {
+  background-color: color-mix(in oklab, #fbf7ef 86%, transparent);
+  box-shadow:
+    inset 0 0 0 1.5px var(--accent),
+    inset 0 1px 0 rgba(255, 255, 255, 0.55),
+    0 24px 32px -20px rgba(58, 40, 18, 0.55);
+}
+.tile[data-tier='0'][data-hot] .plate,
+.tile[data-tier='0']:focus-visible .plate { background-color: color-mix(in oklab, var(--accent-p) 11%, #fbf7ef); }
+.tile[data-dim] .plate {
+  opacity: 0.22;
+  filter: grayscale(1);
+  transform: scale(0.97);
+}
+/* Reduced motion: the filter fades what it leaves out, and moves nothing. */
+.root[data-still] .tile[data-dim] .plate { transform: none; }
+
+/* ---- a capture, beside the type in the larger tiles ---------------- */
+
+.pane {
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  bottom: 5px;
+  width: 42%;
+  overflow: hidden;
+  border-radius: 2px;
+  background: color-mix(in oklab, var(--ink) 6%, transparent);
+}
+/* Hidden (never undisplayed, or the lazy capture would never load) until it proves to be a picture. */
+.pane:not(:has(.shot[data-ready])) { visibility: hidden; }
+.plate:has(.shot[data-ready]) .type { right: 42%; }
+.shot {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: top center;
+  opacity: 0;
+  filter: saturate(0.45) sepia(0.1);
+  transition: opacity 600ms var(--ease-out-expo), filter var(--dur-mid) var(--ease-out-expo);
+}
+.shot[data-ready] { opacity: 0.9; }
+.tile[data-hot] .shot[data-ready],
+.tile:focus-visible .shot[data-ready] {
+  opacity: 1;
+  filter: none;
+}
+
+/* ---- type -------------------------------------------------------- */
+
+.type {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 10px 11px 11px;
+  min-width: 0;
+}
+
+.meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  font-family: var(--font-mono);
+  font-size: 8.5px;
+  line-height: 1;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--ink-4);
+  white-space: nowrap;
+}
+.mark {
+  flex: none;
+  width: 6px;
+  height: 6px;
+  border-radius: 1px;
+  background: var(--tone);
+}
+.cat {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+/* A single cell has room for the year, not the category: the mark carries that. */
+.tile[data-size='s'] .cat { display: none; }
+.year { margin-left: auto; }
+
+.title {
+  margin-top: auto;
+  font-size: clamp(12.5px, calc(var(--cell) * 0.135), 18px);
+  font-weight: 500;
+  line-height: 1.12;
+  letter-spacing: -0.012em;
+  color: var(--ink);
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  text-decoration: underline;
+  text-decoration-color: transparent;
+  text-underline-offset: 3px;
+  transition: text-decoration-color var(--dur-fast) linear;
+}
+.tile[data-size='m'] .title { font-size: clamp(15px, calc(var(--cell) * 0.16), 22px); letter-spacing: -0.018em; -webkit-line-clamp: 2; }
+.tile[data-size='l'] .title {
+  font-size: clamp(22px, calc(var(--cell) * 0.24), 34px);
+  line-height: 1.02;
+  letter-spacing: -0.032em;
+  -webkit-line-clamp: 2;
+}
+.tile[data-hot] .title,
+.tile:focus-visible .title { text-decoration-color: var(--accent); }
+
+.desc {
+  font-size: clamp(11.5px, calc(var(--cell) * 0.1), 14px);
+  line-height: 1.35;
+  color: var(--ink-3);
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+}
+
+/* Cells one line tall: the mark and the name on one line, the name cut
+   with an ellipsis rather than mid-word. */
+.root[data-line] .tile:not([data-size='l']) .type {
+  flex-direction: row;
+  align-items: center;
+  padding: 0 6px 0 8px;
+  box-shadow: inset 2px 0 0 var(--tone);
+}
+.root[data-line] .tile:not([data-size='l']) .meta { display: none; }
+.root[data-line] .tile:not([data-size='l']) .title {
+  display: block;
+  flex: 1;
+  min-width: 0;
+  margin-top: 0;
+  font-size: 10px;
+  letter-spacing: -0.02em;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+/* Cells too narrow for a whole name: the first letters of it, small, and the
+   whole of it in the chapter's readout when the tile is pointed at or focused. */
+.root[data-tiny] .tile[data-size='s'] .type { padding: 0 3px 0 5px; }
+.root[data-tiny] .tile[data-size='s'] .title {
+  font-size: 8.5px;
+  letter-spacing: 0;
+  text-overflow: clip;
+}
+
+/* Small cells (a phone): no year, tighter type. */
+.root[data-small] .type { padding: 6px 7px 7px; gap: 3px; }
+.root[data-small] .year,
+.root[data-small] .cat { display: none; }
+.root[data-small] .title { font-size: 10.5px; line-height: 1.1; -webkit-line-clamp: 2; }
+.root[data-small] .tile[data-size='l'] .title { font-size: 15px; -webkit-line-clamp: 3; }
+.root[data-small] .tile[data-size='m'] .title { font-size: 12px; }
+.root[data-small] .desc { display: none; }
