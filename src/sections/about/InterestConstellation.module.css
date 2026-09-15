@@ -1,0 +1,84 @@
+/* Interest constellation: one SVG star chart, drawn in as the section scrolls. */
+
+.root {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  contain: strict;
+}
+
+.svg {
+  position: absolute;
+  inset: 0;
+  display: block;
+  overflow: hidden;
+}
+
+/* The orbit the constellations sit on: barely there. */
+.orbit {
+  fill: none;
+  stroke: rgba(68, 61, 49, 0.14);
+  stroke-width: 0.75;
+  stroke-dasharray: 1 1;
+  stroke-dashoffset: 1;
+}
+
+/* Across disciplines: two technologies one project used together. */
+.arcs path {
+  fill: none;
+  stroke: color-mix(in oklab, var(--signal) 40%, transparent);
+  stroke-width: 0.8;
+  stroke-dasharray: 1 1;
+  stroke-dashoffset: 1;
+}
+.arcs path[data-strong] {
+  stroke: color-mix(in oklab, var(--signal) 66%, transparent);
+  stroke-width: 1.05;
+}
+
+/* A constellation's own figure. */
+.figures path {
+  fill: none;
+  stroke: rgba(68, 61, 49, 0.42);
+  stroke-width: 0.75;
+  stroke-dasharray: 1 1;
+  stroke-dashoffset: 1;
+}
+
+.star { fill: var(--ink-2); }
+/* No public project behind it: drawn hollow, as the Toolbox draws it dashed. */
+.star[data-empty] {
+  fill: none;
+  stroke: var(--ink-3);
+  stroke-width: 0.9;
+}
+/* The most evidenced technology: the one accent on the chart. */
+.star[data-strongest] { fill: var(--accent); }
+
+.group,
+.name {
+  opacity: 0;
+  paint-order: stroke;
+  stroke: rgba(247, 241, 231, 0.9);
+  stroke-width: 3px;
+  stroke-linejoin: round;
+}
+.group {
+  font-family: var(--font-mono);
+  font-size: var(--mono);
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  fill: var(--ink-3);
+}
+.name {
+  font-family: var(--font-display);
+  font-size: var(--name);
+  letter-spacing: -0.005em;
+  fill: var(--ink);
+}
+
+.glints circle {
+  fill: var(--signal);
+  opacity: 0;
+}
