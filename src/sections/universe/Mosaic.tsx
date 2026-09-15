@@ -292,6 +292,7 @@ function Mosaic({ projects, visible, progress, active, reducedMotion, intensity,
       className={styles.root}
       role="group"
       aria-label="Project archive"
+      data-still={reducedMotion || undefined}
       data-small={(model && model.cell < 50) || undefined}
       data-line={model?.line || undefined}
       data-tiny={(model && model.tiles.some((t) => t.cs === 1 && t.w < 48)) || undefined}

@@ -76,10 +76,10 @@
   filter: grayscale(1);
   transform: scale(0.96);
 }
-@media (prefers-reduced-motion: reduce) {
-  .card[data-hot] .face,
-  .card:focus-visible .face { transform: none; }
-}
+/* Reduced motion: highlight and filter change colour and light, never size. */
+.root[data-still] .card[data-hot] .face,
+.root[data-still] .card:focus-visible .face,
+.root[data-still] .card[data-dim] .face { transform: none; }
 
 .head {
   display: flex;
