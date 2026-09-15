@@ -1,0 +1,132 @@
+/* Assembling identity: typographic pieces on a hairline grid. */
+
+.root {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  contain: strict;
+}
+
+.piece {
+  position: absolute;
+  box-sizing: border-box;
+  opacity: 0;
+  will-change: transform, opacity;
+  text-shadow: var(--halo);
+}
+
+/* ---- roles: the upper register ---- */
+.piece[data-kind='role'] {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 0 var(--pad-r);
+}
+.roleLine {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--font-display);
+  font-size: var(--role);
+  font-weight: 500;
+  letter-spacing: -0.025em;
+  line-height: 1.02;
+  text-transform: uppercase;
+  color: var(--ink);
+}
+.roleLine + .roleLine { color: var(--ink-2); }
+
+/* ---- disciplines and their tools: the lower register ---- */
+.piece[data-kind='head'] {
+  display: flex;
+  align-items: center;
+  padding: 0 var(--pad-t);
+}
+.head {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--font-mono);
+  font-size: var(--mono);
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+
+.piece[data-kind='tool'] {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 0 var(--pad-t);
+}
+.toolName {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--font-display);
+  font-size: var(--tool);
+  letter-spacing: -0.01em;
+  color: var(--ink);
+}
+.dots {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 2.5px;
+}
+.dots i {
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: var(--ink-2);
+}
+[data-evidence='dots'] .dots b,
+[data-evidence='count'] .dots i,
+[data-evidence='none'] .dots { display: none; }
+[data-evidence='count'] .dots b { margin-left: 0; }
+
+.dots b {
+  margin-left: 5px;
+  font-family: var(--font-mono);
+  font-size: var(--mono);
+  font-weight: 400;
+  letter-spacing: 0.06em;
+  color: var(--ink-3);
+}
+
+/* ---- hairlines ---- */
+.rule {
+  position: absolute;
+  height: 1px;
+  background: var(--border-strong);
+  transform-origin: 0 50%;
+  transform: scaleX(0);
+}
+.rule[data-vertical] {
+  width: 1px;
+  height: auto;
+  background: var(--border);
+  transform-origin: 50% 0;
+  transform: scaleY(0);
+}
+
+/* ---- crop marks that close the composition ---- */
+.marks {
+  position: absolute;
+  opacity: 0;
+  --lock: 10px;
+}
+.marks i {
+  position: absolute;
+  width: 11px;
+  height: 11px;
+  border: 0 solid var(--ink-2);
+}
+.marks i[data-corner='tl'] { left: -7px; top: -7px; border-left-width: 1px; border-top-width: 1px; border-color: var(--accent); transform: translate(calc(-1 * var(--lock)), calc(-1 * var(--lock))); }
+.marks i[data-corner='tr'] { right: -7px; top: -7px; border-right-width: 1px; border-top-width: 1px; transform: translate(var(--lock), calc(-1 * var(--lock))); }
+.marks i[data-corner='bl'] { left: -7px; bottom: -7px; border-left-width: 1px; border-bottom-width: 1px; transform: translate(calc(-1 * var(--lock)), var(--lock)); }
+.marks i[data-corner='br'] { right: -7px; bottom: -7px; border-right-width: 1px; border-bottom-width: 1px; transform: translate(var(--lock), var(--lock)); }
