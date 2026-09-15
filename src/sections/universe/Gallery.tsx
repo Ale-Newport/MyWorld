@@ -146,7 +146,7 @@ function Gallery({ projects, visible, progress, active, reducedMotion, intensity
 
   const slots = useRef<(HTMLDivElement | null)[]>([])
   const buttons = useRef<(HTMLButtonElement | null)[]>([])
-  const sim = useRef({ c: NaN, t: 0, focus: -1, shown: [] as boolean[], kept: [] as Frame[] })
+  const sim = useRef({ c: NaN, t: 0, calm: 1, hot: false, focus: -1, shown: [] as boolean[], kept: [] as Frame[] })
   // The frames the filter keeps (all of them when it keeps none): what scrolling turns the room through.
   const kept = useMemo(() => {
     const all = model?.frames ?? []
@@ -156,7 +156,8 @@ function Gallery({ projects, visible, progress, active, reducedMotion, intensity
   useEffect(() => {
     sim.current.kept = kept
     sim.current.focus = focused
-  }, [kept, focused])
+    sim.current.hot = hot !== null
+  }, [kept, focused, hot])
 
   /** Where along the wall the room faces: the focused frame, else the scroll's share of the frames the filter keeps. */
   const target = () => {
@@ -179,7 +180,9 @@ function Gallery({ projects, visible, progress, active, reducedMotion, intensity
     const goal = target()
     s.t += dt * speed
     s.c = Number.isNaN(s.c) || still ? goal : approach(s.c, goal, 2.6 * speed, dt)
-    const sway = still ? 0 : Math.sin(s.t * 0.32) * (model.frames[0]?.fw ?? 0) * 0.04
+    // The room's slow sway holds still while a frame is pointed at or focused, so nothing drifts from under it.
+    s.calm = still ? 0 : approach(s.calm, s.hot ? 0 : 1, s.hot ? 6 : 1.2, dt)
+    const sway = Math.sin(s.t * 0.32) * (model.frames[0]?.fw ?? 0) * 0.04 * s.calm
     const c = s.c + sway
     const R = model.radius
     const reach = w / 2 + (model.frames[0]?.fw ?? 0) * 1.2
