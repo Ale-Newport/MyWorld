@@ -187,7 +187,7 @@ function LayeredField({ projects, visible, progress, active, reducedMotion, inte
   }, [fine, reducedMotion])
 
   return (
-    <div ref={root} className={styles.root} role="group" aria-label="Project archive" data-small={model?.small || undefined}>
+    <div ref={root} className={styles.root} role="group" aria-label="Project archive" data-small={model?.small || undefined} data-still={reducedMotion || undefined}>
       {model?.cards.map((c, i) => {
         const dim = !visible.has(c.p.id)
         const roomy = c.w >= 96 && c.h >= 52

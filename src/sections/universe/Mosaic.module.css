@@ -62,6 +62,8 @@
   filter: grayscale(1);
   transform: scale(0.97);
 }
+/* Reduced motion: the filter fades what it leaves out, and moves nothing. */
+.root[data-still] .tile[data-dim] .plate { transform: none; }
 
 /* ---- a capture, beside the type in the larger tiles ---------------- */
 
