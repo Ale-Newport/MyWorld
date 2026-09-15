@@ -141,12 +141,13 @@ function board(projects: SiteProject[], w: number, h: number): Board | null {
       // Cells stop growing at a size (see below), so they are scored at the size they will be drawn.
       const cw = Math.min(CELL_W, (w - gap * (cols - 1)) / cols)
       const ch = Math.min(CELL_H, (h - gap * (rows - 1)) / rows)
-      if (cw < 30 || ch < 22) continue
+      // However small the box, every project keeps a tile: tiny cells are only scored down, never refused.
+      if (cw < 8 || ch < 8) continue
       // Legible cells: wide enough for a name and, where the box allows, tall enough for two
       // lines of it under the year. Past that, size matters less than hierarchy, so a plainer
       // scheme has to earn its place.
       const legible = Math.min(cw, ch * 1.6)
-      const short = (Math.min(cw, ch) >= 50 ? Math.max(0, 62 - ch) * 3 : ch < 26 ? 40 : 0) + Math.max(0, 58 - cw) * 2
+      const short = (Math.min(cw, ch) >= 50 ? Math.max(0, 62 - ch) * 3 : ch < 26 ? 40 + (26 - ch) * 4 : 0) + Math.max(0, 58 - cw) * 2
       const score = (legible > 80 ? 80 + (legible - 80) * 0.25 : legible) * (1 - si * 0.25) - holes * 6 - Math.abs(cw / ch - 1.15) * 6 - short
       if (!best || score > best.score) best = { score, spans: spans.map((s) => [...s] as [number, number]), cols, at, rows }
     }
