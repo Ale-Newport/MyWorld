@@ -237,21 +237,25 @@ function chart(projects: SiteProject[], tech: Record<string, string[]>, w: numbe
       linked.add(key(best[0], best[1]))
       edges.push({ a: best[0], b: best[1], cross: false, delay: stars[best[1]].delay })
     }
-    // With more intensity a large figure closes one loop: its shortest unused chord.
-    if (intensity > 0.55 && idx.length >= 4) {
+    // With more intensity a figure closes loops: its shortest unused chords, one for a
+    // figure of four stars or more, a second for one of six or more at full intensity.
+    const loops = intensity > 0.55 && idx.length >= 4 ? (intensity > 0.85 && idx.length >= 6 ? 2 : 1) : 0
+    for (let l = 0; l < loops; l++) {
       let best: [number, number, number] | null = null
       for (const a of idx) for (const b of idx) {
         if (a >= b || linked.has(key(a, b))) continue
         const d = Math.hypot(stars[a].x - stars[b].x, stars[a].y - stars[b].y)
         if (!best || d < best[2]) best = [a, b, d]
       }
-      if (best && best[2] < radius[k] * 1.3) {
-        linked.add(key(best[0], best[1]))
-        edges.push({ a: best[0], b: best[1], cross: false, delay: Math.max(stars[best[0]].delay, stars[best[1]].delay) })
-      }
+      if (!best || best[2] >= radius[k] * 1.3) break
+      linked.add(key(best[0], best[1]))
+      edges.push({ a: best[0], b: best[1], cross: false, delay: Math.max(stars[best[0]].delay, stars[best[1]].delay) })
     }
   })
-  const crossBudget = Math.round(intensity * Math.min(8, Math.max(2, n / 6)))
+  // Cross-links between figures: none at the lowest intensity, a few at the default, and at
+  // full intensity a star may carry two of them.
+  const crossBudget = intensity < 0.25 ? 0 : Math.round(intensity * Math.min(10, Math.max(2, n / 5)))
+  const perStar = intensity > 0.8 ? 2 : 1
   const reach = Math.hypot(w, h) * 0.42
   if (crossBudget > 0) {
     const pairs: [number, number, number, number][] = []
@@ -264,11 +268,12 @@ function chart(projects: SiteProject[], tech: Record<string, string[]>, w: numbe
       }
     }
     pairs.sort((p, q) => q[2] - p[2] || p[3] - q[3])
-    const perStar = new Map<number, number>()
+    const crossed = new Map<number, number>()
+    let count = 0
     for (const [a, b, , d] of pairs) {
-      if (edges.filter((e) => e.cross).length >= crossBudget) break
-      // One cross-link per star at most, and only between neighbouring figures.
-      if (perStar.has(a) || perStar.has(b) || d > reach) continue
+      if (count >= crossBudget) break
+      // Few cross-links per star, and only between neighbouring figures.
+      if ((crossed.get(a) ?? 0) >= perStar || (crossed.get(b) ?? 0) >= perStar || d > reach) continue
       // Never a line that grazes a third star.
       const ax = stars[a].x
       const ay = stars[a].y
@@ -281,8 +286,9 @@ function chart(projects: SiteProject[], tech: Record<string, string[]>, w: numbe
         return Math.hypot(ax + t * (bx - ax) - s.x, ay + t * (by - ay) - s.y) < minD * 0.45
       })
       if (grazes) continue
-      perStar.set(a, (perStar.get(a) ?? 0) + 1)
-      perStar.set(b, (perStar.get(b) ?? 0) + 1)
+      crossed.set(a, (crossed.get(a) ?? 0) + 1)
+      crossed.set(b, (crossed.get(b) ?? 0) + 1)
+      count++
       edges.push({ a, b, cross: true, delay: 0.6 })
     }
   }
@@ -372,6 +378,7 @@ function Constellation({ projects, visible, filter, progress, active, reducedMot
     lit: [] as number[],
     hot: -1,
     drawn: '',
+    placed: '',
   })
 
   const hotIndex = sky ? sky.stars.findIndex((s) => s.p.slug === hot) : -1
@@ -405,12 +412,16 @@ function Constellation({ projects, visible, filter, progress, active, reducedMot
     s.py = still ? 0 : approach(s.py, s.ty, 4, dt)
     const amp = still ? 0 : Math.min(10, w * 0.008)
     const vis = visibleRef.current
+    // Once the chart is drawn in and the pointer rests, the stars hold their places: only the twinkle runs.
+    const placed = `${t.toFixed(3)}|${s.px.toFixed(3)}|${s.py.toFixed(3)}`
+    const moved = placed !== s.placed
+    s.placed = placed
     const pos = sky.stars.map((star, i) => {
       const come = still ? 1 : smooth(star.delay, star.delay + 0.3, t)
       const x = star.x + s.px * amp * star.depth
       const y = star.y + s.py * amp * star.depth + (1 - come) * 6
       const el = els.current[i]
-      if (el) {
+      if (el && moved) {
         el.style.transform = `translate3d(${x.toFixed(2)}px, ${y.toFixed(2)}px, 0)`
         el.style.opacity = come.toFixed(3)
       }
@@ -476,6 +487,7 @@ function Constellation({ projects, visible, filter, progress, active, reducedMot
   }, [w, h])
   useLayoutEffect(() => {
     sim.current.drawn = ''
+    sim.current.placed = ''
     frame(0, reducedMotion)
   })
 
