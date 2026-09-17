@@ -12,9 +12,11 @@
      box        the option mounted, fills the slot, clips its own
                 overflow and does not intersect the summary heading
      overflow   the document is no wider than the viewport
-     errors     console errors and uncaught exceptions (the dev
-                server's 404s for its own chunk preloads are listed
-                apart: they come from the framework, not the option)
+     errors     console errors, warnings and uncaught exceptions.
+                Listed apart, not failed: what the page does without
+                any option — the dev server's 404s and "preloaded but
+                not used" notices for its own chunk preloads, and the
+                WebGL hall's THREE.Clock deprecation.
 
    Then, once per option:
 
@@ -139,6 +141,7 @@ function fingerprint(id) {
 }
 
 const isPreload404 = (m) => /Failed to load resource/.test(m.text()) && /\/_next\/static\/chunks\/src_sections_/.test(m.location()?.url ?? '')
+const isPageNoise = (m) => /THREE\.Clock: This module has been deprecated/.test(m.text()) || /was preloaded using link preload but not used/.test(m.text())
 
 async function open(browser, id, [w, h], reduced) {
   const context = await browser.newContext({ viewport: { width: w, height: h }, deviceScaleFactor: 1, hasTouch: w < 800, isMobile: w < 800, reducedMotion: reduced ? 'reduce' : 'no-preference' })
@@ -148,9 +151,10 @@ async function open(browser, id, [w, h], reduced) {
   const framework = []
   page.on('pageerror', (e) => errors.push(`pageerror: ${String(e).slice(0, 300)}`))
   page.on('console', (m) => {
-    if (m.type() !== 'error') return
-    if (isPreload404(m)) framework.push(m.location().url)
-    else errors.push(`console: ${m.text().slice(0, 300)}`)
+    if (m.type() !== 'error' && m.type() !== 'warning') return
+    if (isPreload404(m)) framework.push(`404 for a chunk preload: ${m.location().url.split('/').pop()}`)
+    else if (isPageNoise(m)) framework.push(/THREE/.test(m.text()) ? 'THREE.Clock deprecation (the WebGL hall)' : `preloaded but unused: ${(/\/([^/\s]+\.js)/.exec(m.text()) ?? [])[1] ?? 'a chunk'}`)
+    else errors.push(`console ${m.type()}: ${m.text().slice(0, 300)}`)
   })
   await page.goto(`${BASE}/?section-animation=${id}`, { waitUntil: 'load' })
   await page.waitForTimeout(1500)
@@ -185,7 +189,7 @@ for (const id of IDS) {
       check(!r.overflow, `${where}: no horizontal overflow`)
       await page.screenshot({ path: path.join(dir, `${w}x${h}-${t}.png`) })
     }
-    check(!errors.length, `${id} ${w}×${h}: no console errors${errors.length ? ` — ${errors.join(' | ')}` : ''}`)
+    check(!errors.length, `${id} ${w}×${h}: no console errors or warnings${errors.length ? ` — ${errors.join(' | ')}` : ''}`)
     framework.forEach((u) => frameworkNoise.add(u))
     console.log(`  ${w}×${h} done`)
     await context.close()
@@ -203,7 +207,7 @@ for (const id of IDS) {
       await page.screenshot({ path: path.join(dir, `${w}x${h}-reduced-${t}.png`) })
     }
     check(prints[0] && prints.every((p) => p === prints[0]), `${id} ${w}×${h} reduced motion: one still state at every scroll position`)
-    check(!errors.length, `${id} ${w}×${h} reduced motion: no console errors${errors.length ? ` — ${errors.join(' | ')}` : ''}`)
+    check(!errors.length, `${id} ${w}×${h} reduced motion: no console errors or warnings${errors.length ? ` — ${errors.join(' | ')}` : ''}`)
     await context.close()
   }
 
@@ -241,6 +245,6 @@ for (const id of IDS) {
 
 await browser.close()
 const failed = results.filter((r) => !r.ok)
-if (frameworkNoise.size) console.log(`\nnote: the dev server answered 404 to its own chunk preloads (framework, not the options): ${[...frameworkNoise].map((u) => u.split('/').pop()).join(', ')}`)
+if (frameworkNoise.size) console.log(`\nnote: page messages that are not the options' (framework preloads, the WebGL hall):\n  ${[...frameworkNoise].join('\n  ')}`)
 console.log(`\n${results.length - failed.length}/${results.length} checks passed; screenshots in ${OUT}`)
 if (failed.length) process.exitCode = 1
