@@ -69,10 +69,14 @@
 /* Very short landscape screens (a phone on its side): the corner
    note would sit on the animation, so it gives way. */
 @media (max-height: 520px) and (orientation: landscape) {
-  .stage { --stage-top: 5.5rem; --stage-bottom: 4.5rem; }
+  /* Side by side even on a narrow phone: there is width, not height,
+     and stacked the animation would be pushed under the HUD. */
+  .stage { --stage-rows: minmax(0, 1fr); --stage-top: 5.25rem; --stage-bottom: 4.25rem; }
   .corner { display: none; }
-  .intro { grid-column: 1 / span 6; }
-  .visual { grid-column: 7 / span 6; }
+  .intro { grid-column: 1 / span 6; grid-row: 1; align-self: center; }
+  .summary, .summary[data-length='medium'] { font-size: clamp(1.05rem, 5.4vh, 1.6rem); max-width: 26ch; }
+  .summary[data-length='long'] { font-size: clamp(0.92rem, 4.2vh, 1.2rem); max-width: 34ch; }
+  .visual { grid-column: 7 / span 6; grid-row: 1; align-self: center; height: 100%; min-height: 0; max-height: none; }
 }
 
 @media (prefers-reduced-motion: reduce) {
