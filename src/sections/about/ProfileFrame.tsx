@@ -1,11 +1,11 @@
 'use client'
 
-import { useLayoutEffect, useMemo, useRef, type CSSProperties } from 'react'
+import { useLayoutEffect, useMemo, useRef, useSyncExternalStore, type CSSProperties } from 'react'
 import type { SiteContent } from '@/cms/derive'
 import { clamp, lerp, range } from '@/lib/math'
 import { frame as pointer } from '@/state/journey'
 import type { SectionAnimationProps } from '../types'
-import { expo, present, smooth, textWidth, useBoxSize, useFinePointer, useTicker, type Size } from './shared'
+import { expo, present, smooth, textWidth, useBoxSize, useTicker, type Size } from './shared'
 import styles from './ProfileFrame.module.css'
 
 /* ============================================================
@@ -49,6 +49,19 @@ interface Layout {
   /** How far each mat steps off-centre as the stack opens (intensity). */
   spread: number
   caption: number
+}
+
+/** True on a mouse or trackpad, where a quiet pointer parallax makes sense. */
+function useFinePointer(): boolean {
+  return useSyncExternalStore(
+    (cb) => {
+      const mq = window.matchMedia('(hover: hover) and (pointer: fine)')
+      mq.addEventListener('change', cb)
+      return () => mq.removeEventListener('change', cb)
+    },
+    () => window.matchMedia('(hover: hover) and (pointer: fine)').matches,
+    () => false,
+  )
 }
 
 /** The facts the mats carry, outermost first: real profile fields only. */
