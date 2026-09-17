@@ -1,0 +1,167 @@
+/* Typographic identity: the name as the composition, driven by scroll. */
+
+.root {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  contain: strict;
+}
+
+/* The initials behind everything, in outline, cut by the box's edge. */
+.initials {
+  position: absolute;
+  right: -0.04em;
+  bottom: -0.17em;
+  font-family: var(--font-display);
+  font-weight: 500;
+  letter-spacing: -0.06em;
+  line-height: 0.8;
+  white-space: nowrap;
+  color: rgba(68, 61, 49, 0.055);
+  transform-origin: 100% 100%;
+  opacity: 0.15;
+  will-change: transform, opacity;
+}
+
+/* Each line of the name slides inside its own mask. */
+.mask {
+  position: absolute;
+  left: var(--pad);
+  right: var(--pad);
+  font-size: var(--name);
+  /* Clipped at its sides only: accents and descenders may leave the line box. */
+  clip-path: inset(-0.4em 0 -0.3em 0);
+}
+.line {
+  position: relative;
+  width: max-content;
+  font-family: var(--font-display);
+  font-size: var(--name);
+  font-weight: 500;
+  letter-spacing: -0.045em;
+  line-height: var(--line);
+  white-space: nowrap;
+  color: var(--ink);
+  text-shadow: var(--halo);
+  will-change: transform;
+}
+.line[data-outline] {
+  color: transparent;
+  text-shadow: none;
+  -webkit-text-stroke: 1px var(--ink-2);
+}
+/* …and the outline is filled by a wipe. */
+.fill {
+  position: absolute;
+  /* A little wider and taller than the line: with tight tracking the last
+     glyph's ink runs past its box, and the wipe must cover all of it. */
+  inset: -0.12em -0.25em -0.12em 0;
+  padding-top: 0.12em;
+  color: var(--ink);
+  -webkit-text-stroke: 0;
+  text-shadow: var(--halo);
+  clip-path: inset(0 100% 0 0);
+}
+
+.rule {
+  position: absolute;
+  left: var(--pad);
+  right: var(--pad);
+  height: 1px;
+  background: var(--border-strong);
+  transform-origin: 0 50%;
+  transform: scaleX(0);
+}
+
+/* The roles roll through a one-line window. */
+.window {
+  position: absolute;
+  left: var(--pad);
+  right: var(--pad);
+  overflow: hidden;
+  padding-left: calc(var(--role) * 0.85);
+}
+.tick {
+  position: absolute;
+  left: 0;
+  top: calc(50% - 3px);
+  width: 6px;
+  height: 6px;
+  background: var(--accent);
+}
+.roll { will-change: transform; }
+.role {
+  display: block;
+  height: calc(var(--role) * 1.25);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--font-display);
+  font-size: var(--role);
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  line-height: calc(var(--role) * 1.25);
+  color: var(--ink);
+  text-shadow: var(--halo);
+}
+
+/* Through-lines: from and to cross, and the arrow is drawn between them. */
+.markers {
+  position: absolute;
+  left: var(--pad);
+  right: var(--pad);
+  display: grid;
+  column-gap: 18px;
+}
+.marker {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  border-top: 1px solid var(--border);
+  font-family: var(--font-mono);
+  font-size: var(--marker);
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  white-space: nowrap;
+  --x: 46px;
+  --a: 0;
+}
+.from,
+.to {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  opacity: var(--a);
+  text-shadow: var(--halo);
+}
+.from {
+  color: var(--ink-3);
+  transform: translateX(var(--x));
+}
+.to {
+  color: var(--ink);
+  transform: translateX(calc(-1 * var(--x)));
+}
+.arrow {
+  position: relative;
+  flex: none;
+  width: 20px;
+  height: 1px;
+  background: var(--ink-3);
+  transform: scaleX(var(--a));
+  transform-origin: 0 50%;
+}
+.arrow::after {
+  content: '';
+  position: absolute;
+  right: 0;
+  top: -3px;
+  width: 6px;
+  height: 6px;
+  border-top: 1px solid var(--ink-3);
+  border-right: 1px solid var(--ink-3);
+  transform: translateY(0.5px) rotate(45deg);
+  transform-origin: 100% 0;
+}
