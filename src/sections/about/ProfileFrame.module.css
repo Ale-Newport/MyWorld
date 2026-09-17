@@ -1,0 +1,83 @@
+/* Layered profile frame: paper mats in CSS 3D, the initials as the picture. */
+
+.root {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  contain: strict;
+}
+
+.stage {
+  position: absolute;
+  inset: 0;
+  transform-style: preserve-3d;
+  will-change: transform;
+}
+
+/* A mat: a band of paper with a hairline at both edges, lifted off what is behind it. */
+.mat {
+  position: absolute;
+  box-sizing: border-box;
+  border: var(--band) solid rgba(252, 249, 243, 0.9);
+  box-shadow:
+    0 0 0 1px rgba(68, 61, 49, 0.2),
+    inset 0 0 0 1px rgba(68, 61, 49, 0.16),
+    0 16px 28px -20px rgba(58, 40, 18, 0.32);
+  opacity: 0;
+  will-change: transform, opacity;
+  --cap: 0;
+}
+/* The window the initials sit in: the one accent. */
+.mat[data-inner] {
+  box-shadow:
+    0 0 0 1px rgba(68, 61, 49, 0.2),
+    inset 0 0 0 1px var(--accent),
+    0 16px 28px -20px rgba(58, 40, 18, 0.32);
+}
+
+/* Each mat's fact, printed along its band. */
+.caption {
+  position: absolute;
+  max-width: calc(100% + 2 * var(--band) - 10px);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--font-mono);
+  font-size: var(--cap-size);
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  line-height: var(--band);
+  height: var(--band);
+  color: var(--ink-2);
+  opacity: var(--cap);
+}
+.caption[data-corner='tl'] { left: calc(5px - var(--band)); top: calc(-1 * var(--band)); }
+.caption[data-corner='tr'] { right: calc(5px - var(--band)); top: calc(-1 * var(--band)); }
+.caption[data-corner='bl'] { left: calc(5px - var(--band)); bottom: calc(-1 * var(--band)); }
+.caption[data-corner='br'] { right: calc(5px - var(--band)); bottom: calc(-1 * var(--band)); }
+/* A band too thin to print on: the fact sits just outside the mat instead. */
+.root[data-thin] .caption { line-height: 1.4; height: auto; }
+.root[data-thin] .caption[data-corner='tl'],
+.root[data-thin] .caption[data-corner='tr'] { top: calc(-1 * var(--band) - 1.6em); }
+.root[data-thin] .caption[data-corner='bl'],
+.root[data-thin] .caption[data-corner='br'] { bottom: calc(-1 * var(--band) - 1.6em); }
+
+.initials {
+  position: absolute;
+  display: grid;
+  place-items: center;
+  font-family: var(--font-display);
+  font-size: var(--type);
+  font-weight: 500;
+  letter-spacing: -0.04em;
+  line-height: 1;
+  color: var(--ink);
+  opacity: 0;
+  white-space: nowrap;
+  will-change: transform, opacity;
+}
+.outline {
+  color: transparent;
+  -webkit-text-stroke: 1px rgba(68, 61, 49, 0.75);
+}
