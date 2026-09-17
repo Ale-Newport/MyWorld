@@ -44,7 +44,10 @@
   grid-column: 7 / span 6;
   grid-row: 1;
   position: relative;
-  align-self: stretch;
+  /* The full height of its row, centred in it once the cap applies (a
+     stretched item with a max-height sits at the top of a tall row). */
+  align-self: center;
+  height: 100%;
   min-height: 0;
   max-height: 46rem;
 }
@@ -60,7 +63,7 @@
   .intro { grid-column: 1 / -1; grid-row: 1; align-self: end; }
   .summary { max-width: 24ch; }
   .summary[data-length='long'] { max-width: 46ch; }
-  .visual { grid-column: 1 / -1; grid-row: 2; max-height: none; min-height: 10rem; }
+  .visual { grid-column: 1 / -1; grid-row: 2; align-self: stretch; height: auto; max-height: none; min-height: 10rem; }
 }
 
 /* Very short landscape screens (a phone on its side): the corner
