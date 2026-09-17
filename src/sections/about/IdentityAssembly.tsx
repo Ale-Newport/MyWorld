@@ -4,7 +4,7 @@ import { useEffect, useLayoutEffect, useMemo, useRef, type CSSProperties } from 
 import { TECH_GROUPS, type SiteContent } from '@/cms/derive'
 import { clamp, damp, lerp, range } from '@/lib/math'
 import type { SectionAnimationProps } from '../types'
-import { expo, present, strongestTech, textWidth, useBoxSize, useTicker, type Size } from './shared'
+import { expo, present, textWidth, useBoxSize, useTicker, type Size } from './shared'
 import styles from './IdentityAssembly.module.css'
 
 /* ============================================================
@@ -80,6 +80,15 @@ function split(role: string, size: number): string[] {
     }
   }
   return best
+}
+
+/** Technologies with public evidence, strongest first. */
+function strongestTech(site: SiteContent) {
+  return site.techNodes
+    .filter((t) => t.evidence.length > 0)
+    .map((t, i) => ({ t, i }))
+    .sort((a, b) => b.t.evidence.length - a.t.evidence.length || a.i - b.i)
+    .map(({ t }) => t)
 }
 
 /** The Tech Toolbox's groups that have evidenced technologies, the most evidenced first. */
