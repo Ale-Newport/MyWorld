@@ -377,6 +377,8 @@ export interface ContactQA {
   ms: number
   /** The progress of the last paint. */
   p: number
+  /** Milliseconds the last composition took. */
+  composeMs: number
   scene: unknown
 }
 
@@ -440,10 +442,11 @@ export function useContactCanvas<S>(id: string, props: ContactAnimationProps, pa
     const lv = live.current
     canvas.width = Math.max(1, Math.round(box.w * box.dpr))
     canvas.height = Math.max(1, Math.round(box.h * box.dpr))
+    const c0 = performance.now()
     const stage = makeStage(box.w, box.h, safe.current)
     const scene = painter.compose(stage, Math.min(1, Math.max(0, intensity)), readPalette())
     const win = window as QAWindow
-    const record: ContactQA | null = qaMode() ? { id, safe: stage.safe, keep: stage.keep, canvas, w: box.w, h: box.h, paints: 0, ms: 0, p: 0, scene } : null
+    const record: ContactQA | null = qaMode() ? { id, safe: stage.safe, keep: stage.keep, canvas, w: box.w, h: box.h, paints: 0, ms: 0, p: 0, composeMs: performance.now() - c0, scene } : null
     if (record) win.__contactQA = record
     let shown = -1
     const paint = () => {
@@ -475,6 +478,16 @@ export function useContactCanvas<S>(id: string, props: ContactAnimationProps, pa
       if (record && win.__contactQA === record) delete win.__contactQA
     }
   }, [box, safe, safeVersion, intensity, reducedMotion, progress, painter, id])
+
+  // The canvas's pixels go with it, rather than whenever it is collected.
+  useEffect(() => {
+    const canvas = canvasRef.current
+    return () => {
+      if (!canvas) return
+      canvas.width = 0
+      canvas.height = 0
+    }
+  }, [])
 
   useEffect(() => {
     if (!active || reducedMotion) return
