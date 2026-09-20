@@ -1,7 +1,7 @@
 'use client'
 
 import type { ContactAnimationProps } from '../types'
-import { TAU, cellAt, clamp01, css, easeInOut, easeOut, field, lerp, mix, resample, rng, routeFrom, sd, useContactCanvas, type Painter, type RGB, type Stage } from './shared'
+import { TAU, cellAt, clamp01, css, easeOut, field, lerp, mix, resample, rng, routeFrom, sd, useContactCanvas, type Painter, type RGB, type Stage } from './shared'
 
 /* ============================================================
    BOTANICAL GATEWAY — the section's default
@@ -364,7 +364,9 @@ const painter: Painter<Scene> = {
       for (let k = 0; k < vines; k++) {
         const orbit = 1.08 + 0.17 * k
         const goals: [number, number][] = []
-        for (let c = 1; c <= 3; c++) for (let y = top; y < hy; y += cell) goals.push([hx - side * (gapHalf + c * cell), y])
+        // Each vine ends a little further from the middle than the last, so they do not run on side by side.
+        const reachIn = gapHalf + k * Math.max(40 * u, w * 0.07)
+        for (let c = 1; c <= 3; c++) for (let y = top; y < hy; y += cell) goals.push([hx - side * (reachIn + c * cell), y])
         const f = field(w, h, cell, (x, y) => {
           if (side * (x - hx) > -gapHalf) return Infinity
           const rm = room(x, y)
@@ -378,7 +380,7 @@ const painter: Painter<Scene> = {
         if (!starts.length) continue
         // The first vine from the lowest reach of the edge, each further one a little higher.
         const j = starts[Math.min(starts.length - 1, Math.round(starts.length * 0.22 * k))]
-        const pts = routeFrom(f, cellAt(f, side > 0 ? 0 : w, j * cell), 3)
+        const pts = routeFrom(f, cellAt(f, side > 0 ? 0 : w, j * cell), 5)
         const x0 = edgeX(4), y0 = pts[0][1]
         const rs = resample([[x0, y0], ...pts], Math.max(3, 4.5 * u))
         if (rs.xs.length < 4) continue
@@ -387,7 +389,7 @@ const painter: Painter<Scene> = {
           step: Math.max(3, 4.5 * u), L: (rs.xs.length - 1) * Math.max(3, 4.5 * u),
         }
         const seed = (side > 0 ? 31 : 37) * 100 + k
-        file(plan({ kind: VINE, layer: 1, side, x: x0, y: y0, th0: 0, L: route.L, bend: 0, seed }, stage, 0, (L) => cutStem(route, L)), 1, 0.14 + 0.05 * k, 0.68 + 0.03 * k)
+        file(plan({ kind: VINE, layer: 1, side, x: x0, y: y0, th0: 0, L: route.L, bend: 0, seed }, stage, 0, (L) => cutStem(route, L)), 1, 0.08 + 0.05 * k, 0.64 + 0.03 * k)
       }
 
       /* FRONDS and SPRAYS fan out from the edges, at the back and in the middle. */
@@ -404,7 +406,7 @@ const painter: Painter<Scene> = {
           // Low plants climb; high ones reach in along the top and droop.
           const up = lerp(0.05, 1.25, v) + (r() - 0.5) * 0.3
           sprout({ kind, layer, side, x: edgeX(2), y, th0: side > 0 ? -up : Math.PI + up, L, bend: side * lerp(0.6, 1.4, v) * (0.75 + r() * 0.5) / L, seed },
-            [0.1, 0.16][layer] + 0.14 * (1 - v) + r() * 0.04, [0.42, 0.48][layer] + 0.14 * (1 - v) + r() * 0.04, [0, 0.3, -0.3])
+            [0.05, 0.11][layer] + 0.14 * (1 - v) + r() * 0.04, [0.38, 0.44][layer] + 0.14 * (1 - v) + r() * 0.04, [0, 0.3, -0.3])
         }
       }
 
@@ -419,7 +421,7 @@ const painter: Painter<Scene> = {
         const L = (kind === BLADE ? 70 : 240) * u * (0.8 + r() * 0.4)
         const up = lerp(-0.15, 1.1, v) + (r() - 0.5) * 0.3
         sprout({ kind, layer: 2, side, x: edgeX(kind === BLADE ? L * 0.3 : 8), y, th0: side > 0 ? -up : Math.PI + up, L, bend: side * 0.8 / L, seed },
-          0.26 + 0.12 * (1 - v) + r() * 0.04, 0.56 + 0.12 * (1 - v) + r() * 0.04, [0, 0.35, -0.35, 0.7])
+          0.2 + 0.12 * (1 - v) + r() * 0.04, 0.52 + 0.12 * (1 - v) + r() * 0.04, [0, 0.35, -0.35, 0.7])
       }
     }
     const bg = pal.bg
@@ -452,7 +454,7 @@ const painter: Painter<Scene> = {
         const g = clamp01((f.p - pl.g0) / (pl.g1 - pl.g0))
         if (g <= 0) continue
         any = true
-        const front = (pl.L + pl.unfold) * easeInOut(g)
+        const front = (pl.L + pl.unfold) * g * g * (3 - 2 * g)
         const sw = f.still ? 0 : (pl.amp * (Math.sin(pl.freq * f.t + pl.ph) + 0.35 * Math.sin(2.31 * pl.freq * f.t + 1.7 * pl.ph))) / 1.35
         const ca = Math.cos(sw), sa = Math.sin(sw)
         const X = (x: number, y: number) => pl.x + x * ca - y * sa
