@@ -265,6 +265,9 @@ export function resample(pts: [number, number][], step: number) {
     xs.push(lerp(pts[k][0], pts[k + 1][0], f))
     ys.push(lerp(pts[k][1], pts[k + 1][1], f))
   }
+  // And the end itself, however short the last step.
+  const [ex, ey] = pts[pts.length - 1]
+  if (Math.hypot(ex - xs[xs.length - 1], ey - ys[ys.length - 1]) > 0.5) { xs.push(ex); ys.push(ey) }
   for (let i = 0; i < xs.length; i++) {
     const a = Math.max(0, i - 1), b = Math.min(xs.length - 1, i + 1)
     as.push(Math.atan2(ys[b] - ys[a], xs[b] - xs[a]))
