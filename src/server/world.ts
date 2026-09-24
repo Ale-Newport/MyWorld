@@ -6,6 +6,7 @@ import { hasBlob, putBlob, readBlob, sha256 } from './blobs.ts'
 import { exists, head, publish, readRevision, saveDraft, seed, type BlobRef, type RevisionMeta } from './revisions.ts'
 import { SYSTEM, type Actor } from './audit.ts'
 import { ValidationError } from './auth/guard.ts'
+import { driveSpawnProblems } from './world-spawn.ts'
 
 /* ============================================================
    THE WORLD DOCUMENT
@@ -120,6 +121,8 @@ export function validateWorld(world: Json, assets: Json): WorldProblem[] {
   if (!Array.isArray(world.instanceRefs)) error('The world has no instance references.')
   const variant = (states?.['v4:world']?.data as Json | undefined)?.worldVariant as Json | undefined
   if (variant?.id !== 'archipelago') error('The world root is not the Archipelago variant.')
+  // A pinned drive spawn must be complete; without the pin the plaza is used (see world-spawn.ts).
+  for (const message of driveSpawnProblems(variant)) error(message)
   if (assets.schema !== 1 || !Array.isArray(assets.definitions)) error('Asset definitions are missing or have an unknown schema.')
   const definitionIds = new Set<string>()
   for (const d of (assets.definitions as Json[] | undefined) ?? []) {

@@ -287,6 +287,22 @@ export class VisualVehicle {
         }
         for(const mesh of this.shellMeshes)mesh.userData.vehiclePaint=true;
     }
+    /** After a teleport (Driving.place): the body at its new pose and every wheel straight at the hub
+     *  height of its current suspension length — no easing in from where the car used to be. */
+    snap() {
+        const vehicle = this.vehicle;
+        this.chassis.position.copy(vehicle.position);
+        this.chassis.quaternion.copy(vehicle.quaternion);
+        this.steeringVisual = 0;
+        this.boostRaw = 0;
+        this.boostMix = 0;
+        this.trailActive = false;
+        for (let i = 0; i < this.wheels.length; i++) {
+            const visual = this.wheels[i], physical = vehicle.wheels.items[i];
+            visual.container.position.y = Math.min(visual.basePosition.y - physical.suspensionLength, -0.5) + (visual.authoredYOffset ?? 0);
+            visual.strut.scale.y = (visual.authoredStrutScale ?? 1) * Math.max(0.001, Math.abs(visual.container.position.y - (visual.authoredYOffset ?? 0)) - 0.5);
+        }
+    }
     /* ========================================================
        UPDATE
        ======================================================== */

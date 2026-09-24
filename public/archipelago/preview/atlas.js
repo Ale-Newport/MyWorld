@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import {OutputPass} from 'three/addons/postprocessing/OutputPass.js';
 import {authoredWorldBounds,visibleInWorld} from './world-bounds.js';
+import {areaOf} from './runtime/placement.js';
 /* THE ATLAS — the M map.
    An orthographic photograph of the world itself, north up, framed from the
    terrain's real bounds, the way /world2's top-down camera sees its island:
@@ -16,28 +17,45 @@ import {authoredWorldBounds,visibleInWorld} from './world-bounds.js';
    world changes material or visibility for the photograph; only the sun's
    shadow frustum is re-centred for that one render and put back.
 
-   Markers come from the scene graph: visible experience groups, the activity
-   points the runtime registered, and the player. Moving a group in the editor
-   moves its marker; publishing a world publishes its map. */
+   Markers come from the scene graph: visible experience groups (placed where
+   their meshes really are, see sceneMarkers), the activity points the runtime
+   registered, and the player. Moving a group in the editor moves its marker;
+   publishing a world publishes its map.
+
+   TRAVEL. With `onTravel`, every place is a button: selecting one, or any
+   point of the photograph, asks the host for a safe arrival there
+   (main.js → runtime/placement.js). On success the map closes; on refusal the
+   reason is said where it was asked ("Can't drive there — water") and the map
+   stays. A click is told from a drag by distance (5 px mouse, 10 px touch)
+   and by pointer count (a pinch is never a click): the pointer is captured
+   only once it has become a drag, and the click that ends a drag or a pinch is
+   swallowed, so panning never travels. A double click no longer zooms (its
+   first click already travels); the wheel, a pinch, + and − do.
+   Keys while the map is open belong to the map and never reach the car: Esc
+   and M close it; Tab and Shift+Tab move through the map, its places and its
+   buttons (focus stays inside); Enter or Space on a place travels there;
+   arrows/WASD pan; + − zoom and 0 shows the whole island. */
 export const MAP_HIDDEN=2;
 const KINDS={experience:{label:'Areas',color:'#1d3c46'},activity:{label:'Activities',color:'#d9542b'},place:{label:'Places',color:'#2f7f74'}};
-const MIN_ZOOM=1,MAX_ZOOM=7;
+const MIN_ZOOM=1,MAX_ZOOM=7,DRAG={mouse:5,pen:6,touch:10};
 const clamp=THREE.MathUtils.clamp;
 function el(tag,attrs={},...children){const e=document.createElement(tag);for(const [k,v] of Object.entries(attrs)){if(k==='class')e.className=v;else if(k==='text')e.textContent=v;else if(v!==undefined&&v!==null&&v!==false)e.setAttribute(k,v===true?'':v);}e.append(...children);return e;}
 export class WorldAtlas{
- constructor({renderer,scene,root,sun,getPlayer,getMarkers,onOpen=()=>{},onClose=()=>{},title='Archipiélago'}){
-  Object.assign(this,{renderer,scene,root,sun,getPlayer,getMarkers,onOpen,onClose});this.isOpen=false;this.photo=null;this.view={zoom:1,cx:0,cy:0};this.detailTimer=0;this.disposers=[];
+ constructor({renderer,scene,root,sun,getPlayer,getMarkers,onOpen=()=>{},onClose=()=>{},onTravel=null,title='Archipiélago'}){
+  Object.assign(this,{renderer,scene,root,sun,getPlayer,getMarkers,onOpen,onClose,onTravel});this.isOpen=false;this.photo=null;this.view={zoom:1,cx:0,cy:0};this.detailTimer=0;this.disposers=[];this.pinEls=[];this.suppressUntil=0;
   const link=el('link',{rel:'stylesheet',href:new URL('./atlas.css',import.meta.url).href});document.head.append(link);this.disposers.push(()=>link.remove());
   this.base=el('canvas',{class:'atlas-base','aria-hidden':'true'});this.detail=el('canvas',{class:'atlas-detail','aria-hidden':'true'});
-  this.plane=el('div',{class:'atlas-plane'},this.base,this.detail);this.pins=el('div',{class:'atlas-pins',role:'list','aria-label':'Places on the map'});
-  this.stage=el('div',{class:'atlas-stage',tabindex:'0','aria-label':'Map. Drag or use the arrow keys to pan; scroll, pinch or + and − to zoom.'},this.plane,this.pins);
+  this.plane=el('div',{class:'atlas-plane'},this.base,this.detail);this.pins=el('div',{class:'atlas-pins',role:'group','aria-label':onTravel?'Places on the map: select one to travel there':'Places on the map'});
+  this.feedback=el('p',{class:'atlas-feedback',role:'alert',hidden:true});
+  this.stage=el('div',{class:'atlas-stage',tabindex:'0','aria-label':onTravel?'Map. Select a place, or any point of the island, to travel there. Drag or use the arrow keys to pan; scroll, pinch or + and − to zoom.':'Map. Drag or use the arrow keys to pan; scroll, pinch or + and − to zoom.'},this.plane,this.pins,this.feedback);
+  if(onTravel)this.stage.classList.add('atlas-travel');
   const zoomIn=el('button',{type:'button','aria-label':'Zoom in',text:'+'}),zoomOut=el('button',{type:'button','aria-label':'Zoom out',text:'−'}),fit=el('button',{type:'button','aria-label':'Show the whole island',text:'⤢'});
   this.scale=el('div',{class:'atlas-scale','aria-hidden':'true'},el('i'),el('span'));
   this.legend=el('ul',{class:'atlas-legend','aria-label':'Legend'});
   this.status=el('p',{class:'atlas-status',role:'status'});
   const close=el('button',{type:'button',class:'atlas-close',text:'Close'},el('kbd',{text:'Esc'}));
   this.dialog=el('section',{class:'atlas',role:'dialog','aria-modal':'true','aria-labelledby':'atlas-title',hidden:true},
-   el('header',{class:'atlas-head'},el('div',{},el('p',{class:'atlas-eyebrow',text:'Find your way'}),el('h2',{id:'atlas-title',text:title})),close),
+   el('header',{class:'atlas-head'},el('div',{},el('p',{class:'atlas-eyebrow',text:onTravel?'Find your way · select a place to travel there':'Find your way'}),el('h2',{id:'atlas-title',text:title})),close),
    this.stage,
    el('aside',{class:'atlas-side'},el('div',{class:'atlas-zoom',role:'group','aria-label':'Zoom'},zoomIn,zoomOut,fit),el('p',{class:'atlas-north','aria-hidden':'true',text:'N ↑'}),this.scale,this.legend,this.status));
   document.body.append(this.dialog);this.disposers.push(()=>this.dialog.remove());
@@ -53,10 +71,10 @@ export class WorldAtlas{
   this.dialog.hidden=false;
   if(!this.photo)this.photograph();
   this.layout();
-  this.markers=this.collectMarkers();this.renderLegend();
+  this.markers=this.collectMarkers();this.renderLegend();this.buildPins();
   this.centreOnPlayer();this.apply();this.stage.focus({preventScroll:true});
  }
- close(){if(!this.isOpen)return;this.isOpen=false;clearTimeout(this.detailTimer);this.dialog.hidden=true;this.onClose();this.returnFocus?.focus?.({preventScroll:true});}
+ close(){if(!this.isOpen)return;this.isOpen=false;clearTimeout(this.detailTimer);clearTimeout(this.feedbackTimer);this.feedback.hidden=true;this.dialog.hidden=true;this.onClose();this.returnFocus?.focus?.({preventScroll:true});}
  /* ---- photograph --------------------------------------------------------- */
  bounds(){const b=authoredWorldBounds(this.root),m=6;return {minX:b.minX-m,maxX:b.maxX+m,minZ:b.minZ-m,maxZ:b.maxZ+m};}
  render(rect,width,height){
@@ -84,6 +102,8 @@ export class WorldAtlas{
  /** World x/z → map-plane CSS px at zoom 1. */
  toPlane(x,z){const b=this.photo.bounds;return [(x-b.minX)/(b.maxX-b.minX)*this.fw,(z-b.minZ)/(b.maxZ-b.minZ)*this.fh];}
  toScreen(x,z){const [px,py]=this.toPlane(x,z),v=this.view;return [this.sw/2+(px-v.cx)*v.zoom,this.sh/2+(py-v.cy)*v.zoom];}
+ /** Stage CSS px → world x/z: the exact inverse of toScreen for the current zoom, pan and stage size (north up, no rotation). */
+ toWorld(sx,sy){const v=this.view,b=this.photo.bounds,px=v.cx+(sx-this.sw/2)/v.zoom,py=v.cy+(sy-this.sh/2)/v.zoom;return {x:b.minX+px/this.fw*(b.maxX-b.minX),z:b.minZ+py/this.fh*(b.maxZ-b.minZ),inside:px>=0&&px<=this.fw&&py>=0&&py<=this.fh};}
  fit(){this.view={zoom:1,cx:this.fw/2,cy:this.fh/2};this.apply();}
  centreOnPlayer(){this.view={zoom:1,cx:this.fw/2,cy:this.fh/2};}
  clampView(){const v=this.view;v.zoom=clamp(v.zoom,MIN_ZOOM,MAX_ZOOM);const hx=Math.max(0,(this.fw-this.sw/v.zoom)/2),hy=Math.max(0,(this.fh-this.sh/v.zoom)/2);v.cx=clamp(v.cx,this.fw/2-hx,this.fw/2+hx);v.cy=clamp(v.cy,this.fh/2-hy,this.fh/2+hy);}
@@ -118,52 +138,80 @@ export class WorldAtlas{
  renderLegend(){
   const counts={};for(const m of this.markers.places)counts[m.kind]=(counts[m.kind]??0)+1;
   this.legend.replaceChildren(el('li',{},el('b',{class:'atlas-key atlas-key-player'}),'You are here'),...Object.entries(KINDS).filter(([k])=>counts[k]).map(([k,v])=>el('li',{},el('b',{class:'atlas-key',style:`background:${v.color}`}),`${v.label} · ${counts[k]}`)));
-  this.status.textContent=`${this.markers.places.length} places · north is up`;
+  this.status.textContent=`${this.markers.places.length} places · north is up${this.onTravel?' · select one to travel there':''}`;
  }
+ /** One element per place for as long as the map is open (focus survives panning and zooming), in reading order for Tab. */
+ buildPins(){
+  const order={activity:0,experience:1,place:2};this.ranked=[...this.markers.places].sort((a,b)=>(order[a.kind]??3)-(order[b.kind]??3)||(b.priority??0)-(a.priority??0));
+  const travel=!!this.onTravel,tab=[...this.markers.places].sort((a,b)=>a.z-b.z||a.x-b.x);
+  this.pinEls=tab.map(m=>{const label=m.description?`${m.name} — ${m.description}`:m.name,pin=el(travel?'button':'div',travel?{type:'button',class:`atlas-pin atlas-pin-${m.kind}`,'aria-label':`Travel to ${label}`,title:`Travel to ${label}`}:{class:`atlas-pin atlas-pin-${m.kind}`,title:label},el('i',{'aria-hidden':'true',text:m.icon??''}),el('span',{text:m.name,'aria-hidden':travel?'true':null}));pin.style.setProperty('--pin',KINDS[m.kind]?.color??'#333');if(travel)pin.addEventListener('click',e=>{e.stopPropagation();if(performance.now()<this.suppressUntil)return;this.travel(m,this.pinPoint(pin));});return {m,pin};});
+  this.playerEl=this.markers.player?el('div',{class:'atlas-player',role:'img','aria-label':'You are here'}):null;
+  this.pins.replaceChildren(...this.pinEls.map(p=>p.pin),...(this.playerEl?[this.playerEl]:[]));
+ }
+ pinPoint(pin){return [parseFloat(pin.style.left)||this.sw/2,parseFloat(pin.style.top)||this.sh/2];}
  placePins(){
-  const v=this.view,pins=[],taken=[],fits=r=>!taken.some(t=>r.x<t.x+t.w&&r.x+r.w>t.x&&r.y<t.y+t.h&&r.y+r.h>t.y);
-  // Activities first, then areas, then the rest: the label that makes the cut is the one worth reading.
-  const order={activity:0,experience:1,place:2},places=[...this.markers.places].sort((a,b)=>(order[a.kind]??3)-(order[b.kind]??3)||(b.priority??0)-(a.priority??0));
+  const taken=[],fits=r=>!taken.some(t=>r.x<t.x+t.w&&r.x+r.w>t.x&&r.y<t.y+t.h&&r.y+r.h>t.y),byPlace=new Map(this.pinEls.map(p=>[p.m,p.pin]));
   const player=this.markers.player;if(player){const [x,y]=this.toScreen(player.x,player.z);taken.push({x:x-14,y:y-14,w:28,h:28});}
-  for(const m of places){
-   const [x,y]=this.toScreen(m.x,m.z);if(x<-20||y<-20||x>this.sw+20||y>this.sh+20)continue;
+  // Activities first, then areas, then the rest: the label that makes the cut is the one worth reading.
+  for(const m of this.ranked??[]){
+   const pin=byPlace.get(m);if(!pin)continue;const [x,y]=this.toScreen(m.x,m.z),off=x<-20||y<-20||x>this.sw+20||y>this.sh+20;
+   if(off){if(pin===document.activeElement)this.stage.focus({preventScroll:true});pin.hidden=true;continue;}pin.hidden=false;
    // Near the right edge the label goes on the pin's left rather than off the map.
    const label=m.name.length*6.4+18,flip=x+9+label>this.sw-6,box={x:flip?x-9-label:x+9,y:y-9,w:label,h:18},showLabel=fits(box);if(showLabel)taken.push(box);taken.push({x:x-7,y:y-7,w:14,h:14});
-   const pin=el('div',{class:`atlas-pin atlas-pin-${m.kind}`,role:'listitem',style:`left:${x}px;top:${y}px;--pin:${KINDS[m.kind]?.color??'#333'}`,'data-label':showLabel?'true':'false','data-flip':flip?'true':'false',title:m.description?`${m.name} — ${m.description}`:m.name},el('i',{'aria-hidden':'true',text:m.icon??''}),el('span',{text:m.name}));
-   pins.push(pin);
+   Object.assign(pin.style,{left:x+'px',top:y+'px'});pin.dataset.label=showLabel?'true':'false';pin.dataset.flip=flip?'true':'false';
   }
-  if(player){const [x,y]=this.toScreen(player.x,player.z),deg=-Math.atan2(-player.dz,player.dx)*180/Math.PI+90;pins.push(el('div',{class:'atlas-player',role:'listitem','aria-label':'You are here',style:`left:${x}px;top:${y}px;transform:translate(-50%,-50%) rotate(${deg}deg)`}));}
-  this.pins.replaceChildren(...pins);
+  if(player&&this.playerEl){const [x,y]=this.toScreen(player.x,player.z),deg=-Math.atan2(-player.dz,player.dx)*180/Math.PI+90;Object.assign(this.playerEl.style,{left:x+'px',top:y+'px',transform:`translate(-50%,-50%) rotate(${deg}deg)`});}
  }
+ /* ---- travel -------------------------------------------------------------- */
+ /** Asks the host to travel; closes on success, says why not where it was asked otherwise. */
+ travel(target,[sx,sy]=[this.sw/2,this.sh/2]){
+  if(!this.onTravel||!this.isOpen)return null;const result=this.onTravel(target)??{ok:false};
+  if(result.ok){this.markers.player=this.getPlayer?.()??this.markers.player;this.close();}else this.say(result.message??'Can’t drive there',sx,sy);
+  return result;
+ }
+ say(text,sx,sy){const f=this.feedback;f.textContent=text;f.hidden=false;Object.assign(f.style,{left:clamp(sx,90,this.sw-90)+'px',top:Math.max(44,sy)+'px'});f.classList.remove('show');void f.offsetWidth;f.classList.add('show');this.status.textContent=text;clearTimeout(this.feedbackTimer);this.feedbackTimer=setTimeout(()=>{f.hidden=true;f.classList.remove('show');},2800);}
  /* ---- gestures ------------------------------------------------------------ */
  bindGestures(){
-  const s=this.stage,pointers=new Map();let last=null,pinch=null;
+  const s=this.stage,pointers=new Map();let last=null,pinch=null,press=null;
   const on=(t,type,fn,o)=>{t.addEventListener(type,fn,o);this.disposers.push(()=>t.removeEventListener(type,fn,o));};
+  const capture=id=>{try{s.setPointerCapture(id);}catch{/* the pointer is already gone */}};
   on(s,'wheel',e=>{e.preventDefault();const r=s.getBoundingClientRect(),f=Math.exp(-e.deltaY*(e.deltaMode===1?.05:.0016));this.zoomAt(f,e.clientX-r.left,e.clientY-r.top);},{passive:false});
-  on(s,'pointerdown',e=>{s.setPointerCapture(e.pointerId);pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});last={x:e.clientX,y:e.clientY};if(pointers.size===2){const [a,b]=[...pointers.values()];pinch={d:Math.hypot(a.x-b.x,a.y-b.y)};}});
+  on(s,'pointerdown',e=>{if(e.pointerType==='mouse'&&e.button!==0)return;pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});
+   if(pointers.size===1){press={id:e.pointerId,x:e.clientX,y:e.clientY,type:e.pointerType,dragging:false,gesture:false};last=null;}
+   else{if(press)press.gesture=true;const [a,b]=[...pointers.values()];pinch={d:Math.hypot(a.x-b.x,a.y-b.y)};for(const id of pointers.keys())capture(id);}});
   on(s,'pointermove',e=>{if(!pointers.has(e.pointerId))return;pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});
    if(pointers.size===2&&pinch){const [a,b]=[...pointers.values()],d=Math.hypot(a.x-b.x,a.y-b.y),r=s.getBoundingClientRect();if(pinch.d>0)this.zoomAt(d/pinch.d,(a.x+b.x)/2-r.left,(a.y+b.y)/2-r.top);pinch.d=d;return;}
-   if(last){this.pan(e.clientX-last.x,e.clientY-last.y);last={x:e.clientX,y:e.clientY};}});
-  const end=e=>{pointers.delete(e.pointerId);if(pointers.size<2)pinch=null;if(!pointers.size)last=null;};on(s,'pointerup',end);on(s,'pointercancel',end);
-  on(s,'dblclick',e=>{const r=s.getBoundingClientRect();this.zoomAt(2,e.clientX-r.left,e.clientY-r.top);});
+   if(!press||e.pointerId!==press.id||press.gesture)return;
+   // Only past the threshold does a press become a drag (and the pointer get captured): below it, it is still a click.
+   if(!press.dragging&&Math.hypot(e.clientX-press.x,e.clientY-press.y)>(DRAG[press.type]??6)){press.dragging=true;last={x:press.x,y:press.y};capture(e.pointerId);s.classList.add('dragging');}
+   if(press.dragging){this.pan(e.clientX-last.x,e.clientY-last.y);last={x:e.clientX,y:e.clientY};}});
+  const end=e=>{if(!pointers.has(e.pointerId))return;pointers.delete(e.pointerId);if(pointers.size<2)pinch=null;
+   // The click a browser sends straight after a drag or a pinch is not a choice of destination.
+   if(press&&(press.dragging||press.gesture||e.type==='pointercancel'))this.suppressUntil=performance.now()+120;
+   if(!pointers.size){press=null;last=null;s.classList.remove('dragging');}};
+  on(s,'pointerup',end);on(s,'pointercancel',end);
+  on(s,'click',e=>{if(!this.onTravel||!this.photo||performance.now()<this.suppressUntil||e.target.closest?.('.atlas-pin'))return;const r=s.getBoundingClientRect(),sx=e.clientX-r.left,sy=e.clientY-r.top,p=this.toWorld(sx,sy);if(!p.inside){this.say('Can’t drive there — outside the island',sx,sy);return;}this.travel({kind:'point',x:p.x,z:p.z,name:null},[sx,sy]);});
   // Keys while the map is open belong to the map: they never reach the car or the editor.
   on(window,'keydown',e=>{
    if(!this.isOpen)return;const k=e.code;
    if(k==='Escape'||k==='KeyM'||k==='Tab'&&!this.dialog.contains(document.activeElement)){e.preventDefault();e.stopImmediatePropagation();this.close();return;}
-   if(k==='Tab'){const f=[...this.dialog.querySelectorAll('button,[tabindex="0"]')];const i=f.indexOf(document.activeElement);if(e.shiftKey&&i<=0){e.preventDefault();f[f.length-1].focus();}else if(!e.shiftKey&&i===f.length-1){e.preventDefault();f[0].focus();}e.stopImmediatePropagation();return;}
+   if(k==='Tab'){const f=[...this.dialog.querySelectorAll('button,[tabindex="0"]')].filter(n=>!n.hidden&&!n.disabled&&n.offsetParent!==null);const i=f.indexOf(document.activeElement);if(e.shiftKey&&i<=0){e.preventDefault();f[f.length-1]?.focus();}else if(!e.shiftKey&&i===f.length-1){e.preventDefault();f[0]?.focus();}e.stopImmediatePropagation();return;}
+   // Enter and Space reach a focused button as its own activation (they are not prevented here): a place travels.
    const step=60,moves={ArrowLeft:[step,0],KeyA:[step,0],ArrowRight:[-step,0],KeyD:[-step,0],ArrowUp:[0,step],KeyW:[0,step],ArrowDown:[0,-step],KeyS:[0,-step]};
    if(moves[k]){e.preventDefault();this.pan(...moves[k]);}else if(k==='Equal'||k==='NumpadAdd')this.zoomAt(1.5);else if(k==='Minus'||k==='NumpadSubtract')this.zoomAt(1/1.5);else if(k==='Digit0')this.fit();
    e.stopImmediatePropagation();
   },{capture:true});
  }
- dispose(){this.close();this.output?.dispose();clearTimeout(this.detailTimer);this.disposers.forEach(d=>d());this.disposers=[];}
+ dispose(){this.close();this.output?.dispose();clearTimeout(this.detailTimer);clearTimeout(this.feedbackTimer);this.disposers.forEach(d=>d());this.disposers=[];}
 }
-/** Experience groups and the activity points registered by the runtime, from the live scene. */
+/** Experience groups and the activity points registered by the runtime, from the live scene. A group's
+ * marker stands where its meshes really are (runtime/placement.js areaOf: its floor, else its authored
+ * origin inside its content) — never at a bounding box that hidden helpers or particles drag away. */
 export function sceneMarkers(root,extra=[]){
- const out=[],p=new THREE.Vector3(),box=new THREE.Box3();root.updateMatrixWorld(true);
+ const out=[];root.updateMatrixWorld(true);
  root.traverse(n=>{
-  if(!n.userData.worldExperience||!visibleInWorld(n))return;box.setFromObject(n);if(box.isEmpty())return;box.getCenter(p);
-  out.push({id:n.userData.aw_id,kind:'experience',name:n.userData.mapLabel??n.name.replace(/\s+(Complete|Setup|Area)$/,''),icon:n.userData.icon??'',x:p.x,z:p.z,priority:1});
+  if(!n.userData.worldExperience||!visibleInWorld(n))return;const area=areaOf(n);if(!area.box)return;
+  out.push({id:n.userData.aw_id,kind:'experience',name:n.userData.mapLabel??n.name.replace(/\s+(Complete|Setup|Area)$/,''),icon:n.userData.icon??'',x:area.x,z:area.z,priority:1,group:n});
  });
  return [...out,...extra];
 }
