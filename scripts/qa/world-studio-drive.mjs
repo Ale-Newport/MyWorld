@@ -30,6 +30,13 @@ const lookAt = (x, z) => page.evaluate(([x, z]) => { const A = globalThis.__arch
 
 assert(await page.evaluate(() => !document.body.dataset.player && globalThis.__archipelago.mode === 'edit'), 'the studio runs the editor', results)
 assert(/Central Plaza/.test(await status()), `the drive spawn is automatic in the plaza (“${await status()}”)`, results)
+// The editor's map shows the same places, but there is no car to travel with: plain markers, no travel.
+await page.locator('#world-map').click()
+await page.waitForFunction(() => !document.querySelector('.atlas').hidden)
+const editorMap = await page.evaluate(() => ({ buttons: document.querySelectorAll('button.atlas-pin').length, pins: document.querySelectorAll('.atlas-pin').length, eyebrow: document.querySelector('.atlas-eyebrow').textContent }))
+assert(editorMap.pins > 10 && editorMap.buttons === 0 && !/travel/i.test(editorMap.eyebrow), `outside DRIVE the map offers no travel (${editorMap.pins} markers, ${editorMap.buttons} buttons)`, results)
+await page.keyboard.press('Escape')
+await sleep(300)
 
 /* ---- recovery anchors ---- */
 await page.locator('#drive-properties summary').click()

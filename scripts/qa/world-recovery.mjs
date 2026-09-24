@@ -80,15 +80,15 @@ for (const [name, x, z, heading] of coasts) {
   assert(!!second && back < 60, `and still nearby (${back?.toFixed(1)} m)`, results)
 }
 
-/* ---- past the edge of the world (the sea floor ends 23 m out): the void ---- */
+/* ---- past the edge of the world (the sea floor ends ~45 m out): the void — on the east coast, away from the repeats above ---- */
 {
-  await start(-104, 0, Math.PI)
+  await start(88, 20, 0)
   await sleep(700)
   await driveToSea()
   const count = await recoveries()
-  await page.evaluate(() => { const d = globalThis.__archipelago.driving; d.vehicle.moveTo({ x: -157, y: -1.5, z: 0 }, Math.PI) })
+  await page.evaluate(() => { const d = globalThis.__archipelago.driving; d.vehicle.moveTo({ x: 158, y: -1.5, z: 20 }, 0) })
   const rec = await waitRecovery(count, 4000)
-  assert(rec?.at?.reason === 'void' && Math.hypot(rec.x - rec.at.x, rec.z - rec.at.z) < 45 && rec.x < -100, `beyond the sea floor is the void: recovered on the same coast (${rec?.at?.reason}, ${rec && Math.hypot(rec.x - rec.at.x, rec.z - rec.at.z).toFixed(1)} m)`, results)
+  assert(rec?.at?.reason === 'void' && Math.hypot(rec.x - rec.at.x, rec.z - rec.at.z) < 65 && rec.x > 80, `beyond the sea floor is the void: recovered on the same coast (${rec?.at?.reason}, ${rec && Math.hypot(rec.x - rec.at.x, rec.z - rec.at.z).toFixed(1)} m)`, results)
 }
 
 /* ---- R: the same local recovery ---- */
@@ -102,7 +102,7 @@ for (const [name, x, z, heading] of coasts) {
   const rec = await waitRecovery(count, 2000)
   await sleep(500)
   const after = await state()
-  assert(wet.wet > 0.05 && rec?.reason === 'respawn' && after.dry && Math.hypot(rec.x - wet.x, rec.z - wet.z) < 40 && Math.hypot(rec.x - PLAZA[0], rec.z - PLAZA[1]) > 40, `R in the shallows recovers nearby on dry ground (${rec?.source}, ${rec && Math.hypot(rec.x - wet.x, rec.z - wet.z).toFixed(1)} m)`, results)
+  assert(wet.wet > 0.05 && rec?.reason === 'manual' && after.dry && Math.hypot(rec.x - wet.x, rec.z - wet.z) < 40 && Math.hypot(rec.x - PLAZA[0], rec.z - PLAZA[1]) > 40, `R in the shallows recovers nearby on dry ground (${rec?.source}, ${rec && Math.hypot(rec.x - wet.x, rec.z - wet.z).toFixed(1)} m)`, results)
   // On open ground, R just sets the car back on its wheels where it is.
   // On its roof: rolled half a turn about its own length.
   await page.evaluate(() => { const T = globalThis.__archipelago.THREE, d = globalThis.__archipelago.driving, v = d.vehicle, b = v.chassis.physical.body, p = v.position, q = v.quaternion.clone().multiply(new T.Quaternion().setFromAxisAngle(new T.Vector3(1, 0, 0), Math.PI)); b.setTranslation({ x: p.x, y: p.y + .6, z: p.z }, true); b.setRotation(q, true); b.setLinvel({ x: 0, y: 0, z: 0 }, true); b.setAngvel({ x: 0, y: 0, z: 0 }, true) })
@@ -113,6 +113,12 @@ for (const [name, x, z, heading] of coasts) {
   await sleep(500)
   const upright = await state()
   assert(flipped.up < 0 && righted?.source === 'in place' && upright.up > 0.99 && Math.hypot(upright.x - flipped.x, upright.z - flipped.z) < 1.5, `R on its roof on open ground: back on its wheels where it lay (${righted?.source}, up ${flipped.up.toFixed(2)} → ${upright.up.toFixed(3)})`, results)
+  // A hazard's respawn (World2's altar, Player.die) is not R: the car is taken away from the spot, not set back on it.
+  await sleep(1500)
+  const here = await state(), m = await recoveries()
+  await page.evaluate(() => globalThis.__archipelago.driving.player.respawn())
+  const away = await waitRecovery(m, 2000)
+  assert(away?.reason === 'respawn' && away.source !== 'in place' && Math.hypot(away.x - here.x, away.z - here.z) >= 5, `a hazard's respawn moves the car off the spot (${away?.source}, ${away && Math.hypot(away.x - here.x, away.z - here.z).toFixed(1)} m)`, results)
 }
 
 /* ---- the overturned fallback in the water recovers nearby instead of righting in place ---- */

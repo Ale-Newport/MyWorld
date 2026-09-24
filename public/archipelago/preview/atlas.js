@@ -22,7 +22,8 @@ import {areaOf} from './runtime/placement.js';
    registered, and the player. Moving a group in the editor moves its marker;
    publishing a world publishes its map.
 
-   TRAVEL. With `onTravel`, every place is a button: selecting one, or any
+   TRAVEL. With `onTravel` (and while `canTravel()`, i.e. driving: the studio's
+   editor shows the same map without it), every place is a button: selecting one, or any
    point of the photograph, asks the host for a safe arrival there
    (main.js → runtime/placement.js). On success the map closes; on refusal the
    reason is said where it was asked ("Can't drive there — water") and the map
@@ -41,21 +42,20 @@ const MIN_ZOOM=1,MAX_ZOOM=7,DRAG={mouse:5,pen:6,touch:10};
 const clamp=THREE.MathUtils.clamp;
 function el(tag,attrs={},...children){const e=document.createElement(tag);for(const [k,v] of Object.entries(attrs)){if(k==='class')e.className=v;else if(k==='text')e.textContent=v;else if(v!==undefined&&v!==null&&v!==false)e.setAttribute(k,v===true?'':v);}e.append(...children);return e;}
 export class WorldAtlas{
- constructor({renderer,scene,root,sun,getPlayer,getMarkers,onOpen=()=>{},onClose=()=>{},onTravel=null,title='Archipiélago'}){
-  Object.assign(this,{renderer,scene,root,sun,getPlayer,getMarkers,onOpen,onClose,onTravel});this.isOpen=false;this.photo=null;this.view={zoom:1,cx:0,cy:0};this.detailTimer=0;this.disposers=[];this.pinEls=[];this.suppressUntil=0;
+ constructor({renderer,scene,root,sun,getPlayer,getMarkers,onOpen=()=>{},onClose=()=>{},onTravel=null,canTravel=()=>true,title='Archipiélago'}){
+  Object.assign(this,{renderer,scene,root,sun,getPlayer,getMarkers,onOpen,onClose,onTravel,canTravel});this.isOpen=false;this.photo=null;this.view={zoom:1,cx:0,cy:0};this.detailTimer=0;this.disposers=[];this.pinEls=[];this.suppressUntil=0;this.travelling=false;
   const link=el('link',{rel:'stylesheet',href:new URL('./atlas.css',import.meta.url).href});document.head.append(link);this.disposers.push(()=>link.remove());
   this.base=el('canvas',{class:'atlas-base','aria-hidden':'true'});this.detail=el('canvas',{class:'atlas-detail','aria-hidden':'true'});
-  this.plane=el('div',{class:'atlas-plane'},this.base,this.detail);this.pins=el('div',{class:'atlas-pins',role:'group','aria-label':onTravel?'Places on the map: select one to travel there':'Places on the map'});
+  this.plane=el('div',{class:'atlas-plane'},this.base,this.detail);this.pins=el('div',{class:'atlas-pins',role:'group'});
   this.feedback=el('p',{class:'atlas-feedback',role:'alert',hidden:true});
-  this.stage=el('div',{class:'atlas-stage',tabindex:'0','aria-label':onTravel?'Map. Select a place, or any point of the island, to travel there. Drag or use the arrow keys to pan; scroll, pinch or + and − to zoom.':'Map. Drag or use the arrow keys to pan; scroll, pinch or + and − to zoom.'},this.plane,this.pins,this.feedback);
-  if(onTravel)this.stage.classList.add('atlas-travel');
+  this.stage=el('div',{class:'atlas-stage',tabindex:'0'},this.plane,this.pins,this.feedback);
   const zoomIn=el('button',{type:'button','aria-label':'Zoom in',text:'+'}),zoomOut=el('button',{type:'button','aria-label':'Zoom out',text:'−'}),fit=el('button',{type:'button','aria-label':'Show the whole island',text:'⤢'});
   this.scale=el('div',{class:'atlas-scale','aria-hidden':'true'},el('i'),el('span'));
   this.legend=el('ul',{class:'atlas-legend','aria-label':'Legend'});
   this.status=el('p',{class:'atlas-status',role:'status'});
   const close=el('button',{type:'button',class:'atlas-close',text:'Close'},el('kbd',{text:'Esc'}));
   this.dialog=el('section',{class:'atlas',role:'dialog','aria-modal':'true','aria-labelledby':'atlas-title',hidden:true},
-   el('header',{class:'atlas-head'},el('div',{},el('p',{class:'atlas-eyebrow',text:onTravel?'Find your way · select a place to travel there':'Find your way'}),el('h2',{id:'atlas-title',text:title})),close),
+   el('header',{class:'atlas-head'},el('div',{},this.eyebrow=el('p',{class:'atlas-eyebrow',text:'Find your way'}),el('h2',{id:'atlas-title',text:title})),close),
    this.stage,
    el('aside',{class:'atlas-side'},el('div',{class:'atlas-zoom',role:'group','aria-label':'Zoom'},zoomIn,zoomOut,fit),el('p',{class:'atlas-north','aria-hidden':'true',text:'N ↑'}),this.scale,this.legend,this.status));
   document.body.append(this.dialog);this.disposers.push(()=>this.dialog.remove());
@@ -65,9 +65,16 @@ export class WorldAtlas{
  }
  /** The world changed (editor edit, new revision): the next opening re-photographs it. */
  invalidate(){this.photo=null;}
+ /** Travel is offered only when the host can travel now (while driving; not in the studio's editor). */
+ setTravel(on){
+  this.travelling=on;this.stage.classList.toggle('atlas-travel',on);this.eyebrow.textContent=on?'Find your way · select a place to travel there':'Find your way';
+  this.pins.setAttribute('aria-label',on?'Places on the map: select one to travel there':'Places on the map');
+  this.stage.setAttribute('aria-label',`Map. ${on?'Select a place, or any point of the island, to travel there. ':''}Drag or use the arrow keys to pan; scroll, pinch or + and − to zoom.`);
+ }
  toggle(){if(this.isOpen)this.close();else this.show();}
  show(){
   if(this.isOpen)return;this.isOpen=true;this.returnFocus=document.activeElement;this.onOpen();
+  this.setTravel(!!this.onTravel&&this.canTravel());
   this.dialog.hidden=false;
   if(!this.photo)this.photograph();
   this.layout();
@@ -138,12 +145,12 @@ export class WorldAtlas{
  renderLegend(){
   const counts={};for(const m of this.markers.places)counts[m.kind]=(counts[m.kind]??0)+1;
   this.legend.replaceChildren(el('li',{},el('b',{class:'atlas-key atlas-key-player'}),'You are here'),...Object.entries(KINDS).filter(([k])=>counts[k]).map(([k,v])=>el('li',{},el('b',{class:'atlas-key',style:`background:${v.color}`}),`${v.label} · ${counts[k]}`)));
-  this.status.textContent=`${this.markers.places.length} places · north is up${this.onTravel?' · select one to travel there':''}`;
+  this.status.textContent=`${this.markers.places.length} places · north is up${this.travelling?' · select one to travel there':''}`;
  }
  /** One element per place for as long as the map is open (focus survives panning and zooming), in reading order for Tab. */
  buildPins(){
   const order={activity:0,experience:1,place:2};this.ranked=[...this.markers.places].sort((a,b)=>(order[a.kind]??3)-(order[b.kind]??3)||(b.priority??0)-(a.priority??0));
-  const travel=!!this.onTravel,tab=[...this.markers.places].sort((a,b)=>a.z-b.z||a.x-b.x);
+  const travel=this.travelling,tab=[...this.markers.places].sort((a,b)=>a.z-b.z||a.x-b.x);
   this.pinEls=tab.map(m=>{const label=m.description?`${m.name} — ${m.description}`:m.name,pin=el(travel?'button':'div',travel?{type:'button',class:`atlas-pin atlas-pin-${m.kind}`,'aria-label':`Travel to ${label}`,title:`Travel to ${label}`}:{class:`atlas-pin atlas-pin-${m.kind}`,title:label},el('i',{'aria-hidden':'true',text:m.icon??''}),el('span',{text:m.name,'aria-hidden':travel?'true':null}));pin.style.setProperty('--pin',KINDS[m.kind]?.color??'#333');if(travel)pin.addEventListener('click',e=>{e.stopPropagation();if(performance.now()<this.suppressUntil)return;this.travel(m,this.pinPoint(pin));});return {m,pin};});
   this.playerEl=this.markers.player?el('div',{class:'atlas-player',role:'img','aria-label':'You are here'}):null;
   this.pins.replaceChildren(...this.pinEls.map(p=>p.pin),...(this.playerEl?[this.playerEl]:[]));
@@ -165,7 +172,7 @@ export class WorldAtlas{
  /* ---- travel -------------------------------------------------------------- */
  /** Asks the host to travel; closes on success, says why not where it was asked otherwise. */
  travel(target,[sx,sy]=[this.sw/2,this.sh/2]){
-  if(!this.onTravel||!this.isOpen)return null;const result=this.onTravel(target)??{ok:false};
+  if(!this.travelling||!this.isOpen)return null;const result=this.onTravel(target)??{ok:false};
   if(result.ok){this.markers.player=this.getPlayer?.()??this.markers.player;this.close();}else this.say(result.message??'Can’t drive there',sx,sy);
   return result;
  }
@@ -190,7 +197,7 @@ export class WorldAtlas{
    if(press&&(press.dragging||press.gesture||e.type==='pointercancel'))this.suppressUntil=performance.now()+120;
    if(!pointers.size){press=null;last=null;s.classList.remove('dragging');}};
   on(s,'pointerup',end);on(s,'pointercancel',end);
-  on(s,'click',e=>{if(!this.onTravel||!this.photo||performance.now()<this.suppressUntil||e.target.closest?.('.atlas-pin'))return;const r=s.getBoundingClientRect(),sx=e.clientX-r.left,sy=e.clientY-r.top,p=this.toWorld(sx,sy);if(!p.inside){this.say('Can’t drive there — outside the island',sx,sy);return;}this.travel({kind:'point',x:p.x,z:p.z,name:null},[sx,sy]);});
+  on(s,'click',e=>{if(!this.travelling||!this.photo||performance.now()<this.suppressUntil||e.target.closest?.('.atlas-pin'))return;const r=s.getBoundingClientRect(),sx=e.clientX-r.left,sy=e.clientY-r.top,p=this.toWorld(sx,sy);if(!p.inside){this.say('Can’t drive there — outside the island',sx,sy);return;}this.travel({kind:'point',x:p.x,z:p.z,name:null},[sx,sy]);});
   // Keys while the map is open belong to the map: they never reach the car or the editor.
   on(window,'keydown',e=>{
    if(!this.isOpen)return;const k=e.code;
