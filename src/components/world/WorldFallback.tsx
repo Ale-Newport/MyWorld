@@ -21,9 +21,10 @@ export function WorldFallback({ name }: { name: string }) {
         <h2>Controls</h2>
         <ul>
           <li>WASD or arrow keys to drive; Shift to boost.</li>
-          <li>Space to jump; B or Control to brake; Space twice to switch between car and plane.</li>
+          <li>Space to jump, held to keep the wheels raised; B or Control to brake; Space twice to switch between car and plane.</li>
           <li>E or Enter to interact; Escape to leave an activity.</li>
-          <li>M or Tab for the map (Escape closes it), K for achievements, R to respawn, C for the camera.</li>
+          <li>M or Tab for the map: select a place, or any point of the island, to travel there (Escape closes it).</li>
+          <li>R to get back on your wheels nearby, K for achievements, C for the camera.</li>
           <li>In the plane: W/S for speed, A/D to turn and Q/E for pitch.</li>
         </ul>
       </section>
