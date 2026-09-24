@@ -14,8 +14,10 @@ import { TAU, clamp01, css, easeInOut, easeOut, field, lerp, mix, resample, rng,
    crossing.
 
    The map plots itself first, as dotted routes reaching in from the
-   edges. Then a traveller sets out along each, all at one pace and
-   the farthest first, so they meet where their routes meet and arrive
+   edges. Then travellers set out along them on one clock — each the
+   same distance from the destination at every moment, the farthest
+   first — so they meet exactly where their routes meet, walk on
+   together (a ring around them growing with the company) and arrive
    together just after the answer does; the ground they have covered
    turns to a solid teal line behind them. The destination lights in
    the accent as they arrive, and from then on a slow stream keeps
@@ -34,6 +36,8 @@ const PAD = 2.5
 /** The largest ring a traveller grows as others join it. */
 const RING = 8
 const ARRIVE = 0.78
+/** The stretch of progress the longest route's walk takes. */
+const WALK = 0.44
 const STEP = 3
 
 type Pt = [number, number]
@@ -45,11 +49,12 @@ interface Route {
   L: number
   reveal0: number
   reveal1: number
-  depart: number
 }
 
 interface Scene {
   routes: Route[]
+  /** The longest route: the walk is timed by it. */
+  longest: number
   dx: number; dy: number
   ripple: number
   junctions: { x: number; y: number; d: number; route: number }[]
@@ -160,7 +165,7 @@ const painter: Painter<Scene> = {
       stream: css(pal.signal, 0.6),
     }
     const d = destination(stage, PAD + ripple + 2)
-    if (!d) return { routes: [], dx: 0, dy: 0, ripple, junctions: [], ink, u }
+    if (!d) return { routes: [], longest: 1, dx: 0, dy: 0, ripple, junctions: [], ink, u }
     const [dx, dy] = d
     const r = rng(0xc0ffee)
     // A gentle, low-frequency unevenness in the ground, so the routes are not all alike.
@@ -243,16 +248,15 @@ const painter: Painter<Scene> = {
       // From the destination outward, with dots phased from it.
       const bx = Float32Array.from(xs).reverse(), by = Float32Array.from(ys).reverse()
       if (joinAt > 0) junctions.push({ x: bx[Math.round(joinAt / STEP)], y: by[Math.round(joinAt / STEP)], d: joinAt, route: routes.length })
-      routes.push({ xs: bx, ys: by, L: (bx.length - 1) * STEP, reveal0: 0, reveal1: 0, depart: 0 })
+      routes.push({ xs: bx, ys: by, L: (bx.length - 1) * STEP, reveal0: 0, reveal1: 0 })
     }
-    // One pace for everyone, set by the longest route: each leaves when it must to arrive with the rest.
+    // Plotted one after another, each finished before anyone sets out along it.
     const longest = routes.reduce((m, rt) => Math.max(m, rt.L), 1)
     routes.forEach((rt, i) => {
-      rt.depart = ARRIVE - (rt.L / longest) * 0.44
       rt.reveal0 = 0.08 + 0.1 * (i / Math.max(1, routes.length - 1))
-      rt.reveal1 = Math.min(rt.depart, rt.reveal0 + 0.3)
+      rt.reveal1 = Math.min(ARRIVE - WALK * (rt.L / longest), rt.reveal0 + 0.3)
     })
-    return { routes, dx, dy, ripple: Math.min(ripple, sd(keep, dx, dy) - PAD - 1), junctions, ink, u }
+    return { routes, longest, dx, dy, ripple: Math.min(ripple, sd(keep, dx, dy) - PAD - 1), junctions, ink, u }
   },
 
   draw(ctx, sc, f) {
@@ -261,15 +265,20 @@ const painter: Painter<Scene> = {
     const dots = new Path2D(), walked = new Path2D()
     const travellers: Pt[] = []
     const plotted = (rt: Route) => rt.L * easeInOut(clamp01((f.p - rt.reveal0) / Math.max(0.01, rt.reveal1 - rt.reveal0)))
+    /* Walking: one clock for everyone — every traveller is the same
+       distance from the destination at the same moment, entering the
+       frame when that distance first fits its route. So they meet
+       exactly where their routes meet, walk on together, and arrive
+       together. */
+    const walk = clamp01((f.p - (ARRIVE - WALK)) / WALK)
+    const ahead = walk > 0 ? sc.longest * (1 - easeInOut(walk)) : Infinity
     for (const rt of sc.routes) {
       const n = rt.xs.length
       // Plotting: the dotted route reaches in from the edge.
       const shown = plotted(rt)
       if (shown <= 0) continue
       const from = Math.max(0, Math.floor((rt.L - shown) / STEP))
-      // Walking: everyone at the same pace, arriving together.
-      const walk = clamp01((f.p - rt.depart) / (ARRIVE - rt.depart))
-      const at = f.p >= rt.depart ? rt.L * (1 - easeInOut(walk)) : Infinity
+      const at = ahead < rt.L ? ahead : Infinity
       const atK = Math.min(n - 1, Math.ceil(at / STEP))
       // Dots every other sample, phased from the destination, so shared stretches print one set.
       for (let k = from + (from % 2); k < Math.min(n, at === Infinity ? n : atK); k += 2) {
@@ -282,7 +291,7 @@ const painter: Painter<Scene> = {
         const fk = Math.min(n - 1.001, at / STEP), k0 = Math.floor(fk), t = fk - k0
         const tx = lerp(rt.xs[k0], rt.xs[k0 + 1], t), ty = lerp(rt.ys[k0], rt.ys[k0 + 1], t)
         walked.lineTo(tx, ty)
-        if (walk < 1) travellers.push([tx, ty])
+        if (at > 0.5) travellers.push([tx, ty])
       }
     }
     ctx.fillStyle = ink.dot

@@ -98,7 +98,13 @@ const painter: Painter<Scene> = {
       }
       const closed = lay(0), opened = lay(1)
       const ok = new Uint8Array(SAMPLES)
-      for (let q = 0; q < SAMPLES; q++) ok[q] = [0, 0.25, 0.5, 0.75, 1].every((o) => sd(keep, lerp(closed.cx[q], opened.cx[q], o), lerp(closed.cy[q], opened.cy[q], o)) >= need) ? 1 : 0
+      // Clear all the way through the opening: checked at eight steps of it, with half a step's travel to spare between them.
+      for (let q = 0; q < SAMPLES; q++) {
+        const spare = Math.hypot(opened.cx[q] - closed.cx[q], opened.cy[q] - closed.cy[q]) / 16
+        let clear = true
+        for (let o = 0; o <= 8 && clear; o++) clear = sd(keep, lerp(closed.cx[q], opened.cx[q], o / 8), lerp(closed.cy[q], opened.cy[q], o / 8)) >= need + spare
+        ok[q] = clear ? 1 : 0
+      }
       // Kept: the stretch through the top that is clear on both sides alike, so the frame is even.
       const apex = (SAMPLES - 1) / 2
       let half = 0
