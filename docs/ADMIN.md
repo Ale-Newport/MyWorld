@@ -193,7 +193,8 @@ Effects are code in this repository. Their parameters are data: numbers, choices
 - experience groups
 - terrain painting
 - roads and paths, slabs and surfaces
-- spawn points
+- spawn points, and the drive spawn: where `/world` starts (the Central Plaza unless *Set drive spawn here* pins another place)
+- the recovery anchors that put the car back near where it went off the island, shown on request
 - static and dynamic physics, and the ice-prop presets
 - undo and redo, import and export
 - test drive
@@ -307,6 +308,7 @@ The end-to-end checks in `scripts/qa/` drive a real browser against `npm run dev
 | `analytics.mjs` | What the browser sends; what the server refuses |
 | `library-effects.mjs` | Every added effect renders, animates, responds to a control and holds still under reduced motion |
 | `world-editor-e2e.mjs`, `world-studio.mjs` | Studio save, publish, map |
+| `world-studio-drive.mjs` | The studio's drive spawn and recovery anchors (serves the studio itself; no session needed) |
 | `world-activities.mjs` | Both activities, start to finish |
 | `world-terrain.mjs` | Painted land collides; erased land is sea |
 | `world-batching.mjs` | Instancing of the new areas |
