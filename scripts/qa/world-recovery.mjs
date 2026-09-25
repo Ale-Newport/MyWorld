@@ -136,6 +136,19 @@ for (const [name, x, z, heading] of coasts) {
   assert(rec?.reason === 'overturned' && after.dry && after.up > 0.99, `an overturned car that cannot be righted where it lies (in the sea) is recovered nearby (${rec?.reason}, ${rec?.source})`, results)
 }
 
+/* ---- a NaN physics state: recovered where the car last stood, sane again ---- */
+{
+  await start(-60, 62, Math.PI / 2)
+  await sleep(700)
+  await page.keyboard.down('KeyW'); await sleep(1500); await page.keyboard.up('KeyW')
+  const before = await state(), count = await recoveries()
+  await page.evaluate(() => globalThis.__archipelago.driving.vehicle.chassis.physical.body.setLinvel({ x: NaN, y: 0, z: 0 }, true))
+  const rec = await waitRecovery(count, 2000)
+  await sleep(800)
+  const after = await state()
+  assert(rec?.reason === 'invalid' && Number.isFinite(after.x + after.y + after.z) && after.up > 0.99 && after.speed < 0.3 && Math.hypot(after.x - before.x, after.z - before.z) < 40, `a NaN physics state is an incident: the car is put back, finite and upright, near where it was (${rec?.source}, ${Math.hypot(after.x - before.x, after.z - before.z).toFixed(1)} m)`, results)
+}
+
 /* ---- jumps are not incidents ---- */
 {
   await start(-60, 62, Math.PI)

@@ -32,6 +32,8 @@
 .atlas button.atlas-pin-activity:hover i,.atlas button.atlas-pin-activity:focus-visible i{transform:rotate(45deg) scale(1.35)}
 .atlas button.atlas-pin:hover span,.atlas button.atlas-pin:focus-visible span{background:#fff;box-shadow:0 0 0 2px #f2c14e,0 2px 6px #0006}
 .atlas button.atlas-pin:focus-visible{outline:none}
+/* A finger needs more than a 14 px dot: an invisible margin makes the place easier to tap. */
+@media (pointer:coarse){.atlas button.atlas-pin::before{content:'';position:absolute;inset:-9px;border-radius:999px}}
 .atlas-stage.atlas-travel{cursor:crosshair}
 .atlas-stage.dragging{cursor:grabbing}
 /* Said where it was asked: why there is no driving to that point. */
