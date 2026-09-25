@@ -150,6 +150,11 @@ html body.studio-admin #map-tabs button,
 html body.studio-admin .map-world-item,
 html body.studio-admin .map-place { border-color: var(--s-line); background: #fff; color: var(--s-ink); }
 html body.studio-admin .map-place img { background: var(--s-sunk); }
+html body.studio-admin #map-tabs button.active { color: #fff !important; }
+html body.studio-admin .map-empty,
+html body.studio-admin .map-empty p,
+html body.studio-admin .map-empty small { color: var(--s-muted); }
+html body.studio-admin .map-empty b { color: var(--s-ink); }
 html body.studio-admin .map-section-label,
 html body.studio-admin .map-world-item small,
 html body.studio-admin .map-transform label { color: var(--s-muted); }
