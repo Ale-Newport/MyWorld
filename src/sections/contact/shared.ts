@@ -132,15 +132,40 @@ export function sd(rects: Rect[], x: number, y: number) {
   return d
 }
 
-/** How far one can travel from (x, y) along the unit (dx, dy) before coming within `clear` of `rects` (sphere-traced). */
-export function reach(rects: Rect[], x: number, y: number, dx: number, dy: number, max: number, clear: number) {
-  let t = 0
-  while (t < max) {
-    const d = sd(rects, x + dx * t, y + dy * t) - clear
-    if (d < 0.5) return t
-    t += d
+/** A band of free ground across the stage: every point from (x0, y0) to (x1, y1) is at least the asked clearance from every rectangle. */
+export interface Band { x0: number; x1: number; y0: number; y1: number }
+
+/**
+ * The largest band of free ground between the HUD and the foot: rows
+ * whose longest clear run (at `clear` from every rectangle) spans at
+ * least `minRun` of the width, taken together while their runs keep
+ * overlapping by that much. Null when there is none — on a phone the
+ * words can leave no room at all.
+ */
+export function freeBand(stage: Stage, clear: number, minRun = 0.55): Band | null {
+  const { w, keep, top, foot } = stage
+  const dx = 3, dy = 2
+  let best: Band | null = null, bestArea = 0, cur: Band | null = null
+  for (let y = top; y <= foot; y += dy) {
+    let rx0 = 0, rx1 = -1, start = -1
+    for (let x = 0; x <= w + dx; x += dx) {
+      const ok = x <= w && sd(keep, x, y) >= clear
+      if (ok && start < 0) start = x
+      if (!ok && start >= 0) {
+        if (x - dx - start > rx1 - rx0) { rx0 = start; rx1 = x - dx }
+        start = -1
+      }
+    }
+    const wide = rx1 - rx0 >= w * minRun
+    cur = wide && cur && Math.min(cur.x1, rx1) - Math.max(cur.x0, rx0) >= w * minRun
+      ? { x0: Math.max(cur.x0, rx0), x1: Math.min(cur.x1, rx1), y0: cur.y0, y1: y }
+      : wide ? { x0: rx0, x1: rx1, y0: y, y1: y } : null
+    if (cur && (cur.x1 - cur.x0) * (cur.y1 - cur.y0 + dy) > bestArea) {
+      bestArea = (cur.x1 - cur.x0) * (cur.y1 - cur.y0 + dy)
+      best = { ...cur }
+    }
   }
-  return max
+  return best
 }
 
 /* ---------------------------------------------------------------
