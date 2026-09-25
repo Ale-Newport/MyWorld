@@ -18,9 +18,11 @@
      knobs         the same at intensity 0 and 1 (`&qa-intensity=`) for the
                    `--extremes` sizes, with speed at its 1.5 maximum;
      errors        no uncaught exception and no console error (the dev
-                   server 404s a few `src_sections_*` chunks it lists in the
-                   HTML before compiling them — that is reported apart, it
-                   happens with every option and without any);
+                   server 404s a few `_next/static/chunks/src_*` chunks it
+                   lists in the HTML before compiling them — that is
+                   reported apart: it happens with every option and without
+                   any, and an option whose own chunk failed would show up
+                   anyway, as a missing QA hook);
      overflow      the document is never wider than the viewport;
      screenshots   at progress 0.5, 0.9 and the foot, and once under
                    reduced motion, in .qa/contact.
@@ -42,8 +44,8 @@ const list = (v) => String(v).split(',').filter(Boolean)
 const BASE = opt('base', process.env.QA_BASE ?? 'http://localhost:3403')
 const OUT = opt('out', process.env.QA_OUT ?? path.resolve('.qa/contact'))
 const IDS = list(opt('only', 'botanical-gateway,converging-paths,stepping-path,contour-horizon,ribbon-aperture')).map((s) => (s.startsWith('contact.') ? s : `contact.${s}`))
-const SIZES = list(opt('sizes', '1440x900,1024x768,768x1024,390x844,320x640,2560x1440,3440x1440,844x390')).map((s) => s.split('x').map(Number))
-const EXTREMES = list(opt('extremes', '1440x900,390x844')).map((s) => s.split('x').map(Number))
+const SIZES = list(opt('sizes', '1440x900,1024x768,768x1024,390x844,375x667,360x740,320x640,2560x1440,3440x1440,844x390')).map((s) => s.split('x').map(Number))
+const EXTREMES = list(opt('extremes', '1440x900,390x844,320x640')).map((s) => s.split('x').map(Number))
 const REDUCED = !args.includes('--no-reduced')
 const JOBS = Number(opt('jobs', 3))
 fs.mkdirSync(OUT, { recursive: true })
@@ -110,7 +112,7 @@ async function run(browser, { id, W, H, reduced, intensity }) {
   page.on('pageerror', (e) => errors.push(`pageerror: ${String(e).slice(0, 300)}`))
   page.on('console', (m) => {
     if (m.type() !== 'error') return
-    if (DEV_404.test(m.text()) && /_next\/static\/chunks\/src_sections_/.test(m.location()?.url ?? '')) dev404.push(m.location().url)
+    if (DEV_404.test(m.text()) && /_next\/static\/chunks\/src_/.test(m.location()?.url ?? '')) dev404.push(m.location().url)
     else errors.push(`console: ${m.text().slice(0, 300)}`)
   })
   const knobs = intensity !== undefined ? `&qa-intensity=${intensity}&qa-speed=1.5` : ''
