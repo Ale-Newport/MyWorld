@@ -81,7 +81,10 @@ assert(fallen.length === 0, `penguins wobble but end up standing (${fallen.map((
 assert(resting.every((p) => p.speed < 0.2), `everything comes to rest; no endless vibration (max ${Math.max(...resting.map((p) => p.speed)).toFixed(3)} m/s)`, results)
 await page.screenshot({ path: out('ice-after.png') })
 
-// Reset to the authored positions.
+// Reset to the authored positions — with the car off the lake first: where the cone run ends is chaotic, and a
+// prop reset into a car that happened to stop on its spot is shoved out of it (measured: a cone 0.57 m off, tipped).
+await page.evaluate(() => { const d = globalThis.__archipelago.driving; d.place(d.placement.near(76.6, 14, { radius: 12, dynamicMargin: 1 }), { reason: 'travel' }) })
+await sleep(300)
 const reset = await page.evaluate(async (onIceSrc) => { const m = await import('/archipelago/preview/pushables.js'); return m.resetPushables(globalThis.__archipelago.physics, eval(onIceSrc)) }, onIce.toString())
 await sleep(1800)
 const restored = await props()
