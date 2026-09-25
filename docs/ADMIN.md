@@ -167,7 +167,8 @@ The preview can show the project page, the listing or the home page.
 - experience groups
 - terrain painting
 - roads and paths, slabs and surfaces
-- spawn points
+- spawn points, and the drive spawn: where `/world` starts (the Central Plaza unless *Set drive spawn here* pins another place)
+- the recovery anchors that put the car back near where it went off the island, shown on request
 - static and dynamic physics, and the ice-prop presets
 - undo and redo, import and export
 - test drive
@@ -279,6 +280,7 @@ The end-to-end checks in `scripts/qa/` drive a real browser against `npm run dev
 | `admin-media-e2e.mjs` | Uploads, SVG sanitising, usage, delete safeguards |
 | `analytics.mjs` | What the browser sends; what the server refuses |
 | `world-editor-e2e.mjs`, `world-studio.mjs` | Studio save, publish, map |
+| `world-studio-drive.mjs` | The studio's drive spawn and recovery anchors (serves the studio itself; no session needed) |
 | `world-activities.mjs` | Both activities, start to finish |
 | `world-terrain.mjs` | Painted land collides; erased land is sea |
 | `world-batching.mjs` | Instancing of the new areas |
