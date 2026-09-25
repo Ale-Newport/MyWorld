@@ -1,7 +1,7 @@
 'use client'
 
 import type { ContactAnimationProps } from '../types'
-import { TAU, cellAt, clamp01, css, easeOut, field, lerp, mix, resample, rng, routeFrom, sd, useContactCanvas, type Painter, type RGB, type Stage } from './shared'
+import { TAU, cellAt, clamp01, css, easeOut, field, freeBand, lerp, mix, resample, rng, routeFrom, sd, useContactCanvas, type Painter, type RGB, type Stage } from './shared'
 
 /* ============================================================
    BOTANICAL GATEWAY — the section's default
@@ -27,6 +27,11 @@ import { TAU, cellAt, clamp01, css, easeOut, field, lerp, mix, resample, rng, ro
    against the safe rectangles and shortened wherever it would reach
    one. Growing and swaying only ever draw part of that envelope, so
    no frame can do otherwise.
+
+   Where the words leave no room around them (a small phone, where
+   they span the width), a garland grows instead along the largest
+   free band: a fine vine from each side, its leaves and flowers sized
+   to what the band holds, meeting near the middle.
 
    intensity → density of the foliage · speed → the sway's clock
    ============================================================ */
@@ -231,8 +236,7 @@ function firstClash(pl: Plant, stage: Stage, shadow: number) {
  * route), shortening it until all of it keeps clear; null when too
  * little would be left.
  */
-function plan(sp: Spec, stage: Stage, shadow: number, lay: (L: number, reach: (s: number) => number, amp: number, curl: number) => Stem): Plant | null {
-  const { u } = stage
+function plan(sp: Spec, stage: Stage, shadow: number, lay: (L: number, reach: (s: number) => number, amp: number, curl: number) => Stem, u = stage.u): Plant | null {
   const r = rng(sp.seed ^ 0x9e37)
   const amp = sp.kind === VINE ? VINE_AMP : AMP[sp.layer]
   const freq = TAU / (6.5 + r() * 4)
@@ -422,6 +426,38 @@ const painter: Painter<Scene> = {
         const up = lerp(-0.15, 1.1, v) + (r() - 0.5) * 0.3
         sprout({ kind, layer: 2, side, x: edgeX(kind === BLADE ? L * 0.3 : 8), y, th0: side > 0 ? -up : Math.PI + up, L, bend: side * 0.8 / L, seed },
           0.2 + 0.12 * (1 - v) + r() * 0.04, 0.52 + 0.12 * (1 - v) + r() * 0.04, [0, 0.35, -0.35, 0.7])
+      }
+    }
+    /* A GARLAND where the words leave no room around them: a fine vine
+       from each side along the largest free band, its leaves sized to
+       what the band holds (the plan checks every leaf all the same). */
+    const planted = layers.reduce((n, l) => n + l.reduce((m, pl) => m + pl.L, 0), 0)
+    const band = planted < w * 0.9 ? freeBand(stage, PAD + 2) : null
+    if (band) {
+      // The free half-height at the band's middle, and the leaves it holds: a vine's leaves reach out up to ~43 units of its scale.
+      const half = (band.y1 - band.y0) / 2 + PAD + 2
+      const fine = Math.min(u, (half - 3.5) / 43)
+      if (fine * 27 >= 3.5) {
+        const yc = (band.y0 + band.y1) / 2
+        const step = Math.max(2.5, 4.5 * fine)
+        const gapG = Math.max(10, w * 0.04)
+        const amp = Math.max(0, half - 3.5 - 43 * fine) * 0.6
+        for (const side of [1, -1]) {
+          const xa = side > 0 ? Math.max(-4, band.x0 - 4) : Math.min(w + 4, band.x1 + 4)
+          const xb = hx - side * gapG
+          const lambda = Math.max(90, Math.abs(xb - xa) * 0.8)
+          const pts: [number, number][] = []
+          for (let x = xa; side * (xb - x) >= 0; x += side * 2) pts.push([x, yc + amp * Math.sin((TAU * Math.abs(x - xa)) / lambda)])
+          const rs = resample(pts, step)
+          if (rs.xs.length < 4) continue
+          const y0 = pts[0][1]
+          const route: Stem = { px: Float32Array.from(rs.xs, (v) => v - xa), py: Float32Array.from(rs.ys, (v) => v - y0), pa: Float32Array.from(rs.as), step, L: (rs.xs.length - 1) * step }
+          const pl = plan({ kind: VINE, layer: 1, side, x: xa, y: y0, th0: 0, L: route.L, bend: 0, seed: (side > 0 ? 41 : 43) * 100 }, stage, 0, (L) => cutStem(route, L), fine)
+          if (!pl) continue
+          pl.g0 = 0.08
+          pl.g1 = 0.62
+          layers[1].push(pl)
+        }
       }
     }
     const bg = pal.bg
