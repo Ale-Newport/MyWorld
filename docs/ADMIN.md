@@ -173,7 +173,13 @@ The preview can show the project page, the listing or the home page.
 - undo and redo, import and export
 - test drive
 
-**Save draft** gzips the world in the browser, uploads it with SHA-256 checks and stores it as a draft revision. If someone saved in between, saving is refused instead of overwriting their work.
+The studio is part of the admin, not a separate application: it is served by this site from `/admin/world-studio` (behind the same sign-in), wears the admin's colours and type, and sits under the admin's own header. On a narrow window, **Library** and **Properties** open the asset library and the inspector as drawers; <kbd>Escape</kbd> or a click on the canvas closes them.
+
+- **Full screen** gives the canvas the whole window. **Back to the admin** returns, and *Save draft* stays at hand.
+- **More** holds *Check the draft*, *Export world files*, *Import world files…*, *World history* and *Open /world*.
+- Leaving the page with unsaved edits in the studio asks first.
+
+**Save draft** gzips the world in the browser, uploads it with SHA-256 checks and stores it as a draft revision. If someone saved in between, saving is refused instead of overwriting their work: you choose to reload their version or overwrite it with yours.
 
 **Publish world** validates the scene, then switches what `/world` serves. Its M map is drawn from the same scene, so it follows automatically.
 
