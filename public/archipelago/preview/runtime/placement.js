@@ -113,7 +113,8 @@ export class Placement{
   if(s.wet)return fail('water',{y:s.y});
   if(!s.ground)return fail('blocked',{y:s.y,name:s.collider.parent()?.userData?.physical?.node?.name??null});
   if(!ice&&s.surface==='ice')return fail('ice',{y:s.y});
-  if(s.normal.y<Math.cos(PLACEMENT.slope*Math.PI/180))return fail('steep',{y:s.y});
+  // |n.y|: a trimesh hit may report the face's back-facing normal.
+  if(Math.abs(s.normal.y)<Math.cos(PLACEMENT.slope*Math.PI/180))return fail('steep',{y:s.y});
   const points=this.footprint(x,z,heading),heights=[];
   for(const [px,pz] of points.slice(1)){const p=this.surface(px,pz,s.y+4,8);if(!p)return fail('edge',{y:s.y});if(p.wet)return fail('water',{y:s.y});if(!p.ground)return fail('blocked',{y:s.y});if(Math.abs(p.y-s.y)>PLACEMENT.step)return fail('steep',{y:s.y});if(!ice&&p.surface==='ice')return fail('ice',{y:s.y});heights.push(p.y);}
   // Front-back and left-right height differences across the tyres: the slope the car will actually sit on.
@@ -127,7 +128,7 @@ export class Placement{
   if(soft){const b=this.softAt(x,z,y);if(b)return fail('blocked',{y,name:b.name});}
   // Not at the very edge: nothing wet within 2.5 m, and at most `maxEdge` of eight points wet at PLACEMENT.shore.
   const edge=maxEdge<Infinity?(this.edge(x,z,2.5)?9:this.edge(x,z)):0;if(edge>maxEdge)return fail('edge',{y,edge});
-  const slope=Math.max(Math.acos(Math.min(1,s.normal.y)),Math.atan(Math.max(pitch,roll)))*180/Math.PI;
+  const slope=Math.max(Math.acos(Math.min(1,Math.abs(s.normal.y))),Math.atan(Math.max(pitch,roll)))*180/Math.PI;
   return {ok:true,x,z,heading,y,edge,slope,surface:s.surface,collider:s.collider,normal:s.normal,position:new THREE.Vector3(x,y+PLACEMENT.rest+PLACEMENT.lift,z),rotation:heading};
  }
  /** Free run (m) from a pose along a heading: a body box swept over the ground, then the ground itself followed. */
@@ -148,22 +149,22 @@ export class Placement{
  /** Would the chase camera see a car standing on (x, y, z) from its full distance? View.probeObstruction's own test:
   * a ray from 2.4 m above the car towards the camera, solid world only, hits closer than 7 m ignored. */
  cameraClear(x,y,z,radius=START_VIEW.radius){const o=this.cameraOffset?.();if(!o)return true;const hit=this.world.castRay(new this.R.Ray({x,y:y+PLACEMENT.rest+2.4,z},{x:o.x,y:o.y,z:o.z}),radius,true,undefined,this.physics.queryTerrainOnly);return !hit||hit.timeOfImpact<7||hit.timeOfImpact>radius-1.3;}
- /** The best valid pose within `radius` of (x, z), searched ring by ring outwards. */
- near(x,z,{radius=12,step=1.5,prefer=[],headings=null,limit=Infinity,accept=null,...options}={}){
-  const tried=new Set();
+ /** The nearest valid pose within `radius` of (x, z), searched ring by ring outwards. Spots are tried at the given
+  * `headings`, else at the preferred ones and the four cardinal ones (cheap); the spot found then gets its most
+  * open heading (one sweep, not one per spot tried). */
+ near(x,z,{radius=12,step=1.5,prefer=[],headings=null,accept=null,...options}={}){
+  const tried=new Set(),trial=headings??[...prefer.map(p=>p.heading),0,Math.PI/2,Math.PI,-Math.PI/2];
   for(let r=0;r<=radius+1e-6;r+=step){
-   const count=r===0?1:Math.max(6,Math.round(2*Math.PI*r/step)),ring=[];
+   const count=r===0?1:Math.max(6,Math.round(2*Math.PI*r/step));
    for(let i=0;i<count;i++){const a=i/count*Math.PI*2,px=x+Math.cos(a)*r,pz=z+Math.sin(a)*r,key=Math.round(px*2)+':'+Math.round(pz*2);if(tried.has(key))continue;tried.add(key);
     const s=this.surface(px,pz);if(!s||s.wet||!s.ground)continue;
-    const options2=headings??this.headingsFor(px,s.y,pz,prefer);
-    for(const h of options2){const c=this.check(px,pz,h,options);if(c.ok&&(!accept||accept(c))){c.distance=r;ring.push(c);break;}}
-    if(ring.length>=limit)break;}
-   if(ring.length)return ring.sort((a,b)=>(b.score??0)-(a.score??0))[0];
+    for(const h of trial){const c=this.check(px,pz,wrap(h),options);if(!c.ok||accept&&!accept(c))continue;c.distance=r;if(headings)return c;
+     const open=this.heading(px,c.y,pz,{prefer,samples:12,max:16}),again=open?this.check(px,pz,open.heading,options):null;
+     return again?.ok&&(!accept||accept(again))?Object.assign(again,{distance:r}):c;}
+   }
   }
   return null;
  }
- /** Candidate headings for a spot: the most open one first, then the preferred ones and the cardinal turns. */
- headingsFor(x,y,z,prefer=[]){const best=this.heading(x,y,z,{prefer,samples:12,max:16}),out=[best.heading];for(const p of prefer)out.push(p.heading);for(const k of [1,2,3])out.push(wrap(best.heading+k*Math.PI/2));return out;}
 }
 
 /* ---- places in the scene ------------------------------------------------------------ */
