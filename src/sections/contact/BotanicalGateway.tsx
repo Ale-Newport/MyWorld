@@ -428,11 +428,12 @@ const painter: Painter<Scene> = {
           0.2 + 0.12 * (1 - v) + r() * 0.04, 0.52 + 0.12 * (1 - v) + r() * 0.04, [0, 0.35, -0.35, 0.7])
       }
     }
-    /* A GARLAND where the words leave no room around them: a fine vine
-       from each side along the largest free band, its leaves sized to
-       what the band holds (the plan checks every leaf all the same). */
+    /* A GARLAND where the words leave no room around them — they span
+       the width, or the edges hold too little — a vine from each side
+       along the largest free band, its leaves sized to what the band
+       holds (the plan checks every leaf all the same). */
     const planted = layers.reduce((n, l) => n + l.reduce((m, pl) => m + pl.L, 0), 0)
-    const band = planted < w * 0.9 ? freeBand(stage, PAD + 2) : null
+    const band = planted < w * 0.9 || (head && head.w > w * 0.75) ? freeBand(stage, PAD + 2) : null
     if (band) {
       // The free half-height at the band's middle, and the leaves it holds: a vine's leaves reach out up to ~43 units of its scale.
       const half = (band.y1 - band.y0) / 2 + PAD + 2
