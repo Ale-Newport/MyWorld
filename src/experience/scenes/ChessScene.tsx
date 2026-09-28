@@ -3,9 +3,10 @@
 import { useMemo, useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
-import { frame } from '@/state/journey'
+import { frame, useJourney } from '@/state/journey'
 import { readChapterProgress } from '@/hooks/useChapterProgress'
 import { clamp, damp, range, easeOutCubic } from '@/lib/math'
+import { lens, readSceneRegion } from '@/experience/camera/regions'
 
 /* ============================================================
    CHESS — the board resolves out of the data.
@@ -13,7 +14,17 @@ import { clamp, damp, range, easeOutCubic } from '@/lib/math'
    (ChessMotion). This scene is what it resolves INTO: 64
    squares that fly in from scattered detection positions and
    settle into a clean board, then a best-move arc.
+
+   All of it keeps to the chapter's design frame (1.3 : 1, see
+   FRAMES in JourneyCamera), which the camera fits into the region
+   the chapter lays out between its heading and its stage list: the
+   board is centred on the look axis at BOARD_SCALE, and the
+   squares gather from a ring just outside it. Standing still
+   (reduced motion) the 2D pipeline already shows the reconstructed
+   board in that region, so this scene stands down.
    ============================================================ */
+
+const BOARD_SCALE = 0.88
 
 /** Starting position, as the pipeline would reconstruct it. */
 const dummy = new THREE.Object3D()
@@ -52,12 +63,13 @@ export function ChessScene() {
         // Deterministic scatter — the "detected crops" origin.
         const a = (i * 2.399963) % (Math.PI * 2)
         // Tight scatter: the squares gather from just outside the
-        // board, not from off-screen. A wide scatter reads as debris.
-        const rad = 2.6 + ((i * 7) % 11) * 0.16
+        // board, not from off-screen. A wide scatter reads as debris,
+        // and anything wider leaves the frame for the copy beside it.
+        const rad = 1.9 + ((i * 7) % 11) * 0.1
         out.push({
           file: f, rank: r,
           scatterX: Math.cos(a) * rad,
-          scatterY: 0.9 + ((i * 13) % 9) * 0.22,
+          scatterY: 0.5 + ((i * 13) % 9) * 0.15,
           scatterZ: Math.sin(a) * rad,
           delay: ((i * 17) % 64) / 64,
         })
@@ -93,9 +105,13 @@ export function ChessScene() {
   useFrame((_, dt) => {
     const d = Math.min(0.05, dt)
     const t = readChapterProgress('chess')
+    const s = useJourney.getState()
 
+    // Drawn only on its own chapter, only into its own region, and only
+    // once the camera has finished moving the frame there.
+    const own = s.chapter === 'chess' && lens.chapter === 'chess' && !s.reducedMotion && readSceneRegion('chess') !== undefined
     const vis = Math.min(range(t, 0.52, 0.60), 1 - range(t, 0.96, 1))
-    opacity.current = damp(opacity.current, clamp(vis), 4, d)
+    opacity.current = own ? damp(opacity.current, clamp(vis) * lens.settled, 4, d) : 0
     group.current.visible = opacity.current > 0.005
     if (!group.current.visible) return
 
@@ -154,8 +170,8 @@ export function ChessScene() {
     ;(arcLine.material as THREE.LineBasicMaterial).opacity = opacity.current * 0.95
 
     group.current.rotation.y = damp(group.current.rotation.y, frame.pointerX * 0.32 - 0.22, 2.4, d)
-    group.current.position.set(0.4, -0.35, 0)
-    group.current.scale.setScalar(0.78)
+    group.current.position.set(0, 0, 0)
+    group.current.scale.setScalar(BOARD_SCALE)
   })
 
   return (
