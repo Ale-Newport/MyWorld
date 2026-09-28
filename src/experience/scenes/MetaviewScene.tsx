@@ -3,10 +3,11 @@
 import { useMemo, useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
-import { frame } from '@/state/journey'
+import { frame, useJourney } from '@/state/journey'
 import { readChapterProgress } from '@/hooks/useChapterProgress'
 import { detectDevice } from '@/lib/perf'
 import { clamp, range, seeded, damp } from '@/lib/math'
+import { lens, readSceneRegion } from '@/experience/camera/regions'
 
 /* ============================================================
    METAVIEW — 500,000 documents become an embedding space.
@@ -14,7 +15,25 @@ import { clamp, range, seeded, damp } from '@/lib/math'
    Beat 2  the sheet folds into a clustered galaxy
    Beat 3  a query enters, travels, and lights its neighbours
    Beat 4  retrieved context streams into the model
+
+   The whole motion keeps to the chapter's design frame (1.3 : 1,
+   see FRAMES in JourneyCamera), which the camera fits into the
+   region the chapter lays out for it. The figures below are what
+   keep it there along the full dolly from z 30 to z 13: the sheet
+   faces the camera until it folds, the cloud only starts to turn
+   once it is a cloud, the space is drawn at GALAXY_SCALE, and the
+   query enters from inside the frame rather than from behind the
+   lens.
    ============================================================ */
+
+/** World size of the embedding space. The dolly ends 13 units out,
+    so the farthest bridge of the cloud has to stay well short of it. */
+const GALAXY_SCALE = 0.76
+/** The cloud's long tail is drawn in, softly, beyond this radius… */
+const TAIL_KNEE = 5.55
+/** …and never reaches past this one, so the frame is spent on the
+    clusters rather than on a few stray bridges at its edge. */
+const TAIL_MAX = 7.4
 
 const documentVertex = /* glsl */ `
   attribute float aCluster;
@@ -28,11 +47,22 @@ const documentVertex = /* glsl */ `
   uniform vec3  uQueryPos;
   uniform float uSize;
   uniform float uRetrieval;  // 0..1 how strongly neighbours light
+  uniform float uLens;       // how far the camera shrank the frame to fit its region
+  uniform float uKeep;       // share of the documents drawn (a small region draws fewer)
 
   varying float vHot;
   varying float vSeed;
 
   void main() {
+    // Thinned by a hash that is independent of aSeed, which also sets
+    // each point's ink: dropping by aSeed would drop the darkest first.
+    if (fract(aSeed * 97.0 + aCluster * 0.137) > uKeep) {
+      gl_Position = vec4(2.0, 2.0, 2.0, 1.0);
+      gl_PointSize = 0.0;
+      vHot = 0.0;
+      vSeed = 0.0;
+      return;
+    }
     vec3 p = mix(aFlat, aTarget, uFold);
 
     // Gentle drift so the space never feels frozen.
@@ -56,7 +86,9 @@ const documentVertex = /* glsl */ `
     gl_Position = projectionMatrix * mv;
     // Clamped: half a million documents have to read as a field of
     // fine grain, not a fog bank. Near points must not blow out.
-    gl_PointSize = clamp(uSize * (1.0 + hot * 2.4) * (110.0 / max(0.001, -mv.z)), 0.8, 15.0);
+    // Points are sized in pixels, so a frame shrunk into its region
+    // shrinks them with it — or the cloud turns into a blot.
+    gl_PointSize = clamp(uSize * (1.0 + hot * 2.4) * (110.0 / max(0.001, -mv.z)) * uLens, 0.8, 15.0 * uLens);
   }
 `
 
@@ -109,7 +141,7 @@ export function MetaviewScene() {
     const centres: [number, number, number][] = []
     for (let c = 0; c < CLUSTERS; c++) {
       const a = (c / CLUSTERS) * Math.PI * 2
-      const r = 3.4 + rand() * 3.2
+      const r = 2.9 + rand() * 2.7
       centres.push([
         Math.cos(a) * r + (rand() - 0.5) * 1.6,
         (rand() - 0.5) * 4.4,
@@ -121,8 +153,8 @@ export function MetaviewScene() {
       // Flat sheet: a wide plane of undifferentiated documents.
       const gx = (i % 220) / 220 - 0.5
       const gy = Math.floor(i / 220) / (n / 220) - 0.5
-      flat[i * 3] = gx * 46
-      flat[i * 3 + 1] = gy * 26
+      flat[i * 3] = gx * 37
+      flat[i * 3 + 1] = gy * 21.5
       flat[i * 3 + 2] = (rand() - 0.5) * 0.4
 
       // Galaxy: gaussian around a cluster centre, plus a bridge tail.
@@ -130,10 +162,20 @@ export function MetaviewScene() {
       const centre = centres[c]
       const spread = 0.75 + rand() * 1.5
       const g = () => (rand() + rand() + rand() - 1.5) * spread
-      const bridge = rand() < 0.12 ? 2.6 : 1
-      target[i * 3] = centre[0] + g() * bridge
-      target[i * 3 + 1] = centre[1] + g() * 0.7 * bridge
-      target[i * 3 + 2] = centre[2] + g() * bridge
+      const bridge = rand() < 0.12 ? 1.6 : 1
+      let x = centre[0] + g() * bridge
+      let y = centre[1] + g() * 0.7 * bridge
+      let z = centre[2] + g() * bridge
+      const len = Math.hypot(x, y, z)
+      if (len > TAIL_KNEE) {
+        const k = (TAIL_KNEE + (TAIL_MAX - TAIL_KNEE) * Math.tanh((len - TAIL_KNEE) / (TAIL_MAX - TAIL_KNEE))) / len
+        x *= k
+        y *= k
+        z *= k
+      }
+      target[i * 3] = x
+      target[i * 3 + 1] = y
+      target[i * 3 + 2] = z
       cluster[i] = c
       seed[i] = rand()
     }
@@ -156,6 +198,8 @@ export function MetaviewScene() {
       uQueryPos: { value: new THREE.Vector3(0, 0, 0) },
       uSize: { value: device.tier === 'low' ? 1.7 : 1.25 },
       uRetrieval: { value: 0 },
+      uLens: { value: 1 },
+      uKeep: { value: 1 },
       /* Value scale, drawn on white: every document is a graphite
          speck that takes light away from the page, and relevance is
          the only thing allowed to carry colour. uBase was a mid grey
@@ -169,6 +213,11 @@ export function MetaviewScene() {
     }),
     [device.tier],
   )
+
+  /* The cloud turns only once it is a cloud: a slow orbit wound up
+     while folded. Read from the clock it was any angle at all by the
+     time a visitor arrived, which put the sheet edge-on to the lens. */
+  const orbit = useRef(0)
 
   const queryPath = useMemo(
     () =>
@@ -186,40 +235,51 @@ export function MetaviewScene() {
     const u = mat.current?.uniforms
     if (!u) return
     const d = Math.min(0.05, dt)
-    const t = readChapterProgress('metaview')
-    u.uTime.value = frame.time
+    const s = useJourney.getState()
+    const reduced = s.reducedMotion
+    // Standing still, the space is shown resolved: folded, the query
+    // most of the way through it, its neighbourhood lit.
+    const t = reduced ? 0.62 : readChapterProgress('metaview')
+    const ease = (from: number, to: number, k: number) => (reduced ? to : damp(from, to, k, d))
+    u.uTime.value = reduced ? 0 : frame.time
 
     // Beat 1 → 2 : the sheet folds into clusters.
     const fold = range(t, 0.10, 0.42)
-    u.uFold.value = damp(u.uFold.value, fold * fold * (3 - 2 * fold), 4, d)
+    u.uFold.value = ease(u.uFold.value, fold * fold * (3 - 2 * fold), 4)
 
-    // Fade in early, hold, fade out into the chess chapter.
-    const vis = Math.min(range(t, 0.0, 0.08), 1 - range(t, 0.93, 1.0))
-    u.uOpacity.value = damp(u.uOpacity.value, clamp(vis), 4, d)
+    // Drawn only on its own chapter, only into its own region, and only
+    // once the camera has finished moving the frame there.
+    const own = s.chapter === 'metaview' && lens.chapter === 'metaview' && readSceneRegion('metaview') !== undefined
+    const vis = reduced ? 1 : Math.min(range(t, 0.0, 0.08), 1 - range(t, 0.93, 1.0))
+    if (own) u.uOpacity.value = ease(u.uOpacity.value, clamp(vis) * lens.settled, 4)
+    else u.uOpacity.value = 0
+    u.uLens.value = lens.scale
+    u.uKeep.value = clamp(0.3 + lens.scale * 1.1, 0.45, 1)
 
     // Beat 3 : the query travels the space.
     const qt = range(t, 0.44, 0.72)
     u.uQueryT.value = qt
     queryPath.getPointAt(clamp(qt, 0.001, 0.999), qv)
     ;(u.uQueryPos.value as THREE.Vector3).copy(qv)
-    u.uRetrieval.value = damp(u.uRetrieval.value, range(t, 0.46, 0.60), 3, d)
+    u.uRetrieval.value = ease(u.uRetrieval.value, range(t, 0.46, 0.60), 3)
 
     if (queryMesh.current) {
       queryMesh.current.position.copy(qv)
-      const s = 0.14 * clamp(range(t, 0.42, 0.5) - range(t, 0.80, 0.9))
-      queryMesh.current.scale.setScalar(Math.max(0.0001, s))
-      queryMesh.current.visible = s > 0.001
+      const size = 0.14 * clamp(range(t, 0.42, 0.5) - range(t, 0.80, 0.9))
+      queryMesh.current.scale.setScalar(Math.max(0.0001, size))
+      queryMesh.current.visible = size > 0.001
     }
 
-    // Sit the cloud below the type so the metric stays legible
-    // against it rather than fighting the densest part of the field.
-    // On a phone the type occupies most of the frame, so the field
-    // moves further back as well.
-    group.current.position.set(0, device.isMobile ? -2.4 : -1.6, device.isMobile ? -7 : 0)
-    if (device.isMobile) group.current.scale.setScalar(0.72)
+    // Centred on the look axis: the region, not an offset, keeps it
+    // clear of the type now.
+    group.current.position.set(0, 0, 0)
+    group.current.scale.setScalar(GALAXY_SCALE)
     // Slow orbit + pointer parallax.
-    group.current.rotation.y = frame.time * 0.035 + frame.pointerX * 0.28
-    group.current.rotation.x = damp(group.current.rotation.x, -frame.pointerY * 0.16 - t * 0.12, 2, d)
+    if (!reduced) orbit.current += d * 0.035 * u.uFold.value
+    const px = reduced ? 0 : frame.pointerX
+    const py = reduced ? 0 : frame.pointerY
+    group.current.rotation.y = orbit.current + px * 0.28
+    group.current.rotation.x = ease(group.current.rotation.x, -py * 0.16 - t * 0.12, 2)
     group.current.visible = u.uOpacity.value > 0.005
   })
 
