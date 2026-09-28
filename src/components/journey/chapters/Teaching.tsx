@@ -105,7 +105,9 @@ export function Teaching() {
           <p className={shared.note}>{role.summary}</p>
         </div>
 
-        <div className={styles.editor}>
+        {/* An illustration of an edit, cursors and all: the student's
+            code is the picture here, not copy to be kept clear. */}
+        <div className={styles.editor} data-illustration="">
           <div className={styles.editorBar} aria-hidden="true">
             <span>BinarySearch.java</span>
             <span className={styles.editorStat} data-ok={passing === TESTS.length}>
@@ -141,7 +143,7 @@ export function Teaching() {
           ))}
         </ul>
 
-        <div className={`${shared.corner} ${shared.cornerBR}`}>
+        <div className={`${shared.corner} ${styles.spec}`}>
           LABS · TUTORIALS
           <br />
           DEBUGGING · TESTING
