@@ -1,31 +1,51 @@
-.stage { align-content: center; }
+/* ============================================================
+   GYM — the figure stands beside the argument, not behind it
+
+   Wide screens: heading and paragraph on the left, the rig in the
+   middle columns, the pipeline stages on the right, the equation
+   the chapter adds up to along the foot. Narrow and tall screens:
+   heading, rig, stages, equation, top to bottom. A phone on its
+   side: paragraph and rig side by side, stages and sum below.
+   ============================================================ */
+
+.stage {
+  --stage-rows: minmax(0, 1fr) auto;
+  --stage-align: stretch;
+  --stage-row-gap: clamp(0.75rem, 2.6vh, 1.75rem);
+  --stage-top: clamp(5rem, 11vh, 7rem);
+  --stage-bottom: clamp(5.25rem, 11vh, 7rem);
+}
 
 .visual {
-  position: absolute;
-  inset: clamp(4rem, 10vh, 7rem) 20% clamp(6rem, 14vh, 8rem) var(--gutter);
+  grid-column: 5 / span 6;
+  grid-row: 1;
+  position: relative;
+  min-width: 0;
+  min-height: 0;
   z-index: -1;
   pointer-events: auto;
 }
-@media (max-width: 1000px) {
-  .visual { inset: clamp(9rem, 20vh, 12rem) var(--gutter) clamp(9rem, 22vh, 12rem); }
+
+.head {
+  grid-column: 1 / span 4;
+  grid-row: 1;
+  align-self: center;
+  display: flex; flex-direction: column; gap: var(--sp-3);
+  min-width: 0;
 }
 
-.head { grid-column: 1 / span 4; display: flex; flex-direction: column; gap: var(--sp-3); }
-@media (max-width: 1000px) { .head { grid-column: 1 / span 12; } }
-
 .title {
-  font-size: clamp(2.2rem, 1.1rem + 4vw, 5rem);
+  font-size: clamp(2.2rem, min(1.1rem + 4vw, 10vh), 5rem);
   font-weight: 500; letter-spacing: -0.048em; line-height: 0.88;
   text-transform: uppercase;
 }
 
 .stages {
   grid-column: 11 / span 2;
-  display: flex; flex-direction: column; gap: 0.35rem;
+  grid-row: 1;
   align-self: center;
-}
-@media (max-width: 1000px) {
-  .stages { grid-column: 1 / span 12; flex-direction: row; flex-wrap: wrap; gap: 0.4rem 1rem; margin-top: var(--sp-5); }
+  display: flex; flex-direction: column; gap: 0.35rem;
+  min-width: 0;
 }
 
 .stage_ {
@@ -40,13 +60,13 @@
 .stage_[data-on='true'] .stageNo { color: var(--accent); }
 
 .equation {
-  grid-column: 1 / span 12;
-  position: absolute;
-  left: var(--gutter); right: var(--gutter);
-  bottom: clamp(4.5rem, 11vh, 6.5rem);
+  grid-column: 1 / span 9;
+  grid-row: 2;
+  align-self: end;
   display: flex; flex-wrap: wrap; align-items: baseline;
-  gap: 0.5rem clamp(0.6rem, 1.6vw, 1.4rem);
+  gap: 0.35rem clamp(0.6rem, 1.6vw, 1.4rem);
   opacity: 0;
+  min-width: 0;
   will-change: transform, opacity;
   pointer-events: none;
 }
@@ -57,6 +77,57 @@
 .eqOp { color: var(--text-faint); font-size: clamp(0.8rem, 0.7rem + 0.6vw, 1.2rem); }
 .eqResult { color: var(--accent); }
 
+/* The corner note joins the foot row beside the equation: two classes,
+   so it outranks the shared corner's absolute placement whatever order
+   the two stylesheets arrive in. */
+.stage .spec {
+  position: static;
+  grid-column: 10 / span 3;
+  grid-row: 2;
+  align-self: end;
+  justify-self: end;
+  min-width: 0;
+}
+
+/* ---- narrow and tall: one column ---- */
+@media (max-width: 800px), (max-aspect-ratio: 4/5) {
+  .stage {
+    --stage-rows: auto minmax(0, 1fr) auto auto;
+    --stage-row-gap: clamp(0.75rem, 2vh, 1.25rem);
+    --stage-top: clamp(4.5rem, 9vh, 6rem);
+    --stage-bottom: clamp(4.75rem, 9vh, 6rem);
+  }
+  .head { grid-column: 1 / -1; grid-row: 1; gap: var(--sp-2); }
+  .visual { grid-column: 1 / -1; grid-row: 2; }
+  .stages {
+    grid-column: 1 / -1; grid-row: 3;
+    flex-direction: row; flex-wrap: wrap; gap: 0.4rem 1rem;
+  }
+  .equation { grid-column: 1 / -1; grid-row: 4; }
+  /* The three disciplines are the heading's own subject; the foot of a
+     phone's stage is the HUD's. */
+  .stage .spec { display: none; }
+}
+
+/* ---- a phone on its side ---- */
+@media (max-height: 520px) and (orientation: landscape) {
+  .stage {
+    --stage-col-gap: clamp(1rem, 2.5vw, 1.5rem);
+    --stage-rows: minmax(0, 1fr) auto;
+    --stage-row-gap: 0.5rem;
+    --stage-top: 4rem;
+    --stage-bottom: 4.5rem;
+  }
+  .head { grid-column: 1 / span 6; grid-row: 1; gap: var(--sp-2); }
+  .head > p { font-size: var(--fs-tiny); line-height: 1.5; }
+  .title { font-size: clamp(1.4rem, 9vh, 2.4rem); }
+  .visual { grid-column: 7 / span 4; grid-row: 1; }
+  .stages { grid-column: 11 / span 2; grid-row: 1; gap: 0.2rem; }
+  .equation { grid-column: 1 / -1; grid-row: 2; }
+  .eqTerm { font-size: var(--fs-small); }
+  .stage .spec { display: none; }
+}
+
 @media (prefers-reduced-motion: reduce) {
   /* Nothing arrives on this path, so the chapter has to read as a
      finished statement rather than a first frame: the pipeline
@@ -64,37 +135,4 @@
   .equation { opacity: 1 !important; transform: none !important; }
   .stage_ { color: var(--text-primary); }
   .stageNo { color: var(--accent); }
-}
-
-@media (prefers-reduced-motion: reduce) and (min-width: 1001px) {
-  /* The figure gives up the left third of the stage so the paragraph
-     is read against the page instead of across the drawing. */
-  .visual { left: 35%; }
-}
-
-@media (prefers-reduced-motion: reduce) and (max-width: 1000px) {
-  /* Too narrow to set the figure beside the words, so it takes the top
-     of the stage and the argument runs beneath it in a single column,
-     ending on the equation. */
-  .visual {
-    position: static; grid-column: 1 / span 12; z-index: 0;
-    /* A plate, not a band: past this width the box goes wide enough that
-       the figure's own readouts start to land on one another. */
-    max-width: 30rem;
-    height: clamp(8rem, 20vh, 12rem);
-  }
-  .equation { position: static; grid-column: 1 / span 12; }
-  .stages { margin-top: 0; }
-}
-
-@media (prefers-reduced-motion: reduce) and (min-width: 901px) and (max-width: 1000px) {
-  /* These widths stack without a row gap, so the column spaces itself. */
-  .head, .stages, .equation { margin-top: var(--sp-5); }
-}
-
-@media (prefers-reduced-motion: reduce) and (max-width: 1000px) and (max-height: 800px) {
-  /* Below this height the figure and the argument cannot both have the
-     stage, and the argument is the half that has to survive: the drawing
-     stands down rather than push the equation off the foot of it. */
-  .visual { display: none; }
 }

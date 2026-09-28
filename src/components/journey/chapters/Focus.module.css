@@ -1,29 +1,42 @@
-.stage { align-content: center; }
+/* ============================================================
+   FOCUS — the stack between the words, never under them
+
+   Wide screens: heading on the left, the exploding stack in the
+   middle columns, the list of production layers on the right,
+   the two technical notes along the foot. Narrow and tall
+   screens: heading, stack, layers (two columns of them), top to
+   bottom. A phone on its side: three columns again, notes off.
+   ============================================================ */
+
+.stage {
+  --stage-rows: minmax(0, 1fr) auto;
+  --stage-align: stretch;
+  --stage-row-gap: clamp(0.75rem, 2.4vh, 1.75rem);
+  --stage-top: clamp(5rem, 11vh, 7rem);
+  --stage-bottom: clamp(5.25rem, 11vh, 7rem);
+}
 
 .visual {
-  position: absolute;
-  /* Clear the title column on the left and the layer list on the
-     right — the stack keeps the middle, which is where it belongs. */
-  inset: clamp(4rem, 10vh, 7rem) 17% clamp(4rem, 10vh, 6rem) 22%;
+  grid-column: 5 / span 5;
+  grid-row: 1;
+  position: relative;
+  min-width: 0;
+  min-height: 0;
   z-index: -1;
   pointer-events: auto;
-}
-@media (max-width: 1200px) {
-  .visual { inset: clamp(4rem, 10vh, 7rem) 17% clamp(4rem, 10vh, 6rem) var(--gutter); }
-}
-@media (max-width: 1000px) {
-  .visual { inset: clamp(9rem, 20vh, 12rem) var(--gutter) clamp(9rem, 22vh, 12rem); }
 }
 
 .head {
   grid-column: 1 / span 4;
+  grid-row: 1;
+  align-self: center;
   display: flex; flex-direction: column; gap: var(--sp-3);
+  min-width: 0;
   will-change: opacity;
 }
-@media (max-width: 1000px) { .head { grid-column: 1 / span 12; } }
 
 .title {
-  font-size: clamp(2.6rem, 1.2rem + 5.2vw, 6.5rem);
+  font-size: clamp(2.4rem, min(1.2rem + 4.4vw, 11vh), 6.5rem);
   font-weight: 500; letter-spacing: -0.05em; line-height: 0.85;
   text-transform: uppercase;
 }
@@ -38,12 +51,11 @@
 
 .layers {
   grid-column: 10 / span 3;
+  grid-row: 1;
+  align-self: center;
   display: flex; flex-direction: column;
   gap: 0.1rem;
-  align-self: center;
-}
-@media (max-width: 1000px) {
-  .layers { grid-column: 1 / span 12; margin-top: var(--sp-6); }
+  min-width: 0;
 }
 
 .layer {
@@ -72,7 +84,70 @@
 }
 .layer[data-active='true'] .layerNote { max-height: 3rem; margin-top: 0.2rem; }
 
+/* The two technical notes take the foot row: two classes, so they
+   outrank the shared corner's absolute placement whatever order the
+   two stylesheets arrive in. */
+.stage .chain, .stage .credit {
+  position: static;
+  grid-row: 2;
+  align-self: end;
+  min-width: 0;
+}
+.stage .chain { grid-column: 1 / span 8; }
+.stage .credit { grid-column: 9 / span 4; justify-self: end; }
+
+/* ---- narrow and tall: one column, the layers in two ---- */
+@media (max-width: 800px), (max-aspect-ratio: 4/5) {
+  .stage {
+    --stage-rows: auto minmax(0, 1fr) auto;
+    --stage-row-gap: clamp(0.75rem, 2.2vh, 1.4rem);
+    --stage-top: clamp(4.5rem, 9vh, 6rem);
+    --stage-bottom: clamp(4.75rem, 9vh, 6rem);
+  }
+  .head { grid-column: 1 / -1; grid-row: 1; gap: var(--sp-2); }
+  .visual { grid-column: 1 / -1; grid-row: 2; }
+  .layers {
+    grid-column: 1 / -1;
+    grid-row: 3;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-auto-flow: column;
+    grid-template-rows: repeat(5, auto);
+    column-gap: var(--sp-5);
+  }
+  /* Lit in turn, but not slid in: two columns leave no room to travel. */
+  .layer { padding: 0.2rem 0; transform: none !important; }
+  /* The notes repeat the heading's dates and the list above, and the
+     foot of a phone's stage belongs to the HUD. */
+  .stage .chain, .stage .credit { display: none; }
+}
+
+/* ---- a phone on its side ---- */
+@media (max-height: 520px) and (orientation: landscape) {
+  .stage {
+    --stage-col-gap: clamp(1rem, 2.5vw, 1.5rem);
+    --stage-rows: minmax(0, 1fr);
+    --stage-row-gap: 0;
+    --stage-top: 4rem;
+    --stage-bottom: 4.5rem;
+  }
+  .head { grid-column: 1 / span 4; grid-row: 1; gap: var(--sp-2); }
+  .title { font-size: clamp(1.6rem, 11vh, 2.8rem); }
+  .visual { grid-column: 5 / span 5; grid-row: 1; }
+  .layers { grid-column: 10 / span 3; grid-row: 1; display: flex; gap: 0; }
+  .layer { padding: 0.1rem 0; transform: none !important; }
+  .layerLabel { font-size: var(--fs-tiny); }
+  .stage .chain, .stage .credit { display: none; }
+}
+
 @media (prefers-reduced-motion: reduce) {
+  .head { opacity: 1 !important; }
   .layer { opacity: 1 !important; transform: none !important; }
   .layerNote { max-height: 3rem; }
+}
+
+@media (prefers-reduced-motion: reduce) and (max-width: 800px), (prefers-reduced-motion: reduce) and (max-aspect-ratio: 4/5), (prefers-reduced-motion: reduce) and (max-height: 760px) {
+  /* Ten notes open at once do not fit a phone or a short window; the
+     labels carry it. */
+  .layerNote { display: none; }
 }
