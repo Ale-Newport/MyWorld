@@ -3,10 +3,11 @@
 import { useMemo, useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
-import { frame } from '@/state/journey'
+import { frame, useJourney } from '@/state/journey'
 import { readChapterProgress } from '@/hooks/useChapterProgress'
 import { detectDevice } from '@/lib/perf'
 import { clamp, damp, range, seeded } from '@/lib/math'
+import { lens, readSceneRegion } from '@/experience/camera/regions'
 
 /* ============================================================
    STOCK — concurrency made spatial.
@@ -14,7 +15,18 @@ import { clamp, damp, range, seeded } from '@/lib/math'
    toward a central matching plane; matched pairs annihilate.
    Order rate is driven by scroll velocity, so the visitor
    physically accelerates the market.
+
+   The lanes are depth for the order book the chapter draws in the
+   DOM, so their region IS the book's box: the camera fits the
+   chapter's design frame (2.2 : 1, see FRAMES in JourneyCamera)
+   into it. Nine units behind the look target, the orbit sweeps
+   them across that frame from left to right; at LANES_SCALE the
+   sweep, the pointer's turn and the match flashes all stay inside
+   it. Standing still (reduced motion) there is no flow to show and
+   the book is drawn full, so the lanes stand down.
    ============================================================ */
+
+const LANES_SCALE = 0.78
 
 const LANES = 4
 const dummy = new THREE.Object3D()
@@ -49,9 +61,13 @@ export function StockScene() {
   useFrame((_, dt) => {
     const d = Math.min(0.05, dt)
     const t = readChapterProgress('stock')
+    const s = useJourney.getState()
 
+    // Drawn only on its own chapter, only into its own region, and only
+    // once the camera has finished moving the frame there.
+    const own = s.chapter === 'stock' && lens.chapter === 'stock' && !s.reducedMotion && readSceneRegion('stock') !== undefined
     const vis = Math.min(range(t, 0, 0.12), 1 - range(t, 0.88, 1))
-    opacity.current = damp(opacity.current, clamp(vis), 4, d)
+    opacity.current = own ? damp(opacity.current, clamp(vis) * lens.settled, 4, d) : 0
     group.current.visible = opacity.current > 0.005
     if (!group.current.visible) return
 
@@ -113,8 +129,8 @@ export function StockScene() {
 
     // The DOM canvas owns this chapter; the 3D streams sit far behind
     // it as depth, not as a second diagram competing for attention.
-    group.current.position.set(0, 0.4, -9)
-    group.current.scale.setScalar(0.6)
+    group.current.position.set(0, 0, -9)
+    group.current.scale.setScalar(LANES_SCALE)
     group.current.rotation.y = damp(group.current.rotation.y, -0.34 + frame.pointerX * 0.26, 2.6, d)
     group.current.rotation.x = damp(group.current.rotation.x, frame.pointerY * 0.12, 2.6, d)
   })
