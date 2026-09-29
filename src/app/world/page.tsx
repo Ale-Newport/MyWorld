@@ -6,14 +6,14 @@ import { profile, siteConfig } from '@/content/profile'
 export const metadata: Metadata = {
   title: 'World',
   description:
-    `An interactive 3D world you drive through, built from the same project data as the main portfolio. A racing circuit, a bowling alley, a labyrinth, a black hole and ${profile.name}'s name written large enough to drive on — with every project reachable from one terminal.`,
+    `Explore Archipiélago, ${profile.name}'s island: drive, fly, race, bowl and discover projects, education and achievements.`,
   alternates: { canonical: '/world' },
   openGraph: {
     type: 'website',
     url: `${siteConfig.url}/world`,
     title: `Enter my world — ${profile.name}`,
     description:
-      'A drivable portfolio. WASD to move, Shift to boost, Space to jump, Enter to read.',
+      'A drivable portfolio. WASD to drive, Space to brake, double Space to fly, E to interact.',
   },
   // The world is a companion to the portfolio, not a second copy of
   // it. Everything here is indexable at `/`, so this route is

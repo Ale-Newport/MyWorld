@@ -11,7 +11,7 @@ export default [
      NEXT_DIST_DIR). Un-ignored, `eslint .` lints the compiled bundle:
      156 errors and 9,400 warnings from Turbopack's own output, which
      buries the handful that are actually about this repo's source. */
-  { ignores: ['.next/**', '.next-verify/**', 'node_modules/**', 'out/**', '.qa/**', 'next-env.d.ts'] },
+  { ignores: ['public/archipelago/**', '.next/**', '.next-verify/**', 'node_modules/**', 'out/**', '.qa/**', 'next-env.d.ts'] },
   ...spread(next),
   ...spread(nextCoreWebVitals),
   ...spread(nextTypeScript),

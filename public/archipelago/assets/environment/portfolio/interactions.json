@@ -1,0 +1,759 @@
+{
+ "version": 1,
+ "source": "folio-2025.blend",
+ "sourceSha256": "df5286df6141a6bece01abbd873d87a7f3d915cb685c6c989883cb7457474080",
+ "generator": "scripts/gen-world2-interactions.mjs",
+ "note": "Transforms for Blender references the GLB export omits. glTF Y-up, metres.",
+ "checkpoints": [
+  {
+   "name": "refCheckpoints.000",
+   "position": [
+    -11.252913,
+    0.862217,
+    -0.468831
+   ],
+   "quaternion": [
+    0,
+    0,
+    0,
+    1
+   ],
+   "scale": [
+    10,
+    1.671314,
+    1.671314
+   ],
+   "dimensions": [
+    10,
+    1.6713,
+    0
+   ],
+   "inGlb": false,
+   "properties": {
+    "preventFrustum": true
+   }
+  },
+  {
+   "name": "refCheckpoints.001",
+   "position": [
+    37.057423,
+    0.862217,
+    -47.820438
+   ],
+   "quaternion": [
+    0,
+    -0.707107,
+    0,
+    0.707107
+   ],
+   "scale": [
+    10,
+    1.671314,
+    1.671314
+   ],
+   "dimensions": [
+    10,
+    1.6713,
+    0
+   ],
+   "inGlb": false,
+   "properties": {
+    "preventFrustum": true
+   }
+  },
+  {
+   "name": "refCheckpoints.002",
+   "position": [
+    39.69619,
+    0.862217,
+    -80.262184
+   ],
+   "quaternion": [
+    0,
+    0.707107,
+    0,
+    0.707107
+   ],
+   "scale": [
+    10,
+    1.671314,
+    1.671314
+   ],
+   "dimensions": [
+    10,
+    1.6713,
+    0
+   ],
+   "inGlb": false,
+   "properties": {
+    "preventFrustum": true
+   }
+  },
+  {
+   "name": "refCheckpoints.003",
+   "position": [
+    -15.448047,
+    0.862217,
+    -47.155933
+   ],
+   "quaternion": [
+    0,
+    1,
+    0,
+    0
+   ],
+   "scale": [
+    10,
+    1.671314,
+    1.671314
+   ],
+   "dimensions": [
+    10,
+    1.6713,
+    0
+   ],
+   "inGlb": false,
+   "properties": {
+    "preventFrustum": true
+   }
+  },
+  {
+   "name": "refCheckpoints.004",
+   "position": [
+    -61.808048,
+    0.862217,
+    -27.469563
+   ],
+   "quaternion": [
+    0,
+    0.707107,
+    0,
+    0.707107
+   ],
+   "scale": [
+    10,
+    1.671314,
+    1.671314
+   ],
+   "dimensions": [
+    10,
+    1.6713,
+    0
+   ],
+   "inGlb": false,
+   "properties": {
+    "preventFrustum": true
+   }
+  },
+  {
+   "name": "refCheckpoints.005",
+   "position": [
+    -38.172138,
+    0.862217,
+    -66.27916
+   ],
+   "quaternion": [
+    0,
+    1,
+    0,
+    0
+   ],
+   "scale": [
+    10,
+    1.671314,
+    1.671314
+   ],
+   "dimensions": [
+    10,
+    1.6713,
+    0
+   ],
+   "inGlb": false,
+   "properties": {
+    "preventFrustum": true
+   }
+  },
+  {
+   "name": "refCheckpoints.006",
+   "position": [
+    -60.838169,
+    0.862217,
+    15.979019
+   ],
+   "quaternion": [
+    0,
+    0.707107,
+    0,
+    0.707107
+   ],
+   "scale": [
+    10,
+    1.671314,
+    1.671314
+   ],
+   "dimensions": [
+    10,
+    1.6713,
+    0
+   ],
+   "inGlb": false,
+   "properties": {
+    "preventFrustum": true
+   }
+  },
+  {
+   "name": "refCheckpoints.007",
+   "position": [
+    -56.045048,
+    0.862217,
+    70.516579
+   ],
+   "quaternion": [
+    0,
+    -0.707107,
+    0,
+    0.707107
+   ],
+   "scale": [
+    10,
+    1.671314,
+    1.671314
+   ],
+   "dimensions": [
+    10,
+    1.6713,
+    0
+   ],
+   "inGlb": false,
+   "properties": {
+    "preventFrustum": true
+   }
+  }
+ ],
+ "careerText": [
+  {
+   "name": "careerText",
+   "position": [
+    27.929373,
+    0.720758,
+    5.611006
+   ],
+   "quaternion": [
+    0.562422,
+    0.303603,
+    -0.232963,
+    0.732963
+   ],
+   "scale": [
+    1.565,
+    1,
+    0.295
+   ],
+   "dimensions": [
+    3.13,
+    0,
+    0.59
+   ],
+   "inGlb": false,
+   "properties": {}
+  },
+  {
+   "name": "careerText.001",
+   "position": [
+    27.395153,
+    0.717738,
+    1.065018
+   ],
+   "quaternion": [
+    0.562422,
+    0.303603,
+    -0.232963,
+    0.732963
+   ],
+   "scale": [
+    0.83,
+    1,
+    0.295
+   ],
+   "dimensions": [
+    1.66,
+    0,
+    0.59
+   ],
+   "inGlb": false,
+   "properties": {}
+  },
+  {
+   "name": "careerText.002",
+   "position": [
+    28.059801,
+    0.683653,
+    -2.411169
+   ],
+   "quaternion": [
+    0.562422,
+    0.303603,
+    -0.232963,
+    0.732963
+   ],
+   "scale": [
+    1.69,
+    1,
+    0.295
+   ],
+   "dimensions": [
+    3.38,
+    0,
+    0.59
+   ],
+   "inGlb": false,
+   "properties": {}
+  },
+  {
+   "name": "careerText.003",
+   "position": [
+    27.930256,
+    0.762802,
+    -5.413609
+   ],
+   "quaternion": [
+    0.562422,
+    0.303603,
+    -0.232963,
+    0.732963
+   ],
+   "scale": [
+    1.66,
+    1,
+    0.455
+   ],
+   "dimensions": [
+    3.32,
+    0,
+    0.91
+   ],
+   "inGlb": false,
+   "properties": {}
+  },
+  {
+   "name": "careerText.004",
+   "position": [
+    29.662624,
+    0.585026,
+    2.798906
+   ],
+   "quaternion": [
+    0.562422,
+    0.303603,
+    -0.232963,
+    0.732963
+   ],
+   "scale": [
+    1.2,
+    1,
+    0.295
+   ],
+   "dimensions": [
+    2.4,
+    0,
+    0.59
+   ],
+   "inGlb": false,
+   "properties": {}
+  },
+  {
+   "name": "careerText.005",
+   "position": [
+    25.800514,
+    1.150993,
+    0.666082
+   ],
+   "quaternion": [
+    0.562422,
+    0.303603,
+    -0.232963,
+    0.732963
+   ],
+   "scale": [
+    1.325,
+    1,
+    0.455
+   ],
+   "dimensions": [
+    2.65,
+    0,
+    0.91
+   ],
+   "inGlb": false,
+   "properties": {}
+  }
+ ],
+ "intersects": [
+  {
+   "name": "refIntersectNext",
+   "position": [
+    12.620484,
+    2.379632,
+    14.014534
+   ],
+   "quaternion": [
+    0,
+    -0.422618,
+    0,
+    0.906308
+   ],
+   "scale": [
+    0.366008,
+    0.366008,
+    0.366008
+   ],
+   "dimensions": [
+    0,
+    0,
+    0
+   ],
+   "inGlb": false,
+   "properties": {}
+  },
+  {
+   "name": "refIntersectNextImage",
+   "position": [
+    34.080177,
+    0.594809,
+    9.265482
+   ],
+   "quaternion": [
+    0,
+    -0.422618,
+    0,
+    0.906308
+   ],
+   "scale": [
+    0.193496,
+    0.193496,
+    0.193496
+   ],
+   "dimensions": [
+    0,
+    0,
+    0
+   ],
+   "inGlb": false,
+   "properties": {}
+  },
+  {
+   "name": "refIntersectNextProject",
+   "position": [
+    35.657455,
+    2.617072,
+    7.784771
+   ],
+   "quaternion": [
+    0,
+    -0.422618,
+    0,
+    0.906308
+   ],
+   "scale": [
+    0.780309,
+    0.780309,
+    0.780309
+   ],
+   "dimensions": [
+    0,
+    0,
+    0
+   ],
+   "inGlb": false,
+   "properties": {}
+  },
+  {
+   "name": "refIntersectPagination",
+   "position": [
+    33.484535,
+    0.585536,
+    9.833195
+   ],
+   "quaternion": [
+    0,
+    -0.422618,
+    0,
+    0.906308
+   ],
+   "scale": [
+    0.099063,
+    0.099063,
+    0.099063
+   ],
+   "dimensions": [
+    0,
+    0,
+    0
+   ],
+   "inGlb": false,
+   "properties": {}
+  },
+  {
+   "name": "refIntersectPagination.001",
+   "position": [
+    33.637749,
+    0.585536,
+    9.704639
+   ],
+   "quaternion": [
+    0,
+    -0.422618,
+    0,
+    0.906308
+   ],
+   "scale": [
+    0.099063,
+    0.099063,
+    0.099063
+   ],
+   "dimensions": [
+    0,
+    0,
+    0
+   ],
+   "inGlb": false,
+   "properties": {}
+  },
+  {
+   "name": "refIntersectPagination.002",
+   "position": [
+    33.790955,
+    0.585536,
+    9.57608
+   ],
+   "quaternion": [
+    0,
+    -0.422618,
+    0,
+    0.906308
+   ],
+   "scale": [
+    0.099063,
+    0.099063,
+    0.099063
+   ],
+   "dimensions": [
+    0,
+    0,
+    0
+   ],
+   "inGlb": false,
+   "properties": {}
+  },
+  {
+   "name": "refIntersectPagination.003",
+   "position": [
+    33.944168,
+    0.585536,
+    9.447521
+   ],
+   "quaternion": [
+    0,
+    -0.422618,
+    0,
+    0.906308
+   ],
+   "scale": [
+    0.099063,
+    0.099063,
+    0.099063
+   ],
+   "dimensions": [
+    0,
+    0,
+    0
+   ],
+   "inGlb": false,
+   "properties": {}
+  },
+  {
+   "name": "refIntersectPagination.004",
+   "position": [
+    34.097374,
+    0.585536,
+    9.318966
+   ],
+   "quaternion": [
+    0,
+    -0.422618,
+    0,
+    0.906308
+   ],
+   "scale": [
+    0.099063,
+    0.099063,
+    0.099063
+   ],
+   "dimensions": [
+    0,
+    0,
+    0
+   ],
+   "inGlb": false,
+   "properties": {}
+  },
+  {
+   "name": "refIntersectPrevious",
+   "position": [
+    9.191792,
+    2.379632,
+    16.909765
+   ],
+   "quaternion": [
+    0,
+    -0.422618,
+    0,
+    0.906308
+   ],
+   "scale": [
+    0.366008,
+    0.366008,
+    0.366008
+   ],
+   "dimensions": [
+    0,
+    0,
+    0
+   ],
+   "inGlb": false,
+   "properties": {}
+  },
+  {
+   "name": "refIntersectPreviousImage",
+   "position": [
+    32.813354,
+    0.594809,
+    10.328472
+   ],
+   "quaternion": [
+    0,
+    -0.422618,
+    0,
+    0.906308
+   ],
+   "scale": [
+    0.193496,
+    0.193496,
+    0.193496
+   ],
+   "dimensions": [
+    0,
+    0,
+    0
+   ],
+   "inGlb": false,
+   "properties": {}
+  },
+  {
+   "name": "refIntersectPreviousProject",
+   "position": [
+    30.995195,
+    2.617072,
+    11.696875
+   ],
+   "quaternion": [
+    0,
+    -0.422618,
+    0,
+    0.906308
+   ],
+   "scale": [
+    0.780309,
+    0.780309,
+    0.780309
+   ],
+   "dimensions": [
+    0,
+    0,
+    0
+   ],
+   "inGlb": false,
+   "properties": {}
+  },
+  {
+   "name": "refIntersectUrl",
+   "position": [
+    33.431271,
+    3.051799,
+    9.813551
+   ],
+   "quaternion": [
+    0.664463,
+    0.241845,
+    -0.241845,
+    0.664463
+   ],
+   "scale": [
+    1,
+    1,
+    1
+   ],
+   "dimensions": [
+    0.9979,
+    0,
+    0.2633
+   ],
+   "inGlb": false,
+   "properties": {}
+  },
+  {
+   "name": "refIntersectUrl.001",
+   "position": [
+    10.872437,
+    3.051798,
+    15.449583
+   ],
+   "quaternion": [
+    0.664463,
+    0.241845,
+    -0.241845,
+    0.664463
+   ],
+   "scale": [
+    1,
+    1,
+    1
+   ],
+   "dimensions": [
+    0.9979,
+    0,
+    0.2633
+   ],
+   "inGlb": false,
+   "properties": {
+    "preventFrustum": true
+   }
+  }
+ ],
+ "signReference": {
+  "name": "signReference",
+  "position": [
+   0,
+   0,
+   0
+  ],
+  "quaternion": [
+   0,
+   0,
+   0,
+   1
+  ],
+  "scale": [
+   1,
+   1,
+   1
+  ],
+  "dimensions": [
+   5.6245,
+   5.2819,
+   2
+  ],
+  "inGlb": false,
+  "properties": {}
+ }
+}
