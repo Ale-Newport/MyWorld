@@ -12,3 +12,10 @@ next-env.d.ts
 .cache/
 /.claude/settings.local.json
 /.next-verify
+
+# Local agent instructions, caches and verification builds
+[Cc][Ll][Aa][Uu][Dd][Ee].[Mm][Dd]
+.claude/
+.codex/
+.next-*/
+*.log
