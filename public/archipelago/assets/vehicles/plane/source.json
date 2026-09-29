@@ -1,0 +1,8 @@
+{
+  "source": "User-supplied root archive plane-corsair-f4u-4-low-poly-edition.zip",
+  "archiveEntry": "source/avion-corsaire.glb",
+  "sha256": "3fbba9c0025e7376a017bdca5c68bd38c2277a18e2985ed8a59e18d2c35b0bb8",
+  "license": "User supplied; original archive contains no separate license file.",
+  "forward": "Original -Z, preview +X",
+  "displayScale": 0.42
+}

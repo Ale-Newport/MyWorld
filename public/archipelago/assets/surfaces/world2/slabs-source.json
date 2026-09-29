@@ -1,0 +1,32 @@
+{
+  "source": "Portfolio/assets/world2-source/textures/slabs.png",
+  "sourceSHA256": "ae96f33015f45b7f1414f3c338c006e13263ac9b43ccf6efe58ec46734558126",
+  "albedoSHA256": "7667c54ca3dbb39be5884c19096c324e0c3eeedb2d032992005313916908e996",
+  "width": 256,
+  "height": 256,
+  "material": "terrain",
+  "node": "Mix.005",
+  "maskColorSpace": "sRGB",
+  "linearColors": [
+    [
+      0.39157015085220337,
+      0.18447518348693848,
+      0.1221388429403305
+    ],
+    [
+      1,
+      0.6239606738090515,
+      0.25818297266960144
+    ]
+  ],
+  "positionMultiply": 0.20000000298023224,
+  "tileMetres": 4.999999925494195,
+  "uv": "[worldX * positionMultiply, -worldZ * positionMultiply]",
+  "roughness": 0.5,
+  "metalness": 0,
+  "normalMap": null,
+  "bump": null,
+  "interpolation": "Linear",
+  "extension": "REPEAT",
+  "projection": "FLAT"
+}

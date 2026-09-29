@@ -1,0 +1,8 @@
+body.player main{height:100%;display:block}
+body.player #viewport{height:100%}
+body.player>header,body.player>footer,body.player #assets,body.player #inspector,body.player #tools,body.player #world-checks,body.player #simulation,body.player #welcome,body.player #viewport-label{display:none!important}
+#player-nav{position:fixed;inset:18px 18px auto auto;display:flex;gap:8px;z-index:20}
+#player-nav a,#player-nav button{color:#eff9f2;background:#152c35e8;border:1px solid #6a9997;border-radius:8px;padding:10px 14px;text-decoration:none;font-size:12px}
+body.player #loading{z-index:15}
+body.player #gameplay-hud{top:75px}
+@media(max-width:720px){#player-nav{inset:10px 10px auto 10px;justify-content:space-between}#player-nav a,#player-nav button{padding:9px;font-size:11px}body.player #drive-hud{left:15px;bottom:25px}body.player #drive-hud div{max-width:230px;font-size:8px}body.player #speed{font-size:42px}}
