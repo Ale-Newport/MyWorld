@@ -40,11 +40,17 @@ if (via === 'scroll' && !reduced) {
     await sleep(25)
     if (await page.evaluate(() => document.documentElement.dataset.worldPhase && document.documentElement.dataset.worldPhase !== 'HOME')) break
   }
+} else if (via === 'index') {
+  // The chapter index (key I) carries a link to the world.
+  await page.keyboard.press('i')
+  await page.locator('[aria-label="Chapter index"] a[href="/world"]').waitFor({ state: 'visible' })
+  await sleep(700)
+  await page.locator('[aria-label="Chapter index"] a[href="/world"]').click()
 } else {
-  // Reduced motion (or --via index): the visible "Enter my world" link at the foot.
+  // Reduced motion: no charge to build; the portal is a plain "Enter my world" link at the foot.
   await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight))
   await sleep(1500)
-  await page.locator('a[href="/world"]').last().click()
+  await page.locator('[data-plain="true"] a[href="/world"]').click()
 }
 await page.waitForFunction(() => window.__phases.some((p) => p.phase === 'COVERED'), null, { timeout: 30000 })
 await page.screenshot({ path: out(`transition/${tag}-covered.png`) })

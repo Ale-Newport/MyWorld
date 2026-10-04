@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import { useEffect, useRef } from 'react'
 import { useCanvas2D } from '@/hooks/useCanvas2D'
 import { readPalette } from '@/components/project-visuals/types'
 import { seeded } from '@/lib/math'
@@ -9,13 +10,26 @@ import styles from './not-found.module.css'
 /* ============================================================
    404 — LOST IN SPACE
    The visitor becomes a small object adrift among the debris
-   of the site's own structure. Pointer nudges the drift.
+   of the site's own structure. Under reduced motion it is one
+   still frame of the same scene.
    ============================================================ */
 
 export default function NotFound() {
+  const still = useRef({ reduced: false, drawn: false })
+  useEffect(() => {
+    const mq = window.matchMedia('(prefers-reduced-motion: reduce)')
+    const apply = () => { still.current = { reduced: mq.matches, drawn: false } }
+    apply()
+    mq.addEventListener('change', apply)
+    return () => mq.removeEventListener('change', apply)
+  }, [])
   const ref = useCanvas2D<HTMLCanvasElement>({
     pauseWhenHidden: false,
-    draw: ({ ctx, w, h, t }) => {
+    setup: () => { still.current.drawn = false },
+    draw: ({ ctx, w, h, t: clock }) => {
+      if (still.current.reduced && still.current.drawn) return
+      const t = still.current.reduced ? 6 : clock
+      still.current.drawn = true
       const p = readPalette(ctx.canvas)
       ctx.clearRect(0, 0, w, h)
 
