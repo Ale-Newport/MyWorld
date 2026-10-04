@@ -1,0 +1,16 @@
+.wrap { position: absolute; inset: 0; display: grid; place-items: center start; padding: 1rem 1.25rem; }
+.text { position: relative; margin: 0; display: inline-block; font-family: var(--font-display); font-weight: 500; letter-spacing: -0.04em; line-height: 1; color: var(--fx-ink); overflow: hidden; padding: 0.05em 0.04em 0.12em; }
+.block { position: absolute; inset: 0; background: var(--wipe); transform: scale(0, 1); }
+.text[data-state='idle'] .words { opacity: 0; }
+.text[data-state='run'] .words { animation: show var(--dur) steps(1, end) both; }
+.text[data-state='run'] .block { animation: var(--name) var(--dur) cubic-bezier(.77,0,.18,1) both; }
+.text[data-dir='right'] { --name: wipeRight; }
+.text[data-dir='left'] { --name: wipeLeft; }
+.text[data-dir='up'] { --name: wipeUp; }
+.text[data-dir='down'] { --name: wipeDown; }
+/* Grow over the words from one side, hold while they swap in, leave by the other side. */
+@keyframes wipeRight { 0% { transform: scale(0, 1); transform-origin: 0 50%; } 45%, 55% { transform: scale(1, 1); transform-origin: 0 50%; } 56% { transform-origin: 100% 50%; } 100% { transform: scale(0, 1); transform-origin: 100% 50%; } }
+@keyframes wipeLeft { 0% { transform: scale(0, 1); transform-origin: 100% 50%; } 45%, 55% { transform: scale(1, 1); transform-origin: 100% 50%; } 56% { transform-origin: 0 50%; } 100% { transform: scale(0, 1); transform-origin: 0 50%; } }
+@keyframes wipeUp { 0% { transform: scale(1, 0); transform-origin: 50% 100%; } 45%, 55% { transform: scale(1, 1); transform-origin: 50% 100%; } 56% { transform-origin: 50% 0; } 100% { transform: scale(1, 0); transform-origin: 50% 0; } }
+@keyframes wipeDown { 0% { transform: scale(1, 0); transform-origin: 50% 0; } 45%, 55% { transform: scale(1, 1); transform-origin: 50% 0; } 56% { transform-origin: 50% 100%; } 100% { transform: scale(1, 0); transform-origin: 50% 100%; } }
+@keyframes show { 0% { opacity: 0; } 50%, 100% { opacity: 1; } }

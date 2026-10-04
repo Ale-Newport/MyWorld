@@ -12,6 +12,8 @@ import { bool, color, num, pick, type EffectProps } from './types'
    controls every effect shares, so each effect only has to draw:
 
      trigger     viewport (default) · hover · click · time · always
+                 ("time" starts `delay` seconds after the block mounts;
+                 "always" runs from the first frame and ignores delay)
      delay       seconds before the trigger counts
      speed       multiplies the effect's clock (see tuning.ts)
      scrollStart / scrollEnd / scrollFollow
@@ -42,10 +44,12 @@ function useReducedMotion() {
   return reduced
 }
 
-export function EffectSlot({ effect, params, style, className }: { effect: string; params: Record<string, unknown>; style?: CSSProperties; className?: string }) {
+export function EffectSlot({ effect, params, style, className, reducedMotion: forced }: { effect: string; params: Record<string, unknown>; style?: CSSProperties; className?: string; reducedMotion?: boolean }) {
   const host = useRef<HTMLDivElement>(null)
   const progress = useRef(0)
-  const reducedMotion = useReducedMotion()
+  // The library's preview can show the reduced-motion version on demand.
+  const systemReduced = useReducedMotion()
+  const reducedMotion = forced ?? systemReduced
   const trigger = pick(params.trigger, ['viewport', 'hover', 'click', 'time', 'always'] as const, 'viewport')
   const delay = num(params.delay, 0, 0, 30)
   /* What the trigger observed, and which "on" period it belongs to, so a delay is counted afresh each time. */
@@ -55,7 +59,7 @@ export function EffectSlot({ effect, params, style, className }: { effect: strin
   const constant = trigger === 'always' || trigger === 'time'
   const raw = constant || observed.on
   const session = constant ? 0 : observed.session
-  const active = raw && (delay === 0 || delayedSession === session)
+  const active = trigger === 'always' || (raw && (delay === 0 || delayedSession === session))
 
   /* trigger → observed state (event callbacks only) */
   useEffect(() => {
@@ -109,12 +113,14 @@ export function EffectSlot({ effect, params, style, className }: { effect: strin
     return () => { cancelAnimationFrame(raf); io.disconnect() }
   }, [start, end, follow])
 
+  const accent = color(params.accent, '')
   const vars = {
-    '--fx-accent': color(params.accent, 'var(--accent)'),
+    '--fx-accent': accent || 'var(--accent)',
     '--fx-ink': color(params.ink, 'var(--text-primary)'),
     '--fx-surface': color(params.surface, 'transparent'),
-    // Visuals written before the library read the site's own tokens.
-    '--accent': color(params.accent, 'var(--accent)'),
+    // Visuals written before the library read the site's own tokens. Only when an accent is
+    // chosen: `--accent: var(--accent)` on this element would be a cycle, which CSS treats as invalid.
+    ...(accent ? { '--accent': accent } : {}),
     position: 'relative',
     width: '100%',
     height: '100%',

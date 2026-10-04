@@ -1,0 +1,5 @@
+.wrap { position: absolute; inset: 0; display: grid; place-items: center start; padding: 1rem 1.25rem; }
+.text { margin: 0; max-width: 34ch; font-family: var(--font-display); font-weight: 500; letter-spacing: -0.03em; line-height: 1.12; color: var(--fx-ink); }
+.mark { color: inherit; background: linear-gradient(var(--mark), var(--mark)) no-repeat 0 92% / calc(var(--fill) * 100%) var(--thick); padding: 0 0.04em; }
+.mark[data-mode='sweep'] { transition: background-size var(--dur) cubic-bezier(.65,0,.35,1); }
+@media (prefers-reduced-motion: reduce) { .mark { transition: none; } }

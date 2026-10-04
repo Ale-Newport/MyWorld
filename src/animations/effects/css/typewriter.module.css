@@ -1,0 +1,7 @@
+.wrap { position: absolute; inset: 0; display: grid; place-items: center start; padding: 1rem 1.25rem; }
+.line { margin: 0; font-family: var(--font-mono); font-weight: 500; letter-spacing: -0.02em; line-height: 1.15; color: var(--fx-ink); white-space: pre-wrap; }
+.caret { display: inline-block; width: 0.08em; height: 1.05em; margin-left: 0.06em; vertical-align: -0.15em; background: var(--fx-accent); animation: blink 1.06s steps(1) infinite; }
+.caret[data-kind='block'] { width: 0.58em; opacity: 0.85; }
+.caret[data-kind='underscore'] { width: 0.6em; height: 0.09em; vertical-align: -0.05em; }
+.caret[data-still] { animation: none; }
+@keyframes blink { 50% { opacity: 0; } }
