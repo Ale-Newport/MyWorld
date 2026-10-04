@@ -19,3 +19,6 @@ next-env.d.ts
 .codex/
 .next-*/
 *.log
+
+# CMS store (SQLite, revision blobs, uploads): runtime data, never committed
+/.data/

@@ -30,7 +30,8 @@
     "world2:interactions": "node scripts/world2-interaction-qa.mjs",
     "world2:routes": "node scripts/world2-routes-qa.mjs",
     "world2:glyphs": "node scripts/gen-title-glyphs.mjs",
-    "world2:references": "node scripts/gen-world2-interactions.mjs"
+    "world2:references": "node scripts/gen-world2-interactions.mjs",
+    "admin:create": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/admin/create-admin.mjs"
   },
   "dependencies": {
     "@dimforge/rapier3d-compat": "^0.17.3",
@@ -43,6 +44,7 @@
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
     "three": "^0.185.1",
+    "zod": "^4.6.5",
     "zustand": "^5.0.15"
   },
   "devDependencies": {
