@@ -1,3 +1,4 @@
+import Link from 'next/link'
 import { TECH_GROUPS as techGroups, type SiteContent } from '@/cms/derive'
 import styles from './StaticProfile.module.css'
 
@@ -40,7 +41,7 @@ export function StaticProfile({ content }: { content: SiteContent }) {
       <p>Based in {profile.location}. Portfolio {profile.year}.</p>
       <p>
         Where he has worked and the full record of what he has built are at{' '}
-        <a href="/projects">Projects and professional work</a>.
+        <Link href="/projects">Projects and professional work</Link>.
       </p>
 
       <h2>Education</h2>
@@ -75,7 +76,7 @@ export function StaticProfile({ content }: { content: SiteContent }) {
       <h2>Project index</h2>
       <p>
         {projects.length} projects. Descriptions, contributions, verified facts,
-        metrics and links are in <a href="/projects">the full project archive</a>.
+        metrics and links are in <Link href="/projects">the full project archive</Link>.
       </p>
       <ul>
         {projects.map((p) => (
