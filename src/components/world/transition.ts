@@ -96,9 +96,11 @@ export const worldTransition = {
     if (reduced) {
       garden.show({ initial: 1, reduced: true })
       garden.set(1)
-    } else if (garden.get().active) {
+    } else if (garden.get().active && garden.charge() > 0.05) {
+      // The scroll portal has been growing it: complete what is there.
       garden.set(1)
     } else {
+      // A link (the index, the portal link): grow it in, from wherever it stands.
       garden.show({ initial: 0 })
       grow(1100)
     }

@@ -44,6 +44,8 @@ export const garden = {
   },
   get: () => state,
   server: () => SERVER,
+  /** How far the leaves have grown, 0..1 (0 when no cover is up). */
+  charge: () => (state.active ? (charge ?? state.initial) : 0),
 
   show(opts: Partial<Omit<GardenState, 'active'>> = {}) {
     if (state.active) return
