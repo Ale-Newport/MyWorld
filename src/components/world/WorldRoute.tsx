@@ -75,6 +75,12 @@ export function WorldRoute() {
         if (href.startsWith('/') && !href.startsWith('//')) router.push(href)
       }
       if (data?.type === 'archipelago:error') { window.clearTimeout(quietTimer); fail(String(data.message ?? 'The world could not start.')) }
+      // What visitors do in the world, as named events only (see server/analytics.ts).
+      if (data?.type === 'archipelago:event') {
+        const e = data as { event?: unknown; name?: unknown; action?: unknown }
+        if (e.event === 'map_open') track('map_open')
+        if (e.event === 'world_activity' && typeof e.name === 'string' && typeof e.action === 'string') track('world_activity', { name: e.name.slice(0, 40), action: e.action.slice(0, 20) })
+      }
       if (data?.type === 'archipelago:ready') {
         window.clearTimeout(quietTimer)
         setReady(true)

@@ -46,9 +46,17 @@ function flush() {
   if (queue.length) timer = window.setTimeout(flush, 1000)
 }
 
+let lastView = { path: '', at: 0 }
+
 export function track(type: string, props: Props = {}) {
   if (!permitted()) return
-  queue.push({ type, path: location.pathname, props, at: Date.now() })
+  const at = Date.now()
+  // One view per page: a remounted effect (React's development double-run, a fast refresh) is not a second visit.
+  if (type === 'pageview') {
+    if (lastView.path === location.pathname && at - lastView.at < 1500) return
+    lastView = { path: location.pathname, at }
+  }
+  queue.push({ type, path: location.pathname, props, at })
   if (!timer) timer = window.setTimeout(flush, type === 'pageview' ? 300 : 2000)
 }
 
