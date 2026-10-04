@@ -46,6 +46,8 @@ interface Props {
   budget?: number
   /** Reduced motion: no leaves are grown; the dark of the hedge fades in and out. */
   reduced?: boolean
+  /** Settings → Leaf parting: multiplies the parting's durations (1 = as designed). */
+  partScale?: number
   onOpened?: () => void
   handleRef?: Ref<CoverHandle>
 }
@@ -70,7 +72,7 @@ const pause: Pause = () =>
     else window.setTimeout(() => resolve({ timeRemaining: () => 0 }), 16)
   })
 
-export function CanopyCover({ initial = 0, budget = 1, reduced = false, onOpened, handleRef }: Props) {
+export function CanopyCover({ initial = 0, budget = 1, reduced = false, partScale = 1, onOpened, handleRef }: Props) {
   const rootRef = useRef<HTMLDivElement>(null)
   const deepRef = useRef<HTMLSpanElement>(null)
   const layersRef = useRef<HTMLDivElement>(null)
@@ -259,12 +261,12 @@ export function CanopyCover({ initial = 0, budget = 1, reduced = false, onOpened
         // rule (and its transition) take it from here.
         if (deepRef.current) deepRef.current.style.opacity = ''
       })
-      window.setTimeout(() => onOpened?.(), OPEN_MS)
+      window.setTimeout(() => onOpened?.(), OPEN_MS * partScale)
     },
-  }), [onOpened, deepen, seal])
+  }), [onOpened, deepen, seal, partScale])
 
   return (
-    <div ref={rootRef} className={styles.root} aria-hidden="true" data-reduced={reduced || undefined}>
+    <div ref={rootRef} className={styles.root} aria-hidden="true" data-reduced={reduced || undefined} style={{ ['--part' as string]: partScale }}>
       <span ref={deepRef} className={styles.deep} />
       <div ref={layersRef} className={styles.layers} />
     </div>

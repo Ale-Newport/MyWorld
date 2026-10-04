@@ -280,6 +280,8 @@ export const settings = z.object({
     analytics: z.boolean(),
     /** The leaf transition's growth speed; never affects full coverage. */
     leafCharge: z.enum(['gentle', 'standard', 'brisk']),
+    /** How long the leaves take to part over the world; coverage is verified before it either way. */
+    leafParting: z.enum(['slow', 'standard', 'quick']).default('standard'),
   }),
 })
 export type Settings = z.infer<typeof settings>

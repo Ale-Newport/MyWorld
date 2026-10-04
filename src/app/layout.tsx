@@ -8,7 +8,9 @@ import '@/styles/globals.css'
    comes from the site document in app/(site)/layout.tsx; the admin
    declares its own in app/admin/layout.tsx. */
 export const metadata: Metadata = {
-  title: { default: 'Alejandro Newport', template: '%s — Alejandro Newport' },
+  // No template here: (site) and admin each set their own, and a parent
+  // template would be applied to the site's own default title too.
+  title: 'Alejandro Newport',
 }
 
 export const viewport: Viewport = {

@@ -63,9 +63,10 @@
    leaves first and furthest, the deep ones last and least — and the
    dark behind them lifts off the world through the opening.
    Transform and opacity only. */
+/* --part (Settings → Leaf parting) stretches or shortens every duration and delay here alike. */
 .root[data-open='true'] .deep {
   opacity: 0;
-  transition: opacity 0.7s linear 0.2s;
+  transition: opacity calc(0.7s * var(--part, 1)) linear calc(0.2s * var(--part, 1));
 }
 
 .root[data-open='true'] .layer[data-band='2'][data-side='left'] { transform: translateX(-60%) scale(1.6); }
@@ -79,13 +80,13 @@
    away once it is nearly off the screen. */
 .root[data-open='true'] .layer { opacity: 0; }
 .root[data-open='true'] .layer[data-band='2'] {
-  transition: transform 1.05s cubic-bezier(0.42, 0, 0.5, 1), opacity 0.3s linear 0.75s;
+  transition: transform calc(1.05s * var(--part, 1)) cubic-bezier(0.42, 0, 0.5, 1), opacity calc(0.3s * var(--part, 1)) linear calc(0.75s * var(--part, 1));
 }
 .root[data-open='true'] .layer[data-band='1'] {
-  transition: transform 1.12s cubic-bezier(0.42, 0, 0.5, 1) 0.08s, opacity 0.3s linear 0.9s;
+  transition: transform calc(1.12s * var(--part, 1)) cubic-bezier(0.42, 0, 0.5, 1) calc(0.08s * var(--part, 1)), opacity calc(0.3s * var(--part, 1)) linear calc(0.9s * var(--part, 1));
 }
 .root[data-open='true'] .layer[data-band='0'] {
-  transition: transform 1.18s cubic-bezier(0.42, 0, 0.5, 1) 0.16s, opacity 0.3s linear 1.04s;
+  transition: transform calc(1.18s * var(--part, 1)) cubic-bezier(0.42, 0, 0.5, 1) calc(0.16s * var(--part, 1)), opacity calc(0.3s * var(--part, 1)) linear calc(1.04s * var(--part, 1));
 }
 
 /* REDUCED MOTION. No leaves are grown or swept aside: the dark of the
