@@ -53,20 +53,38 @@ export function blobSize(sha: string) {
   return fs.statSync(file(sha)).size
 }
 
-/** Removes every blob whose name is not in `keep`. Returns the bytes freed. */
-export function collectBlobs(keep: Set<string>) {
+/** Removes every blob whose name is not in `keep` and that is older than `graceMs`. Returns what was freed. */
+export function collectBlobs(keep: Set<string>, { graceMs = 0 }: { graceMs?: number } = {}) {
   const root = dataPath('blobs')
-  if (!fs.existsSync(root)) return 0
-  let freed = 0
+  if (!fs.existsSync(root)) return { files: 0, bytes: 0 }
+  const cutoff = Date.now() - graceMs
+  let bytes = 0, files = 0
   for (const dir of fs.readdirSync(root)) {
     const sub = path.join(root, dir)
     if (!fs.statSync(sub).isDirectory()) continue
     for (const name of fs.readdirSync(sub)) {
-      if (!HEX.test(name) || keep.has(name)) continue
       const full = path.join(sub, name)
-      freed += fs.statSync(full).size
+      // Half-written uploads (.tmp) left by a crash are collected the same way.
+      if (keep.has(name) || !(HEX.test(name) || name.endsWith('.tmp'))) continue
+      const stat = fs.statSync(full)
+      if (stat.mtimeMs > cutoff) continue
+      bytes += stat.size
+      files++
       fs.rmSync(full)
     }
   }
-  return freed
+  return { files, bytes }
+}
+
+/** What the store holds on disk. */
+export function blobStats() {
+  const root = dataPath('blobs')
+  let bytes = 0, files = 0
+  if (!fs.existsSync(root)) return { files, bytes }
+  for (const dir of fs.readdirSync(root)) {
+    const sub = path.join(root, dir)
+    if (!fs.statSync(sub).isDirectory()) continue
+    for (const name of fs.readdirSync(sub)) if (HEX.test(name)) { bytes += fs.statSync(path.join(sub, name)).size; files++ }
+  }
+  return { files, bytes }
 }

@@ -17,7 +17,8 @@ import path from 'node:path'
    ============================================================ */
 
 export const config = {
-  dataDir: path.resolve(process.env.CMS_DATA_DIR || path.join(process.cwd(), '.data', 'cms')),
+  // Runtime state, not source: excluded from the bundler's file tracing.
+  dataDir: path.resolve(/* turbopackIgnore: true */ process.env.CMS_DATA_DIR || path.join(/* turbopackIgnore: true */ process.cwd(), '.data', 'cms')),
   production: process.env.NODE_ENV === 'production',
   /** Sessions last two weeks of inactivity at most, and 30 days absolute. */
   sessionIdleMs: 14 * 24 * 60 * 60 * 1000,
@@ -28,6 +29,12 @@ export const config = {
   maxMediaBytes: 25 * 1024 * 1024,
   /** Draft revisions kept per document beyond the published ones. */
   keepDraftRevisions: 40,
+  /** World documents are ~17 MB each: fewer of them are kept. */
+  keepWorldDraftRevisions: 12,
+  /** Earlier publications kept for restoring, besides the live one. */
+  keepPublishedRevisions: 20,
+  /** An unreferenced blob is only collected once it is this old, so an upload for a save still in flight is never removed. */
+  blobGraceMs: 6 * 60 * 60 * 1000,
 }
 
 export function cmsSecret(): string {
@@ -39,5 +46,5 @@ export function cmsSecret(): string {
 }
 
 export function dataPath(...parts: string[]) {
-  return path.join(config.dataDir, ...parts)
+  return path.join(/* turbopackIgnore: true */ config.dataDir, ...parts)
 }
