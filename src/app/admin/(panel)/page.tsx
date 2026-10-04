@@ -49,7 +49,7 @@ export default function Dashboard() {
         <article className="card stat">
           <span className="a-label">World</span>
           <b>{world.revision ? 'Published' : 'Shipped seed'}</b>
-          <span className="a-sub">{world.revision ? `Live since ${when(world.revision.publishedAt)}` : 'Imported from HelloWorld 4ccab18'} · {(world.refs.world.size / 1e6).toFixed(1)} MB</span>
+          <span className="a-sub">{world.revision ? `Live since ${when(world.revision.publishedAt)}` : 'Shipped seed · HelloWorld 4ccab18 + portfolio areas'} · {(world.refs.world.size / 1e6).toFixed(1)} MB</span>
           {worldHead.draft && worldHead.draft.id !== worldHead.published?.id ? <span className="badge" data-tone="accent">Unpublished world draft</span> : <span className="badge" data-tone="ok">No pending draft</span>}
         </article>
         <article className="card stat">

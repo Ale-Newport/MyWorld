@@ -36,6 +36,11 @@ export const WORLD2_ACHIEVEMENTS = [
     { id: 'pins', title: 'Pin chaser', description: 'Knock down fifty pins in total.', target: 50, group: 'games' },
     { id: 'cookies', title: 'Sweet tooth', description: 'Collect ten cookies.', target: 10, group: 'games' },
     { id: 'jukebox', title: 'DJ', description: 'Put something on the jukebox.', target: 1, group: 'games' },
+    // The portfolio's own activities (activities.js): the infield slalom and the round-up on the ice.
+    { id: 'slalomClean', title: 'Clean sheet', description: 'Finish the infield slalom without a penalty.', target: 1, group: 'games' },
+    { id: 'slalomQuick', title: 'Gatekeeper', description: 'Finish the infield slalom in under 22 seconds.', target: 1, group: 'games' },
+    { id: 'roundUp', title: 'Shepherd', description: 'Get five penguins into the pen on the ice.', target: 1, group: 'games' },
+    { id: 'roundUpAll', title: 'Full house', description: 'Pen every penguin on the lake before time runs out.', target: 1, group: 'games' },
     { id: 'tnt', title: 'Demolition', description: 'Set off a crate of TNT.', target: 1, group: 'mischief' },
     { id: 'tntChain', title: 'Chain reaction', description: 'Take out five crates with one bang.', target: 5, group: 'mischief' },
     { id: 'tntAll', title: 'Nothing left', description: 'Detonate every crate on the island.', target: 23, unique: true, group: 'mischief' },

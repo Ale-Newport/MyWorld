@@ -15,6 +15,13 @@ const nextConfig: NextConfig = {
   experimental: {
     optimizePackageImports: ['@react-three/drei'],
   },
+  /* The world seed is read from disk (src/server/world.ts) by these routes until the
+     first world save; ship it with them, and nothing else of the project. */
+  outputFileTracingIncludes: {
+    '/api/world/**': ['./content/seed/world/**'],
+    '/api/admin/world/**': ['./content/seed/world/**'],
+    '/admin': ['./content/seed/world/**'],
+  },
 }
 
 export default nextConfig
