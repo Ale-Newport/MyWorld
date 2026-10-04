@@ -30,6 +30,7 @@ function attrs(node: ElementNode, editing: boolean): Record<string, string> {
     a['data-cms-kind'] = node.type === 'animation' ? 'animation' : node.type === 'container' || node.type === 'card' ? 'container' : node.type === 'table' ? 'table' : node.type === 'image' || node.type === 'video' ? 'image' : node.type === 'button' ? 'button' : node.type === 'heading' ? 'heading' : 'text'
     a['data-cms-label'] = node.name
     if (node.locked) a['data-cms-locked'] = 'true'
+    if (node.layout.mode === 'anchored') a['data-cms-anchored'] = 'true'
   }
   return a
 }

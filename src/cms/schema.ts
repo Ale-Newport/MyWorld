@@ -43,6 +43,10 @@ const color = z.string().max(64).regex(/^(#[0-9a-f]{3,8}|rgba?\([\d\s.,%]+\)|hsl
 /** CSS lengths the editor writes: numbers with units, keywords and clamp()/min()/max()/calc() of those. */
 const length = z.string().max(120).regex(/^(auto|none|inherit|0|-?\d*\.?\d+(px|rem|em|%|vw|vh|svh|lvh|dvh|ch|fr)|(clamp|min|max|calc)\([-+*/\s\d.a-z%,()]+\)|[-\d.\s]+(px|rem|em|%|vw|vh)( [-\d.]+(px|rem|em|%|vw|vh))*)$/i, 'Use a CSS length such as 24px, 2rem, 50% or clamp(1rem, 2vw, 2rem)')
 
+/** The editor validates with the same rules before writing. */
+export const cssLength = length
+export const cssColor = color
+
 /* ---- rich text ------------------------------------------------ */
 export const textRun = z.object({
   t: z.string().max(5000),

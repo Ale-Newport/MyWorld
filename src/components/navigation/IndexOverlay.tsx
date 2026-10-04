@@ -177,7 +177,8 @@ export function IndexOverlay({ open, onClose }: { open: boolean; onClose: () => 
                 </header>
 
                 {groupsOf(journey.chapters).map((group) => (
-                  <section key={group.label} className={styles.group}>
+                  // A run's first chapter names it: the same group can recur once sections are reordered.
+                  <section key={group.chapters[0].id} className={styles.group}>
                     <h3 className={styles.groupLabel}>{group.label}</h3>
                     {group.chapters.map((c) =>
                       here ? (

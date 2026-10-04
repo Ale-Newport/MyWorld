@@ -12,7 +12,7 @@ import { useJourney } from '@/state/journey'
 import { useSound } from '@/hooks/useSound'
 import { useEasterEggs } from '@/hooks/useEasterEggs'
 import type { ChapterId, JourneyId } from '@/content/types'
-import { useSite } from '@/cms/context'
+import { useEditing, useSite } from '@/cms/context'
 import { CustomSection } from '@/cms/sections'
 import { Chapter } from './Chapter'
 
@@ -118,6 +118,8 @@ export function Journey({ journey }: { journey: JourneyId }) {
   }, [setIndexOpen])
 
   const list = useSite().journeys[journey].chapters
+  // In the admin's preview the editor draws its own pointer feedback.
+  const editing = useEditing()
 
   return (
     <JourneyProvider journey={journey}>
@@ -128,7 +130,7 @@ export function Journey({ journey }: { journey: JourneyId }) {
       <a href={`#chapter-${list[0].id}`} className="skip-link">Skip to content</a>
 
       {canvasReady && <GlobalCanvas />}
-      <Cursor />
+      {!editing && <Cursor />}
 
       {/* The room is the home journey's alone; `/projects` keeps
           the sprig sheet exactly as it shipped. */}
