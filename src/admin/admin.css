@@ -231,3 +231,31 @@
   .admin-root .pe-body { grid-template-columns: 220px minmax(0, 1fr) 260px; }
 }
 
+/* ---- animation library ------------------------------------- */
+.admin-root .lib-root { display: grid; grid-template-columns: minmax(300px, 380px) minmax(0, 1fr); height: 100vh; }
+.admin-root .lib-list { display: grid; grid-template-rows: auto minmax(0, 1fr); border-right: 1px solid var(--a-line); background: var(--a-panel); min-height: 0; }
+.admin-root .lib-grid { overflow: auto; display: grid; gap: 8px; padding: 6px 12px 24px; align-content: start; }
+.admin-root .lib-card { position: relative; display: grid; grid-template-columns: 96px minmax(0, 1fr); gap: 10px; padding: 8px; border: 1px solid var(--a-line); border-radius: 10px; background: #fff; text-align: left; }
+.admin-root .lib-hit { position: absolute; inset: 0; border: 0; border-radius: 10px; background: transparent; cursor: pointer; }
+.admin-root .lib-thumb { pointer-events: none; }
+.admin-root .lib-card:hover { border-color: var(--a-line-strong); }
+.admin-root .lib-card[data-selected] { border-color: var(--a-select); box-shadow: 0 0 0 2px rgb(47 108 216 / 0.15); }
+.admin-root .lib-thumb { position: relative; height: 72px; border-radius: 6px; overflow: hidden; background: #f6f0e6; display: grid; place-items: center; font-size: 8px; }
+.admin-root .lib-glyph { font-size: 26px; color: var(--a-faint); }
+.admin-root .lib-meta { display: grid; gap: 3px; min-width: 0; align-content: start; }
+.admin-root .lib-meta b { font-size: 13px; }
+.admin-root .lib-meta .a-mono { font-size: 10.5px; color: var(--a-faint); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.admin-root .lib-main { overflow: auto; padding: 22px clamp(16px, 3vw, 36px) 48px; }
+.admin-root .lib-detail { display: grid; gap: 16px; max-width: 1100px; }
+.admin-root .lib-stage { display: grid; place-items: center; padding: 22px; border-radius: 12px; background: #f6f0e6; border: 1px solid var(--a-line); overflow: auto; }
+.admin-root .lib-stage[data-dark] { background: #15130f; }
+.admin-root .lib-stage[data-dark] .lib-stage-box { --text-primary: #f3ede2; --text-secondary: #d8d0c2; --bg-primary: #15130f; color: #f3ede2; }
+.admin-root .lib-stage-box { position: relative; max-width: 100%; background: transparent; outline: 1px dashed rgb(26 23 18 / 0.18); outline-offset: 4px; }
+.admin-root .lib-columns { display: grid; grid-template-columns: minmax(0, 1fr) minmax(280px, 380px); gap: 16px; align-items: start; }
+.admin-root .lib-facts { margin: 0; display: grid; gap: 8px; }
+.admin-root .lib-facts > div { display: grid; grid-template-columns: 112px minmax(0, 1fr); gap: 8px; font-size: 12.5px; }
+.admin-root .lib-facts dt { color: var(--a-muted); }
+.admin-root .lib-facts dd { margin: 0; }
+.admin-root .lib-inputs { margin: 0; padding-left: 16px; display: grid; gap: 4px; font-size: 12px; color: var(--a-ink-2); }
+@media (max-width: 1100px) { .admin-root .lib-columns { grid-template-columns: 1fr; } }
+
