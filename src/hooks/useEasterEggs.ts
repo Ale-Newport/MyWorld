@@ -2,8 +2,7 @@
 
 import { useEffect } from 'react'
 import { useJourney } from '@/state/journey'
-import { profile, contact } from '@/content/profile'
-import { projects } from '@/content/projects'
+import { useSite } from '@/cms/context'
 
 const KONAMI = [
   'ArrowUp', 'ArrowUp', 'ArrowDown', 'ArrowDown',
@@ -16,6 +15,7 @@ const KONAMI = [
  * and every one is reversible.
  */
 export function useEasterEggs() {
+  const { profile, contact, projects } = useSite()
   const setActiveProject = useJourney((s) => s.setActiveProject)
 
   /* Console note for anyone who opens devtools. */
@@ -30,7 +30,7 @@ export function useEasterEggs() {
       'font: 600 22px/1.2 system-ui; letter-spacing:-0.03em',
       'font: 12px/1.6 ui-monospace, monospace; color:#888',
     )
-  }, [])
+  }, [contact, profile.name, projects])
 
   /* Konami — flips the world into its inverse for a while. */
   useEffect(() => {

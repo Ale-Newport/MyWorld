@@ -11,8 +11,9 @@ import { Vegetation } from '@/components/vegetation/Vegetation'
 import { useJourney } from '@/state/journey'
 import { useSound } from '@/hooks/useSound'
 import { useEasterEggs } from '@/hooks/useEasterEggs'
-import { journeys } from '@/content/chapters'
 import type { ChapterId, JourneyId } from '@/content/types'
+import { useSite } from '@/cms/context'
+import { CustomSection } from '@/cms/sections'
 import { Chapter } from './Chapter'
 
 /* The WebGL layer is client-only and never blocks first paint:
@@ -116,7 +117,7 @@ export function Journey({ journey }: { journey: JourneyId }) {
     return () => window.removeEventListener('keydown', onKey)
   }, [setIndexOpen])
 
-  const list = journeys[journey].chapters
+  const list = useSite().journeys[journey].chapters
 
   return (
     <JourneyProvider journey={journey}>
@@ -135,8 +136,9 @@ export function Journey({ journey }: { journey: JourneyId }) {
 
       <main id="journey" className="journey" data-journey={journey}>
         {list.map((c) => {
+          /* Sections added in the editor have no component of their own. */
           const Component = CHAPTER_COMPONENTS[c.id]
-          return <Component key={c.id} />
+          return Component ? <Component key={c.id} /> : <CustomSection key={c.id} id={c.id} />
         })}
       </main>
 

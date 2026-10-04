@@ -1,8 +1,8 @@
 'use client'
 
 import { create } from 'zustand'
-import type { ChapterId, JourneyId } from '@/content/types'
-import { chapters, chapterRanges, journeys, type ChapterRange } from '@/content/chapters'
+import type { Chapter, ChapterId, JourneyId } from '@/content/types'
+import { chapterRanges, type ChapterRange } from '@/content/chapters'
 
 export type PerformanceTier = 'low' | 'medium' | 'high'
 
@@ -31,6 +31,8 @@ export interface JourneyState {
    * and never the global list, because no route renders fourteen.
    */
   journeyId: JourneyId
+  /** The mounted journey's running order (from the site document). */
+  chapters: Chapter[]
   ranges: ChapterRange[]
 
   /* ---- modes -------------------------------------------- */
@@ -48,7 +50,7 @@ export interface JourneyState {
   /* ---- actions ------------------------------------------ */
   setScroll: (p: { progress: number; velocity: number }) => void
   setPointer: (x: number, y: number) => void
-  setJourney: (id: JourneyId) => void
+  setJourney: (id: JourneyId, chapters: Chapter[]) => void
   setQuickView: (v: boolean) => void
   setReducedMotion: (v: boolean) => void
   setPerformanceTier: (t: PerformanceTier) => void
@@ -60,6 +62,7 @@ export interface JourneyState {
 
 function resolve(progress: number, ranges: ChapterRange[]) {
   const p = Math.min(0.999999, Math.max(0, progress))
+  if (!ranges.length) return { active: null, chapterProgress: 0 }
   let active = ranges[0]
   for (const r of ranges) {
     if (r.end <= r.start) continue
@@ -71,27 +74,26 @@ function resolve(progress: number, ranges: ChapterRange[]) {
   return { active, chapterProgress }
 }
 
-/* The store boots on the home journey because a module singleton
-   has to boot on something, and on the server it must then stay
-   exactly as it is: one process answers many requests at once, so
-   a route written in here would be a route leaked between them.
-   What the chrome renders therefore comes from the route context
-   in `JourneyProvider`, not from this. `setJourney` corrects this
-   copy in the browser, during that provider's render and before
-   any child of it has looked — it is what the scroll driver reads
-   from outside React, where a context cannot be reached. */
-const initialJourney = journeys.home
-
+/* The store boots on the home journey's first chapter with no
+   ranges, because a module singleton has to boot on something, and
+   on the server it must then stay exactly as it is: one process
+   answers many requests at once, so a route written in here would
+   be a route leaked between them. What the chrome renders comes
+   from the route context in `JourneyProvider`, which also hands the
+   store the mounted journey's chapters (read from the site document)
+   in a layout effect — before the scroll driver, which reads this
+   copy from outside React, ever asks. */
 export const useJourney = create<JourneyState>((set, get) => ({
   progress: 0,
   chapterProgress: 0,
-  chapter: initialJourney.chapters[0].id,
+  chapter: 'prelude',
   chapterIndex: 0,
   velocity: 0,
   direction: 1,
 
-  journeyId: initialJourney.id,
-  ranges: chapterRanges(false, initialJourney.chapters),
+  journeyId: 'home',
+  chapters: [],
+  ranges: [],
 
   quickView: false,
   reducedMotion: false,
@@ -107,7 +109,7 @@ export const useJourney = create<JourneyState>((set, get) => ({
     const { active, chapterProgress } = resolve(progress, s.ranges)
     const next: Partial<JourneyState> = { progress, velocity, chapterProgress }
     if (Math.abs(velocity) > 0.01) next.direction = velocity > 0 ? 1 : -1
-    if (active.id !== s.chapter) {
+    if (active && active.id !== s.chapter) {
       next.chapter = active.id
       next.chapterIndex = active.chapter.index
     }
@@ -119,15 +121,23 @@ export const useJourney = create<JourneyState>((set, get) => ({
   /* Swapping journeys is a hard reset of everything derived from
      scroll. The two stories are different documents of different
      heights: carrying 0.72 progress across the boundary would
-     land the visitor in an arbitrary chapter of the new one. */
-  setJourney: (id) => {
+     land the visitor in an arbitrary chapter of the new one.
+     The same journey with a new running order (the admin's live
+     preview reordering sections) keeps its place instead. */
+  setJourney: (id, list) => {
     const s = get()
-    if (s.journeyId === id) return
-    const list = journeys[id].chapters
+    if (s.journeyId === id && s.chapters === list) return
+    if (s.journeyId === id && s.ranges.length) {
+      const ranges = chapterRanges(s.quickView, list)
+      const { active, chapterProgress } = resolve(s.progress, ranges)
+      set({ chapters: list, ranges, ...(active ? { chapter: active.id, chapterIndex: active.chapter.index } : {}), chapterProgress })
+      return
+    }
     set({
+      chapters: list,
       journeyId: id,
       ranges: chapterRanges(s.quickView, list),
-      chapter: list[0].id,
+      chapter: list[0]?.id ?? 'prelude',
       chapterIndex: 0,
       progress: 0,
       chapterProgress: 0,
@@ -138,13 +148,12 @@ export const useJourney = create<JourneyState>((set, get) => ({
 
   setQuickView: (v) => {
     const s = get()
-    const ranges = chapterRanges(v, journeys[s.journeyId].chapters)
+    const ranges = chapterRanges(v, s.chapters)
     const { active, chapterProgress } = resolve(s.progress, ranges)
     set({
       quickView: v,
       ranges,
-      chapter: active.id,
-      chapterIndex: active.chapter.index,
+      ...(active ? { chapter: active.id, chapterIndex: active.chapter.index } : {}),
       chapterProgress,
     })
   },
@@ -178,6 +187,3 @@ export const frame = {
   /** Seconds since mount. */
   time: 0,
 }
-
-/** Chapters across BOTH journeys. No single route renders this many. */
-export const chapterCount = chapters.length

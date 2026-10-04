@@ -2,11 +2,11 @@
 
 import { useRef } from 'react'
 import { Chapter } from '@/components/journey/Chapter'
+import { useSite } from '@/cms/context'
+import { E, useCms, useCmsText } from '@/cms/editable'
 import { Reveal } from '@/components/typography/Reveal'
 import { TagRow } from '@/components/journey/parts'
 import { Counter } from '@/components/typography/Counter'
-import { experienceById } from '@/content/experience'
-import { chapterById } from '@/content/chapters'
 import { useChapterFrame } from '@/hooks/useChapterProgress'
 import { useJourney } from '@/state/journey'
 import { clamp, range, formatCount } from '@/lib/math'
@@ -41,6 +41,9 @@ const BEATS: Beat[] = [
 ]
 
 export function Metaview() {
+  const { experienceById, chapterById } = useSite()
+  const titleCms = useCms('metaview.title', { kind: 'heading', label: 'Title' })
+  const title = useCmsText('metaview.title', 'Metaview')
   const role = experienceById.metaview
   const reducedMotion = useJourney((s) => s.reducedMotion)
   const beatsRef = useRef<HTMLOListElement>(null)
@@ -88,9 +91,9 @@ export function Metaview() {
     <Chapter id="metaview" labelledBy="metaview-title">
       <div className={`${shared.stage} ${styles.stage}`}>
         <div className={`${styles.head} ${shared.driven}`} ref={headRef}>
-          <TagRow items={[chapterById['metaview'].number, '[ AI / DATA ]', role.dates]} />
-          <Reveal as="h2" mode="chars" className={styles.title} id="metaview-title">
-            {'Metaview'}
+          <E cms="metaview.tag" label="Chapter tag"><TagRow items={[chapterById['metaview'].number, '[ AI / DATA ]', role.dates]} /></E>
+          <Reveal as="h2" mode="chars" className={styles.title} id="metaview-title" attrs={titleCms}>
+            {title}
           </Reveal>
           <p className={styles.role}>{role.role}</p>
         </div>

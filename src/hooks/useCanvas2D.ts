@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useRef } from 'react'
+import { useMotionTuning } from '@/animations/tuning'
 
 export interface CanvasContext {
   ctx: CanvasRenderingContext2D
@@ -37,6 +38,10 @@ export function useCanvas2D<T extends HTMLCanvasElement = HTMLCanvasElement>(
 ) {
   const ref = useRef<T>(null)
   const optsRef = useRef(opts)
+  /* The animation library's Speed control: scales this visual's clock. */
+  const tuning = useMotionTuning()
+  const scaleRef = useRef(tuning.timeScale)
+  useEffect(() => { scaleRef.current = tuning.timeScale }, [tuning.timeScale])
 
   // Keep the latest draw closure without mutating a ref during
   // render — the loop reads optsRef on the next frame either way.
@@ -54,8 +59,9 @@ export function useCanvas2D<T extends HTMLCanvasElement = HTMLCanvasElement>(
     let dpr = 1
     let visible = optsRef.current.pauseWhenHidden === false
     let raf = 0
-    let start = 0
     let last = 0
+    let clock = 0
+    let started = false
 
     const resize = () => {
       const rect = canvas.getBoundingClientRect()
@@ -84,10 +90,14 @@ export function useCanvas2D<T extends HTMLCanvasElement = HTMLCanvasElement>(
     const tick = (now: number) => {
       raf = requestAnimationFrame(tick)
       if (!visible) { last = now; return }
-      if (!start) { start = now; last = now }
-      const t = (now - start) / 1000
-      const dt = Math.min(0.05, (now - last) / 1000)
+      if (!started) { started = true; last = now }
+      // `t` keeps wall-clock pace while visible (as it always did), scaled by the
+      // library's Speed; `dt` stays clamped for the integrators that use it.
+      const raw = (now - last) / 1000
+      const dt = Math.min(0.05, raw) * scaleRef.current
       last = now
+      clock += Math.min(0.25, raw) * scaleRef.current
+      const t = clock
       const runFor = optsRef.current.runFor ?? 0
       if (runFor && t > runFor) return
       optsRef.current.draw({ ctx, w, h, t, dt, dpr })

@@ -5,8 +5,7 @@ import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 import { frame } from '@/state/journey'
 import { readChapterProgress } from '@/hooks/useChapterProgress'
-import { techNodes } from '@/content/skills'
-import { projects } from '@/content/projects'
+import { currentContent } from '@/state/content'
 import { clamp, damp, range, seeded } from '@/lib/math'
 
 /* ============================================================
@@ -37,6 +36,7 @@ const EDGE_RESTING = new THREE.Color('#8a8882')
 const EDGE_MUTED = new THREE.Color('#e4e2dd')
 
 export function ToolboxScene() {
+  const { techNodes, projects } = currentContent()
   const group = useRef<THREE.Group>(null!)
   const techMesh = useRef<THREE.InstancedMesh>(null!)
   const projMesh = useRef<THREE.InstancedMesh>(null!)
@@ -73,7 +73,7 @@ export function ToolboxScene() {
       })
     })
     return { techPos: tp, projPos: pp, edgeData: ed }
-  }, [])
+  }, [techNodes, projects])
 
   const edgeGeometry = useMemo(() => {
     const pos = new Float32Array(edgeData.length * 6)

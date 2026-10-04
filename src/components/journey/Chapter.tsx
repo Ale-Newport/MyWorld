@@ -1,8 +1,10 @@
 'use client'
 
 import { useJourney } from '@/state/journey'
-import { chapterById } from '@/content/chapters'
 import type { ChapterId } from '@/content/types'
+import { useSite } from '@/cms/context'
+import { useCms } from '@/cms/editable'
+import { CmsSlot } from '@/cms/blocks'
 import styles from './Chapter.module.css'
 
 interface ChapterProps {
@@ -23,11 +25,14 @@ interface ChapterProps {
  */
 export function Chapter({ id, children, flow, className, noPin, labelledBy }: ChapterProps) {
   const quickView = useJourney((s) => s.quickView)
-  const meta = chapterById[id]
+  const meta = useSite().chapterById[id]
+  const cms = useCms(`section.${id}`, { kind: 'section', label: meta?.title })
+  if (!meta) return null
   const vh = quickView ? meta.quickVh : meta.vh
 
   return (
     <section
+      {...cms}
       id={`chapter-${id}`}
       data-chapter={id}
       aria-labelledby={labelledBy}
@@ -43,9 +48,9 @@ export function Chapter({ id, children, flow, className, noPin, labelledBy }: Ch
       style={{ height: `${vh * 100}vh` }}
     >
       {noPin ? (
-        children
+        <>{children}<CmsSlot section={id} /></>
       ) : (
-        <div className={styles.stage}>{children}</div>
+        <div className={styles.stage}>{children}<CmsSlot section={id} /></div>
       )}
       {flow}
     </section>

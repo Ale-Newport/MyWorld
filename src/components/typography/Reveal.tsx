@@ -17,6 +17,8 @@ interface RevealProps {
   /** Reveal on scroll into view (default) or immediately. */
   immediate?: boolean
   id?: string
+  /** Extra attributes for the host element (the editor's data-cms-* markers). */
+  attrs?: Record<string, string>
 }
 
 const SCRAMBLE = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789/\\<>[]{}*#%'
@@ -28,7 +30,7 @@ const SCRAMBLE = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789/\\<>[]{}*#%'
  * text is always present in the DOM for assistive tech.
  */
 export function Reveal({
-  children, as: Tag = 'span', mode = 'mask', className, stagger = 0.028, delay = 0, immediate, id,
+  children, as: Tag = 'span', mode = 'mask', className, stagger = 0.028, delay = 0, immediate, id, attrs,
 }: RevealProps) {
   const host = useRef<HTMLElement>(null)
   const reducedMotion = useJourney((s) => s.reducedMotion)
@@ -80,12 +82,13 @@ export function Reveal({
   }, [mode, delay, immediate, reducedMotion])
 
   if (reducedMotion) {
-    return <Tag id={id} className={className}>{children}</Tag>
+    return <Tag id={id} className={className} {...attrs}>{children}</Tag>
   }
 
   return (
     <Tag
       id={id}
+      {...attrs}
       ref={host as React.Ref<never>}
       className={`${styles.reveal} ${className ?? ''}`}
       data-mode={mode}

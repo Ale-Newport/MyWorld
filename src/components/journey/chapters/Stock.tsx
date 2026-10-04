@@ -3,11 +3,11 @@
 import Link from 'next/link'
 import { useRef, useState } from 'react'
 import { Chapter } from '@/components/journey/Chapter'
+import { useSite } from '@/cms/context'
+import { E, useCms, useCmsText } from '@/cms/editable'
 import { Reveal } from '@/components/typography/Reveal'
 import { TagRow } from '@/components/journey/parts'
 import { ProjectVisual } from '@/components/project-visuals/ProjectVisual'
-import { projectById } from '@/content/projects'
-import { chapterById } from '@/content/chapters'
 import { useChapterFrame } from '@/hooks/useChapterProgress'
 import { useJourney } from '@/state/journey'
 import { clamp, range } from '@/lib/math'
@@ -38,6 +38,9 @@ import styles from './Stock.module.css'
 const LADDER = ['1', '10', '100', '1K', '10K', '40K+']
 
 export function Stock() {
+  const { projectById, chapterById } = useSite()
+  const titleCms = useCms('stock.title', { kind: 'heading', label: 'Title' })
+  const title = useCmsText('stock.title', 'Order book')
   const project = projectById['stock-market-simulator']
   const reducedMotion = useJourney((s) => s.reducedMotion)
   const [progress, setProgress] = useState(0)
@@ -67,9 +70,9 @@ export function Stock() {
         </div>
 
         <div className={styles.head}>
-          <TagRow items={[chapterById['stock'].number, 'CONCURRENCY', '2025']} />
-          <Reveal as="h2" mode="perspective" className={styles.title} id="stock-title">
-            {'Order book'}
+          <E cms="stock.tag" label="Chapter tag"><TagRow items={[chapterById['stock'].number, 'CONCURRENCY', '2025']} /></E>
+          <Reveal as="h2" mode="perspective" className={styles.title} id="stock-title" attrs={titleCms}>
+            {title}
           </Reveal>
           <p className={shared.note}>{project.shortDescription}</p>
         </div>

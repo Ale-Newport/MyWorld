@@ -2,11 +2,11 @@
 
 import { useRef, useState } from 'react'
 import { Chapter } from '@/components/journey/Chapter'
+import { useSite } from '@/cms/context'
+import { E, useCms, useCmsText } from '@/cms/editable'
 import { Reveal } from '@/components/typography/Reveal'
 import { TagRow } from '@/components/journey/parts'
 import { ProjectVisual } from '@/components/project-visuals/ProjectVisual'
-import { projectById } from '@/content/projects'
-import { chapterById } from '@/content/chapters'
 import { useChapterFrame } from '@/hooks/useChapterProgress'
 import { useJourney } from '@/state/journey'
 import { clamp, range } from '@/lib/math'
@@ -23,6 +23,9 @@ import styles from './Gym.module.css'
 const STAGES = ['FIGURE', 'RIG', 'JOINTS', 'POSE DATA', 'EQUIPMENT', 'EXERCISE']
 
 export function Gym() {
+  const { projectById, chapterById } = useSite()
+  const titleCms = useCms('gym.title', { kind: 'heading', label: 'Title' })
+  const title = useCmsText('gym.title', 'Gym App')
   const project = projectById['gym-app']
   const reducedMotion = useJourney((s) => s.reducedMotion)
   const [progress, setProgress] = useState(0)
@@ -59,9 +62,9 @@ export function Gym() {
         </div>
 
         <div className={styles.head}>
-          <TagRow items={[chapterById['gym'].number, 'ONE MODEL, MANY MOVEMENTS']} />
-          <Reveal as="h2" mode="clip" className={styles.title} id="gym-title">
-            {'Gym App'}
+          <E cms="gym.tag" label="Chapter tag"><TagRow items={[chapterById['gym'].number, 'ONE MODEL, MANY MOVEMENTS']} /></E>
+          <Reveal as="h2" mode="clip" className={styles.title} id="gym-title" attrs={titleCms}>
+            {title}
           </Reveal>
           <p className={shared.note}>{project.description}</p>
         </div>

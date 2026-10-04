@@ -2,10 +2,10 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Chapter } from '@/components/journey/Chapter'
+import { useSite } from '@/cms/context'
+import { E, useCms, useCmsText } from '@/cms/editable'
 import { Reveal } from '@/components/typography/Reveal'
 import { TagRow } from '@/components/journey/parts'
-import { experienceById } from '@/content/experience'
-import { chapterById } from '@/content/chapters'
 import { useChapterFrame } from '@/hooks/useChapterProgress'
 import { useJourney } from '@/state/journey'
 import { clamp, range } from '@/lib/math'
@@ -51,6 +51,9 @@ const FIXED = [
 ]
 
 export function Teaching() {
+  const { experienceById, chapterById } = useSite()
+  const titleCms = useCms('teaching.title', { kind: 'heading', label: 'Title' })
+  const title = useCmsText('teaching.title', 'First I learned how systems work.\nThen I learned how to explain them.')
   const role = experienceById['kcl-gta']
   const reducedMotion = useJourney((s) => s.reducedMotion)
   const [passing, setPassing] = useState(0)
@@ -91,9 +94,9 @@ export function Teaching() {
     <Chapter id="teaching" labelledBy="teaching-title">
       <div className={`${shared.stage} ${styles.stage}`}>
         <div className={styles.head}>
-          <TagRow items={[chapterById['teaching'].number, 'LEARNING BY TEACHING', role.dates]} />
-          <Reveal as="h2" mode="words" className={styles.title} id="teaching-title">
-            {'First I learned how systems work.\nThen I learned how to explain them.'}
+          <E cms="teaching.tag" label="Chapter tag"><TagRow items={[chapterById['teaching'].number, 'LEARNING BY TEACHING', role.dates]} /></E>
+          <Reveal as="h2" mode="words" className={styles.title} id="teaching-title" attrs={titleCms}>
+            {title}
           </Reveal>
           <p className={styles.role}>
             {role.role} · {role.organisation}

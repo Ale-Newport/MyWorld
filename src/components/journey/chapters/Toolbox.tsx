@@ -5,9 +5,9 @@ import { Chapter } from '@/components/journey/Chapter'
 import { Reveal } from '@/components/typography/Reveal'
 import { TagRow } from '@/components/journey/parts'
 import { TechTile } from '@/components/tech/TechTile'
-import { techNodes, techGroups } from '@/content/skills'
-import { chapterById } from '@/content/chapters'
-import { projectById } from '@/content/projects'
+import { useSite } from '@/cms/context'
+import { TECH_GROUPS as techGroups } from '@/cms/derive'
+import { E, useCms, useCmsText } from '@/cms/editable'
 import { useJourney } from '@/state/journey'
 import shared from './chapters.module.css'
 import styles from './Toolbox.module.css'
@@ -21,6 +21,9 @@ import styles from './Toolbox.module.css'
    ============================================================ */
 
 export function Toolbox() {
+  const { techNodes, chapterById, projectById } = useSite()
+  const titleCms = useCms('toolbox.title', { kind: 'heading', label: 'Title' })
+  const title = useCmsText('toolbox.title', 'Tech\ntoolbox')
   /* Hover previews, click pins. Keeping these separate matters:
      with one piece of state, a click on an already-hovered tile
      toggles it straight back off — and on touch there is no hover
@@ -41,20 +44,20 @@ export function Toolbox() {
   return (
     <Chapter id="toolbox" labelledBy="toolbox-title">
       <div className={`${shared.stage} ${styles.stage}`}>
-        <div className={styles.head}>
-          <TagRow items={[chapterById['toolbox'].number, 'EVIDENCE, NOT KEYWORDS']} />
-          <Reveal as="h2" mode="mask" className={styles.title} id="toolbox-title">
-            {'Tech\ntoolbox'}
+        <E cms="toolbox.head" as="div" kind="container" label="Heading block" className={styles.head}>
+          <E cms="toolbox.tag" label="Chapter tag"><TagRow items={[chapterById['toolbox'].number, 'EVIDENCE, NOT KEYWORDS']} /></E>
+          <Reveal as="h2" mode="mask" className={styles.title} id="toolbox-title" attrs={titleCms}>
+            {title}
           </Reveal>
-          <p className={shared.note}>
+          <E cms="toolbox.note" as="p" label="Instruction" className={shared.note}>
             Hover or tap a technology to light up every project that actually used it.
-          </p>
-        </div>
+          </E>
+        </E>
 
-        <div className={styles.board} ref={boardRef} onMouseLeave={() => setHovered(null)}>
+        <E cms="toolbox.board" as="div" kind="container" label="Technology board" className={styles.board} ref={boardRef} onMouseLeave={() => setHovered(null)}>
           {techGroups.map((g) => (
             <section key={g.id} className={styles.group}>
-              <h3 className={styles.groupLabel}>{g.label}</h3>
+              <E cms={`toolbox.group.${g.id}`} as="h3" kind="heading" label={`Group: ${g.label}`} className={styles.groupLabel}>{g.label}</E>
               <ul className={styles.tiles}>
                 {techNodes.filter((n) => n.group === g.id).map((n) => (
                   /* The id is on the row rather than only on the
@@ -75,7 +78,7 @@ export function Toolbox() {
               </ul>
             </section>
           ))}
-        </div>
+        </E>
 
         {/* data-room-reserve: the home room keeps this slot clear of
             growth while it is empty, so the readout never lands on a
