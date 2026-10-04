@@ -253,6 +253,15 @@ export function IndexOverlay({ open, onClose }: { open: boolean; onClose: () => 
           </WorldEntryLink>}
 
           <ul className={styles.links}>
+            {/* Links the admin adds under Settings → Navigation. */}
+            {settings.navigation.filter((n) => n.id !== 'world').map((n) => (
+              <li key={n.id}>
+                <a href={n.href} className={styles.link} target={n.external ? '_blank' : undefined} rel={n.external ? 'noreferrer noopener' : undefined} data-cursor="link">
+                  <span>{n.label}</span>
+                  <span className={styles.linkValue}>{n.external ? '↗' : '→'}</span>
+                </a>
+              </li>
+            ))}
             {contact.map((c) => {
               const pending = c.id === 'cv' && c.dataStatus === 'placeholder'
               return (

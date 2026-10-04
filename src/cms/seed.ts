@@ -50,11 +50,9 @@ export function buildSeedDocument(): SiteDocument {
       description: siteConfig.description,
       keywords: [...siteConfig.keywords],
       themeColor: '#f6f0e6',
-      navigation: [
-        { id: 'projects', label: 'Projects', href: '/projects', external: false },
-        { id: 'world', label: 'Enter my world', href: '/world', external: false },
-      ],
-      options: { worldEntrance: true, analytics: true, leafCharge: 'standard' },
+      // The world entrance's label; links added here join the index overlay.
+      navigation: [{ id: 'world', label: 'Enter my world', href: '/world', external: false }],
+      options: { worldEntrance: true, analytics: true, leafCharge: 'standard', leafParting: 'standard' },
     },
     profile: clone(seedProfile) as unknown as SiteDocument['profile'],
     contact: clone(seedContact),

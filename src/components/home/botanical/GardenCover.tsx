@@ -4,6 +4,10 @@ import dynamic from 'next/dynamic'
 import { usePathname } from 'next/navigation'
 import { useCallback, useEffect, useSyncExternalStore } from 'react'
 import { garden } from './garden'
+import { useSite } from '@/cms/context'
+
+/** Settings → Leaf parting. Only the opening's pace changes; the cover is verified complete before it either way. */
+const PARTING = { slow: 1.45, standard: 1, quick: 0.7 } as const
 import type { CoverHandle } from '@/components/home/room/canopy/CanopyCover'
 
 /* The canopy only downloads once some page asks for it. */
@@ -22,11 +26,12 @@ export function GardenCover() {
      arrival, nowhere else: on any other route, whatever brought it
      there, it goes — and the seam colour painted under it too. */
   const pathname = usePathname()
+  const parting = useSite().settings.options.leafParting
   useEffect(() => {
     if (pathname === '/' || pathname === '/world' || pathname === '/world2') return
     garden.hide()
     document.documentElement.style.background = ''
   }, [pathname])
   if (!state.active) return null
-  return <CanopyCover initial={state.initial} budget={state.budget} reduced={state.reduced} handleRef={attach} onOpened={opened} />
+  return <CanopyCover initial={state.initial} budget={state.budget} reduced={state.reduced} partScale={PARTING[parting] ?? 1} handleRef={attach} onOpened={opened} />
 }

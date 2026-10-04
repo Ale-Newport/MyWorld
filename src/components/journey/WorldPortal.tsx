@@ -62,6 +62,10 @@ export { portal }
 
 /** Wheel pixels for a full charge before resistance is applied. */
 const CHARGE_PX = 1250
+/** The admin's "leaf growth" setting scales the push a full charge takes.
+    It changes how quickly the leaves grow, never how far: coverage is
+    still completed and verified by the cover itself. */
+const LEAF_CHARGE = { gentle: 1.35, standard: 1, brisk: 0.72 } as const
 /** A finger crossing a small screen is worth more than a wheel notch. */
 const TOUCH_GAIN = 1.6
 /** Lines and pages, normalised to pixels. */
@@ -240,6 +244,7 @@ export function WorldPortal() {
     return () => cancelAnimationFrame(raf)
   }, [])
 
+  const leafCharge = settings.options.leafCharge
   const editing = useEditing()
   useEffect(() => {
     if (reducedMotion || !settings.options.worldEntrance) return
@@ -247,6 +252,7 @@ export function WorldPortal() {
     if (!transitionAllowed(editing)) return
     portal.pull = 0
     portal.drag = 0
+    const chargePx = CHARGE_PX * (LEAF_CHARGE[leafCharge] ?? 1)
 
     let pull = 0
     let drag = 0
@@ -349,14 +355,14 @@ export function WorldPortal() {
       if (sealed.current) return
       if (delta <= 0) {
         // Pushing back up lets go of the charge faster than it was gathered.
-        pull = clamp(pull + (delta / CHARGE_PX) * 1.5)
+        pull = clamp(pull + (delta / chargePx) * 1.5)
         return
       }
       if (!armed) return
       const spent = intent(delta, performance.now())
       // Resistance grows with the charge: the last stretch is the one paid for.
       const resistance = 1 - 0.68 * pull * pull
-      pull = clamp(pull + (spent / CHARGE_PX) * resistance)
+      pull = clamp(pull + (spent / chargePx) * resistance)
       drag = Math.min(DRAG_MAX, drag + spent * DRAG_GIVE * resistance)
       idle = 0
 
@@ -508,7 +514,7 @@ export function WorldPortal() {
       frame.velocity = 0
       frame.chapterProgress = 0
     }
-  }, [reducedMotion, router, settings.options.worldEntrance, worldHref, editing])
+  }, [reducedMotion, router, settings.options.worldEntrance, worldHref, leafCharge, editing])
 
   return (
     <div
