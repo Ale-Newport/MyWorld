@@ -28,14 +28,17 @@
       "@/*": [
         "./src/*"
       ]
-    }
+    },
+    "allowImportingTsExtensions": true
   },
   "include": [
     "next-env.d.ts",
     "**/*.ts",
     "**/*.tsx",
     ".next/types/**/*.ts",
-    ".next/dev/types/**/*.ts"
+    ".next/dev/types/**/*.ts",
+    ".next-claude/types/**/*.ts",
+    ".next-claude/dev/types/**/*.ts"
   ],
   "exclude": [
     "node_modules"
