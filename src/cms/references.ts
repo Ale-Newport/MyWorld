@@ -1,5 +1,5 @@
 import type { ElementNode, SiteDocument } from './schema'
-import { CHAPTER_IDS } from './chapters'
+import { CHAPTER_IDS } from './chapters.ts'
 
 /* Cross-reference checks the schema cannot express: unique ids
    and slugs, evidence pointing at real projects, sections that

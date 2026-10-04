@@ -42,7 +42,7 @@ await page.screenshot({ path: out('plane-right-turn.png') })
 const overheadRight = await page.evaluate(() => {
   const A = globalThis.__archipelago, T = A.THREE, d = A.driving, p = d.vehicle.position
   const cam = new T.OrthographicCamera(-9, 9, 6, -6, 0.1, 400); cam.up.set(0, 0, -1); cam.position.set(p.x, p.y + 60, p.z); cam.lookAt(p.x, p.y, p.z)
-  const r = A.renderer, size = r.getSize(new T.Vector2())
+  const r = A.renderer
   r.render(A.scene, cam)
   return r.domElement.toDataURL('image/png')
 })

@@ -30,7 +30,6 @@ await page.screenshot({ path: out(`map-${w}x${h}.png`) })
 const arrow = await page.evaluate(() => {
   const A = globalThis.__archipelago, a = document.querySelector('.atlas-player').getBoundingClientRect(), stage = document.querySelector('.atlas-stage').getBoundingClientRect()
   const atlasCanvas = document.querySelector('.atlas-base').getBoundingClientRect(), v = A.driving.vehicle.position
-  const { authoredBounds } = { authoredBounds: null }
   return { ax: a.left + a.width / 2, ay: a.top + a.height / 2, plane: atlasCanvas, stage: { left: stage.left, top: stage.top, width: stage.width, height: stage.height }, car: [v.x, v.z] }
 })
 const bounds = await page.evaluate(async () => { const m = await import('/archipelago/preview/world-bounds.js'); const b = m.authoredWorldBounds(globalThis.__archipelago.root); return { minX: b.minX - 6, maxX: b.maxX + 6, minZ: b.minZ - 6, maxZ: b.maxZ + 6 } })

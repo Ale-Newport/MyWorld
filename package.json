@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
+    "test": "node --test --no-warnings \"tests/**/*.test.mjs\"",
     "content:status": "node scripts/content-status.mjs",
     "capture:clients": "node scripts/capture-clients.mjs",
     "qa": "node scripts/visual-qa.mjs",
