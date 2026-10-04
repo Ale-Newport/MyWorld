@@ -6,8 +6,8 @@ import s from './css/bars.module.css'
 
 /** A small bar chart from "Label: value" pairs; the bars grow in one after another. */
 export default function BarsEffect({ params, active, reducedMotion }: EffectProps) {
-  const data = parsePairs(str(params.data, 'Retrieval: 92; Vision: 81; Product: 88; Systems: 76', 800))
-  const unit = str(params.unit, '%', 8)
+  const data = parsePairs(str(params.data, 'First: 40; Second: 72; Third: 55', 800))
+  const unit = str(params.unit, '', 8)
   const vertical = pick(params.orientation, ['horizontal', 'vertical'] as const, 'horizontal') === 'vertical'
   const max = num(params.max, 0, 0, 1e12) || Math.max(1, ...data.map((d) => d.value))
   const stagger = num(params.stagger, 0.08, 0, 1)

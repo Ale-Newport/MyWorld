@@ -6,9 +6,9 @@ import s from './css/tilt.module.css'
 
 /** A card that tilts towards the pointer with a moving sheen; its layers sit at different depths. */
 export default function TiltCardEffect({ params, reducedMotion }: EffectProps) {
-  const title = str(params.title, 'Retrieval at scale', 120)
-  const eyebrow = str(params.eyebrow, 'Case study', 60)
-  const body = str(params.body, 'Hybrid search over half a million documents, answered in under a second.', 300)
+  const title = str(params.title, 'Card title', 120)
+  const eyebrow = str(params.eyebrow, 'Label', 60)
+  const body = str(params.body, 'One sentence about what this card is for.', 300)
   const max = num(params.maxTilt, 12, 0, 30)
   const glare = num(params.glare, 0.35, 0, 1)
   const depth = num(params.depth, 24, 0, 80)
