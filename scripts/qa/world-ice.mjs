@@ -9,15 +9,17 @@ const errors = watch(page)
 await openPlayer(page)
 await sleep(1500)
 
-const props = () => page.evaluate(() => {
-  const A = globalThis.__archipelago
-  return A.physics.dynamic.filter((p) => p.node?.userData.pushable).map((p) => {
+/* The lake's own props: the infield slalom's cones are pushable too, but they stand on grass. */
+const onIce = (node) => { for (let n = node; n; n = n.parent) if (n.userData.worldExperience) return /ice rink/i.test(n.name); return false }
+const props = () => page.evaluate((onIceSrc) => {
+  const A = globalThis.__archipelago, onIce = eval(onIceSrc)
+  return A.physics.dynamic.filter((p) => p.node?.userData.pushable && onIce(p.node)).map((p) => {
     const t = p.body.translation(), v = p.body.linvel(), r = p.body.rotation()
     const up = new A.THREE.Vector3(0, 1, 0).applyQuaternion(new A.THREE.Quaternion(r.x, r.y, r.z, r.w)).y
     const h = p.initialState.rotation, homeUp = new A.THREE.Vector3(0, 1, 0).applyQuaternion(new A.THREE.Quaternion(h.x, h.y, h.z, h.w)).y
     return { name: p.node.name, homeUp, kind: p.node.userData.collider_shape, x: t.x, y: t.y, z: t.z, speed: Math.hypot(v.x, v.z), up, home: p.initialState.position, ccd: p.body.isCcdEnabled(), colliders: p.colliders.map((c) => c.shapeType()), mass: p.body.mass(), sleeping: p.body.isSleeping() }
   })
-})
+}, onIce.toString())
 const before = await props()
 const penguins = before.filter((p) => p.kind === 'SELF_RIGHTING'), cones = before.filter((p) => p.kind === 'CONE')
 assert(penguins.length === 8 && cones.length === 7, `8 penguins and 7 cones are dynamic bodies (${penguins.length}/${cones.length})`, results)
@@ -27,7 +29,8 @@ assert(before.every((p) => p.colliders.length >= 2 && !p.colliders.includes(6) &
 // No static collider left where a prop stands: ray down through each authored spot must hit the prop itself.
 const staticLeft = await page.evaluate(() => {
   const A = globalThis.__archipelago, R = A.physics.rapier, w = A.physics.world
-  return A.physics.dynamic.filter((p) => p.node?.userData.pushable).map((p) => {
+  const onIce = (node) => { for (let n = node; n; n = n.parent) if (n.userData.worldExperience) return /ice rink/i.test(n.name); return false }
+  return A.physics.dynamic.filter((p) => p.node?.userData.pushable && onIce(p.node)).map((p) => {
     const s = p.initialState.position, ray = new R.Ray({ x: s.x, y: s.y + 5, z: s.z }, { x: 0, y: -1, z: 0 })
     const fixed = []
     w.intersectionsWithRay(ray, 10, true, (hit) => { const b = hit.collider.parent(); if (b && b.isFixed()) fixed.push(+(s.y + 5 - hit.timeOfImpact).toFixed(2)); return true })
@@ -79,7 +82,7 @@ assert(resting.every((p) => p.speed < 0.2), `everything comes to rest; no endles
 await page.screenshot({ path: out('ice-after.png') })
 
 // Reset to the authored positions.
-const reset = await page.evaluate(async () => { const m = await import('/archipelago/preview/pushables.js'); return m.resetPushables(globalThis.__archipelago.physics) })
+const reset = await page.evaluate(async (onIceSrc) => { const m = await import('/archipelago/preview/pushables.js'); return m.resetPushables(globalThis.__archipelago.physics, eval(onIceSrc)) }, onIce.toString())
 await sleep(1800)
 const restored = await props()
 // Reset returns each prop to the rest pose it settled into from its authored spot at load
