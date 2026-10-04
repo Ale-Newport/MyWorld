@@ -48,6 +48,25 @@ const DELIBERATELY_HIDDEN = [
   'Toolbox-module__.*__evidence',   // evidence readout, until a technology is picked
   'Teaching-module__.*__cursors',   // pointer trails, drawn only while pointing
   'WorldPortal-module__.*__',       // the portal sheet, until it is charged
+
+  /* The nature layer. Every band is `aria-hidden`, takes no pointer
+     events and carries no word a visitor is meant to read: it is
+     drawing, not content, and on the still path it is drawing that
+     deliberately does not move. Naming it here is a decision rather
+     than a formality. The six band hosts and the wash are portalled
+     to <body> today, outside every `section[data-chapter]` this sweep
+     walks, so nothing below is being silenced right now — but
+     HOME_NATURE_SYSTEM.md contemplates a layer mounted as a direct
+     child of a chapter stage, and the day one is, a decorative sheet
+     at zero opacity behind an unlit chapter must read as intent and
+     not as a chapter that failed to reveal itself. */
+  'nature-module__.*__host',        // a depth band and every specimen inside it
+  'nature-module__.*__wash',        // the warm ground, vignette and bloom
+  /* The debug overlay is the one piece of this that does carry text —
+     live telemetry, printed for whoever opened `?nature`, and never
+     for a visitor. It is invisible on purpose in every motion mode
+     because it is not mounted at all unless it was asked for. */
+  'nature-module__.*__debug',
 ]
 const hiddenRe = new RegExp(DELIBERATELY_HIDDEN.join('|'))
 

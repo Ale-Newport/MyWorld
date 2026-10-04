@@ -31,12 +31,20 @@ const MAP = {
   react: 'react',
   vue: 'vuedotjs',
   django: 'django',
-  express: 'nodedotjs',
+  /* Node and Express each carry their own mark now. Express's is
+     a near-black wordmark, which the contrast pass leaves alone
+     because it already clears the bar on white. */
+  node: 'nodedotjs',
+  express: 'express',
   threejs: 'threedotjs',
   flask: 'flask',
   reactnative: 'react',
   laravel: 'laravel',
   fastify: 'fastify',
+  nextjs: 'nextdotjs',
+  nuxt: 'nuxt',
+  svelte: 'svelte',
+  tailwind: 'tailwindcss',
 
   tensorflow: 'tensorflow',
   spacy: 'spacy',
@@ -57,6 +65,12 @@ const MAP = {
 
   vite: 'vite',
   maven: 'apachemaven',
+
+  figma: 'figma',
+  framer: 'framer',
+  blender: 'blender',
+  webflow: 'webflow',
+  wordpress: 'wordpress',
 }
 
 /* Brand colours are chosen against whatever ground their owner uses.

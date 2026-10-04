@@ -8,7 +8,7 @@
 export type ChapterId =
   | 'prelude'
   | 'about'
-  | 'kcl'
+  | 'education'
   | 'pansofia'
   | 'teaching'
   | 'focus'
@@ -18,8 +18,18 @@ export type ChapterId =
   | 'stock'
   | 'universe'
   | 'toolbox'
-  | 'ucl'
   | 'contact'
+
+/* ============================================================
+   TWO JOURNEYS
+   The scroll story used to be one continuous fourteen-chapter
+   run. It is now two: who he is at `/`, what he has built at
+   `/projects`. The id is declared HERE rather than in
+   `chapters.ts` because `chapters.ts` imports this file — the
+   other direction would be a cycle, and a cycle in the content
+   layer is a module-init order bug waiting to happen.
+   ============================================================ */
+export type JourneyId = 'home' | 'projects'
 
 /**
  * The journey has no themes — it is white end to end. This union
@@ -136,8 +146,9 @@ export interface Project {
 
 export interface Chapter {
   id: ChapterId
+  /** Position WITHIN its own journey, 0-based. Never global. */
   index: number
-  /** Two-digit index used in the INDEX overlay. */
+  /** Two-digit index used in the INDEX overlay. Journey-local. */
   number: string
   title: string
   subtitle?: string
@@ -145,15 +156,27 @@ export interface Chapter {
   vh: number
   /** Shorter length when Quick View is active. */
   quickVh: number
-  /** Timeline year marker, if this chapter advances the timeline. */
+  /**
+   * Decorative metadata. The chapters legitimately have years and
+   * the index still shows them, but NOTHING lays the page out by
+   * this any more — the journeys are ordered thematically.
+   */
   year?: string
   label: string
+  /** Which of the two journeys this chapter belongs to. */
+  journey: JourneyId
+  /**
+   * Thematic heading this chapter sits under in the index. An
+   * adjacency and a label, nothing more: chapters sharing a group
+   * are neighbours in the scroll and are printed together.
+   */
+  group: string
 }
 
 export interface TechNode {
   id: string
   name: string
-  group: 'language' | 'framework' | 'ai' | 'data' | 'cloud' | 'tooling'
+  group: 'language' | 'framework' | 'ai' | 'data' | 'cloud' | 'tooling' | 'design'
   /** Project ids that provide real evidence of use. */
   evidence: string[]
   /** 1–3, drives node size. */

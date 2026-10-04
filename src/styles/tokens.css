@@ -18,11 +18,15 @@
   --void-2:           #111113;
   --void-3:           #1a1a1d;
 
-  /* ---- Ink ------------------------------------------------ */
-  --ink:              #0c0c0d;
-  --ink-2:            #3a3a3e;
-  --ink-3:            #75757c;
-  --ink-4:            #a6a6ad;
+  /* ---- Ink ------------------------------------------------
+     Warm, like the plaster it is printed on: a cool grey reads as
+     a smudge on a sunlit wall. The two lighter steps are a notch
+     darker than they were on white, because the wall behind them
+     now has texture, light and leaves in it. */
+  --ink:              #1a1712;
+  --ink-2:            #443d31;
+  --ink-3:            #675e4f;
+  --ink-4:            #8b816f;
 
   /* ---- Inverse ink (on dark) ----------------------------- */
   --chalk:            #f2f1ee;
@@ -31,19 +35,45 @@
   --chalk-4:          #4a4a4c;
 
   /* ---- Accent: a single restrained signal colour ---------- */
-  --accent:           #d4491f;   /* burnt vermilion  */
-  --accent-soft:      #e8734d;
-  --accent-deep:      #a13415;
+  --accent:           #bf4f27;   /* terracotta: the one signal colour */
+  --accent-soft:      #d8754c;
+  --accent-deep:      #8d3515;
   --signal:           #2f6f5e;   /* muted teal, secondary */
+  /* The garden's own green, for things that grow or are live:
+     never a link, never the accent. */
+  --leaf:             #4b6a1d;
+
+  /* ---- Flora ---------------------------------------------
+     The vegetation layer draws in --signal and never in
+     --accent: the accent is the one colour on this site that
+     promises "this answers you", and a plant answers nobody.
+     The alphas sit far below the text ink on purpose — a sprig
+     that reads as easily as a sentence has stopped being a
+     margin and started competing for the page. Only the
+     seedheads put down anything approaching solid ink, and
+     they are a few dots wide. */
+  --flora-ink:        color-mix(in oklab, var(--signal) 30%, transparent);
+  --flora-ink-far:    color-mix(in oklab, var(--signal) 16%, transparent);
+  --flora-seed:       color-mix(in oklab, var(--signal) 52%, transparent);
+  /* The portal's hedge is the one place vegetation is the
+     subject rather than the margin — it is what the visitor is
+     spending effort to grow — so it carries more ink than the
+     page's own sprigs. A second token, not a second formula:
+     retuning --signal has to move both layers together. */
+  --flora-ink-near:   color-mix(in oklab, var(--signal) 62%, transparent);
+  /* Stroke width in finished pixels. Each sprig divides this by
+     its own scale before the scale is applied, so a plant drawn
+     at twice the size still keeps a one-pixel line. */
+  --flora-hair:       0.9px;
 
   /* ---- Surfaces: white, and only white --------------------
      These were aliases that a [data-theme] block swapped as the
      visitor scrolled. The page has one ground now, so they are
      written as literals: there is no second state to fall into,
      and nothing on the page can put it into one. */
-  --bg-primary:       #ffffff;
-  --bg-secondary:     #fafafa;   /* recessed        */
-  --bg-tertiary:      #f2f2f3;   /* deeper recess   */
+  --bg-primary:       #f6f0e6;   /* the wall's own cream */
+  --bg-secondary:     #efe7da;   /* recessed        */
+  --bg-tertiary:      #e6dccc;   /* deeper recess   */
   --text-primary:     var(--ink);
   --text-secondary:   var(--ink-2);
   --text-muted:       var(--ink-3);
@@ -51,6 +81,21 @@
   --border:           color-mix(in oklab, var(--ink) 14%, transparent);
   --border-strong:    color-mix(in oklab, var(--ink) 30%, transparent);
   --overlay:          color-mix(in oklab, var(--bg-primary) 82%, transparent);
+
+  /* ---- Paper on the wall -----------------------------------
+     Dense content sits on a card pinned to the plaster: warm,
+     nearly opaque, a hairline edge and a soft contact shadow. */
+  --panel:            color-mix(in oklab, #fbf7ef 90%, transparent);
+  --panel-edge:       color-mix(in oklab, #5a4628 14%, transparent);
+  --panel-shadow:     0 1px 0 rgba(255, 255, 255, 0.55) inset, 0 22px 44px -28px rgba(58, 40, 18, 0.45);
+  --radius-card:      14px;
+
+  /* ---- Legibility ------------------------------------------
+     Type is printed over a garden, so every line of it carries a
+     soft cream glow of the wall's own colour: invisible on bare
+     plaster, a quiet clearing wherever a leaf or a shadow passes
+     behind a word. */
+  --halo:             0 0 1px rgba(247, 241, 231, 0.75), 0 0 10px rgba(247, 241, 231, 0.9), 0 0 24px rgba(247, 241, 231, 0.6);
 
   /* ---- Type ---------------------------------------------- */
   --font-display: var(--font-geist-sans), 'Helvetica Neue', Helvetica, Arial, sans-serif;
@@ -100,10 +145,121 @@
 
   /* ---- Layering ------------------------------------------ */
   --z-canvas:   1;
+  /* Above the canvas, below the running text: vegetation is an
+     accent in the margins, so anything that can be read must be
+     able to sit on top of it. */
+  --z-flora:    4;
   --z-content:  10;
   --z-hud:      60;
   --z-overlay:  80;
   --z-cursor:   100;
+
+  /* ---- Nature bands --------------------------------------
+     Six depth bands threaded through the layering that already
+     exists, and nothing above is renumbered: the canvas keeps 1,
+     the shipped flora sheet keeps 4, the content keeps 10, the
+     HUD keeps 60. The three bands above the content are siblings
+     of <main>, never children of it — main.journey is a stacking
+     context at z 10 and nothing drawn inside a chapter can paint
+     above it whatever z-index it claims for itself.
+
+     The wash is 3 and not 0. GlobalCanvas clears an opaque white
+     across the whole viewport at z 1, so z 0 is permanently
+     invisible; wash and back share 3 and are separated by DOM
+     order, the wash written first. */
+  --z-nature-shadow:  2;   /* blurred silhouettes, no veins      */
+  --z-nature-wash:    3;   /* the warming ground, DOM-ordered first */
+  --z-nature-back:    3;   /* far plants, flat fill, no gradients  */
+  /* --z-flora (4) is unchanged: the shipped sprigs keep their place */
+  --z-nature-mid:    12;   /* overlaps content edges, never a headline */
+  --z-nature-front:  20;   /* crosses content; the "overtaken" layer   */
+  --z-nature-close:  40;   /* one or two enormous soft cropped leaves  */
+
+  /* ---- Nature ---------------------------------------------
+     Eight hues, chosen so that no two adjacent bands differ only
+     in lightness, and deliberately desaturated — the saturation
+     ceiling is about half that of emerald, because a saturated
+     green next to --accent is a complementary clash and next to
+     --signal is a muddle. The accent is never a plant. */
+  --nature-deep:      #22392e;   /* near-black forest — silhouettes only */
+  --nature-forest:    #34513f;   /* deep green — far plants              */
+  --nature-palm:      #47654a;   /* palm green — the workhorse           */
+  --nature-olive:     #6a6f47;   /* olive — the contrast against palm    */
+  --nature-fresh:     #7d9a58;   /* fresh green — new growth             */
+  --nature-lime:      #a2b06a;   /* muted yellow-green — edge lights     */
+  --nature-stem:      #6b5942;   /* brown stem                           */
+  --nature-stem-2:    #8d7659;   /* lighter stem / dry tip               */
+
+  /* Working fills, mixed toward the PAGE and never toward
+     transparent. Transparency composites multiplicatively, so
+     three leaves at 30 % alpha read as 66 % ink and the page goes
+     grey-green exactly where it has to stay light. Anything that
+     can overlap itself mixes toward the ground; only veins, edges
+     and the shadow band are allowed to be see-through. */
+  --leaf-far:         color-mix(in oklab, var(--nature-forest) 12%, var(--bg-primary));
+  --leaf-back:        color-mix(in oklab, var(--nature-palm)   20%, var(--bg-primary));
+  --leaf-mid:         color-mix(in oklab, var(--nature-palm)   34%, var(--bg-primary));
+  --leaf-front:       color-mix(in oklab, var(--nature-forest) 48%, var(--bg-primary));
+  /* A LEAF NEAR THE LENS, NOT A SHADOW ON THE PAGE. This was
+     `--nature-deep` at 62 %, and the close band has no midrib and
+     no veins by design (`BAND_DETAIL` in canopy.ts) — so the
+     near-black left the one blade in the band with nothing to
+     show but its own outline, and the outline was a dark blurred
+     gradient. It was also the single largest contributor to the
+     page losing its lightness over the last tenth of the journey.
+     So: a green rather than a near-black, and six points heavier
+     than `--leaf-front` rather than fourteen. It is still the
+     strongest ink the system may produce and still reads as the
+     nearest thing on the page, but now `--leaf-edge` has
+     something to draw a margin against and the blade's lobes
+     survive the band's blur. */
+  --leaf-close:       color-mix(in oklab, var(--nature-forest) 54%, var(--bg-primary));
+
+  /* Gradient stops. Every large leaf is a two-stop linear gradient
+     from base to tip along its own midrib; that, plus the veins,
+     is most of what separates "hyper-detailed" from "icon". */
+  --leaf-grad-a:      color-mix(in oklab, var(--nature-olive)  26%, var(--bg-primary));
+  --leaf-grad-b:      color-mix(in oklab, var(--nature-forest) 40%, var(--bg-primary));
+  --leaf-lit:         color-mix(in oklab, var(--nature-lime)   30%, var(--bg-primary));
+
+  /* Line work — drawn ON the fill, so these stay transparent and
+     darken whatever they cross. */
+  --leaf-vein:        color-mix(in oklab, var(--nature-deep) 26%, transparent);
+  --leaf-vein-2:      color-mix(in oklab, var(--nature-deep) 14%, transparent);
+  --leaf-edge:        color-mix(in oklab, var(--nature-deep) 32%, transparent);
+  --leaf-stem:        var(--nature-stem);
+  --leaf-shadow:      color-mix(in oklab, var(--nature-deep)  7%, transparent);
+  /* Secondary and tertiary veins, finer than the sprigs' hairline. */
+  --leaf-hair:        0.7px;
+
+  /* The ground. Only the ALPHA of the wash is ever animated, and
+     the wash sits ABOVE the canvas — warming anything underneath
+     an opaque clear colour would open the seam GlobalCanvas
+     hard-codes #ffffff to close. The floor is L* 93: the darkest
+     surface a visitor ever sees is a cream, and only the plants
+     get darker with depth. */
+  --ground-warm:      #f6efe1;
+  /* The vignette was 9 per cent olive over the whole outer half of
+     the viewport, which is a tint of the PAPER and not of the
+     plants: at full strength it moved every bare pixel at the foot
+     of the page off the ground colour at once, and a page whose
+     paper has quietly turned olive has stopped being a light page
+     however pale the number sounds. It reads as depth at 4, it
+     reads as dimming at 9, and depth is all it was ever for. */
+  --ground-vignette:  radial-gradient(124% 104% at 50% 40%,
+                        transparent 58%,
+                        color-mix(in oklab, var(--nature-olive) 4%, transparent) 100%);
+  /* The sand of the island the gate opens onto, named so the
+     foreshadow in nature.module.css is not a hard-coded colour. */
+  --ground-bloom:     #f0c090;
+
+  /* The seam. /world2's first painted frame is a full-bleed field
+     of this colour, server-rendered, so the veil fades to it
+     rather than to white and the step out of the leaves is a lift
+     in one hue family instead of a dip. It must move with
+     .route's background in world2.module.css — the same
+     discipline src/world/core/palette.ts documents for --paper. */
+  --world2-ground:    #dce3dc;
 
   color-scheme: light;
 }

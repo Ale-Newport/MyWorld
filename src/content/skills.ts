@@ -31,13 +31,22 @@ const raw: Omit<TechNode, 'weight'>[] = [
   { id: 'react', name: 'React', group: 'framework', evidence: ['keyframes', 'robot-arm-portfolio', 'focus'] },
   { id: 'vue', name: 'Vue.js', group: 'framework', evidence: ['pokeappvue', 'ft2000-vue', 'vue-web'] },
   { id: 'django', name: 'Django', group: 'framework', evidence: ['tappedin', 'orca', 'my-library'] },
-  { id: 'express', name: 'Express / Node', group: 'framework', evidence: ['keyframes'] },
+  /* Node and Express were one tile wearing the Node mark, which
+     hid the runtime behind the framework and spent a logo on a
+     pairing nobody searches for. Keyframes names both in its own
+     stack, so both stand on the same evidence separately. */
+  { id: 'node', name: 'Node.js', group: 'framework', evidence: ['keyframes'] },
+  { id: 'express', name: 'Express', group: 'framework', evidence: ['keyframes'] },
   { id: 'threejs', name: 'Three.js / WebGL', group: 'framework', evidence: ['robot-arm-portfolio', 'gym-app'] },
   { id: 'javafx', name: 'JavaFX', group: 'framework', evidence: ['stock-market-simulator'] },
   { id: 'flask', name: 'Flask', group: 'framework', evidence: ['cinquillo-fair'] },
   { id: 'reactnative', name: 'React Native', group: 'framework', evidence: ['events-app'] },
   { id: 'laravel', name: 'Laravel', group: 'framework', evidence: ['client-pansofia', 'client-fuerteventura-2000', 'client-cht-canarias'], note: 'Client work — private repositories.' },
   { id: 'fastify', name: 'Fastify', group: 'framework', evidence: [], note: 'Used in client work; repositories are private.' },
+  { id: 'nextjs', name: 'Next.js', group: 'framework', evidence: [], note: 'Working familiarity.' },
+  { id: 'nuxt', name: 'Nuxt', group: 'framework', evidence: [], note: 'Working familiarity.' },
+  { id: 'svelte', name: 'Svelte', group: 'framework', evidence: [], note: 'Working familiarity.' },
+  { id: 'tailwind', name: 'Tailwind CSS', group: 'framework', evidence: [], note: 'Working familiarity.' },
 
   /* ---- AI / ML ------------------------------------------ */
   { id: 'tensorflow', name: 'TensorFlow / Keras', group: 'ai', evidence: ['chess-assistant'] },
@@ -75,6 +84,18 @@ const raw: Omit<TechNode, 'weight'>[] = [
   { id: 'crypto', name: 'Cryptography', group: 'tooling', evidence: ['vpn', 'vpn-client'] },
   { id: 'vite', name: 'Vite', group: 'tooling', evidence: ['keyframes', 'pokeappvue', 'robot-arm-portfolio'] },
   { id: 'maven', name: 'Maven', group: 'tooling', evidence: ['stock-market-simulator'] },
+
+  /* ---- design & web ------------------------------------- */
+  /* None of these five has a public repository behind it, and
+     none is claimed to. They are here because they are part of
+     how the work actually gets made, and the wall says so in the
+     only way this section allows: an empty evidence list, a
+     dashed plate, and a note that admits it. */
+  { id: 'figma', name: 'Figma', group: 'design', evidence: [], note: 'Design and prototyping tool.' },
+  { id: 'framer', name: 'Framer', group: 'design', evidence: [], note: 'Design and prototyping tool.' },
+  { id: 'blender', name: 'Blender', group: 'design', evidence: [], note: 'Modelling and rendering tool.' },
+  { id: 'webflow', name: 'Webflow', group: 'design', evidence: [], note: 'Site-building tool; working familiarity.' },
+  { id: 'wordpress', name: 'WordPress', group: 'design', evidence: [], note: 'Working familiarity.' },
 ]
 
 const validIds = new Set(projects.map((p) => p.id))
@@ -103,6 +124,7 @@ export const techGroups = [
   { id: 'data', label: 'Data' },
   { id: 'cloud', label: 'Cloud & Infra' },
   { id: 'tooling', label: 'Tooling' },
+  { id: 'design', label: 'Design & Web' },
 ] as const
 
 /** Reverse index: project id → technology ids. */

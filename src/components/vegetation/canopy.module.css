@@ -1,0 +1,121 @@
+/* ============================================================
+   CANOPY — THE REVEAL
+
+   Two mechanisms, because a leaf has two kinds of mark on it and
+   they cannot be revealed the same way.
+
+   A STROKE is revealed by sweeping a dash. Every vein carries
+   `pathLength="1"`, so one inherited `--grow` drives an entire
+   leaf's line work with a single property write, whatever the
+   real length of any individual path.
+
+   A FILL cannot be. `stroke-dashoffset` does nothing to a closed
+   blade, so the surface is revealed by a CLIP WIPE travelling
+   along the leaf's own +X axis — out from the petiole, which is
+   the direction it grew. The line work is held very slightly
+   behind the wipe so the ink arrives just after the tissue it
+   describes; the other order looks like a drawing being coloured
+   in, which is exactly the icon read this whole system exists to
+   avoid.
+   ============================================================ */
+
+.plant {
+  /* Written once per frame by the controller, inherited by every
+     path below. A plant that has never been reached by the
+     progression must still be valid on its own. */
+  --grow: 0;
+  --wind: 0;
+  --vel: 0;
+  --lean: 0deg;
+
+  /* The placement's own scale, so line work can be divided back
+     out of it — see the note on stroke weight below. The default
+     is 1 and the composition overrides it per specimen, exactly
+     as `vegetation.module.css` already does with `--sprig-scale`.
+
+     Wind and scroll velocity arrive here as one rotation, and a
+     leaf pivots WHERE IT IS ATTACHED. This group's local origin
+     is the petiole base — the placement transform put it there —
+     so the pivot is simply the local origin, and getting it
+     anywhere else makes vegetation move like a UI card.
+
+     `transform-box` is deliberately left at its initial
+     `view-box`. It was set to `fill-box` here, with a comment
+     claiming the petiole as the pivot, and `fill-box` measures
+     `transform-origin: 0 0` from the corner of the group's own
+     bounding box instead — which on a leaf that reaches back
+     behind its petiole and hangs below it is nowhere near the
+     stem. Rendered side by side under a translate-rotate-scale
+     parent, `fill-box` put the pivot three units up and three
+     across; `view-box` put it exactly on the attachment. */
+  transform: rotate(calc(var(--lean) + var(--wind) * 1deg));
+  transform-origin: 0 0;
+}
+
+/* The surface. The wipe is a scaleX on a clip rect anchored at
+   the petiole, so it costs a transform and never a re-layout. */
+.wipe { transform: scaleX(var(--grow)); transform-origin: 0 50%; }
+
+/* ------------------------------------------------------------
+   STROKE WEIGHT, AND WHY `vector-effect` IS NOT HERE
+
+   Both `.ink` and `.stem` carried `vector-effect: non-scaling-
+   stroke`, which HOME_NATURE_SYSTEM.md §5.2 forbids on the
+   grounds that it "unscales the dash pattern and destroys
+   `pathLength="1"`". That objection was checked once by looking
+   at on-screen stroke weight, found not to apply, and left in
+   place. Stroke weight was the wrong thing to look at.
+
+   Rendered: four identical straight paths with `pathLength="1"`
+   and `stroke-dasharray: 1`, at dash offsets 0, 0.25, 0.5 and
+   0.75, inside a `scale(4)` parent. Without the vector effect
+   they draw the whole line, three quarters of it, half and a
+   quarter — one continuous dash growing from the start, which is
+   the entire reveal this system is built on. With it, every one
+   of the four comes back as a row of short dashes scattered
+   across the full length, and the offset-0 case does not even
+   draw a solid line. The normalisation is gone: the dash pattern
+   is resolved in screen space while `pathLength` scales it in
+   user space, and the two no longer agree.
+
+   At the placement scales this layer uses — a median of nearly
+   four — that is not a subtlety. It means every vein on the page
+   has been arriving as a dotted line and every vine stem as a
+   chain of ticks. So the vector effect is gone, and the spec is
+   right.
+
+   What it was there for is handled the way the shipped flora
+   layer already handles it: divide the hairline by the scale the
+   placement applied. That is the same `calc(var(--flora-hair) /
+   var(--sprig-scale, 1))` rule in `vegetation.module.css`, and
+   the same reasoning — line work belongs to the page, not to the
+   leaf, so a blade filling half a viewport carries the same
+   thread of ink as one tucked into a margin.
+   ------------------------------------------------------------ */
+
+/* The line work, a beat behind the surface. */
+.ink {
+  stroke-dasharray: 1;
+  stroke-dashoffset: calc(1 - max(0, (var(--grow) - 0.12)) / 0.88);
+  fill: none;
+  stroke-linecap: round;
+}
+
+/* Stems and vines are stroke-only and lead everything on them. */
+.stem {
+  stroke-dasharray: 1;
+  stroke-dashoffset: calc(1 - var(--grow));
+  fill: none;
+  stroke-linecap: round;
+}
+
+/* A blade hung on a vine node unfurls after the stem reaches it;
+   --node is its own position along that stem. */
+.node { --local: calc(max(0, var(--grow) - var(--node, 0)) / max(0.001, 1 - var(--node, 0))); }
+.node .wipe { transform: scaleX(var(--local)); }
+.node .ink { stroke-dashoffset: calc(1 - var(--local)); }
+
+@media (prefers-reduced-motion: reduce) {
+  .plant { transform: none; }
+  .ink { stroke-dashoffset: calc(1 - var(--grow)); }
+}

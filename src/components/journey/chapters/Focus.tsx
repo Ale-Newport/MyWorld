@@ -15,7 +15,7 @@ import shared from './chapters.module.css'
 import styles from './Focus.module.css'
 
 /* ============================================================
-   46 – 58%  CHAPTER III — BUILDING A PRODUCT
+   PROJECTS · 23 – 42%  BUILDING A PRODUCT
    The longest chapter on the site. A finished video plays,
    freezes, and deconstructs into the ten layers that made it;
    the camera travels the stack and reassembles it.

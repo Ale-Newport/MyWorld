@@ -1,7 +1,7 @@
 'use client'
 
-import { useMemo, useRef } from 'react'
-import { useFrame } from '@react-three/fiber'
+import { useEffect, useMemo, useRef } from 'react'
+import { useFrame, useThree } from '@react-three/fiber'
 import * as THREE from 'three'
 import { frame } from '@/state/journey'
 import { readChapterProgress } from '@/hooks/useChapterProgress'
@@ -41,11 +41,81 @@ const KIND_COLOR = ['#d4491f', '#6e6c67', '#2f6f5e', '#93908a']
    visitor made them move. On paper, energy is density: they burn in. */
 const BURN = new THREE.Color('#151517')
 
+/* ------------------------------------------------------------
+   THE LAST FEW PER CENT
+
+   The gateway at the foot of this chapter opens onto a place that
+   is warm: sand and roads seen almost from above, a turquoise
+   lagoon through them, whole-frame average #ad9272. The structure
+   on this page is cool and graphite by design, and a body of work
+   that hands over to the island without ever having been warmed
+   reads as two sites rather than one place with a door in it.
+
+   So a minority of the motes drift toward the island's own two
+   colours over the last few per cent of the journey, and slow
+   while they do it. It is the cheapest possible foreshadow: no
+   new system, no asset, no second canvas — one more read of a
+   progress figure this loop already had in its hand, in the scene
+   that was already running at exactly this chapter.
+
+   A MINORITY, deliberately. Every mote turning sand-coloured is a
+   palette change, which is a different page; one in five is a
+   drift, which is a hint that somewhere else exists.
+   ------------------------------------------------------------ */
+const ISLAND = [new THREE.Color('#f0c090'), new THREE.Color('#78c0c0')]
+/** Where the warming starts, in whole-journey progress. */
+const WARM_FROM = 0.958
+/** One body in this many takes the island's colour. */
+const WARM_EVERY = 5
+
 export function ContactScene() {
   const device = useMemo(() => detectDevice(), [])
+  const gl = useThree((s) => s.gl)
   const group = useRef<THREE.Group>(null!)
   const mesh = useRef<THREE.InstancedMesh>(null!)
   const opacity = useRef(0)
+  const released = useRef(false)
+
+  /* ============================================================
+     HANDING THE GPU OVER
+
+     /world2 builds a WebGLRenderer of its own and then parses
+     thirteen megabytes of geometry into it. Unmounting a React
+     tree disposes an R3F scene graph, but a renderer only truly
+     gives its context back when it is told to, and browsers cap
+     how many may be alive at once — so for the length of the
+     route swap the homepage would be holding one context while
+     the world asked for a second.
+
+     The portal says when. It fires `journey:leaving` a beat
+     before `router.push`, by which point the veil is opaque and
+     every frame this scene would still draw is a frame nobody can
+     see. This listener is here, in the scene that owns the canvas
+     from the inside, because the alternative is reaching into
+     GlobalCanvas from a chapter — and the canvas belongs to the
+     journey, not to the gateway.
+
+     A custom event rather than an import: this scene lives in the
+     R3F reconciler, which no DOM context crosses, and the page
+     already speaks this idiom (`universe:filter`, `toolbox:hover`).
+     ============================================================ */
+  useEffect(() => {
+    const leave = () => {
+      if (released.current) return
+      released.current = true
+      if (group.current) group.current.visible = false
+      /* `dispose()` frees what three.js allocated; the context
+         itself is only handed back by the extension, and a browser
+         that does not expose it simply keeps the context until the
+         tree unmounts a moment later — which is the behaviour this
+         is an improvement over, not a requirement of. */
+      gl.dispose()
+      const lose = gl.getContext().getExtension('WEBGL_lose_context')
+      lose?.loseContext()
+    }
+    window.addEventListener('journey:leaving', leave)
+    return () => window.removeEventListener('journey:leaving', leave)
+  }, [gl])
 
   /* One entity per real thing in the story, plus filler motes
      scaled by device tier so the structure reads as dense. */
@@ -69,6 +139,7 @@ export function ContactScene() {
   }, [device.density])
 
   useFrame((_, dt) => {
+    if (released.current) return
     const d = Math.min(0.04, dt)
     const t = readChapterProgress('contact')
     opacity.current = damp(opacity.current, clamp(range(t, 0, 0.16)), 3, d)
@@ -77,6 +148,11 @@ export function ContactScene() {
 
     // Reassembly strength ramps across the chapter.
     const gather = range(t, 0.05, 0.5)
+
+    /* How near the gateway the page is, on the whole journey's own
+       figure rather than this chapter's — the door is at the foot
+       of the document, not at the end of the contact range. */
+    const warm = range(frame.progress, WARM_FROM, 1)
 
     // Pointer becomes a gravity well in world space.
     pointer3.set(frame.pointerX * 7.5, frame.pointerY * 5, 2.2)
@@ -94,7 +170,12 @@ export function ContactScene() {
       tmp.normalize().multiplyScalar((5.5 / dist2) * d * 12)
       b.vel.add(tmp)
 
-      b.vel.multiplyScalar(Math.pow(0.12, d))
+      /* The chosen few slow to a drift as the gate approaches. It
+         is the same damping the rest use, taken further: a mote
+         that is about to become somewhere else should stop
+         behaving like a particle in a structure. */
+      const island = i % WARM_EVERY === 0 ? warm : 0
+      b.vel.multiplyScalar(Math.pow(0.12 - island * 0.09, d))
       b.pos.addScaledVector(b.vel, d)
 
       dummy.position.copy(b.pos)
@@ -106,6 +187,10 @@ export function ContactScene() {
       color.set(KIND_COLOR[b.kind])
       const speed = clamp(b.vel.length() * 0.35, 0, 1)
       color.lerp(BURN, speed * 0.55)
+      // Sand or lagoon, alternating, and never all the way there:
+      // 0.72 is a mote that has caught the light off somewhere
+      // else, and 1 would be a mote that had already left.
+      if (island > 0) color.lerp(ISLAND[(i / WARM_EVERY) % 2 === 0 ? 0 : 1], island * 0.72)
       mesh.current.setColorAt(i, color)
     }
     mesh.current.instanceMatrix.needsUpdate = true

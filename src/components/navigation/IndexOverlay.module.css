@@ -61,6 +61,7 @@
 .list {
   display: flex;
   flex-direction: column;
+  gap: var(--sp-6);
   padding-block: var(--sp-5);
   min-height: 0;
   overflow-y: auto;
@@ -71,12 +72,92 @@
 .list > :first-child { margin-top: auto; }
 .list > :last-child { margin-bottom: auto; }
 
+/* ============================================================
+   THE EDGE HAS TO SAY THERE IS MORE
+   Two journeys, their group headings and fourteen rows do not
+   fit one short panel, and macOS hides the scrollbar until the
+   wheel moves. Without this the panel ends by slicing a chapter
+   title in half, which reads as a layout fault rather than an
+   invitation to keep going. The same `margin: auto` that centres
+   a list that fits also leaves both edges empty, so the fade
+   costs nothing at the sizes where nothing is hidden.
+
+   The band has to keep clear of the keyboard. Focus moving down
+   the list parks the next row flush against the edge of the
+   scrollport — inside the fade, where the mask alpha runs to
+   zero and takes the focus ring down with it, and the ring worst
+   of all, because the outline is painted three pixels OUTSIDE
+   the row it belongs to. An unreadable focus indicator on the
+   site's main navigation is a plain accessibility failure, not a
+   nicety. So the scrollport keeps the band as scroll padding
+   with the ring's own offset on top of it, which parks a focused
+   row past the fade entirely, and the band is a step narrower
+   than the rhythm elsewhere so no single row can be swallowed
+   whole by it.
+   ============================================================ */
+.list {
+  --edge: var(--sp-3);
+  scroll-padding-block: calc(var(--edge) + var(--sp-2));
+  mask-image: linear-gradient(
+    to bottom,
+    transparent 0,
+    #000 var(--edge),
+    #000 calc(100% - var(--edge)),
+    transparent 100%
+  );
+}
+
+/* ============================================================
+   TWO JOURNEYS, PRINTED AS TWO
+   The split only works if the index shows the shape of it: a
+   heading per journey, a heading per thematic group, and the
+   groups in running order. Everything speaks in the same mono
+   uppercase as the rest of the chrome, so the structure reads as
+   annotation and never competes with the chapter titles.
+   ============================================================ */
+.journey { display: flex; flex-direction: column; }
+
+.journeyHead {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--sp-4);
+  padding-bottom: var(--sp-2);
+  border-bottom: var(--hair) solid var(--border);
+}
+.journeyLabel {
+  font-family: var(--font-mono);
+  font-size: var(--fs-micro);
+  font-weight: 500;
+  letter-spacing: var(--tracking-wide);
+  text-transform: uppercase;
+  color: var(--text-primary);
+}
+.journeyPath {
+  font-family: var(--font-mono);
+  font-size: var(--fs-nano);
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+
+.group { display: flex; flex-direction: column; padding-top: var(--sp-4); }
+.groupLabel {
+  font-family: var(--font-mono);
+  font-size: var(--fs-nano);
+  font-weight: 400;
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  color: var(--text-faint);
+  padding-bottom: var(--sp-1);
+}
+
 .item {
   display: grid;
   grid-template-columns: 2.6rem minmax(0, 1fr) minmax(0, 1.2fr) 3rem;
   align-items: baseline;
   gap: var(--sp-4);
-  padding: clamp(0.3rem, 0.8vh, 0.7rem) 0;
+  padding: clamp(0.2rem, 0.5vh, 0.5rem) 0;
   border-bottom: var(--hair) solid transparent;
   text-align: left;
   color: var(--text-muted);
@@ -87,9 +168,17 @@
 .item[data-current='true'] .itemNo { color: var(--accent); }
 .item:disabled { opacity: 0.32; cursor: not-allowed; }
 
+/* A chapter on the other route. It costs a page load, so it is
+   quieter until it is pointed at — the difference is the tell,
+   not a badge. */
+.itemAway { color: var(--text-faint); }
+.itemAway:hover .itemNo { color: var(--accent); }
+
 .itemNo { font-family: var(--font-mono); font-size: var(--fs-micro); letter-spacing: 0.08em; }
+/* Fourteen rows and their headings share one panel now, so the
+   title runs a size smaller than it did at seven. */
 .itemTitle {
-  font-size: clamp(1.15rem, 0.9rem + 1.5vw, 2.4rem);
+  font-size: clamp(1.05rem, 0.85rem + 1.05vw, 1.9rem);
   font-weight: 500;
   letter-spacing: var(--tracking-tight);
   line-height: 1.05;

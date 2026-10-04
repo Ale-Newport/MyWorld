@@ -13,7 +13,7 @@ import shared from './chapters.module.css'
 import styles from './Teaching.module.css'
 
 /* ============================================================
-   40 – 46%  LEARNING BY TEACHING
+   PROJECTS · 15 – 23%  LEARNING BY TEACHING
    A test suite fails, cursors arrive, the code is corrected,
    and the suite turns green — the whole chapter is one
    continuous edit rather than a list of responsibilities.

@@ -8,6 +8,14 @@
    thing you are driving.
    ============================================================ */
 
+/* THE SEAM. Every layer of this route's first paint — the shell,
+   the boot screen and the loader over it — is `--paper`, and it has
+   to be, because the portfolio's portal hands over with a
+   full-screen sheet that has spent the whole charge warming from
+   white to exactly this colour. Painting the shell anything else,
+   or leaving it transparent to inherit the document's white, puts a
+   blink in the one moment of this site that is meant to have no
+   page change in it at all. */
 .route {
   position: fixed;
   inset: 0;
@@ -98,6 +106,17 @@
   opacity: 0;
   transform: scale(1.02);
   pointer-events: none;
+}
+
+/* A portal arrival was not a button press, so it does not get a
+   button press's answer: no push-through scale, and a shorter fade,
+   because the visitor is already mid-movement and this screen is
+   the last thing standing in it. */
+.loader[data-arrival='true'] {
+  transition-duration: 260ms;
+}
+.loader[data-arrival='true'][data-leaving='true'] {
+  transform: none;
 }
 
 .loaderInner {

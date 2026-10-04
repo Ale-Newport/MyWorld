@@ -1,14 +1,22 @@
 /* ============================================================
    TECH TILE
    An app icon on paper: a light plate, a hairline edge, one
-   mark. The tile stays neutral so that fifty of them read as a
+   mark. The tile stays neutral so that sixty of them read as a
    single grid and the only colour on the wall is the brand.
+
+   The plate is now app-icon scale rather than favicon scale.
+   That is the whole point of the wall — a mark nobody can
+   identify is decoration, not evidence — and it is paid for by
+   the caption, which is retired below the very largest screens.
+   Nothing is lost by that: the button's aria-label and its
+   native tooltip still carry the name, and the evidence readout
+   beside the wall names whatever is hovered, focused or tapped.
    ============================================================ */
 
 .tile {
   /* The grid that owns the wall sets --tech-tile; the fallback
      keeps a lone tile the right size anywhere else. */
-  --size: var(--tech-tile, 3.25rem);
+  --size: var(--tech-tile, 4rem);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -29,8 +37,9 @@
   height: var(--size);
   /* Corner radius as a share of the tile, not a fixed length,
      so the icon keeps its shape through the clamp that resizes
-     the whole wall. */
-  border-radius: calc(var(--size) * 0.2);
+     the whole wall. At app-icon scale the old 0.2 read as a
+     rounded rectangle rather than a squircle. */
+  border-radius: calc(var(--size) * 0.22);
   background: var(--bg-secondary);
   border: var(--hair) solid var(--border);
   transition:
@@ -38,12 +47,16 @@
     background-color var(--dur-mid) var(--ease-out-expo);
 }
 
+/* Simple Icons geometry fills its 24×24 box edge to edge, so the
+   share below is very nearly the share of the plate the mark
+   covers. Sixty per cent is what a home-screen icon uses; the
+   old fifty-two left the mark floating in its own plate. */
 .mark {
   --brand: var(--text-primary);
   display: grid;
   place-items: center;
-  width: 52%;
-  height: 52%;
+  width: 60%;
+  height: 60%;
 }
 
 /* The mark is painted in the legible variant of its own brand
@@ -52,44 +65,76 @@
    here, because a mix on top of that would only drift the hue. */
 .brand { fill: var(--brand); }
 
+/* The house glyphs draw in a 40-unit viewBox with a stroke of 1
+   user unit, and the monogram sets in the same space, so both
+   scale with the plate on their own. Nothing to do here. */
 .monogram { font-family: var(--font-mono); font-size: 14px; }
 
+/* The count is an app icon's badge: its own small chip of paper with
+   a hairline edge, tucked into the plate's top-right corner. Set
+   bare on the plate it sat on whatever the mark put under it — a
+   number on JavaScript's yellow square, on TypeScript's blue — and
+   on a phone's plate there is no corner the mark leaves free, so it
+   carries its own ground instead (covering, as badges do, a sliver
+   of the mark's corner on the smallest plates). Inside the plate's
+   box, never over the narrow gutters between tiles. */
 .count {
   position: absolute;
-  top: calc(var(--size) * 0.07);
-  right: calc(var(--size) * 0.1);
+  top: 0;
+  right: 0;
+  display: grid;
+  place-items: center;
+  min-width: 1.4em;
+  height: 1.4em;
+  padding: 0 0.2em;
+  border-radius: 999px;
+  background: var(--bg-primary);
+  border: var(--hair) solid var(--border-strong);
   font-family: var(--font-mono);
-  font-size: 8px;
+  /* Tied to the plate now: a fixed 8px badge disappeared once
+     the plate doubled. */
+  font-size: max(8px, calc(var(--size) * 0.14));
   line-height: 1;
   color: var(--text-faint);
   font-variant-numeric: tabular-nums;
-  transition: color var(--dur-mid) var(--ease-out-expo);
+  transition:
+    color var(--dur-mid) var(--ease-out-expo),
+    border-color var(--dur-mid) var(--ease-out-expo);
 }
 
-.name {
-  font-size: clamp(8px, 0.5vw, var(--fs-nano));
-  line-height: 1.1;
-  text-align: center;
-  letter-spacing: -0.005em;
-  color: inherit;
-  display: -webkit-box;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
-  line-clamp: 2;
-  overflow: hidden;
-}
+/* Off by default. A caption under every one of sixty tiles costs
+   the wall roughly a quarter of its vertical budget and forces
+   the grid column wider than the tile, which is exactly the two
+   things that were keeping the marks small. It comes back only
+   where the pinned screen can afford it — see the query below. */
+.name { display: none; }
 
 /* Weight is the number of projects that prove the technology.
-   The mark grows and the edge firms up; the tile never does,
-   because a grid of app icons is only a grid while they match. */
-.tile[data-weight='1'] .mark { width: 46%; height: 46%; opacity: 0.82; }
-.tile[data-weight='3'] .mark { width: 58%; height: 58%; }
+   Only the top weight is drawn, and only upwards: the mark grows
+   and the edge firms up. The lightly-proven tile used to be shrunk
+   and faded to make the ladder symmetrical, which was a mistake —
+   a wall exists to be read, and a mark that has been dimmed to
+   report a fact about its evidence is simply a mark nobody can
+   identify. The tile never resizes either way, because a grid of
+   app icons is only a grid while they match. */
+.tile[data-weight='3'] .mark { width: 66%; height: 66%; }
 .tile[data-weight='3'] .plate { border-color: var(--border-strong); }
 
-/* Nothing public to point at, said in the same dashed hand the
-   chips used before. */
-.tile[data-evidence='false'] { opacity: 0.66; }
-.tile[data-evidence='false'] .plate { border-style: dashed; }
+/* Nothing public to point at. The claim is still made plainly —
+   in the aria-label, in the missing count badge, and in the
+   readout beside the wall, all of which say 'no public repository
+   yet' in words — but it is made by the PLATE, never by the mark.
+   Dimming the logo would have hidden exactly the technologies a
+   reader is most likely to be scanning for. So the edge carries
+   it alone, and carries it harder than a hairline dash could: the
+   dashes are set at the strong border weight, and the plate loses
+   its fill, so the tile reads as an outline waiting to be filled
+   in rather than as a finished one. */
+.tile[data-evidence='false'] .plate {
+  background: transparent;
+  border-color: var(--border-strong);
+  border-style: dashed;
+}
 
 .tile[data-dim='true'] { opacity: 0.26; }
 
@@ -99,18 +144,29 @@
   transform: translateY(-2px);
 }
 .tile:hover .plate, .tile[data-on='true'] .plate { border-color: var(--accent); }
-.tile[data-on='true'] .count { color: var(--accent); }
+.tile[data-on='true'] .count { color: var(--accent); border-color: var(--accent); }
 .tile[data-pinned='true'] .plate {
   background: color-mix(in oklab, var(--accent) 12%, var(--bg-secondary));
   border-color: var(--accent);
 }
 
-@media (max-width: 900px) {
-  /* Fifty captions do not fit under the fold on a phone, and the
-     wall must not scroll inside a pinned chapter. The tapped
-     tile names itself in the evidence readout instead, and the
-     button keeps its accessible name either way. */
-  .name { display: none; }
+/* A very large display has both the height for a caption row and
+   the width for a column wider than the plate. Below this, the
+   name lives in the aria-label, the tooltip and the readout.
+   One line only: two lines cost another row of tiles. */
+@media (min-width: 1800px) and (min-height: 940px) {
+  .name {
+    display: block;
+    font-size: var(--fs-nano);
+    line-height: 1.1;
+    text-align: center;
+    letter-spacing: -0.005em;
+    color: inherit;
+    max-width: 100%;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

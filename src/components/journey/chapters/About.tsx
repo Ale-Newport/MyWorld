@@ -13,7 +13,7 @@ import shared from './chapters.module.css'
 import styles from './About.module.css'
 
 /* ============================================================
-   04 – 10%  A LITTLE ABOUT ME
+   HOME · 12 – 25%  A LITTLE ABOUT ME
    The camera pulls back from the title into open space. Four
    transition markers establish the through-line of the whole
    story before any chapter starts.
@@ -53,7 +53,7 @@ export function About() {
           <TagRow items={[chapterById['about'].number, 'A LITTLE ABOUT ME']} />
         </div>
 
-        <div className={`${styles.intro} ${shared.driven}`} ref={introRef}>
+        <div className={`${styles.intro} ${shared.driven}`} ref={introRef} data-about-intro="">
           <Reveal as="h2" mode="mask" className={styles.summary} id="about-title">
             {profile.summary}
           </Reveal>

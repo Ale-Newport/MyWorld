@@ -1,0 +1,89 @@
+/* Above the HUD (60) and below the overlays and the cursor, so the
+   last thing the canopy closes over is the chrome itself. Sized as the
+   room is — to the large viewport — so a mobile toolbar sliding in or
+   out never re-plans it, and it is planned through the room's lens. */
+.root {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100vh;
+  z-index: 70;
+  pointer-events: none;
+  overflow: hidden;
+  contain: strict;
+}
+@supports (height: 100lvh) {
+  .root { height: 100lvh; }
+}
+
+/* Once it stands over the page it takes the clicks, so nothing hidden
+   under the leaves can be followed (the push itself is read from the
+   window, and still arrives). */
+.root[data-blocking='true'] {
+  pointer-events: auto;
+}
+
+/* The dark inside of the hedge, behind the last leaves: the page can
+   never show through a gap once the charge is spent. It ends in the
+   colour painted on <html> across the route change (WorldPortal's
+   SEAM), so the swap has no seam of its own. */
+.deep {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(120% 90% at 50% 52%, #24350c 0%, #172408 48%, #0f1804 100%);
+  opacity: 0;
+  will-change: opacity;
+}
+
+.layers {
+  position: absolute;
+  inset: 0;
+}
+
+.live,
+.layer {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.layer {
+  transform-origin: 50% 50%;
+  will-change: transform, opacity;
+  /* A viewport that changes before the parting crops the frozen frame
+     rather than stretching it. */
+  object-fit: cover;
+}
+
+/* PARTING. The ivy opens down the middle: each half of each depth
+   band sweeps out to its own side and towards the eye — the near
+   leaves first and furthest, the deep ones last and least — and the
+   dark behind them lifts off the world through the opening.
+   Transform and opacity only. */
+.root[data-open='true'] .deep {
+  opacity: 0;
+  transition: opacity 0.7s linear 0.2s;
+}
+
+.root[data-open='true'] .layer[data-band='2'][data-side='left'] { transform: translateX(-60%) scale(1.6); }
+.root[data-open='true'] .layer[data-band='2'][data-side='right'] { transform: translateX(60%) scale(1.6); }
+.root[data-open='true'] .layer[data-band='1'][data-side='left'] { transform: translateX(-52%) scale(1.38); }
+.root[data-open='true'] .layer[data-band='1'][data-side='right'] { transform: translateX(52%) scale(1.38); }
+.root[data-open='true'] .layer[data-band='0'][data-side='left'] { transform: translateX(-46%) scale(1.2); }
+.root[data-open='true'] .layer[data-band='0'][data-side='right'] { transform: translateX(46%) scale(1.2); }
+
+/* They leave by moving; the fade only tidies the last of each band
+   away once it is nearly off the screen. */
+.root[data-open='true'] .layer { opacity: 0; }
+.root[data-open='true'] .layer[data-band='2'] {
+  transition: transform 1.05s cubic-bezier(0.42, 0, 0.5, 1), opacity 0.3s linear 0.75s;
+}
+.root[data-open='true'] .layer[data-band='1'] {
+  transition: transform 1.12s cubic-bezier(0.42, 0, 0.5, 1) 0.08s, opacity 0.3s linear 0.9s;
+}
+.root[data-open='true'] .layer[data-band='0'] {
+  transition: transform 1.18s cubic-bezier(0.42, 0, 0.5, 1) 0.16s, opacity 0.3s linear 1.04s;
+}

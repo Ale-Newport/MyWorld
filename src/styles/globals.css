@@ -179,6 +179,22 @@ html[data-cursor='custom'] textarea { cursor: text !important; }
   z-index: var(--z-content);
   width: 100%;
 }
+/* /projects keeps the glow it shipped with over its sprig sheet.
+   The home journey has none: its copy reads straight off the room,
+   which keeps calm, lit plaster where the copy sits. */
+.journey:not([data-journey='home']) { text-shadow: var(--halo); }
+
+/* On the room the faint inks are taken a step darker, so the
+   smallest labels hold 4.5:1 against plaster in shade as well as
+   in light. The hierarchy between them is unchanged. */
+.journey[data-journey='home'],
+[data-hud][data-journey='home'] {
+  --ink-3: #4f473a;
+  --ink-4: #574e40;
+  --text-muted: var(--ink-3);
+  --text-faint: var(--ink-4);
+  --accent: #86341a;
+}
 
 /* Konami: the world inverts for a few seconds. */
 html[data-konami='true'] body { filter: invert(1) hue-rotate(180deg); }

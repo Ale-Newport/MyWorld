@@ -14,9 +14,11 @@
 }
 
 /* When any element inside receives focus, reveal the whole
-   summary as a readable document. */
+   summary as a readable document. Positioned (not static) so its
+   z-index lifts it above the fixed home room layer, which would
+   otherwise paint over it. */
 .host:focus-within {
-  position: static;
+  position: relative;
   width: auto;
   height: auto;
   clip-path: none;

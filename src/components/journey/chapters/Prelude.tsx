@@ -3,8 +3,9 @@
 import { useEffect, useRef, useState } from 'react'
 import { Chapter } from '@/components/journey/Chapter'
 import { TagRow, ScrollHint } from '@/components/journey/parts'
+import { useJourneyRoute } from '@/components/journey/JourneyProvider'
 import { profile } from '@/content/profile'
-import { chapters } from '@/content/chapters'
+import { totalVh } from '@/content/chapters'
 import { useChapterFrame } from '@/hooks/useChapterProgress'
 import { useJourney } from '@/state/journey'
 import { clamp, range } from '@/lib/math'
@@ -12,14 +13,33 @@ import shared from './chapters.module.css'
 import styles from './Prelude.module.css'
 
 /* ============================================================
-   00 – 04%  PRELUDE
+   HOME · 00 – 12%  PRELUDE
    No loader, no splash. The name is on screen immediately; the
    roles cycle; scrolling collapses them into a single thesis
    and the letterforms begin to disperse.
    ============================================================ */
 
+/* ============================================================
+   HOW LONG IS THIS?
+   Minutes are read off the scroll length rather than typed, for
+   the same reason the chapter count is: the two journeys are
+   different lengths and either could gain a chapter. The rate is
+   calibrated against the figure the single fourteen-chapter
+   scroll used to quote — roughly nine minutes over sixty
+   viewport heights — so nobody has to re-guess it.
+   ============================================================ */
+const MINUTES_PER_VH = 0.15
+
 export function Prelude() {
   const reducedMotion = useJourney((s) => s.reducedMotion)
+  /* The corner counts THIS journey, not the archive. The prelude
+     stands at the head of one story, and telling its reader there
+     are fourteen chapters ahead when there are seven is a promise
+     the scrollbar breaks within a screen. Taken from the route
+     rather than the store, so the figure is right in the server's
+     HTML instead of being corrected a frame after paint. */
+  const { chapters } = useJourneyRoute()
+  const minutes = Math.max(1, Math.round(totalVh(false, chapters) * MINUTES_PER_VH))
   const [role, setRole] = useState(0)
   const nameRef = useRef<HTMLHeadingElement>(null)
   const rolesRef = useRef<HTMLDivElement>(null)
@@ -110,7 +130,7 @@ export function Prelude() {
         <div className={`${shared.corner} ${shared.cornerBR}`}>
           {chapters.length} CHAPTERS
           <br />
-          ~9 MINUTES
+          ~{minutes} MINUTES
         </div>
       </div>
     </Chapter>

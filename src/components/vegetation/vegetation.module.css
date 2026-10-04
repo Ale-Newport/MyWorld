@@ -1,0 +1,107 @@
+/* ============================================================
+   THE MARGINS FILL IN
+
+   One fixed sheet of line art behind the whole journey. It is
+   deliberately inert CSS: every value that changes is written
+   onto an element by the ticker, so nothing here animates,
+   transitions or repaints on its own. Thirty sprigs each
+   carrying their own CSS animation would be thirty timelines
+   the scroll position has no say over, which is the opposite
+   of what this layer is for.
+
+   The rule that matters is the dash. Every path carries
+   pathLength="1", so a single inherited stroke-dashoffset
+   moving from 1 to 0 draws a whole plant on from base to tip —
+   one property write per sprig instead of one per stroke, and
+   no geometry measured at any point.
+
+   Sway and scale are deliberately NOT here. They ride on the
+   SVG transform attribute of the group inside each sprig,
+   because that attribute pivots about the group's own local
+   origin — the base of the plant — with no argument, whereas a
+   CSS transform on a nested SVG group depends on how the
+   browser reads transform-box against a viewBox it did not
+   establish. A layer that shears on one engine is not worth
+   the tidier property.
+   ============================================================ */
+
+.host {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-flora);
+  pointer-events: none;
+  /* The layer never affects anything outside itself, and saying
+     so keeps a sprig redrawing at the foot of the page from
+     inviting the rest of the document into the same paint. */
+  contain: layout paint;
+}
+
+/* Deliberately unsized. The width and height are attributes in
+   pixels, written from the live viewport alongside a viewBox of
+   the same dimensions, which is what holds one user unit at one
+   CSS pixel. Stretching the element to the host with percentages
+   would hand the fitting back to preserveAspectRatio, and a
+   viewBox that has drifted from its box is then scaled and
+   re-centred into it — the whole garden shrinking away from the
+   gutters, or the ground line floating clear of the bottom edge
+   with every sprig showing the cut stem it was rooted below the
+   fold to hide. */
+.canvas {
+  display: block;
+}
+
+/* ------------------------------------------------------------
+   A SPRIG
+   The outer group carries placement (a static transform
+   attribute), the growth offset and the group opacity. Both
+   stroke-dasharray and stroke-dashoffset are inherited SVG
+   properties, so setting them here reaches every path below
+   without touching one of them.
+   ------------------------------------------------------------ */
+.plant {
+  fill: none;
+  stroke: var(--flora-ink);
+  /* The hairline, divided by the sprig's own scale before that
+     scale is applied — the arithmetic that vector-effect would
+     normally do. It cannot do it here: non-scaling-stroke also
+     unscales the dash pattern, which undoes pathLength="1" and
+     leaves a sprig at scale 1.8 drawing its stem as a dotted
+     line and one at scale 0.4 fully grown before its turn. The
+     custom property is written once per plant and never again. */
+  stroke-width: calc(var(--flora-hair) / var(--sprig-scale, 1));
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  /* Dash and gap both one whole path: offset 1 hides the plant,
+     offset 0 has it fully grown, and nothing in between ever
+     shows a second dash. */
+  stroke-dasharray: 1 1;
+  stroke-dashoffset: 1;
+  opacity: 0;
+}
+
+/* The far tier of the arrangement. Depth here is a matter of
+   ink weight only — there is no blur and no parallax, because
+   either would cost more than the effect is worth. */
+.far {
+  stroke: var(--flora-ink-far);
+}
+
+/* Seedheads are the only solid ink in the layer, and they
+   arrive last: a bare stem is a plant that is still growing,
+   whereas seeds hanging in the air ahead of their stalk are a
+   bug that reads as one. */
+.seeds {
+  fill: var(--flora-seed);
+  stroke: none;
+  opacity: 0;
+}
+
+/* ------------------------------------------------------------
+   Under reduced motion the component renders a smaller, fully
+   grown arrangement and never subscribes to the ticker, so the
+   grown values arrive as inline style from React and there is
+   no animation here to switch off. The `data-still` attribute
+   on the host is carried for the inspector's benefit only, so
+   that which of the two arrangements is on screen can be read
+   off the DOM rather than guessed at.
+   ------------------------------------------------------------ */

@@ -14,7 +14,7 @@ import shared from './chapters.module.css'
 import styles from './Gym.module.css'
 
 /* ============================================================
-   58 – 65%  ONE MODEL, MANY MOVEMENTS
+   PROJECTS · 42 – 55%  ONE MODEL, MANY MOVEMENTS
    Skin → rig → joints → pose data → equipment → exercise.
    The argument of the chapter is an equation, so the chapter
    is laid out as one.

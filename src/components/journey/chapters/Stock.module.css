@@ -1,8 +1,32 @@
-.stage { align-content: center; }
+/* ============================================================
+   THE FOOT OF THIS JOURNEY
+   The bottom band of this stage belongs to the closing line — the
+   rule, the note and the link back to the portfolio — whatever the
+   chapter above it is doing. So every standing element is measured
+   from the top of that band, `--foot`, rather than from the foot of
+   the screen, which is where the order book's own chrome used to
+   sit and where it would now be printed over the way back.
 
+   The band is unchanged from the one the gateway used to stand in.
+   The closing line is a good deal quieter than the gateway was, but
+   the composition above it was approved against this figure and a
+   band that suddenly grew by two lines is a relayout of the whole
+   chapter for no reason anyone asked for.
+   ============================================================ */
+.stage {
+  align-content: center;
+  --foot: clamp(7.2rem, 16vh, 9.5rem);
+}
+
+/* The illustration carries its own row of chips along the bottom of its
+   box, so it is a standing element too and is measured from `--foot`
+   like the rest. Left on an offset from the foot of the screen it ended
+   lower than the flow row that moved up to clear the portal, and the two
+   sets of labels were printed through each other. The extra clamp is the
+   flow's own line plus the gap the chips need above it. */
 .visual {
   position: absolute;
-  inset: clamp(4rem, 10vh, 7rem) var(--gutter) clamp(6rem, 14vh, 8rem);
+  inset: clamp(4rem, 10vh, 7rem) var(--gutter) calc(var(--foot) + clamp(1.4rem, 3vh, 2rem));
   z-index: -1;
   pointer-events: none;
 }
@@ -23,7 +47,7 @@
 .ladderWrap {
   position: absolute;
   left: var(--gutter); right: var(--gutter);
-  bottom: clamp(11rem, 27vh, 15rem);
+  bottom: calc(var(--foot) + clamp(3.8rem, 11vh, 5.5rem));
 }
 .ladderLabel { display: none; }
 .ladder {
@@ -44,7 +68,7 @@
 .flow {
   position: absolute;
   left: var(--gutter); right: var(--gutter);
-  bottom: clamp(4.5rem, 11vh, 6.5rem);
+  bottom: var(--foot);
   display: flex; flex-wrap: wrap; align-items: center;
   gap: clamp(0.4rem, 1.4vw, 1.2rem);
   font-family: var(--font-mono); font-size: var(--fs-nano);
@@ -53,16 +77,64 @@
 }
 .flowArrow { color: var(--text-faint); }
 
-/* One group to a line, exactly the three lines the <br>s used to make. */
+/* One group to a line, exactly the three lines the <br>s used to make.
+   The offset is written against the stage rather than as a bare class
+   so it outranks the shared corner's own `bottom` on specificity and
+   not on the order two stylesheets happen to be loaded in. */
+.stage .spec { bottom: var(--foot); }
 .spec span { display: block; }
+
+/* ============================================================
+   THE CLOSING LINE
+   A hairline, a note and a link, on one row above the HUD. It is
+   the site's own idiom for the end of a document — the same grid,
+   the same mono and the same offset the gateway's readout stands
+   on at the end of the home journey — with the charge, the veil
+   and the threshold taken out of it. Ending the projects is not
+   the same thing as completing the journey, and only one of the
+   two opens a door.
+   ============================================================ */
+.close {
+  position: absolute;
+  left: var(--gutter);
+  right: var(--gutter);
+  bottom: clamp(4.2rem, 9.5vh, 5.8rem);
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: baseline;
+  gap: var(--sp-3) var(--sp-4);
+  padding-top: var(--sp-3);
+  border-top: var(--hair) solid var(--border);
+  font-family: var(--font-mono);
+  font-size: var(--fs-nano);
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+}
+
+.closeNote { color: var(--text-faint); }
+
+.closeLink {
+  display: inline-flex;
+  align-items: baseline;
+  gap: var(--sp-2);
+  color: var(--text-muted);
+  transition: color var(--dur-fast) var(--ease-out-expo);
+}
+.closeLink:hover { color: var(--text-primary); }
+
+.closeArrow {
+  color: var(--accent);
+  transition: transform var(--dur-fast) var(--ease-out-expo);
+}
+.closeLink:hover .closeArrow { transform: translateX(-3px); }
 
 @media (max-width: 800px) { .head { max-width: 66vw; } }
 
 /* Under this width the flow row no longer fits on one line, and its first
    line then runs the whole way to the right-hand gutter — through the spec
-   block sitting in that corner. Both are anchored near the foot, and on a
-   short screen both offsets bottom out at the same 4.5rem, so the two are
-   printed on top of each other. Give them a line each: the spec gives up
+   block sitting in that corner. Both are anchored to the same band above
+   the portal, so at these widths the two are printed on top of each
+   other. Give them a line each: the spec gives up
    the corner and lies along the foot, the flow sits above it. Width, not
    motion — the two collide on the animated path just the same. */
 @media (max-width: 700px) {
@@ -74,11 +146,23 @@
        "JAVA · MAVEN" reads as the separator for all three. */
     column-gap: clamp(1.1rem, 3.5vw, 1.6rem);
   }
-  /* The clamp is the corner's own offset, repeated from
-     chapters.module.css because that file belongs to all fourteen
-     chapters; the rest clears the two lines the spec wraps to at the
-     narrowest sizes, and is slack the flow can spare above. */
-  .flow { bottom: calc(clamp(4.5rem, 9vh, 5.5rem) + 2.75rem); }
+  /* Measured off the same band the spec now sits in; the 2.75rem
+     clears the two lines it wraps to at the narrowest sizes, and is
+     slack the flow can spare above. */
+  .flow { bottom: calc(var(--foot) + 2.75rem); }
+  /* The closing line comes down with the rest of the foot chrome, to
+     the offset the gateway's readout takes at this width. */
+  .close {
+    bottom: 4rem;
+    font-size: 9px;
+    gap: var(--sp-2) var(--sp-3);
+  }
+  /* The flow wraps to two lines at these widths, so it is 2.75rem of
+     offset plus roughly 2.4rem of its own type before anything else may
+     stand. The base offset above is a viewport fraction that falls below
+     that on a short phone, which put the scale's rungs through the flow's
+     first line; 5.75rem is the two measured together plus a gap. */
+  .ladderWrap { bottom: calc(var(--foot) + 5.75rem); }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -88,10 +172,10 @@
      line at the foot, ending on the figure that carries the claim — and
      the illustration gives up the band underneath it rather than having
      numbers lie over its depth bars. */
-  .visual { bottom: clamp(11rem, 24vh, 13.5rem); }
+  .visual { bottom: calc(var(--foot) + clamp(3.8rem, 8vh, 4rem)); }
 
   .ladderWrap {
-    bottom: clamp(8.5rem, 20vh, 11rem);
+    bottom: calc(var(--foot) + clamp(1.3rem, 4vh, 1.5rem));
     display: flex; flex-wrap: wrap; align-items: baseline;
     gap: var(--sp-2) var(--sp-5);
   }
@@ -133,7 +217,9 @@
    full, and the flow now wants the band it used to leave empty below it.
    The illustration stops well above the line its box ends on, so the
    scale climbs into that slack rather than the flow dropping into the
-   HUD, which owns the last 4.5rem of the stage. */
+   HUD, which owns the last 4.5rem of the stage. It climbs to the same
+   5.75rem the moving version does: the flow wraps to two lines here too,
+   and 3.3rem cleared only the first of them. */
 @media (prefers-reduced-motion: reduce) and (max-width: 700px) {
-  .ladderWrap { bottom: clamp(10.5rem, 22vh, 11.5rem); }
+  .ladderWrap { bottom: calc(var(--foot) + 5.75rem); }
 }

@@ -29,7 +29,7 @@ interface Shot {
 const SHOTS: Record<ChapterId, [Shot, Shot]> = {
   prelude:   [{ pos: [0, 0.3, 6.5], look: [0, -0.5, 0],  fov: 36 }, { pos: [0, 0.8, 11],  look: [0, -0.9, 0],   fov: 44 }],
   about:     [{ pos: [0, 0.8, 11],  look: [0, -0.9, 0],  fov: 44 }, { pos: [0, 3.2, 26],  look: [0, -1.2, 0],   fov: 52 }],
-  kcl:       [{ pos: [-6, 2.2, 14], look: [0, -0.3, 0],  fov: 46 }, { pos: [7, 1.6, 11],  look: [1, -0.4, 0],   fov: 44 }],
+  education: [{ pos: [-6, 2.2, 14], look: [0, -0.3, 0],  fov: 46 }, { pos: [7, 1.6, 11],  look: [1, -0.4, 0],   fov: 44 }],
   pansofia:  [{ pos: [0, 0.4, 9],   look: [0, 0.2, 0],   fov: 40 }, { pos: [0, 0.2, 6.4], look: [0, 0.2, 0],    fov: 38 }],
   teaching:  [{ pos: [0, 0, 8],     look: [0, 0, 0],     fov: 40 }, { pos: [0.6, 0, 7],   look: [0, 0, 0],      fov: 40 }],
   focus:     [{ pos: [0, 0, 8],     look: [0, 0, 0],     fov: 38 }, { pos: [2.4, 1.0, 5], look: [0, 0, 0],      fov: 46 }],
@@ -39,7 +39,6 @@ const SHOTS: Record<ChapterId, [Shot, Shot]> = {
   stock:     [{ pos: [-4, 0, 9],    look: [0, 0, 0],     fov: 44 }, { pos: [4, 0.4, 7],   look: [0, 0, 0],      fov: 48 }],
   universe:  [{ pos: [0, 0, 12],    look: [0, 0, 0],     fov: 50 }, { pos: [0, 0, 30],    look: [0, 0, 0],      fov: 56 }],
   toolbox:   [{ pos: [0, 0, 30],    look: [0, 0, 0],     fov: 40 }, { pos: [0, 0, 24],    look: [0, 0, 0],      fov: 40 }],
-  ucl:       [{ pos: [0, 0.6, 16],  look: [0, 0, 0],     fov: 44 }, { pos: [0, 0.2, 8],   look: [0, 0, 0],      fov: 38 }],
   contact:   [{ pos: [0, 0, 9],     look: [0, 0, 0],     fov: 40 }, { pos: [0, 0, 34],    look: [0, 0, 0],      fov: 58 }],
 }
 

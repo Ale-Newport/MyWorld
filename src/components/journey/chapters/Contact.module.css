@@ -1,9 +1,18 @@
 /* Written every frame by the chapter's loop from the portal's
    charge. The standing chrome fades on the same curve as the
-   driven type, without three more refs to keep alive. */
+   driven type, without three more refs to keep alive.
+
+   `--portal-drag` is the resistance made visible: the pixels the
+   portal has taken from the visitor and not given back as
+   movement. The whole stage carries it, so the chapter lags the
+   scroll as one body rather than four elements agreeing to. The
+   sheet is inside this stage and therefore rides it too, keeping
+   a fraction of the stretch of its own — see VEIL_LAG. */
 .stage {
   align-content: center;
   --portal-dim: 0;
+  --portal-drag: 0;
+  transform: translate3d(0, calc(var(--portal-drag) * -1px), 0);
 }
 
 .chrome {
@@ -116,6 +125,7 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .stage { transform: none; }
   .question, .answer, .links > li { opacity: 1 !important; transform: none !important; }
   .question { display: none; }
   .chrome { opacity: 1; transform: none; }

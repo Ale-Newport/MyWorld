@@ -10,13 +10,15 @@ import { detectDevice, createFpsWatchdog } from '@/lib/perf'
 import styles from './GlobalCanvas.module.css'
 
 /**
- * The world's ground. It has to be exactly the white the DOM is
- * painting behind the canvas — any drift and the seam shows — so
- * this must move with `--bg-primary` in tokens.css. Set once, as
- * the clear colour rather than `scene.background`, which keeps it
- * clear of tone mapping.
+ * The world's ground. The canvas clears to it at ZERO alpha: the
+ * home journey's scrolled video sits beneath this layer and has to
+ * show through, and everywhere else the DOM behind the canvas is
+ * already this white. It still has to match `--bg-primary` in
+ * tokens.css, because antialiased edges blend toward it. Set once,
+ * as the clear colour rather than `scene.background`, which keeps
+ * it clear of tone mapping.
  */
-const GROUND = new THREE.Color('#ffffff')
+const GROUND = new THREE.Color('#f6f0e6')
 
 function FpsGovernor() {
   const setTier = useJourney((s) => s.setPerformanceTier)
@@ -42,7 +44,7 @@ export function GlobalCanvas() {
         <Canvas
           gl={{
             antialias: device.tier !== 'low',
-            alpha: false,
+            alpha: true,
             powerPreference: 'high-performance',
             stencil: false,
             depth: true,
@@ -55,7 +57,7 @@ export function GlobalCanvas() {
             // photographic one, and ACES would pull the ground colour
             // away from the DOM's --bg-primary token.
             gl.toneMapping = THREE.NoToneMapping
-            gl.setClearColor(GROUND, 1)
+            gl.setClearColor(GROUND, 0)
             if (process.env.NODE_ENV === 'development') {
               const w = window as unknown as {
                 __frame?: typeof frame

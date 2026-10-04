@@ -1,5 +1,6 @@
 'use client'
 
+import Link from 'next/link'
 import { useRef, useState } from 'react'
 import { Chapter } from '@/components/journey/Chapter'
 import { Reveal } from '@/components/typography/Reveal'
@@ -14,9 +15,24 @@ import shared from './chapters.module.css'
 import styles from './Stock.module.css'
 
 /* ============================================================
-   81 – 85%  FORTY THOUSAND TRADES
+   PROJECTS · 90 – 100%  FORTY THOUSAND TRADES
    Short and fast. The count climbs with scroll velocity, so
    the visitor is the one accelerating the market.
+
+   It is also the FOOT of this journey, and the foot of a journey
+   still owes the reader a way onward. For a while that way was the
+   gateway itself — the veil, the charge and the threshold, mounted
+   here exactly as they are at the end of the home journey — and
+   that was the wrong answer twice over. It gave `/projects` a
+   second door to a place only one route is supposed to open, and
+   it printed fourteen specimens of a botanical threshold over the
+   last screen of the order book. The gateway belongs to the home
+   journey alone; completing THAT journey is what earns it.
+
+   So this journey closes the way the rest of the site closes a
+   page: a hairline, a quiet note that the reading is over, and one
+   link back to the portfolio. Not a dead end, and plainly not a
+   door.
    ============================================================ */
 
 const LADDER = ['1', '10', '100', '1K', '10K', '40K+']
@@ -30,6 +46,7 @@ export function Stock() {
   useChapterFrame('stock', (t) => {
     setProgress((p) => (Math.abs(p - t) > 0.004 ? t : p))
     if (reducedMotion) return
+
     const l = ladderRef.current
     if (!l) return
     const n = l.children.length
@@ -87,6 +104,20 @@ export function Stock() {
           <span>JAVA · MAVEN</span>
           <span>PRICE-TIME PRIORITY</span>
           <span>4 TRADER THREADS</span>
+        </div>
+
+        {/* THE WAY BACK. The band above the HUD is the one the gateway
+            used to stand in, so the closing line takes it rather than
+            leaving the last screen of the journey with nothing under
+            it. It is deliberately the quietest thing on the stage: one
+            rule, one note and one link, in the same mono the technical
+            labels above it are set in. */}
+        <div className={styles.close}>
+          <span className={styles.closeNote} aria-hidden="true">End of the projects</span>
+          <Link href="/" className={styles.closeLink} data-cursor="link" data-cursor-text="HOME">
+            <span className={styles.closeArrow} aria-hidden="true">←</span>
+            Back to the portfolio
+          </Link>
         </div>
       </div>
     </Chapter>
