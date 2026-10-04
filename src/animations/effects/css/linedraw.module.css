@@ -1,0 +1,5 @@
+.svg { position: absolute; inset: 0; width: 100%; height: 100%; padding: 0.75rem; overflow: visible; }
+.path { fill: none; stroke: var(--fx-accent); stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 1; }
+.svg[data-mode='trigger'] .path { transition: stroke-dashoffset var(--dur) cubic-bezier(.65,0,.35,1); }
+.svg[data-loop] .path { animation: draw var(--dur) cubic-bezier(.65,0,.35,1) infinite alternate; }
+@keyframes draw { from { stroke-dashoffset: 1; } to { stroke-dashoffset: 0; } }
