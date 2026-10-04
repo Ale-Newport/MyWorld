@@ -6,3 +6,4 @@ body.player>header,body.player>footer,body.player #assets,body.player #inspector
 body.player #loading{z-index:15}
 body.player #gameplay-hud{top:75px}
 @media(max-width:720px){#player-nav{inset:10px 10px auto 10px;justify-content:space-between}#player-nav a,#player-nav button{padding:9px;font-size:11px}body.player #drive-hud{left:15px;bottom:25px}body.player #drive-hud div{max-width:230px;font-size:8px}body.player #speed{font-size:42px}}
+#player-nav kbd{margin-left:6px;padding:0 4px;border:1px solid #6a9997;border-radius:3px;font:10px ui-monospace,monospace;color:#bcd8d2}

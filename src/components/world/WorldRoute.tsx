@@ -1,16 +1,171 @@
+'use client'
+
+import Link from 'next/link'
+import { useRouter } from 'next/navigation'
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react'
+import { worldTransition } from './transition'
+import { track } from '@/components/analytics/track'
 import styles from './archipelago.module.css'
 
-/** Isolate the complete HelloWorld runtime from the portfolio's React renderer. */
+/* ============================================================
+   /world
+
+   The Archipelago runtime runs in a same-origin frame: its own
+   document, its own WebGL context, import map and render loop,
+   isolated from React and torn down completely (GPU memory,
+   physics, listeners) when the frame is removed.
+
+   The frame is created only when this route mounts — which, for a
+   visitor coming through the leaves, is after the cover was
+   verified on screen — and the runtime posts its progress and,
+   when its first fully prepared frame has been drawn, `ready`.
+   Coming through the leaves, `ready` parts them. Arriving directly
+   (a typed URL, a reload, a new tab) there are no leaves: this
+   route shows its own loading screen and takes it away on the
+   same signal. A failure keeps the screen covered and offers a
+   retry or the way home; nothing is ever revealed half built.
+   ============================================================ */
+
+const RUNTIME = '/archipelago/preview/index.html'
+/** No word from the runtime for this long: say so (it is not a failure, and it is not "ready"). */
+const QUIET_MS = 25_000
+/** The document loaded but the runtime never introduced itself: that is a failure. */
+const HELLO_MS = 12_000
+
+interface Progress { stage: string; value: number }
+
 export function WorldRoute() {
+  const router = useRouter()
+  const host = useRef<HTMLDivElement>(null)
+  const frame = useRef<HTMLIFrameElement | null>(null)
+  const phase = useSyncExternalStore(worldTransition.subscribe, () => worldTransition.get().phase, () => 'HOME' as const)
+  /* Decided once, at mount: through the leaves, or direct. */
+  const [arrival] = useState(() => worldTransition.get().phase === 'COVERED')
+  const [progress, setProgress] = useState<Progress>({ stage: 'Opening the island', value: 0 })
+  const [ready, setReady] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [quiet, setQuiet] = useState(false)
+  const [attempt, setAttempt] = useState(0)
+  const started = useRef(0)
+
+  /* ---- the frame -------------------------------------------- */
+  useEffect(() => {
+    const el = host.current
+    if (!el) return
+    let helloTimer = 0
+    let quietTimer = 0
+    let hello = false
+    const resetQuiet = () => {
+      window.clearTimeout(quietTimer)
+      setQuiet(false)
+      quietTimer = window.setTimeout(() => setQuiet(true), QUIET_MS)
+    }
+    const fail = (message: string) => {
+      setError(message)
+      worldTransition.fail(message)
+      track('world_error', { message: message.slice(0, 120), arrival })
+    }
+    const onMessage = (event: MessageEvent) => {
+      if (event.origin !== window.location.origin || event.source !== frame.current?.contentWindow) return
+      const data = event.data as { type?: string; stage?: string; value?: number; message?: string }
+      if (data?.type === 'archipelago:hello') { hello = true; window.clearTimeout(helloTimer); resetQuiet() }
+      if (data?.type === 'archipelago:progress') { resetQuiet(); setProgress({ stage: String(data.stage ?? ''), value: Math.min(1, Math.max(0, Number(data.value) || 0)) }) }
+      if (data?.type === 'archipelago:navigate' && typeof (data as { href?: unknown }).href === 'string') {
+        const href = (data as { href: string }).href
+        if (href.startsWith('/') && !href.startsWith('//')) router.push(href)
+      }
+      if (data?.type === 'archipelago:error') { window.clearTimeout(quietTimer); fail(String(data.message ?? 'The world could not start.')) }
+      if (data?.type === 'archipelago:ready') {
+        window.clearTimeout(quietTimer)
+        setReady(true)
+        setQuiet(false)
+        track('world_ready', { ms: Math.round(performance.now() - started.current), arrival, attempt })
+        const focus = () => { frame.current?.focus(); frame.current?.contentWindow?.focus() }
+        if (worldTransition.get().phase === 'LOADING_WORLD') worldTransition.ready(focus)
+        else window.setTimeout(focus, 0)
+      }
+    }
+    window.addEventListener('message', onMessage)
+    // Deferred a task so React's development double-mount never creates two worlds.
+    const create = window.setTimeout(() => {
+      const iframe = document.createElement('iframe')
+      iframe.className = styles.player
+      iframe.src = RUNTIME
+      iframe.title = 'Archipiélago — drive around Alejandro Newport’s island'
+      iframe.allow = 'autoplay; fullscreen; gamepad'
+      iframe.setAttribute('allowfullscreen', '')
+      iframe.addEventListener('load', () => {
+        if (!hello) helloTimer = window.setTimeout(() => { if (!hello) fail('The world’s runtime did not start.') }, HELLO_MS)
+      })
+      frame.current = iframe
+      el.append(iframe)
+      started.current = performance.now()
+      worldTransition.loading()
+      resetQuiet()
+    }, 0)
+    return () => {
+      window.clearTimeout(create)
+      window.clearTimeout(helloTimer)
+      window.clearTimeout(quietTimer)
+      window.removeEventListener('message', onMessage)
+      frame.current?.remove()
+      frame.current = null
+    }
+  }, [attempt, arrival, router])
+
+  /* Leaving before the leaves have parted (Back, a link) uncovers the page left for. */
+  useEffect(() => () => {
+    window.setTimeout(() => {
+      if (!document.querySelector('[data-world-shell]')) worldTransition.abort()
+    }, 0)
+  }, [])
+
+  /* After a completed visit, the machine is home again for the next way in. */
+  useEffect(() => {
+    if (phase === 'IN_WORLD') return () => worldTransition.reset()
+  }, [phase])
+
+  const retry = useCallback(() => {
+    setError(null)
+    setReady(false)
+    setProgress({ stage: 'Opening the island', value: 0 })
+    worldTransition.retry()
+    setAttempt((n) => n + 1)
+  }, [])
+
+  const home = useCallback(() => {
+    worldTransition.abort()
+    router.push('/')
+  }, [router])
+
+  const covered = arrival && phase !== 'IN_WORLD' && phase !== 'HOME'
+  const showLoader = !arrival && !ready
   return (
-    <div className={styles.route}>
-      <iframe
-        className={styles.player}
-        src="/archipelago/preview/index.html"
-        title="Archipiélago — explore Alejandro Newport’s world"
-        allow="autoplay; fullscreen; gamepad"
-        allowFullScreen
-      />
+    <div className={styles.route} data-world-shell="" data-ready={ready || undefined}>
+      <div ref={host} className={styles.stage} aria-busy={!ready} />
+      {showLoader && !error && (
+        <div className={styles.loader} role="status" aria-live="polite">
+          <p className={styles.eyebrow}>Archipiélago</p>
+          <h1 className={styles.title}>Building the island…</h1>
+          <div className={styles.bar} aria-hidden="true"><span style={{ transform: `scaleX(${progress.value})` }} /></div>
+          <p className={styles.stageText}>{progress.stage || 'Opening the island'}{quiet ? ' — this is taking longer than usual, still working' : ''}</p>
+          <Link href="/" className={styles.back}>← Back to the portfolio</Link>
+        </div>
+      )}
+      {covered && quiet && !error && (
+        <p className={styles.coverNote} role="status">Still building the island — thanks for waiting.</p>
+      )}
+      {error && (
+        <div className={styles.error} role="alert">
+          <p className={styles.eyebrow}>Archipiélago</p>
+          <h1 className={styles.title}>The island did not load.</h1>
+          <p className={styles.stageText}>{error}</p>
+          <div className={styles.actions}>
+            <button type="button" onClick={retry} className={styles.primary}>Try again</button>
+            <button type="button" onClick={home} className={styles.secondary}>Return to the portfolio</button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

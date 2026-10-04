@@ -23,10 +23,10 @@ export function GardenCover() {
      there, it goes — and the seam colour painted under it too. */
   const pathname = usePathname()
   useEffect(() => {
-    if (pathname === '/' || pathname === '/world2') return
+    if (pathname === '/' || pathname === '/world' || pathname === '/world2') return
     garden.hide()
     document.documentElement.style.background = ''
   }, [pathname])
   if (!state.active) return null
-  return <CanopyCover initial={state.initial} budget={state.budget} handleRef={attach} onOpened={opened} />
+  return <CanopyCover initial={state.initial} budget={state.budget} reduced={state.reduced} handleRef={attach} onOpened={opened} />
 }

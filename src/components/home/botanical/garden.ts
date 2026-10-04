@@ -21,11 +21,14 @@ export interface GardenState {
   /** Starting charge when it mounts: 1 for an arrival nobody watched grow. */
   initial: number
   budget: number
+  /** Reduced motion: no growing leaves, a plain opaque fade in and out. */
+  reduced: boolean
 }
 
-let state: GardenState = { active: false, initial: 0, budget: 1 }
+let state: GardenState = { active: false, initial: 0, budget: 1, reduced: false }
 /** The server never has leaves standing; one object, so React sees a stable snapshot. */
-const SERVER: GardenState = { active: false, initial: 0, budget: 1 }
+const SERVER: GardenState = { active: false, initial: 0, budget: 1, reduced: false }
+let coveredWaiters: Array<() => void> = []
 const listeners = new Set<() => void>()
 let handle: CoverHandle | null = null
 let charge: number | null = null
@@ -44,14 +47,26 @@ export const garden = {
 
   show(opts: Partial<Omit<GardenState, 'active'>> = {}) {
     if (state.active) return
-    state = { ...state, ...opts, active: true }
+    state = { ...state, reduced: false, ...opts, active: true }
     emit()
+  },
+  /**
+   * Resolves once the mounted cover has VERIFIED that it hides the whole
+   * viewport: its opaque layer computed fully opaque, spanning every edge,
+   * after a frame was presented. Never on a timer.
+   */
+  whenCovered(): Promise<void> {
+    return new Promise((resolve) => {
+      if (handle) void handle.whenCovered().then(resolve)
+      else coveredWaiters.push(resolve)
+    })
   },
   hide() {
     // A parting asked for after the cover went away must not carry
     // over to the next one shown.
     opening = null
     openPending = false
+    coveredWaiters = []
     if (!state.active) return
     state = { ...state, active: false }
     handle = null
@@ -74,6 +89,9 @@ export const garden = {
     handle = h
     if (!h) return
     if (charge !== null) h.set(charge)
+    const waiting = coveredWaiters
+    coveredWaiters = []
+    for (const resolve of waiting) void h.whenCovered().then(resolve)
     if (openPending) {
       openPending = false
       h.open()

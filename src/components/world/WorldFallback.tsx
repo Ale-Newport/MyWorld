@@ -1,13 +1,12 @@
 import Link from 'next/link'
-import { profile } from '@/content/profile'
 import styles from './fallback.module.css'
 
 /** An accessible alternative to the canvas, kept in sync with Archipelago. */
-export function WorldFallback() {
+export function WorldFallback({ name }: { name: string }) {
   return (
     <div className={styles.fallback}>
       <header className={styles.head}>
-        <h1>Archipiélago — {profile.name}</h1>
+        <h1>Archipiélago — {name}</h1>
         <p>
           Drive and fly around my island. Discover projects and experiments,
           education and career, social links and achievements. Race on the
@@ -22,9 +21,9 @@ export function WorldFallback() {
         <h2>Controls</h2>
         <ul>
           <li>WASD or arrow keys to drive; Shift to boost.</li>
-          <li>Space or B to brake; double Space to switch between car and plane.</li>
+          <li>Space to jump; B or Control to brake; Space twice to switch between car and plane.</li>
           <li>E or Enter to interact; Escape to leave an activity.</li>
-          <li>M or Tab for the map, K for achievements, R to respawn, C for the camera.</li>
+          <li>M or Tab for the map (Escape closes it), K for achievements, R to respawn, C for the camera.</li>
           <li>In the plane: W/S for speed, A/D to turn and Q/E for pitch.</li>
         </ul>
       </section>

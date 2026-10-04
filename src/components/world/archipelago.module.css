@@ -1,12 +1,54 @@
+/* /world — the runtime fills the viewport; the route's own loading
+   and error screens sit above it (and above the leaf cover, z 70,
+   when they have something to say over it). */
 .route {
   position: fixed;
   inset: 0;
-  z-index: 100;
+  z-index: 60;
   background: #213a44;
+  color: #eff9f2;
 }
-.player {
-  display: block;
-  width: 100%;
-  height: 100%;
-  border: 0;
+.stage { position: absolute; inset: 0; }
+.player { display: block; width: 100%; height: 100%; border: 0; }
+
+.loader, .error {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 1.1rem;
+  padding: clamp(1.5rem, 6vw, 6rem);
+  background: radial-gradient(120% 90% at 50% 40%, #24515c 0%, #183843 55%, #10262e 100%);
+}
+.loader { transition: opacity 0.45s ease; }
+.route[data-ready] .loader { opacity: 0; pointer-events: none; }
+.eyebrow { margin: 0; font-family: var(--font-mono); font-size: 0.72rem; letter-spacing: 0.24em; text-transform: uppercase; color: #9fc4bd; }
+.title { margin: 0; font-family: var(--font-display); font-weight: 500; font-size: clamp(2.2rem, 6vw, 4.6rem); letter-spacing: -0.04em; line-height: 0.95; }
+.bar { width: min(28rem, 100%); height: 2px; background: #ffffff24; overflow: hidden; }
+.bar span { display: block; height: 100%; background: #f2c14e; transform-origin: 0 50%; transition: transform 0.3s ease; }
+.stageText { margin: 0; max-width: 36rem; font-family: var(--font-mono); font-size: 0.8rem; letter-spacing: 0.04em; color: #cfe4df; }
+.back { width: fit-content; color: #eff9f2; font-family: var(--font-mono); font-size: 0.75rem; letter-spacing: 0.12em; text-transform: uppercase; text-decoration: none; border-bottom: 1px solid #f2c14e; padding-bottom: 2px; }
+.back:focus-visible, .primary:focus-visible, .secondary:focus-visible { outline: 2px solid #f2c14e; outline-offset: 3px; }
+.actions { display: flex; flex-wrap: wrap; gap: 0.8rem; }
+.primary, .secondary { font: 500 0.78rem var(--font-mono); letter-spacing: 0.12em; text-transform: uppercase; padding: 0.9em 1.4em; border-radius: 999px; cursor: pointer; }
+.primary { background: #f2c14e; color: #10262e; border: 0; }
+.secondary { background: transparent; color: #eff9f2; border: 1px solid #6a9997; }
+.coverNote {
+  position: fixed;
+  left: 50%;
+  bottom: clamp(1.5rem, 6vh, 3rem);
+  z-index: 80;
+  transform: translateX(-50%);
+  margin: 0;
+  padding: 0.6rem 1rem;
+  border-radius: 999px;
+  background: #0f1804cc;
+  color: #e9f0d8;
+  font: 0.75rem var(--font-mono);
+  letter-spacing: 0.08em;
+}
+@media (prefers-reduced-motion: reduce) {
+  .loader, .bar span { transition: none; }
 }

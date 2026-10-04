@@ -1,14 +1,17 @@
 'use client'
 
-import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { getLenis, scrollToProgress } from '@/hooks/useLenisScroll'
 import { frame, useJourney, type PerformanceTier } from '@/state/journey'
 import { portal } from '@/state/portal'
 import { clamp, damp } from '@/lib/math'
 import { subscribe } from '@/lib/ticker'
 import { garden } from '@/components/home/botanical/garden'
+import { inTransition, worldTransition } from '@/components/world/transition'
+import { WorldEntryLink } from '@/components/world/WorldEntryLink'
+import { track } from '@/components/analytics/track'
+import { useSite } from '@/cms/context'
 import styles from './WorldPortal.module.css'
 
 /* ============================================================
@@ -31,14 +34,15 @@ import styles from './WorldPortal.module.css'
    rather than a bar being filled. And a phone TICKS under the
    finger at milestones that crowd together as the end approaches.
 
-   THE WAIT IS SPENT BEFORE IT IS ASKED FOR
-   The world is downloaded while the reader is still reading the
-   last chapter, and its engine is evaluated in the idle beat after
-   the page comes to rest at the foot. By the time the leaves have
-   closed, everything the world needs is in the cache; it arrives
-   under the very same leaves — literally the same elements, which
-   live in the root layout (see `garden.ts`) — and they part when
-   it is ready. There is no loading screen in between.
+   NOTHING OF THE WORLD BEFORE THE LEAVES HAVE CLOSED
+   The world is not prefetched, downloaded or evaluated on the
+   approach. When the charge is spent the cover is completed and
+   verified on screen, and only then does the URL become /world
+   and the world start loading — under the very same leaves, which
+   live in the public layout (see `garden.ts`), and which part only
+   when the world has drawn its first prepared frame. The sequence
+   is a state machine shared by every way in: components/world/
+   transition.ts.
 
    THE PAGE IS FINISHED UNTIL IT IS PUSHED
    Nothing grows over the copy on the approach: at the foot, unspent,
@@ -86,13 +90,6 @@ const RELEASE_S = 0.35
     measured from the foot so `?quick` and a phone's address bar give
     the same answer. */
 const REVEAL_VH = 1.35
-/** How far into the approach the world starts downloading. */
-const PRELOAD_AT = 0.45
-/** After the leaves have closed, how long before the route swaps
-    beneath them: one frame of solid canopy is the seam. */
-const COMMIT_MS = 420
-/** The homepage's WebGL context is handed back just before. */
-const RELEASE_MS = 250
 /** Put the canopy (and its WebGL context) away after this long well away from the foot. */
 const PARK_MS = 4000
 
@@ -135,12 +132,7 @@ function forcedTier(): PerformanceTier | null {
   return v === 'high' || v === 'medium' || v === 'low' ? v : null
 }
 
-/**
- * Told to the world across the navigation, in sessionStorage: a
- * query parameter would be shareable and re-fired by a reload; module
- * state is lost to a hard navigation. `World2Route` holds the other
- * half of this contract and the same key.
- */
+/** A key older builds wrote for the world to read; removed on sight. */
 const ARRIVAL_KEY = 'portal:arrival'
 /**
  * Where the visitor was when they went through, so Back is a return
@@ -158,8 +150,6 @@ const UNLOCKED_KEY = 'world2Unlocked'
 const RETURN_TO = 0.93
 /** And a lock-out on top of that, for the fling that arrives anyway. */
 const DISARM_MS = 500
-/** The canopy's darkest green: what <html> is painted across the swap. */
-const SEAM = '#0f1804'
 
 /** Read once and held: Strict Mode mounts effects twice in development. */
 let consumed: { at: number; value: string | null } | null = null
@@ -184,30 +174,12 @@ function consumeReturn(): string | null {
 
 function markArrival() {
   try {
-    window.sessionStorage.setItem(ARRIVAL_KEY, String(Date.now()))
     window.sessionStorage.setItem(RETURN_KEY, String(frame.progress))
     window.localStorage.setItem(UNLOCKED_KEY, '1')
   } catch {
     // Private mode, or storage denied. The world simply shows its
     // own gate and the return simply starts at the top.
   }
-}
-
-/**
- * Who is spared the speculative megabytes: a device the journey has
- * already judged slow, and a browser asking for saved data. Neither
- * is shut out of the world — they pay for it on arrival, under the
- * leaves, instead of in advance.
- */
-interface SaveDataConnection {
-  saveData?: boolean
-}
-
-function thrifty() {
-  if ((forcedTier() ?? useJourney.getState().performanceTier) === 'low') return true
-  if (typeof navigator === 'undefined') return true
-  const conn = (navigator as Navigator & { connection?: SaveDataConnection }).connection
-  return conn?.saveData === true
 }
 
 /** A browser that ignores vibration must cost exactly nothing. */
@@ -220,41 +192,13 @@ function buzz(pattern: number | number[]) {
   }
 }
 
-type IdleWindow = Window & {
-  requestIdleCallback?: (cb: () => void, o?: { timeout: number }) => number
-}
-
-/**
- * THE HAND-OFF, once committed, belongs to no render. A re-run of the
- * gesture's effect (a performance tier or a motion setting changing in
- * the next few hundred milliseconds) must not cancel it, and leaving by
- * some other way meanwhile (Back, a link through the leaves) must not
- * leave the cover and its seam colour over the page left for.
- */
-function handOff(push: (href: string) => void) {
-  const from = window.location.pathname
-  /* The homepage's WebGL contexts, released a beat before the
-     navigation: browsers cap live contexts and the world wants one. */
-  window.setTimeout(() => window.dispatchEvent(new CustomEvent('journey:leaving')), RELEASE_MS)
-  window.setTimeout(() => {
-    if (window.location.pathname === from) {
-      push('/world2')
-      return
-    }
-    garden.hide()
-    document.documentElement.style.background = ''
-    try {
-      window.sessionStorage.removeItem(ARRIVAL_KEY)
-    } catch {
-      // Storage denied: nothing was written to take back.
-    }
-  }, COMMIT_MS)
-}
-
 export function WorldPortal() {
   const reducedMotion = useJourney((s) => s.reducedMotion)
   const router = useRouter()
   const [committed, setCommitted] = useState(false)
+  const { settings } = useSite()
+  const worldNav = settings.navigation.find((n) => n.id === 'world')
+  const worldHref = worldNav?.href ?? '/world'
 
   const hostRef = useRef<HTMLDivElement>(null)
   const fillRef = useRef<HTMLSpanElement>(null)
@@ -263,51 +207,6 @@ export function WorldPortal() {
   const liveRef = useRef<HTMLParagraphElement>(null)
   /* The charge can cross 1 on consecutive frames; it is a one-way door. */
   const sealed = useRef(false)
-  const warmed = useRef(0)
-
-  /**
-   * Warming, in stages, all of it before the push is over.
-   *
-   *   1  the route's own prefetch
-   *   2  the world's React chunk
-   *   3  the island: 13 MB of geometry and its manifest, fetched at low
-   *      priority and thrown away — the engine's own loader then hits
-   *      the HTTP cache
-   *   4  the engine and its physics, which parse rather than merely
-   *      arrive: evaluated — and the physics' WebAssembly compiled —
-   *      in the idle beat after the page comes to rest at the foot,
-   *      before the reader starts to push. A client navigation keeps
-   *      this JS context, so the world's own `rapier.init()` finds
-   *      the instance already there and returns at once.
-   *
-   * Never here: constructing the game, which opens a WebGL context,
-   * binds input and starts a loop. That belongs to the world.
-   */
-  const warm = useCallback(
-    (level: number) => {
-      if (warmed.current >= level) return
-      const from = warmed.current
-      warmed.current = level
-      if (from < 1) router.prefetch('/world2')
-      if (from < 2 && level >= 2) void import('@/world2/World2Experience').catch(() => {})
-      if (level < 3 || thrifty()) return
-      if (from < 3 && level >= 3) {
-        for (const asset of [
-          '/world2/world-manifest.json',
-          '/world2/interactions.json',
-          '/world2/models/world.glb',
-          '/world2/models/vegetation.glb',
-        ]) {
-          void fetch(asset, { priority: 'low', mode: 'same-origin' } as RequestInit).catch(() => {})
-        }
-      }
-      if (from < 4 && level >= 4) {
-        void import('@/world2/World2Game').catch(() => {})
-        void import('@dimforge/rapier3d-compat').then((rapier) => rapier.init()).catch(() => {})
-      }
-    },
-    [router],
-  )
 
   /* ============================================================
      THE RETURN
@@ -342,7 +241,7 @@ export function WorldPortal() {
   }, [])
 
   useEffect(() => {
-    if (reducedMotion) return
+    if (reducedMotion || !settings.options.worldEntrance) return
     portal.pull = 0
     portal.drag = 0
 
@@ -362,7 +261,6 @@ export function WorldPortal() {
     let stopped = false
     let parkedSince = 0
     let isNear = false
-    let idleWarm = false
 
     let burstPeak = 0
     let burstLast = 0
@@ -370,7 +268,6 @@ export function WorldPortal() {
     let lastEvent = 0
 
     const mounted = performance.now()
-    const win = window as IdleWindow
 
     const announce = (message: string) => {
       const live = liveRef.current
@@ -393,7 +290,7 @@ export function WorldPortal() {
     }
 
     const atFoot = () => {
-      if (overlaid()) return false
+      if (overlaid() || inTransition()) return false
       if (performance.now() - mounted < DISARM_MS) return false
       const lenis = getLenis()
       if (!lenis) return remaining() <= ARM_PX
@@ -416,22 +313,15 @@ export function WorldPortal() {
 
     const commit = () => {
       if (sealed.current) return
+      // Another way in (the index link) may already be running.
+      if (!worldTransition.begin({ source: 'scroll', push: (href) => router.push(href), href: worldHref })) return
       sealed.current = true
       announce('Entering the world')
       // Two short knocks and a long one: the door opened, not another milestone.
       buzz([16, 40, 90])
       markArrival()
       setCommitted(true)
-      garden.set(1)
-      /* THE SEAM. <html> survives an App Router navigation, so the
-         canopy's own green painted on it here is underneath /world2's
-         first frame: no white blink between two greens. */
-      document.documentElement.style.background = SEAM
-      /* Under the canopy nothing can be reached any more, by pointer
-         (the cover takes the clicks) or by keyboard. */
-      for (const el of document.querySelectorAll('#journey, [data-hud]')) el.setAttribute('inert', '')
-      warm(4)
-      handOff((href) => router.push(href))
+      track('world_entry_start', { source: 'scroll' })
     }
 
     /** One notch or one finger's travel, scored for intent. */
@@ -524,16 +414,6 @@ export function WorldPortal() {
       }
       armed = foot && rested
 
-      /* The engine is evaluated in the first idle moment after the
-         page has come to rest at the foot — the beat in which the
-         reader is reading the instruction, not pushing. */
-      if (armed && !idleWarm) {
-        idleWarm = true
-        const go = () => warm(4)
-        if (win.requestIdleCallback) win.requestIdleCallback(go, { timeout: 1500 })
-        else window.setTimeout(go, 300)
-      }
-
       if (!armed) pull = clamp(pull - dt / RELEASE_S)
       else {
         idle += dt
@@ -568,10 +448,6 @@ export function WorldPortal() {
           garden.hide()
         }
       }
-      /* The world downloads while the last chapter is being read. */
-      if (reveal > PRELOAD_AT) warm(3)
-      else if (reveal > 0.1) warm(2)
-
       /* The garden holds the value until the canopy has mounted. */
       const cq = Math.round(pull * 400)
       if (isNear && cq !== lastCharge) {
@@ -622,14 +498,14 @@ export function WorldPortal() {
       /* Leaving any other way than through the door — the index, a
          link — takes the leaves with it. Through the door, the world
          takes them over. */
-      if (!sealed.current) garden.hide()
+      if (!sealed.current && !inTransition()) garden.hide()
       portal.pull = 0
       portal.drag = 0
       frame.progress = 0
       frame.velocity = 0
       frame.chapterProgress = 0
     }
-  }, [reducedMotion, router, warm])
+  }, [reducedMotion, router, settings.options.worldEntrance, worldHref])
 
   return (
     <div
@@ -651,18 +527,16 @@ export function WorldPortal() {
         )}
 
         {/* The scroll is an enhancement; this is the way through. */}
-        <Link
-          href="/world2"
-          prefetch={false}
+        <WorldEntryLink
+          href={worldHref}
+          source="portal-link"
           className={styles.enter}
-          onPointerEnter={() => warm(3)}
-          onFocus={() => warm(3)}
           data-cursor="link"
           data-cursor-text="DRIVE"
         >
-          Enter my world
+          {worldNav?.label ?? 'Enter my world'}
           <span className={styles.enterArrow} aria-hidden="true">→</span>
-        </Link>
+        </WorldEntryLink>
 
         {!reducedMotion && (
           <span className={styles.rule} aria-hidden="true">
