@@ -147,7 +147,11 @@ npm run build      # production build
 npm start          # serve the production build
 npm run lint
 npm run typecheck
+npm test           # unit tests for the content store, auth, media, schema, audience
+npm run admin:create -- --email you@example.com --name "You"   # first administrator
 ```
+
+The site has an admin at `/admin` for pages, projects, animations, the world, media, audience and settings. See **[docs/ADMIN.md](docs/ADMIN.md)**.
 
 Useful URLs:
 
@@ -166,15 +170,17 @@ npm run capture:clients    # re-capture the client website screenshots
 
 ## 5. Deployment
 
-The app is a standard Next.js build with no server-side data fetching, so any Node host works.
+The public pages are statically generated and regenerated when something is published from the admin. The admin writes to a content store on local disk (SQLite plus files), so the host needs a **persistent directory**. Set `CMS_DATA_DIR` to it and `CMS_SECRET` to 32+ random characters (see `.env.example` and [docs/ADMIN.md](docs/ADMIN.md#configuration)).
 
-**Vercel (recommended)**
+**Serverless hosts (Vercel)**
+
+The public site works with the content and world that ship in the repository. Admin edits would not persist there, because serverless functions do not keep files.
 
 ```bash
 npx vercel --prod
 ```
 
-**Any Node host**
+**Any Node host (recommended for the admin)**
 
 ```bash
 npm ci
@@ -195,28 +201,22 @@ RUN npm run build
 FROM node:22-alpine
 WORKDIR /app
 ENV NODE_ENV=production
+ENV CMS_DATA_DIR=/data
 COPY --from=build /app ./
+VOLUME /data
 EXPOSE 3000
 CMD ["npm", "start"]
 ```
 
-**Before the first deploy**, set the real domain in `src/content/profile.ts`:
+Run it with a volume, for example `docker run -v portfolio-data:/data -e CMS_SECRET=… -p 3000:3000 portfolio`. Then create the first administrator inside the container with `npm run admin:create`.
 
-```ts
-export const siteConfig = {
-  url: 'https://your-real-domain.com',   // ← OpenGraph + sitemap depend on this
-  ...
-}
-```
-
-and replace the three links flagged `needsVerification: true` in the same file.
+**Before the first deploy**, set the real domain. Use the admin (Settings → Site URL), or edit `siteConfig.url` in `src/content/profile.ts` before the first save. Then replace the three links flagged `needsVerification: true` in the same file, or under the profile's contact links.
 
 ---
 
 ## 6. Content data model
 
-Everything the site says lives in `src/content/`. The model is in `types.ts`; the shape
-that matters most is `Project`:
+Everything the site says is one versioned **site document**, edited in the admin and validated by the schema in `src/cms/schema.ts`. Until the first save, the document is migrated from `src/content/`, which remains the seed; after that, the published revision is the source. The shape that matters most is `Project`; the admin adds `status`, `hidden`, `order`, `links`, `seo` and page `sections` to it:
 
 ```ts
 {
@@ -248,6 +248,8 @@ that matters most is `Project`:
 ---
 
 ## 7. Adding a new project
+
+In the admin: **Projects → + New project**. Fill it in, preview the project page, listing and home page, save, and publish. The steps below are for adding one to the shipped seed in code.
 
 1. Add an entry to `src/content/projects/personal.ts` (or `client.ts`).
    Set `dataStatus: 'placeholder'` until you have read the source.
@@ -388,6 +390,8 @@ Where a number comes only from the CV, the data says so and the note is shown ne
 ---
 
 ## 13. The interactive world (`/world`)
+
+> The world is now stored in the content store and edited in the admin's world studio. The runtime in `public/archipelago` is extended by the portfolio: jump, plane, ice props, M map and activities. Current details are in [docs/ARCHIPELAGO_WORLD.md](docs/ARCHIPELAGO_WORLD.md) and [docs/ADMIN.md](docs/ADMIN.md#world-editor); parts of this section describe the world as it was first built.
 
 A second, optional way through the same material: a drivable 3D world built from
 the same `src/content/` data as the scroll journey. Nothing in it is exclusive —

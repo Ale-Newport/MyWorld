@@ -1,0 +1,12 @@
+# Never bake local data, credentials or build output into an image.
+.data
+.env
+.env.*
+!.env.example
+node_modules
+.next
+.next-*
+.qa
+.git
+*.blend
+bg.mp4
