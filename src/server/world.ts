@@ -18,11 +18,15 @@ import { ValidationError } from './auth/guard.ts'
    and named by a revision; publishing moves a pointer.
 
    Before the first save the published world is the seed in
-   content/seed/world/archipelago — the exact document /world
-   served before this store existed — read straight from disk.
+   content/seed/world/archipelago, read straight from disk: the
+   Archipelago imported from HelloWorld (4ccab18), as saved by the
+   portfolio's world editor with its additions (the infield slalom,
+   the penguin round-up, the paddock grove and the coastal lookout,
+   and the ice props as physics bodies). scripts/world/ rebuilds it.
    ============================================================ */
 
-const SEED_DIR = path.join(process.cwd(), 'content', 'seed', 'world', 'archipelago')
+// Read at run time; next.config's outputFileTracingIncludes ships these two files with the routes that need them.
+const SEED_DIR = path.join(/* turbopackIgnore: true */ process.cwd(), 'content', 'seed', 'world', 'archipelago')
 const SEED = { world: path.join(SEED_DIR, 'editor-world.json.gz'), assets: path.join(SEED_DIR, 'asset-definitions.json') }
 
 export interface WorldRefs {
@@ -33,8 +37,8 @@ export interface WorldRefs {
 let seedRefs: (WorldRefs & { files: Record<string, string> }) | null = null
 function seedFiles() {
   if (seedRefs) return seedRefs
-  const world = fs.readFileSync(SEED.world)
-  const assets = fs.readFileSync(SEED.assets)
+  const world = fs.readFileSync(/* turbopackIgnore: true */ SEED.world)
+  const assets = fs.readFileSync(/* turbopackIgnore: true */ SEED.assets)
   seedRefs = {
     world: { sha: sha256(world), size: world.byteLength },
     assets: { sha: sha256(assets), size: assets.byteLength },
@@ -72,12 +76,12 @@ export function isPublishedBlob(sha: string) {
 export function draftWorld(actor: Actor = SYSTEM) {
   if (!exists('world')) {
     const s = seedFiles()
-    putBlob(fs.readFileSync(SEED.world), s.world.sha)
-    putBlob(fs.readFileSync(SEED.assets), s.assets.sha)
+    putBlob(fs.readFileSync(/* turbopackIgnore: true */ SEED.world), s.world.sha)
+    putBlob(fs.readFileSync(/* turbopackIgnore: true */ SEED.assets), s.assets.sha)
     seed('world', 'world', {
       blobs: { world: s.world, assets: s.assets },
       schemaVersion: 2,
-      message: 'Imported the published Archipelago (HelloWorld 4ccab18) as the first revision',
+      message: 'Imported the shipped Archipelago (HelloWorld 4ccab18 with the portfolio’s areas) as the first revision',
       actor,
     })
   }
