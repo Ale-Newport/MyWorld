@@ -1,7 +1,9 @@
-/** One buffer owns SPACE. The legacy jump binding never sees it. */
+/** One handler owns SPACE. A press hops the car at once; a second press
+ * inside the window turns car ↔ plane. Held or auto-repeated keys never
+ * produce a second press: only a release re-arms it. Braking is B / Ctrl. */
 export class VehicleInput {
- constructor(inputs,onToggle,now=()=>performance.now()){
-  this.inputs=inputs;this.onToggle=onToggle;this.now=now;this.pending=null;this.spaceDown=false;this.brakeUntil=0;this.holdBrake=false;this.windowMs=300;
+ constructor(inputs,onToggle,now=()=>performance.now(),onTap=()=>{}){
+  this.inputs=inputs;this.onToggle=onToggle;this.onTap=onTap;this.now=now;this.pending=null;this.spaceDown=false;this.windowMs=300;
   this.down=code=>{if(code==='Space')this.press(this.now());};
   this.up=code=>{if(code==='Space')this.release(this.now());};
   inputs.keyboard.events.on('down',this.down);inputs.keyboard.events.on('up',this.up);
@@ -9,15 +11,16 @@ export class VehicleInput {
  press(time){
   if(this.spaceDown)return;
   this.spaceDown=true;
-  if(this.pending!==null&&time-this.pending<=this.windowMs){this.pending=null;this.holdBrake=false;this.brakeUntil=0;this.onToggle();}
-  else this.pending=time;
+  if(this.pending!==null&&time-this.pending<=this.windowMs){this.pending=null;this.onToggle();}
+  else{this.pending=time;this.onTap();}
  }
- release(){this.spaceDown=false;this.holdBrake=false;}
+ release(){this.spaceDown=false;}
+ /** Expires the double-press window. SPACE no longer brakes, so this never asks for it. */
  update(time=this.now()){
-  if(this.pending!==null&&time-this.pending>=this.windowMs){this.pending=null;this.holdBrake=this.spaceDown;this.brakeUntil=time+160;}
-  return this.holdBrake||time<this.brakeUntil;
+  if(this.pending!==null&&time-this.pending>=this.windowMs)this.pending=null;
+  return false;
  }
- reset(){this.pending=null;this.holdBrake=false;this.brakeUntil=0;this.spaceDown=false;}
+ reset(){this.pending=null;this.spaceDown=false;}
  flight(){
   const held=this.inputs.keyboard.pressed,stick=this.inputs.gamepad?.joysticks?.left;
   const key=k=>held.has(k)?1:0;

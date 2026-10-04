@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import RAPIER from '@dimforge/rapier3d-compat';
 import {Physics as PortfolioPhysics} from '../portfolio/world/physics/Physics.js';
 import {Events} from './Events.js';
+import {pushableColliders} from '../pushables.js';
 export {RAPIER};
 /** An explicit No Collision preset disables its subtree. Plain grouping roots
  * with collision:false (trees/lakes) can still contain physical child parts. */
@@ -28,6 +29,8 @@ export class Physics extends PortfolioPhysics {
     const dyn=d.physics_mode==='DYNAMIC';node.updateWorldMatrix(true,true);
     const p=new THREE.Vector3(),q=new THREE.Quaternion(),s=new THREE.Vector3();node.matrixWorld.decompose(p,q,s);
     const inverse=new THREE.Matrix4().compose(p,q,new THREE.Vector3(1,1,1)).invert();
+    // Pushable props get two fitted primitives (see pushables.js), never a hull or a trimesh.
+    if(dyn&&d.pushable){const fitted=pushableColliders(node);if(fitted?.length){const physical=this.add({type:'dynamic',position:p,rotation:q,colliders:fitted,friction:d.friction??.3,frictionRule:d.friction_rule==='min'?'min':undefined,restitution:d.restitution??.1,linearDamping:d.linear_damping??.3,angularDamping:d.angular_damping??.8,node,metadata:d});physical.body.enableCcd(d.ccd!==false);physical.authoring={parent:node.parent,index:node.parent?.children.indexOf(node),position:node.position.clone(),quaternion:node.quaternion.clone(),scale:node.scale.clone()};physical.worldScale=s.clone();return physical;}}
     const meshes=collisionMeshes(node);if(!meshes.length)return;
     let colliders=[],all=[];
     for(const mesh of meshes){

@@ -11,6 +11,8 @@ export class VehicleModes {
   this.impact=force=>{vehicle.releaseParking();if(this.isPlane&&force>.015&&this.impactGrace<=0){this.impactGrace=.75;this.flightSpeed=Math.max(7,this.flightSpeed*.65);this.heading+=.65;this.pitch=.35;}};vehicle.events.on('collision',this.impact);
  }
  get mode(){return this.isPlane?VehicleMode.PLANE:VehicleMode.CAR;}
+ /** 0 with the engine off (car mode), ~.6 at the slowest cruise, 1 flat out. */
+ get enginePower(){if(!this.isPlane)return 0;return clamp(.58+.36*(this.flightSpeed-8)/16+.06*(this.throttle??0),0,1);}
  toggle(){if(this.transition>0||this.player.state==='locked')return false;this.setMode(!this.isPlane);return true;}
  setMode(plane){
   if(plane===this.isPlane)return;
@@ -57,7 +59,11 @@ export class VehicleModes {
   this.heading-=this.turn*.64*dt;
   // Soft return pressure beyond the world, never teleport or an invisible wall.
   if(this.bounds){const cx=(this.bounds.minX+this.bounds.maxX)/2,cz=(this.bounds.minZ+this.bounds.maxZ)/2,rx=(this.bounds.maxX-this.bounds.minX)/2+80,rz=(this.bounds.maxZ-this.bounds.minZ)/2+80;const distance=Math.hypot((position.x-cx)/rx,(position.z-cz)/rz);if(distance>1){const target=Math.atan2(-(cz-position.z),cx-position.x),angle=Math.atan2(Math.sin(target-this.heading),Math.cos(target-this.heading));this.heading+=clamp(angle,-.35,.35)*Math.min(1,distance-1)*dt;}}
-  this.roll=THREE.MathUtils.damp(this.roll,-this.turn*.48,4,dt);
+  // Bank INTO the turn. The body basis below puts the right wing on local +Z, and a
+  // positive rotation about the forward axis (local +X) carries +Z downwards, so a
+  // positive roll lowers the right wing. turn > 0 is a right turn (heading -= turn),
+  // hence roll follows turn with the same sign: right turn, right wing down.
+  this.roll=THREE.MathUtils.damp(this.roll,this.turn*.48,4,dt);this.throttle=intent.throttle;
   const direction=new THREE.Vector3(Math.cos(this.heading)*Math.cos(this.pitch),Math.sin(this.pitch),-Math.sin(this.heading)*Math.cos(this.pitch));
   const right=new THREE.Vector3().crossVectors(direction,up).normalize(),normal=new THREE.Vector3().crossVectors(right,direction).normalize();
   const q=new THREE.Quaternion().setFromRotationMatrix(new THREE.Matrix4().makeBasis(direction,normal,right));q.multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1,0,0),this.roll));
