@@ -87,3 +87,13 @@
 .root[data-open='true'] .layer[data-band='0'] {
   transition: transform 1.18s cubic-bezier(0.42, 0, 0.5, 1) 0.16s, opacity 0.3s linear 1.04s;
 }
+
+/* REDUCED MOTION. No leaves are grown or swept aside: the dark of the
+   hedge fades in over the page and fades off the world. The cover is
+   just as complete — the transition waits for its computed opacity to
+   reach 1, so a fade can never be mistaken for coverage. */
+.root[data-reduced='true'] .deep { transition: opacity 0.24s linear; }
+.root[data-reduced='true'][data-open='true'] .deep { transition: opacity 0.4s linear; }
+@media (prefers-reduced-motion: reduce) {
+  .root[data-open='true'] .layer { transform: none !important; transition: opacity 0.4s linear !important; }
+}

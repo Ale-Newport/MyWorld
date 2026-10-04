@@ -2,9 +2,9 @@
 
 import Link from 'next/link'
 import { useEffect, useRef, useSyncExternalStore } from 'react'
-import { journeys } from '@/content/chapters'
 import type { Chapter, JourneyId } from '@/content/types'
-import { profile, contact } from '@/content/profile'
+import { useSite } from '@/cms/context'
+import { WorldEntryLink } from '@/components/world/WorldEntryLink'
 import { useActiveChapter, useJourneyRoute } from '@/components/journey/JourneyProvider'
 import { useJourney } from '@/state/journey'
 import { scrollToProgress } from '@/hooks/useLenisScroll'
@@ -86,6 +86,8 @@ export function IndexOverlay({ open, onClose }: { open: boolean; onClose: () => 
   /* Which journey is underfoot comes from the route, so the panel
      prints the right one first even before a single effect has run. */
   const { id: journeyId, ranges } = useJourneyRoute()
+  const { profile, contact, journeys, settings } = useSite()
+  const worldNav = settings.navigation.find((n) => n.id === 'world')
   const chapter = useActiveChapter().id
   const quickView = useJourney((s) => s.quickView)
   const setQuickView = useJourney((s) => s.setQuickView)
@@ -235,18 +237,19 @@ export function IndexOverlay({ open, onClose }: { open: boolean; onClose: () => 
               but nothing leads to it: two doors onto two worlds is
               one door too many, and the second island is the one
               the gateway was built for. */}
-          <Link
-            href="/world2"
+          {settings.options.worldEntrance && worldNav && <WorldEntryLink
+            href={worldNav.href}
             className={styles.worldLink}
             data-visited={visited || undefined}
             data-cursor="link"
             data-cursor-text="DRIVE"
+            source="index"
           >
-            <span>{visited ? 'Back to the island' : 'Enter my world'}</span>
+            <span>{visited ? 'Back to the island' : worldNav.label}</span>
             <span className={styles.worldLinkNote}>
               {visited ? 'You have been · pick up where you left off' : 'An interactive version · WASD'}
             </span>
-          </Link>
+          </WorldEntryLink>}
 
           <ul className={styles.links}>
             {contact.map((c) => {

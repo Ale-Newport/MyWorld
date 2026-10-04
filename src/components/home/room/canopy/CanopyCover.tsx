@@ -31,6 +31,12 @@ export interface CoverHandle {
   set(charge: number): void
   /** Part the leaves. */
   open(): void
+  /**
+   * Resolves once the cover is verifiably hiding the whole viewport: the
+   * opaque layer computes fully opaque, its box reaches every edge of the
+   * viewport, and that has held for two consecutive presented frames.
+   */
+  whenCovered(): Promise<void>
 }
 
 interface Props {
@@ -38,6 +44,8 @@ interface Props {
   initial?: number
   /** Below 1 on devices the journey judged slow: fewer leaves and pixels. */
   budget?: number
+  /** Reduced motion: no leaves are grown; the dark of the hedge fades in and out. */
+  reduced?: boolean
   onOpened?: () => void
   handleRef?: Ref<CoverHandle>
 }
@@ -62,11 +70,11 @@ const pause: Pause = () =>
     else window.setTimeout(() => resolve({ timeRemaining: () => 0 }), 16)
   })
 
-export function CanopyCover({ initial = 0, budget = 1, onOpened, handleRef }: Props) {
+export function CanopyCover({ initial = 0, budget = 1, reduced = false, onOpened, handleRef }: Props) {
   const rootRef = useRef<HTMLDivElement>(null)
   const deepRef = useRef<HTMLSpanElement>(null)
   const layersRef = useRef<HTMLDivElement>(null)
-  const cover = useRef({ charge: initial, renderer: null as CanopyRenderer | null, sealed: initial >= 1, opened: false })
+  const cover = useRef({ charge: initial, renderer: null as CanopyRenderer | null, sealed: initial >= 1 || reduced, opened: false })
 
   /* The dark of the leaves behind the last ones — from late in the
      charge no gap between leaves can show the page — and, once the
@@ -204,6 +212,35 @@ export function CanopyCover({ initial = 0, budget = 1, onOpened, handleRef }: Pr
       if (q >= 1) seal()
       else s.renderer?.setCharge(q)
     },
+    whenCovered() {
+      return new Promise<void>((resolve) => {
+        let stable = 0
+        const check = () => {
+          const root = rootRef.current
+          const deep = deepRef.current
+          if (root && deep && root.isConnected) {
+            const r = deep.getBoundingClientRect()
+            const vw = document.documentElement.clientWidth || window.innerWidth
+            const vh = window.innerHeight
+            const spans = r.left <= 0.5 && r.top <= 0.5 && r.right >= vw - 0.5 && r.bottom >= vh - 0.5
+            let opaque = Number(getComputedStyle(deep).opacity) >= 0.999
+            for (let el: HTMLElement | null = deep; opaque && el; el = el.parentElement) {
+              const cs = getComputedStyle(el)
+              if (cs.display === 'none' || cs.visibility === 'hidden' || Number(cs.opacity) < 0.999) opaque = false
+            }
+            stable = spans && opaque ? stable + 1 : 0
+            // Two in a row: the covered frame has been presented, not merely laid out.
+            if (stable >= 2) {
+              root.dataset.covered = 'true'
+              resolve()
+              return
+            }
+          }
+          requestAnimationFrame(check)
+        }
+        requestAnimationFrame(check)
+      })
+    },
     open() {
       const s = cover.current
       if (s.opened) return
@@ -227,7 +264,7 @@ export function CanopyCover({ initial = 0, budget = 1, onOpened, handleRef }: Pr
   }), [onOpened, deepen, seal])
 
   return (
-    <div ref={rootRef} className={styles.root} aria-hidden="true">
+    <div ref={rootRef} className={styles.root} aria-hidden="true" data-reduced={reduced || undefined}>
       <span ref={deepRef} className={styles.deep} />
       <div ref={layersRef} className={styles.layers} />
     </div>
