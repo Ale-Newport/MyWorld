@@ -95,7 +95,8 @@ export function Reveal({
       data-state="hidden"
     >
       {units.map((u, i) => (
-        <span className={styles.unitWrap} key={i} aria-hidden={i > 0 ? undefined : undefined}>
+        // The animated units are presentation (scrambling shows random glyphs); assistive tech reads the copy below.
+        <span className={styles.unitWrap} key={i} aria-hidden="true">
           <span
             className={styles.unit}
             data-unit=""
