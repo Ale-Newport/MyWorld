@@ -152,3 +152,82 @@
   .admin-root * { transition: none !important; animation: none !important; }
 }
 
+/* ---- page editor ------------------------------------------- */
+.admin-root .pe-root { display: grid; grid-template-rows: auto minmax(0, 1fr); height: 100vh; }
+.admin-root .pe-toolbar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 8px 12px; border-bottom: 1px solid var(--a-line); background: var(--a-panel); }
+.admin-root .pe-scope { font: 500 10.5px var(--a-mono); letter-spacing: 0.04em; color: var(--a-muted); padding: 3px 8px; border-radius: 999px; background: var(--a-sunk); }
+.admin-root .pe-body { display: grid; grid-template-columns: 260px minmax(0, 1fr) 300px; min-height: 0; }
+.admin-root .pe-left, .admin-root .pe-right { min-height: 0; overflow: auto; background: var(--a-panel); }
+.admin-root .pe-left { border-right: 1px solid var(--a-line); display: grid; grid-template-rows: auto minmax(0, 1fr); }
+.admin-root .pe-right { border-left: 1px solid var(--a-line); }
+.admin-root .pe-left-body { overflow: auto; }
+.admin-root .pe-canvas { position: relative; min-width: 0; min-height: 0; display: grid; grid-template-rows: auto minmax(0, 1fr); }
+.admin-root .pe-banner { display: flex; align-items: center; gap: 10px; padding: 8px 12px; background: var(--a-accent-soft); color: var(--a-ink-2); font-size: 12.5px; }
+.admin-root .pe-tabs { display: flex; border-bottom: 1px solid var(--a-line); position: sticky; top: 0; background: var(--a-panel); z-index: 1; }
+.admin-root .pe-tab { flex: 1; padding: 9px 4px; border: 0; background: none; font-size: 12px; color: var(--a-muted); cursor: pointer; border-bottom: 2px solid transparent; }
+.admin-root .pe-tab[aria-selected='true'] { color: var(--a-ink); border-bottom-color: var(--a-ink); font-weight: 600; }
+.admin-root .pe-empty { padding: 10px 12px; color: var(--a-muted); font-size: 12px; }
+.admin-root .pe-list { display: grid; padding: 4px 0; }
+.admin-root .pe-item { display: flex; align-items: center; gap: 2px; padding: 0 6px; min-height: 30px; border-radius: 5px; margin: 0 4px; }
+.admin-root .pe-item:hover, .admin-root .pe-item[data-hover] { background: var(--a-sunk); }
+.admin-root .pe-item[data-selected] { background: rgb(47 108 216 / 0.12); }
+.admin-root .pe-item[data-current] .pe-icon { color: var(--a-accent); }
+.admin-root .pe-item[data-dim] .pe-item-text { opacity: 0.45; }
+.admin-root .pe-item-main { flex: 1; min-width: 0; display: flex; align-items: center; gap: 7px; padding: 4px 2px; border: 0; background: none; text-align: left; cursor: pointer; font-size: 12.5px; }
+.admin-root .pe-item-text { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.admin-root .pe-item-text small { color: var(--a-faint); margin-left: 6px; font-size: 11px; }
+.admin-root .pe-icon { width: 16px; flex: none; text-align: center; font: 600 11px var(--a-mono); color: var(--a-muted); }
+.admin-root .pe-item-tools { display: flex; gap: 1px; opacity: 0; }
+.admin-root .pe-item:hover .pe-item-tools, .admin-root .pe-item:focus-within .pe-item-tools, .admin-root .pe-item-tools:has([aria-pressed='true']) { opacity: 1; }
+.admin-root .pe-grip { width: 12px; flex: none; color: var(--a-faint); font-size: 11px; cursor: grab; text-align: center; user-select: none; }
+.admin-root .pe-tool { width: 22px; height: 22px; display: grid; place-items: center; border: 0; border-radius: 4px; background: none; font-size: 11px; color: var(--a-muted); cursor: pointer; }
+.admin-root .pe-tool:hover { background: var(--a-line); color: var(--a-ink); }
+.admin-root .pe-tool:disabled { opacity: 0.3; }
+.admin-root .pe-tree-section { border-bottom: 1px solid var(--a-line); padding-bottom: 4px; }
+.admin-root .pe-tree-head { display: flex; align-items: center; gap: 6px; width: 100%; padding: 8px 10px 4px; border: 0; background: none; text-align: left; font: 600 11px var(--a-mono); letter-spacing: 0.06em; text-transform: uppercase; color: var(--a-ink-2); cursor: pointer; }
+.admin-root .pe-tree-head small { color: var(--a-faint); font-weight: 400; }
+.admin-root .pe-palette { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; padding: 0 8px 12px; }
+.admin-root .pe-tile { display: grid; justify-items: center; gap: 4px; padding: 10px 4px; border: 1px solid var(--a-line); border-radius: 8px; background: #fff; font-size: 11.5px; cursor: grab; }
+.admin-root .pe-tile span { font: 600 15px var(--a-mono); color: var(--a-muted); }
+.admin-root .pe-tile:hover { border-color: var(--a-select); }
+.admin-root .pe-assets { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; padding: 0 8px 12px; }
+.admin-root .pe-asset { aspect-ratio: 1; padding: 0; border: 1px solid var(--a-line); border-radius: 6px; overflow: hidden; background: var(--a-sunk); cursor: grab; display: grid; place-items: center; }
+.admin-root .pe-asset img { width: 100%; height: 100%; object-fit: cover; }
+.admin-root .pe-inspector-head { display: grid; gap: 6px; padding: 12px; border-bottom: 1px solid var(--a-line); }
+.admin-root .pe-title { font-size: 14px; font-weight: 600; }
+.admin-root .pe-name { font-weight: 600; }
+.admin-root .pe-id { color: var(--a-faint); font-size: 10.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.admin-root .pe-panel { border-bottom: 1px solid var(--a-line); }
+.admin-root .pe-panel-head { display: flex; align-items: center; justify-content: space-between; padding: 6px 8px 2px; }
+.admin-root .pe-disclose { border: 0; background: none; padding: 4px; font: 600 11px var(--a-mono); letter-spacing: 0.06em; text-transform: uppercase; color: var(--a-ink-2); cursor: pointer; }
+.admin-root .pe-panel-body { display: grid; gap: 6px; padding: 4px 12px 12px; }
+.admin-root .pe-row { display: grid; grid-template-columns: 78px minmax(0, 1fr); align-items: center; gap: 6px; min-height: 28px; }
+.admin-root .pe-grid2 .pe-row { grid-template-columns: 1fr; gap: 2px; }
+.admin-root .pe-row-label { font-size: 11.5px; color: var(--a-muted); display: flex; align-items: center; gap: 2px; }
+.admin-root .pe-row[data-set] .pe-row-label { color: var(--a-select); font-weight: 600; }
+.admin-root .pe-reset { border: 0; background: none; color: var(--a-faint); cursor: pointer; padding: 0 3px; font-size: 13px; line-height: 1; }
+.admin-root .pe-reset:hover { color: var(--a-danger); }
+.admin-root .pe-row-control { min-width: 0; }
+.admin-root .pe-input { min-height: 28px; padding: 4px 7px; font-size: 12px; }
+.admin-root textarea.pe-input { min-height: 54px; }
+.admin-root .pe-input::placeholder { color: var(--a-faint); }
+.admin-root .pe-inline { display: flex; align-items: center; gap: 4px; min-width: 0; }
+.admin-root .pe-inline > .input { flex: 1; min-width: 0; }
+.admin-root .pe-swatch { width: 28px; height: 28px; flex: none; padding: 0; border: 1px solid var(--a-line-strong); border-radius: 5px; background: none; }
+.admin-root .pe-grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.admin-root .pe-seg { flex-wrap: wrap; }
+.admin-root .pe-seg .btn { padding: 0 8px; }
+.admin-root .pe-anchor { display: grid; grid-template-columns: repeat(3, 18px); gap: 3px; }
+.admin-root .pe-anchor button { width: 18px; height: 18px; border: 1px solid var(--a-line-strong); border-radius: 3px; background: #fff; cursor: pointer; }
+.admin-root .pe-anchor button:hover { background: var(--a-select); border-color: var(--a-select); }
+.admin-root .pe-align { display: flex; flex-wrap: wrap; gap: 4px; }
+.admin-root .pe-fluid { display: grid; gap: 6px; margin-top: 6px; padding: 8px; border: 1px solid var(--a-line); border-radius: 7px; background: var(--a-bg); font-size: 11.5px; }
+.admin-root .pe-fluid label { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; }
+.admin-root .pe-fluid .pe-input { width: 58px; }
+.admin-root .pe-fluid code { font-size: 10.5px; word-break: break-all; }
+.admin-root .pe-tips { margin: 0; padding-left: 16px; display: grid; gap: 6px; font-size: 12px; color: var(--a-ink-2); }
+.admin-root kbd { font: 500 10.5px var(--a-mono); padding: 1px 4px; border: 1px solid var(--a-line-strong); border-bottom-width: 2px; border-radius: 4px; background: #fff; }
+@media (max-width: 1100px) {
+  .admin-root .pe-body { grid-template-columns: 220px minmax(0, 1fr) 260px; }
+}
+

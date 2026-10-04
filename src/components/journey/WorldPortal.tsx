@@ -9,9 +9,9 @@ import { clamp, damp } from '@/lib/math'
 import { subscribe } from '@/lib/ticker'
 import { garden } from '@/components/home/botanical/garden'
 import { inTransition, worldTransition } from '@/components/world/transition'
-import { WorldEntryLink } from '@/components/world/WorldEntryLink'
+import { WorldEntryLink, transitionAllowed } from '@/components/world/WorldEntryLink'
 import { track } from '@/components/analytics/track'
-import { useSite } from '@/cms/context'
+import { useEditing, useSite } from '@/cms/context'
 import styles from './WorldPortal.module.css'
 
 /* ============================================================
@@ -240,8 +240,11 @@ export function WorldPortal() {
     return () => cancelAnimationFrame(raf)
   }, [])
 
+  const editing = useEditing()
   useEffect(() => {
     if (reducedMotion || !settings.options.worldEntrance) return
+    // Scrolling the admin's preview must not carry the editor off to /world.
+    if (!transitionAllowed(editing)) return
     portal.pull = 0
     portal.drag = 0
 
@@ -505,7 +508,7 @@ export function WorldPortal() {
       frame.velocity = 0
       frame.chapterProgress = 0
     }
-  }, [reducedMotion, router, settings.options.worldEntrance, worldHref])
+  }, [reducedMotion, router, settings.options.worldEntrance, worldHref, editing])
 
   return (
     <div

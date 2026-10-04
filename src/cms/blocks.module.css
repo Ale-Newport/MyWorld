@@ -4,7 +4,9 @@
 .slot {
   position: absolute;
   inset: 0;
-  z-index: 3;
+  /* Above the chapter's own content (--z-content), under the HUD and overlays. The slot
+     itself lets every click through; only what was added in it takes the pointer. */
+  z-index: calc(var(--z-content, 10) + 2);
   display: flex;
   flex-direction: column;
   align-items: flex-start;
