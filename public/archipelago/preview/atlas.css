@@ -1,0 +1,42 @@
+/* The M map. Same chrome as the player HUD: deep teal glass, cream type. */
+.atlas{position:fixed;inset:0;z-index:40;display:grid;grid-template-columns:minmax(0,1fr) 230px;grid-template-rows:auto minmax(0,1fr);gap:14px;padding:18px;background:#0e1f26e8;color:#eff9f2;font:12px -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;box-sizing:border-box}
+.atlas[hidden]{display:none}
+.atlas *{box-sizing:border-box}
+.atlas-head{grid-column:1/-1;display:flex;align-items:flex-end;justify-content:space-between;gap:16px}
+.atlas-eyebrow{margin:0 0 4px;font-size:10px;letter-spacing:.22em;text-transform:uppercase;color:#9fc4bd}
+.atlas-head h2{margin:0;font:600 26px/1 Geist,-apple-system,sans-serif;letter-spacing:-.02em}
+.atlas button{font:inherit;color:#eff9f2;background:#152c35;border:1px solid #6a9997;border-radius:8px;padding:9px 13px;cursor:pointer}
+.atlas button:hover{background:#1f3f4a}
+.atlas button:focus-visible,.atlas-stage:focus-visible{outline:2px solid #f2c14e;outline-offset:2px}
+.atlas-close kbd{margin-left:8px;padding:1px 5px;border:1px solid #6a9997;border-radius:4px;font:10px ui-monospace,monospace;color:#bcd8d2}
+.atlas-stage{position:relative;overflow:hidden;border-radius:14px;background:#2d7f92;border:1px solid #3f6c74;touch-action:none;cursor:grab;user-select:none}
+.atlas-stage:active{cursor:grabbing}
+.atlas-plane{position:absolute;left:0;top:0;transform-origin:0 0;will-change:transform}
+.atlas-base{display:block;width:100%;height:100%}
+.atlas-detail{position:absolute;display:block}
+.atlas-detail[hidden]{display:none}
+.atlas-pins{position:absolute;inset:0;pointer-events:none}
+.atlas-pin{position:absolute;display:flex;align-items:center;gap:6px;transform:translate(-7px,-7px);pointer-events:auto;white-space:nowrap}
+.atlas-pin i{display:grid;place-items:center;width:14px;height:14px;border-radius:50%;background:var(--pin);border:2px solid #f6f2e8;box-shadow:0 1px 4px #0007;font:normal 8px/1 sans-serif;color:#fff}
+.atlas-pin[data-flip='true']{flex-direction:row-reverse;transform:translate(calc(-100% + 7px),-7px)}
+.atlas-pin-activity i{border-radius:3px;transform:rotate(45deg)}
+.atlas-pin span{padding:2px 7px;border-radius:999px;background:#f6f2e8f0;color:#15262c;font:600 11px/1.3 -apple-system,sans-serif;box-shadow:0 1px 5px #0005}
+.atlas-pin[data-label='false'] span{display:none}
+.atlas-pin[data-label='false']:hover span{display:block;position:relative;z-index:2}
+.atlas-player{position:absolute;width:0;height:0;border-left:11px solid transparent;border-right:11px solid transparent;border-bottom:27px solid #f2c14e;filter:drop-shadow(0 0 1.5px #fff) drop-shadow(0 0 1.5px #fff) drop-shadow(0 2px 5px #000c)}
+.atlas-player::after{content:'';position:absolute;left:-23px;top:-9px;width:46px;height:46px;border-radius:50%;border:2px solid #f2c14e80;animation:atlas-ping 2.4s ease-out infinite}
+@keyframes atlas-ping{from{transform:scale(.4);opacity:1}to{transform:scale(1.3);opacity:0}}
+@media (prefers-reduced-motion:reduce){.atlas-player::after{animation:none;opacity:.6}}
+.atlas-side{display:flex;flex-direction:column;gap:14px;min-height:0;overflow:auto}
+.atlas-zoom{display:flex;gap:6px}
+.atlas-zoom button{width:40px;padding:8px 0;font-size:16px;line-height:1}
+.atlas-north{margin:0;font:600 12px ui-monospace,monospace;letter-spacing:.1em;color:#bcd8d2}
+.atlas-scale{display:flex;align-items:center;gap:8px;color:#bcd8d2;font:11px ui-monospace,monospace}
+.atlas-scale i{display:block;height:6px;border:2px solid #eff9f2;border-top:0}
+.atlas-legend{list-style:none;margin:0;padding:0;display:grid;gap:8px}
+.atlas-legend li{display:flex;align-items:center;gap:9px}
+.atlas-key{display:inline-block;width:12px;height:12px;border-radius:50%;border:2px solid #f6f2e8}
+.atlas-key-player{border-radius:0;width:0;height:0;border:6px solid transparent;border-bottom:13px solid #f2c14e;border-top:0}
+.atlas-status{margin:auto 0 0;color:#9fc4bd;font-size:11px}
+@media (max-width:760px){.atlas{grid-template-columns:1fr;grid-template-rows:auto minmax(0,1fr) auto;padding:10px;gap:10px}.atlas-side{flex-direction:row;flex-wrap:wrap;align-items:center;overflow:visible}.atlas-legend{grid-auto-flow:column;gap:12px}.atlas-status{display:none}.atlas-head h2{font-size:20px}}
+@media (prefers-reduced-motion:reduce){.atlas-plane{will-change:auto}}
