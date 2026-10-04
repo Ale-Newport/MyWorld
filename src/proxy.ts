@@ -31,6 +31,9 @@ export function proxy(request: NextRequest) {
   return response
 }
 
+/* Pages only. The admin API authenticates every request itself, and must not
+   pass through here: the proxy buffers request bodies up to 10 MB and silently
+   truncates the rest, which would cut world uploads (~16 MB) and media short. */
 export const config = {
-  matcher: ['/admin', '/admin/:path*', '/api/admin/:path*'],
+  matcher: ['/admin', '/admin/:path*'],
 }

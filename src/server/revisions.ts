@@ -207,20 +207,24 @@ export function restore(docId: DocId, revisionId: string, actor: Actor, base: st
 }
 
 export function history(docId: DocId, limit = 100): RevisionMeta[] {
-  return (db().prepare(`select ${META} from revisions where doc_id = ? order by created_at desc limit ?`).all(docId, limit) as Row[]).map(meta)
+  return (db().prepare(`select ${META} from revisions where doc_id = ? order by created_at desc, rowid desc limit ?`).all(docId, limit) as Row[]).map(meta)
 }
 
-/** Keeps every published revision, the heads, and the most recent drafts. */
+/** Keeps the heads, the most recent publications and the most recent drafts; the oldest beyond those go. */
 export function prune(docId: DocId) {
   const { draft, published } = head(docId)
   const keep = new Set([draft?.id, published?.id].filter(Boolean) as string[])
-  const rows = db().prepare('select id, published_at from revisions where doc_id = ? order by created_at desc').all(docId) as Row[]
-  let drafts = 0
+  const rows = db().prepare('select id, published_at from revisions where doc_id = ? order by created_at desc, rowid desc').all(docId) as Row[]
+  const keepDrafts = docId === 'world' ? config.keepWorldDraftRevisions : config.keepDraftRevisions
+  let drafts = 0, publications = 0
   const doomed: string[] = []
   for (const row of rows) {
     const id = row.id as string
-    if (keep.has(id) || row.published_at != null) continue
-    if (++drafts > config.keepDraftRevisions) doomed.push(id)
+    if (keep.has(id)) continue
+    // The first revision is the import every history starts from: never pruned.
+    if (row === rows[rows.length - 1]) continue
+    if (row.published_at != null) { if (++publications > config.keepPublishedRevisions) doomed.push(id); continue }
+    if (++drafts > keepDrafts) doomed.push(id)
   }
   if (!doomed.length) return 0
   tx(() => {

@@ -50,7 +50,7 @@ export function SiteContentProvider({ doc, editing = false, children }: { doc: S
     return () => { cancelled = true; dispose?.() }
   }, [editing])
 
-  const value = useMemo(() => deriveSite(live), [live])
+  const value = useMemo(() => deriveSite(live, { preview: editing }), [live, editing])
   // Non-React readers (the journey store, the canvas scenes) see the same content.
   useMemo(() => setJourneyContent(value), [value])
   const css = useMemo(() => compileStyles(live, { editing }), [live, editing])

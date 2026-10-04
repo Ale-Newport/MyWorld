@@ -73,11 +73,5 @@ export function adminApi<C = object>(handler: Handler<C>) {
   }
 }
 
-export class ValidationError extends Error {
-  name = 'ValidationError'
-  issues: unknown[]
-  constructor(message: string, issues: unknown[] = []) {
-    super(message)
-    this.issues = issues
-  }
-}
+/* Kept in its own module so code that only validates (media, the world) has no tie to Next's request APIs. */
+export { ValidationError } from '../errors.ts'

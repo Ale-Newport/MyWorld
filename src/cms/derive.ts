@@ -85,9 +85,10 @@ function chaptersOf(journey: SiteDocument['journeys']['home'], doc: SiteDocument
     }))
 }
 
-export function deriveSite(doc: SiteDocument): SiteContent {
-  const live = doc.projects.filter((p) => p.status === 'published').sort((a, b) => a.order - b.order) as (LegacyProject & Project)[]
-  const listed = live.filter((p) => !p.hidden)
+/** `preview`: the admin's draft preview also resolves draft projects by slug (never archived ones), so they can be reviewed before publishing. */
+export function deriveSite(doc: SiteDocument, { preview = false }: { preview?: boolean } = {}): SiteContent {
+  const live = doc.projects.filter((p) => p.status === 'published' || (preview && p.status === 'draft')).sort((a, b) => a.order - b.order) as (LegacyProject & Project)[]
+  const listed = live.filter((p) => !p.hidden && p.status === 'published')
   const ids = new Set(live.map((p) => p.id))
   const techNodes: TechNode[] = doc.techNodes.map((n) => {
     const evidence = n.evidence.filter((e) => ids.has(e))
