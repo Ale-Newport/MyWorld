@@ -1,9 +1,10 @@
 import type { MetadataRoute } from 'next'
-import { siteConfig } from '@/content/profile'
+import { publishedSite } from '@/server/site'
 
 export default function robots(): MetadataRoute.Robots {
+  const { doc } = publishedSite()
   return {
-    rules: { userAgent: '*', allow: '/' },
-    sitemap: `${siteConfig.url}/sitemap.xml`,
+    rules: [{ userAgent: '*', allow: '/', disallow: ['/admin', '/api/'] }],
+    sitemap: `${doc.settings.siteUrl}/sitemap.xml`,
   }
 }

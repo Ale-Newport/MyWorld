@@ -4,7 +4,8 @@ import { createContext, useContext, useEffect, useLayoutEffect, useMemo } from '
 import { useJourney } from '@/state/journey'
 import { useLenisScroll, scrollToProgress } from '@/hooks/useLenisScroll'
 import { detectDevice } from '@/lib/perf'
-import { chapterRanges, journeys, totalVh, type ChapterRange } from '@/content/chapters'
+import { chapterRanges, totalVh, type ChapterRange } from '@/content/chapters'
+import { useSite } from '@/cms/context'
 import type { Chapter, JourneyId } from '@/content/types'
 
 /* ============================================================
@@ -85,7 +86,7 @@ export function JourneyProvider({
 
   useLenisScroll(true)
 
-  const list = journeys[journey].chapters
+  const list = useSite().journeys[journey].chapters
   const ranges = useMemo(() => chapterRanges(quickView, list), [quickView, list])
   const route = useMemo<JourneyRoute>(
     () => ({ id: journey, chapters: list, ranges }),
@@ -134,10 +135,8 @@ export function JourneyProvider({
      the context above, which is per render tree.
      ============================================================ */
   useIsomorphicLayoutEffect(() => {
-    if (useJourney.getState().journeyId !== journey) {
-      useJourney.getState().setJourney(journey)
-    }
-  }, [journey])
+    useJourney.getState().setJourney(journey, list)
+  }, [journey, list])
 
   /* ---- device + preferences ------------------------------ */
   useEffect(() => {

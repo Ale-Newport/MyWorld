@@ -5,10 +5,8 @@ import { Chapter } from '@/components/journey/Chapter'
 import { Reveal } from '@/components/typography/Reveal'
 import { TagRow } from '@/components/journey/parts'
 import { WorldPortal, portal } from '@/components/journey/WorldPortal'
-import { profile, contact } from '@/content/profile'
-import { chapterById } from '@/content/chapters'
-import { projects } from '@/content/projects'
-import { techNodes } from '@/content/skills'
+import { useSite } from '@/cms/context'
+import { E, useCms } from '@/cms/editable'
 import { useChapterFrame } from '@/hooks/useChapterProgress'
 import { useJourney } from '@/state/journey'
 import { clamp, easeOutCubic, range } from '@/lib/math'
@@ -23,6 +21,8 @@ import styles from './Contact.module.css'
    ============================================================ */
 
 export function Contact() {
+  const { profile, contact, chapterById, projects, techNodes } = useSite()
+  const answerCms = useCms('contact.answer', { kind: 'heading', label: 'Closing answer', bind: 'profile.closing.answer' })
   const reducedMotion = useJourney((s) => s.reducedMotion)
   const stageRef = useRef<HTMLDivElement>(null)
   const questionRef = useRef<HTMLParagraphElement>(null)
@@ -83,30 +83,30 @@ export function Contact() {
   return (
     <Chapter id="contact" labelledBy="contact-title">
       <div className={`${shared.stage} ${styles.stage}`} ref={stageRef}>
-        <div className={`${shared.corner} ${shared.cornerTL} ${styles.chrome}`}>
+        <E cms="contact.tag" as="div" label="Chapter tag" className={`${shared.corner} ${shared.cornerTL} ${styles.chrome}`}>
           <TagRow items={[chapterById['contact'].number, 'END OF JOURNEY']} />
-        </div>
-        <div className={`${shared.corner} ${shared.cornerTR} ${styles.chrome}`}>
+        </E>
+        <E cms="contact.stats" as="div" label="Totals" className={`${shared.corner} ${shared.cornerTR} ${styles.chrome}`}>
           {projects.length} PROJECTS
           <br />
           {techNodes.length} TECHNOLOGIES
           <br />
           MOVE YOUR POINTER
-        </div>
+        </E>
 
         <div className={styles.center}>
-          <p className={`${styles.question} ${shared.driven}`} ref={questionRef} aria-hidden="true">
+          <E cms="contact.question" as="p" kind="heading" label="Closing question" bind="profile.closing.question" className={`${styles.question} ${shared.driven}`} ref={questionRef} aria-hidden="true">
             {profile.closing.question}
-          </p>
+          </E>
           <p className={`${styles.answer} ${shared.driven}`} ref={answerRef}>
-            <Reveal as="span" mode="chars" className={styles.answerText} id="contact-title">
+            <Reveal as="span" mode="chars" className={styles.answerText} id="contact-title" attrs={answerCms}>
               {profile.closing.answer}
             </Reveal>
           </p>
         </div>
 
-        <ul className={styles.links} ref={linksRef}>
-          {contact.map((c) => {
+        <E cms="contact.links" as="ul" kind="list" label="Contact links" className={styles.links} ref={linksRef}>
+          {contact.map((c, i) => {
             const pending = c.id === 'cv' && c.dataStatus === 'placeholder'
             const external = c.href.startsWith('http')
             return (
@@ -125,20 +125,20 @@ export function Contact() {
                     data-cursor="link"
                     data-cursor-text={c.label.toUpperCase()}
                   >
-                    <span className={styles.linkLabel}>{c.label}</span>
-                    <span className={styles.linkValue}>{c.value}</span>
+                    <E cms={`contact.link.${c.id}.label`} label={`${c.label} — label`} bind={`contact.${i}.label`} className={styles.linkLabel}>{c.label}</E>
+                    <E cms={`contact.link.${c.id}.value`} label={`${c.label} — value`} bind={`contact.${i}.value`} className={styles.linkValue}>{c.value}</E>
                     <span className={styles.linkArrow} aria-hidden="true">↗</span>
                   </a>
                 )}
               </li>
             )
           })}
-        </ul>
+        </E>
 
-        <footer className={`${styles.colophon} ${styles.chrome}`}>
-          <span>{profile.name} · Portfolio {profile.year}</span>
-          <span>Built with Next.js, React Three Fiber and a lot of scroll maths.</span>
-        </footer>
+        <E cms="contact.colophon" as="footer" kind="container" label="Colophon" className={`${styles.colophon} ${styles.chrome}`}>
+          <E cms="contact.colophon.name" label="Colophon — name">{profile.name} · Portfolio {profile.year}</E>
+          <E cms="contact.colophon.built" label="Colophon — credits">Built with Next.js, React Three Fiber and a lot of scroll maths.</E>
+        </E>
 
         {/* The world is an optional second way through the same
             material, so it waits at the foot of the page: one more

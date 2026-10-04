@@ -1,7 +1,4 @@
-import { profile, contact } from '@/content/profile'
-import { education, credentials } from '@/content/education'
-import { projects } from '@/content/projects'
-import { techNodes, techGroups } from '@/content/skills'
+import { TECH_GROUPS as techGroups, type SiteContent } from '@/cms/derive'
 import styles from './StaticProfile.module.css'
 
 /* ============================================================
@@ -34,7 +31,8 @@ import styles from './StaticProfile.module.css'
    only ever seen this page — straight to it.
    ============================================================ */
 
-export function StaticProfile() {
+export function StaticProfile({ content }: { content: SiteContent }) {
+  const { profile, contact, education, credentials, projects, techNodes } = content
   return (
     <div className={styles.host} id="profile-summary">
       <h1>{profile.name} — Software &amp; AI Engineer</h1>
@@ -71,9 +69,9 @@ export function StaticProfile() {
 
       {/* An index, not an archive: a name, a year and the one line
           each project is introduced with. Every title links to the
-          case study's own deep link — the `/#project/<slug>` URLs
-          the sitemap already advertises and which, until now,
-          nothing in the crawlable markup actually pointed at. */}
+          project's own page, /projects/<slug>, which the sitemap
+          advertises and which renders the same project entity the
+          cards, the universe and the case-study overlay read. */}
       <h2>Project index</h2>
       <p>
         {projects.length} projects. Descriptions, contributions, verified facts,
@@ -82,7 +80,7 @@ export function StaticProfile() {
       <ul>
         {projects.map((p) => (
           <li key={p.id}>
-            <a href={`/#project/${p.slug}`}>{p.title}</a> ({p.year}) — {p.shortDescription}
+            <a href={`/projects/${p.slug}`}>{p.title}</a> ({p.year}) — {p.shortDescription}
           </li>
         ))}
       </ul>

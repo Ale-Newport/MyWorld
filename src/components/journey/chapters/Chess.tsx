@@ -2,12 +2,12 @@
 
 import { useRef, useState } from 'react'
 import { Chapter } from '@/components/journey/Chapter'
+import { useSite } from '@/cms/context'
+import { E, useCms, useCmsText } from '@/cms/editable'
 import { Reveal } from '@/components/typography/Reveal'
 import { TagRow } from '@/components/journey/parts'
 import { Counter } from '@/components/typography/Counter'
 import { ProjectVisual } from '@/components/project-visuals/ProjectVisual'
-import { projectById } from '@/content/projects'
-import { chapterById } from '@/content/chapters'
 import { useChapterFrame } from '@/hooks/useChapterProgress'
 import { useJourney } from '@/state/journey'
 import { clamp, range } from '@/lib/math'
@@ -23,6 +23,9 @@ import styles from './Chess.module.css'
 const PIPELINE = ['CAMERA', 'BOARD DETECTION', 'GRID', 'PIECE DETECTION', 'CLASSIFICATION', 'BOARD STATE', 'FEN', 'STOCKFISH', 'BEST MOVE']
 
 export function Chess() {
+  const { projectById, chapterById } = useSite()
+  const titleCms = useCms('chess.title', { kind: 'heading', label: 'Title' })
+  const title = useCmsText('chess.title', 'Chess\nAssistant')
   const project = projectById['chess-assistant']
   const reducedMotion = useJourney((s) => s.reducedMotion)
   const [progress, setProgress] = useState(0)
@@ -69,9 +72,9 @@ export function Chess() {
         </div>
 
         <div className={styles.head}>
-          <TagRow items={[chapterById['chess'].number, 'SEEING THE BOARD', '2025']} />
-          <Reveal as="h2" mode="mask" className={styles.title} id="chess-title">
-            {'Chess\nAssistant'}
+          <E cms="chess.tag" label="Chapter tag"><TagRow items={[chapterById['chess'].number, 'SEEING THE BOARD', '2025']} /></E>
+          <Reveal as="h2" mode="mask" className={styles.title} id="chess-title" attrs={titleCms}>
+            {title}
           </Reveal>
           <p className={shared.note}>{project.shortDescription}</p>
         </div>

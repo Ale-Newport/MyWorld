@@ -2,13 +2,12 @@
 
 import { useRef, useState } from 'react'
 import { Chapter } from '@/components/journey/Chapter'
+import { useSite } from '@/cms/context'
+import { E, useCms, useCmsText } from '@/cms/editable'
 import { Reveal } from '@/components/typography/Reveal'
 import { TagRow, MetricBlock } from '@/components/journey/parts'
 import { Counter } from '@/components/typography/Counter'
 import { useJourneyRoute } from '@/components/journey/JourneyProvider'
-import { experienceById } from '@/content/experience'
-import { chapterById } from '@/content/chapters'
-import { clientProjects, featuredClientProjects } from '@/content/projects/client'
 import { useChapterFrame } from '@/hooks/useChapterProgress'
 import { useJourney } from '@/state/journey'
 import { clamp, range, easeOutCubic } from '@/lib/math'
@@ -28,6 +27,9 @@ import styles from './Pansofia.module.css'
    ============================================================ */
 
 export function Pansofia() {
+  const { experienceById, chapterById, clientProjects, featuredClientProjects } = useSite()
+  const titleCms = useCms('pansofia.title', { kind: 'heading', label: 'Title' })
+  const title = useCmsText('pansofia.title', 'Pansofia /\nGrupo Newport')
   const role = experienceById.pansofia
   const reducedMotion = useJourney((s) => s.reducedMotion)
   const railRef = useRef<HTMLDivElement>(null)
@@ -122,9 +124,9 @@ export function Pansofia() {
     <Chapter id="pansofia" labelledBy="pansofia-title">
       <div className={`${shared.stage} ${styles.stage}`}>
         <div className={`${styles.head} ${shared.driven}`} ref={headRef}>
-          <TagRow items={[chapterById['pansofia'].number, 'FROM PROJECTS TO PRODUCTS', role.dates]} />
-          <Reveal as="h2" mode="mask" className={styles.title} id="pansofia-title">
-            {'Pansofia /\nGrupo Newport'}
+          <E cms="pansofia.tag" label="Chapter tag"><TagRow items={[chapterById['pansofia'].number, 'FROM PROJECTS TO PRODUCTS', role.dates]} /></E>
+          <Reveal as="h2" mode="mask" className={styles.title} id="pansofia-title" attrs={titleCms}>
+            {title}
           </Reveal>
           <p className={styles.role}>{role.role}</p>
           <p className={shared.lead}>{role.summary}</p>

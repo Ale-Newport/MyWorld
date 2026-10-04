@@ -5,10 +5,7 @@ import { useFrame, useThree } from '@react-three/fiber'
 import * as THREE from 'three'
 import { frame } from '@/state/journey'
 import { readChapterProgress } from '@/hooks/useChapterProgress'
-import { projects } from '@/content/projects'
-import { techNodes } from '@/content/skills'
-import { education } from '@/content/education'
-import { experience } from '@/content/experience'
+import { currentContent } from '@/state/content'
 import { detectDevice } from '@/lib/perf'
 import { clamp, damp, range, seeded, fibonacciSphere } from '@/lib/math'
 
@@ -69,6 +66,7 @@ const WARM_FROM = 0.958
 const WARM_EVERY = 5
 
 export function ContactScene() {
+  const { projects, techNodes, education, experience } = currentContent()
   const device = useMemo(() => detectDevice(), [])
   const gl = useThree((s) => s.gl)
   const group = useRef<THREE.Group>(null!)
@@ -136,7 +134,7 @@ export function ContactScene() {
       const home = new THREE.Vector3(x * shell, y * shell * 0.78, z * shell)
       return { home, pos: home.clone().multiplyScalar(4 + rand() * 6), vel: new THREE.Vector3(), size: e.size, kind: e.kind }
     })
-  }, [device.density])
+  }, [device.density, projects, techNodes, education, experience])
 
   useFrame((_, dt) => {
     if (released.current) return

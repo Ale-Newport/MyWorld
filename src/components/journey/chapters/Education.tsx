@@ -4,8 +4,9 @@ import { useRef } from 'react'
 import { Chapter } from '@/components/journey/Chapter'
 import { Reveal } from '@/components/typography/Reveal'
 import { TagRow } from '@/components/journey/parts'
-import { credentials, educationById, type Education as School } from '@/content/education'
-import { chapterById } from '@/content/chapters'
+import type { Education as School } from '@/content/education'
+import { useSite } from '@/cms/context'
+import { E, useCms, useCmsText } from '@/cms/editable'
 import { useChapterFrame } from '@/hooks/useChapterProgress'
 import { useJourney } from '@/state/journey'
 import { clamp, range } from '@/lib/math'
@@ -25,8 +26,8 @@ import styles from './Education.module.css'
    same frame as the same row of the other.
    ============================================================ */
 
-/** The order the story reads in: where it started, where it is going. */
-const ORDER = ['kcl', 'ucl'] as const
+/** The order the story reads in: where it started, where it is going — by start date, so a new entry finds its place. */
+const byStart = (a: School, b: School) => a.start.localeCompare(b.start)
 
 /** Taken from the dates rather than written down, so it never goes stale. */
 function standing(school: School, now = new Date()): string {
@@ -40,6 +41,9 @@ function standing(school: School, now = new Date()): string {
 }
 
 export function Education() {
+  const { education, credentials, chapterById } = useSite()
+  const titleCms = useCms('education.title', { kind: 'heading', label: 'Title' })
+  const title = useCmsText('education.title', 'Two universities,\none direction.')
   const reducedMotion = useJourney((s) => s.reducedMotion)
   const headRef = useRef<HTMLDivElement>(null)
   const cardsRef = useRef<HTMLDivElement>(null)
@@ -80,47 +84,48 @@ export function Education() {
   return (
     <Chapter id="education" labelledBy="education-title">
       <div className={`${shared.stage} ${styles.stage}`}>
-        <div className={`${styles.head} ${shared.driven}`} ref={headRef}>
-          <TagRow items={[chapterById['education'].number, 'EDUCATION', 'LONDON · 2023 — 2027']} />
-          <Reveal as="h2" mode="mask" className={styles.title} id="education-title">
-            {'Two universities,\none direction.'}
+        <E cms="education.head" as="div" kind="container" label="Heading block" className={`${styles.head} ${shared.driven}`} ref={headRef}>
+          <E cms="education.tag" label="Chapter tag"><TagRow items={[chapterById['education'].number, 'EDUCATION', 'LONDON · 2023 — 2027']} /></E>
+          <Reveal as="h2" mode="mask" className={styles.title} id="education-title" attrs={titleCms}>
+            {title}
           </Reveal>
-        </div>
+        </E>
 
-        <div className={styles.cards} ref={cardsRef}>
-          {ORDER.map((id) => {
-            const school = educationById[id]
+        <E cms="education.cards" as="div" kind="container" label="University cards" className={styles.cards} ref={cardsRef}>
+          {[...education].sort(byStart).map((school, index) => {
+            const id = school.id
+            const at = `education.${education.indexOf(school)}`
             return (
-              <article key={id} className={`${styles.card} ${shared.driven}`} aria-labelledby={`edu-${id}`}>
+              <E cms={`education.card.${id}`} as="article" kind="card" label={`Card: ${school.shortName}`} key={id} className={`${styles.card} ${shared.driven}`} aria-labelledby={`edu-${id}`} data-index={index}>
                 <header className={styles.cardHead}>
-                  <span className={styles.short}>{school.shortName}</span>
-                  <span className={styles.dates}>{school.dates}</span>
+                  <E cms={`education.card.${id}.short`} label="Short name" bind={`${at}.shortName`} className={styles.short}>{school.shortName}</E>
+                  <E cms={`education.card.${id}.dates`} label="Dates" bind={`${at}.dates`} className={styles.dates}>{school.dates}</E>
                 </header>
-                <h3 className={styles.institution} id={`edu-${id}`}>{school.institution}</h3>
-                <p className={styles.degree}>{school.degree}</p>
+                <E cms={`education.card.${id}.institution`} as="h3" kind="heading" label="Institution" bind={`${at}.institution`} className={styles.institution} id={`edu-${id}`}>{school.institution}</E>
+                <E cms={`education.card.${id}.degree`} as="p" label="Degree" bind={`${at}.degree`} className={styles.degree}>{school.degree}</E>
                 <p className={styles.standing}>
                   <span className={styles.standingDot} aria-hidden="true" />
                   {standing(school)}
                   <span className={styles.location}>{school.location}</span>
                 </p>
                 <ul className={styles.modules} aria-label={`${school.shortName} modules`}>
-                  {school.modules.map((m) => (
+                  {school.modules.map((m, i) => (
                     <li key={m.name} className={styles.module} data-module-row="" data-on="false">
                       <span className={styles.glyph} aria-hidden="true">
                         <ModuleGlyph kind={m.visual} />
                       </span>
-                      <span className={styles.moduleName}>{m.name}</span>
-                      <span className={styles.moduleBlurb}>{m.blurb}</span>
+                      <E cms={`education.card.${id}.module.${i}.name`} label={`Module ${i + 1}`} bind={`${at}.modules.${i}.name`} className={styles.moduleName}>{m.name}</E>
+                      <E cms={`education.card.${id}.module.${i}.blurb`} label={`Module ${i + 1} note`} bind={`${at}.modules.${i}.blurb`} className={styles.moduleBlurb}>{m.blurb}</E>
                     </li>
                   ))}
                 </ul>
-              </article>
+              </E>
             )
           })}
-        </div>
+        </E>
 
-        <div className={`${styles.foot} ${shared.driven}`} ref={footRef}>
-          <span className={styles.footLabel}>Also</span>
+        <E cms="education.foot" as="div" kind="container" label="Credentials" className={`${styles.foot} ${shared.driven}`} ref={footRef}>
+          <E cms="education.foot.label" label="Credentials label" className={styles.footLabel}>Also</E>
           <ul className={styles.credentials} aria-label="Additional credentials">
             {credentials.map((c) => (
               <li key={c.id}>
@@ -129,7 +134,7 @@ export function Education() {
               </li>
             ))}
           </ul>
-        </div>
+        </E>
       </div>
     </Chapter>
   )

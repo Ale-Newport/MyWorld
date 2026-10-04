@@ -1,7 +1,5 @@
 import Link from 'next/link'
-import { experience } from '@/content/experience'
-import { projects } from '@/content/projects'
-import { profile } from '@/content/profile'
+import type { SiteContent } from '@/cms/derive'
 import styles from './StaticProfile.module.css'
 
 /* ============================================================
@@ -30,7 +28,8 @@ import styles from './StaticProfile.module.css'
    for a crawler.
    ============================================================ */
 
-export function StaticProjects() {
+export function StaticProjects({ content }: { content: SiteContent }) {
+  const { experience, projects, profile } = content
   return (
     <div className={styles.host} id="projects-summary">
       <h1>Projects and professional work — {profile.name}</h1>
@@ -67,7 +66,7 @@ export function StaticProjects() {
       <ul>
         {projects.map((p) => (
           <li key={p.id}>
-            <h3>{p.title}</h3>
+            <h3><a href={`/projects/${p.slug}`}>{p.title}</a></h3>
             <p>{p.year} · {p.source} · {p.subcategory ?? p.category}</p>
             <p>{p.description}</p>
             {p.contribution && <p>Contribution: {p.contribution}</p>}

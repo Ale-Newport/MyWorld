@@ -5,8 +5,7 @@ import { useRouter } from 'next/navigation'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useJourney, frame } from '@/state/journey'
 import { useActiveChapter, useJourneyRoute } from '@/components/journey/JourneyProvider'
-import { journeys } from '@/content/chapters'
-import { profile } from '@/content/profile'
+import { useSite } from '@/cms/context'
 import { scrollToProgress } from '@/hooks/useLenisScroll'
 import { clamp } from '@/lib/math'
 import { subscribe } from '@/lib/ticker'
@@ -22,6 +21,7 @@ export function Hud({ onOpenIndex }: { onOpenIndex: () => void }) {
      HTML says about which story the visitor has opened, and it has
      to be right in the markup the server sends. */
   const { id: journeyId, chapters, ranges } = useJourneyRoute()
+  const { profile, journeys } = useSite()
   const current = useActiveChapter()
   const widestTitle = chapters.reduce((w, c) => (c.title.length > w.length ? c.title : w), '')
   const router = useRouter()

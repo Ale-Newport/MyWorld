@@ -5,7 +5,8 @@ import { useFrame, type ThreeEvent } from '@react-three/fiber'
 import * as THREE from 'three'
 import { frame, useJourney } from '@/state/journey'
 import { readChapterProgress } from '@/hooks/useChapterProgress'
-import { projects, categoryAccent } from '@/content/projects'
+import { categoryAccent } from '@/content/project-meta'
+import { currentContent } from '@/state/content'
 import { detectDevice } from '@/lib/perf'
 import { clamp, range, damp, fibonacciSphere, seeded } from '@/lib/math'
 
@@ -17,8 +18,6 @@ import { clamp, range, damp, fibonacciSphere, seeded } from '@/lib/math'
    study. Filters dim rather than remove, so the shape of the
    whole body of work stays legible.
    ============================================================ */
-
-const NODES = projects.length
 
 /* Scratch objects. Module scope, because these are pure scribble
    space reused every frame — allocating them per mount buys
@@ -34,6 +33,9 @@ const color = new THREE.Color()
 const PAPER = new THREE.Color('#ffffff')
 
 export function UniverseScene() {
+  /* The canvas is its own React root; the published document reaches it through the content holder. */
+  const { projects } = currentContent()
+  const NODES = projects.length
   const device = useMemo(() => detectDevice(), [])
   const mesh = useRef<THREE.InstancedMesh>(null!)
   const halo = useRef<THREE.InstancedMesh>(null!)
@@ -69,7 +71,7 @@ export function UniverseScene() {
         color: new THREE.Color(categoryAccent[p.category]),
       }
     })
-  }, [])
+  }, [projects, NODES])
 
   /* ---- constellation edges: shared technology ------------ */
   const edgeGeometry = useMemo(() => {
@@ -87,7 +89,7 @@ export function UniverseScene() {
     const g = new THREE.BufferGeometry()
     g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3))
     return g
-  }, [layout])
+  }, [layout, projects])
 
   const opacity = useRef(0)
 
@@ -169,7 +171,7 @@ export function UniverseScene() {
   const onClick = useCallback((e: ThreeEvent<MouseEvent>) => {
     if (e.instanceId === undefined) return
     setActiveProject(projects[e.instanceId].slug)
-  }, [setActiveProject])
+  }, [setActiveProject, projects])
 
   useEffect(() => () => { document.body.style.removeProperty('--universe-hover') }, [])
 
@@ -203,6 +205,7 @@ export function UniverseScene() {
 
 /** Filter state is owned by the DOM layer; the scene listens. */
 function useUniverseFilter() {
+  const { projects } = currentContent()
   const [filter, setFilter] = useState('all')
   useEffect(() => {
     const h = (e: Event) => setFilter((e as CustomEvent<{ id: string }>).detail.id)
@@ -225,7 +228,7 @@ function useUniverseFilter() {
         default: return true
       }
     })
-  }, [filter])
+  }, [filter, projects])
 
   return { filter, matches }
 }

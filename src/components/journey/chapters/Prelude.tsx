@@ -4,8 +4,9 @@ import { useEffect, useRef, useState } from 'react'
 import { Chapter } from '@/components/journey/Chapter'
 import { TagRow, ScrollHint } from '@/components/journey/parts'
 import { useJourneyRoute } from '@/components/journey/JourneyProvider'
-import { profile } from '@/content/profile'
 import { totalVh } from '@/content/chapters'
+import { useSite } from '@/cms/context'
+import { E } from '@/cms/editable'
 import { useChapterFrame } from '@/hooks/useChapterProgress'
 import { useJourney } from '@/state/journey'
 import { clamp, range } from '@/lib/math'
@@ -31,6 +32,8 @@ import styles from './Prelude.module.css'
 const MINUTES_PER_VH = 0.15
 
 export function Prelude() {
+  const { profile } = useSite()
+  const [firstName, ...rest] = profile.name.split(' ')
   const reducedMotion = useJourney((s) => s.reducedMotion)
   /* The corner counts THIS journey, not the archive. The prelude
      stands at the head of one story, and telling its reader there
@@ -51,10 +54,10 @@ export function Prelude() {
   useEffect(() => {
     if (reducedMotion) return
     const id = window.setInterval(() => {
-      setRole((r) => (r + 1) % profile.roles.length)
+      setRole((r) => (r + 1) % Math.max(1, profile.roles.length))
     }, 1500)
     return () => window.clearInterval(id)
-  }, [reducedMotion])
+  }, [reducedMotion, profile.roles.length])
 
   useChapterFrame('prelude', (t) => {
     const shell = shellRef.current
@@ -87,39 +90,39 @@ export function Prelude() {
   return (
     <Chapter id="prelude" labelledBy="prelude-title">
       <div className={`${shared.stage} ${styles.stage}`} ref={shellRef}>
-        <div className={`${shared.corner} ${shared.cornerTL}`}>
+        <E cms="prelude.tag" as="div" label="Portfolio tag" className={`${shared.corner} ${shared.cornerTL}`}>
           <TagRow items={['PORTFOLIO', profile.year]} />
-        </div>
-        <div className={`${shared.corner} ${shared.cornerTR}`}>
+        </E>
+        <E cms="prelude.location" as="div" label="Location" className={`${shared.corner} ${shared.cornerTR}`}>
           {profile.location}
           <br />
           51.5072° N
-        </div>
+        </E>
 
         <div className={styles.center}>
           {/* The document's single <h1> is the profile summary that ships
               in the SSR HTML; this is the visible chapter heading. */}
-          <h2 id="prelude-title" className={`${styles.name} ${shared.driven}`} ref={nameRef}>
-            <span className={styles.nameLine}>Alejandro</span>
-            <span className={styles.nameLine}>Newport</span>
-          </h2>
+          <E cms="prelude.name" as="h2" kind="heading" label="Name" id="prelude-title" className={`${styles.name} ${shared.driven}`} ref={nameRef}>
+            <E cms="prelude.name.first" kind="heading" label="Name — first line" className={styles.nameLine}>{firstName}</E>
+            <E cms="prelude.name.last" kind="heading" label="Name — second line" className={styles.nameLine}>{rest.join(' ')}</E>
+          </E>
 
           {/* Every role is always in the DOM: the cycle lights one at a
               time, and the reduced-motion stylesheet stands the whole set
               up at once. One element per role is what lets it be set as a
               rule of type on a desk and a stacked list on a phone. */}
-          <div className={styles.rolesWrap} ref={rolesRef} aria-hidden="true">
+          <E cms="prelude.roles" as="div" kind="list" label="Rotating roles" className={styles.rolesWrap} ref={rolesRef} aria-hidden="true">
             {profile.roles.map((r, i) => (
-              <span key={r} className={styles.role} data-on={i === role}>{r}</span>
+              <E cms={`prelude.roles.${i}`} key={r} label={`Role ${i + 1}`} bind={`profile.roles.${i}`} className={styles.role} data-on={i === role}>{r}</E>
             ))}
-          </div>
+          </E>
           <p className="sr-only">
             {profile.roles.join(', ')}. {profile.summary}
           </p>
 
-          <p className={`${styles.thesis} ${shared.driven}`} ref={thesisRef}>
+          <E cms="prelude.thesis" as="p" label="Thesis" bind="profile.thesis" className={`${styles.thesis} ${shared.driven}`} ref={thesisRef}>
             {profile.thesis}
-          </p>
+          </E>
         </div>
 
         <div className={`${shared.corner} ${shared.cornerBL} ${shared.driven}`} ref={hintRef}>
@@ -127,11 +130,11 @@ export function Prelude() {
         </div>
         {/* Derived, not typed: a hardcoded count is a promise the
             content file can break silently. */}
-        <div className={`${shared.corner} ${shared.cornerBR}`}>
+        <E cms="prelude.length" as="div" label="Journey length" className={`${shared.corner} ${shared.cornerBR}`}>
           {chapters.length} CHAPTERS
           <br />
           ~{minutes} MINUTES
-        </div>
+        </E>
       </div>
     </Chapter>
   )

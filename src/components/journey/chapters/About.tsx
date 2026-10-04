@@ -4,8 +4,8 @@ import { useRef } from 'react'
 import { Chapter } from '@/components/journey/Chapter'
 import { Reveal } from '@/components/typography/Reveal'
 import { TagRow } from '@/components/journey/parts'
-import { profile } from '@/content/profile'
-import { chapterById } from '@/content/chapters'
+import { useSite } from '@/cms/context'
+import { E, useCms } from '@/cms/editable'
 import { useChapterFrame } from '@/hooks/useChapterProgress'
 import { useJourney } from '@/state/journey'
 import { clamp, range } from '@/lib/math'
@@ -20,6 +20,8 @@ import styles from './About.module.css'
    ============================================================ */
 
 export function About() {
+  const { profile, chapterById } = useSite()
+  const summaryCms = useCms('about.summary', { kind: 'heading', label: 'Summary', bind: 'profile.summary' })
   const reducedMotion = useJourney((s) => s.reducedMotion)
   const markersRef = useRef<HTMLUListElement>(null)
   const introRef = useRef<HTMLDivElement>(null)
@@ -49,33 +51,33 @@ export function About() {
   return (
     <Chapter id="about" labelledBy="about-title">
       <div className={`${shared.stage} ${styles.stage}`}>
-        <div className={`${shared.corner} ${shared.cornerTL}`}>
+        <E cms="about.tag" as="div" kind="text" label="Chapter tag" className={`${shared.corner} ${shared.cornerTL}`}>
           <TagRow items={[chapterById['about'].number, 'A LITTLE ABOUT ME']} />
-        </div>
+        </E>
 
         <div className={`${styles.intro} ${shared.driven}`} ref={introRef} data-about-intro="">
-          <Reveal as="h2" mode="mask" className={styles.summary} id="about-title">
+          <Reveal as="h2" mode="mask" className={styles.summary} id="about-title" attrs={summaryCms}>
             {profile.summary}
           </Reveal>
         </div>
 
-        <ul className={styles.markers} ref={markersRef} aria-label="Career through-lines">
-          {profile.markers.map((m) => (
+        <E cms="about.markers" as="ul" kind="list" label="Through-lines" className={styles.markers} ref={markersRef} aria-label="Career through-lines">
+          {profile.markers.map((m, i) => (
             <li key={m.from} className={styles.marker}>
-              <span className={styles.markerFrom}>{m.from}</span>
+              <E cms={`about.markers.${i}.from`} kind="text" label={`Marker ${i + 1} from`} bind={`profile.markers.${i}.from`} className={styles.markerFrom}>{m.from}</E>
               <span className={styles.markerBarWrap} aria-hidden="true">
                 <span className={styles.markerBar} data-bar="" />
               </span>
-              <span className={styles.markerTo}>{m.to}</span>
+              <E cms={`about.markers.${i}.to`} kind="text" label={`Marker ${i + 1} to`} bind={`profile.markers.${i}.to`} className={styles.markerTo}>{m.to}</E>
             </li>
           ))}
-        </ul>
+        </E>
 
-        <div className={`${shared.corner} ${shared.cornerBR}`}>
+        <E cms="about.corner" as="div" kind="text" label="Corner note" className={`${shared.corner} ${shared.cornerBR}`}>
           THE PATH BELOW
           <br />
           IS THE TIMELINE
-        </div>
+        </E>
       </div>
     </Chapter>
   )

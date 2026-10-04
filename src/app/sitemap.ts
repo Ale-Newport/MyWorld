@@ -1,18 +1,22 @@
 import type { MetadataRoute } from 'next'
-import { siteConfig } from '@/content/profile'
-import { projects } from '@/content/projects'
+import { publishedSite } from '@/server/site'
+import { deriveSite } from '@/cms/derive'
 
-/* The site is two journeys and one archive of case studies. `/`
-   answers who he is, `/projects` what he has built, and each
-   project has a stable overlay URL on the home journey — the
-   Project Universe lives there and is what opens them. */
+/* The two journeys and one page per published project, all read from
+   the published site document — a project unpublished in the admin
+   leaves the sitemap with its next regeneration. */
+export const revalidate = 300
+
 export default function sitemap(): MetadataRoute.Sitemap {
+  const { doc } = publishedSite()
+  const { allProjects } = deriveSite(doc)
+  const url = doc.settings.siteUrl
   const now = new Date()
   return [
-    { url: siteConfig.url, lastModified: now, changeFrequency: 'monthly', priority: 1 },
-    { url: `${siteConfig.url}/projects`, lastModified: now, changeFrequency: 'monthly', priority: 0.9 },
-    ...projects.map((p) => ({
-      url: `${siteConfig.url}/#project/${p.slug}`,
+    { url, lastModified: now, changeFrequency: 'monthly', priority: 1 },
+    { url: `${url}/projects`, lastModified: now, changeFrequency: 'monthly', priority: 0.9 },
+    ...allProjects.map((p) => ({
+      url: `${url}/projects/${p.slug}`,
       lastModified: now,
       changeFrequency: 'yearly' as const,
       priority: p.importance === 'hero' ? 0.8 : p.importance === 'featured' ? 0.6 : 0.4,

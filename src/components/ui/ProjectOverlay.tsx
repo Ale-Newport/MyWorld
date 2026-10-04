@@ -2,8 +2,8 @@
 
 import { useEffect, useRef } from 'react'
 import { useJourney } from '@/state/journey'
-import { projectBySlug } from '@/content/projects'
-import { techByProject, techById } from '@/content/skills'
+import { useSite } from '@/cms/context'
+import { E } from '@/cms/editable'
 import { ProjectVisual } from '@/components/project-visuals/ProjectVisual'
 import styles from './ProjectOverlay.module.css'
 
@@ -13,6 +13,7 @@ import styles from './ProjectOverlay.module.css'
  * can be shared directly.
  */
 export function ProjectOverlay() {
+  const { projectBySlug, techByProject, techById } = useSite()
   const slug = useJourney((s) => s.activeProject)
   const setActiveProject = useJourney((s) => s.setActiveProject)
   const reducedMotion = useJourney((s) => s.reducedMotion)
@@ -36,7 +37,7 @@ export function ProjectOverlay() {
       const s = h.slice('#project/'.length)
       if (projectBySlug[s]) setActiveProject(s)
     }
-  }, [setActiveProject])
+  }, [setActiveProject, projectBySlug])
 
   useEffect(() => {
     if (!slug) return
@@ -90,7 +91,7 @@ export function ProjectOverlay() {
 
           <div className={styles.visual}>
             {project.assets.screenshots.length > 0 ? (
-              <ClientShot project={project.slug} title={project.title} />
+              <ClientShot src={project.assets.screenshots[0]} title={project.title} />
             ) : (
               <ProjectVisual project={project} reducedMotion={reducedMotion} />
             )}
@@ -105,12 +106,12 @@ export function ProjectOverlay() {
                 <span aria-hidden="true">·</span>
                 <span>{project.dates ?? project.year}</span>
               </p>
-              <h2 className={styles.title}>{project.title}</h2>
-              {project.organisation && <p className={styles.org}>{project.organisation}</p>}
-              <p className={styles.description}>{project.description}</p>
+              <E cms="overlay.title" as="h2" kind="heading" label="Project title" bind={`projects[id=${project.id}].title`} className={styles.title}>{project.title}</E>
+              {project.organisation && <E cms="overlay.org" as="p" label="Organisation" bind={`projects[id=${project.id}].organisation`} className={styles.org}>{project.organisation}</E>}
+              <E cms="overlay.description" as="p" label="Description" bind={`projects[id=${project.id}].description`} className={styles.description}>{project.description}</E>
               {project.contribution && (
                 <p className={styles.contribution}>
-                  <span className="label">Role</span> {project.contribution}
+                  <span className="label">Role</span> <E cms="overlay.contribution" label="Contribution" bind={`projects[id=${project.id}].contribution`}>{project.contribution}</E>
                 </p>
               )}
             </header>
@@ -165,6 +166,12 @@ export function ProjectOverlay() {
                   Live site ↗
                 </a>
               )}
+              {project.links.map((l) => (
+                <a key={l.href} href={l.href} target={l.href.startsWith('http') ? '_blank' : undefined} rel={l.href.startsWith('http') ? 'noreferrer noopener' : undefined} className={styles.cta} data-cursor="link">
+                  {l.label} ↗
+                </a>
+              ))}
+              <a href={`/projects/${project.slug}`} className={styles.cta} data-cursor="link">Project page →</a>
               {project.privateSource && (
                 <span className={styles.privateNote}>Source is private — client work</span>
               )}
@@ -176,13 +183,14 @@ export function ProjectOverlay() {
   )
 }
 
-/** Real capture for client sites, with an AVIF/WebP source set. */
-function ClientShot({ project, title }: { project: string; title: string }) {
+/** Real capture (client sites ship an AVIF beside their WebP). */
+function ClientShot({ src, title }: { src: string; title: string }) {
+  const avif = /^\/assets\/client-work\/.+\.webp$/.test(src) ? src.replace(/\.webp$/, '.avif') : null
   return (
     <picture>
-      <source srcSet={`/assets/client-work/${project}-desktop.avif`} type="image/avif" />
+      {avif && <source srcSet={avif} type="image/avif" />}
       <img
-        src={`/assets/client-work/${project}-desktop.webp`}
+        src={src}
         alt={`Homepage of ${title}`}
         className={styles.shot}
         loading="lazy"
