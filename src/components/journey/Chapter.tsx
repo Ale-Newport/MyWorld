@@ -31,6 +31,14 @@ export function Chapter({ id, children, flow, className, noPin, labelledBy }: Ch
       id={`chapter-${id}`}
       data-chapter={id}
       aria-labelledby={labelledBy}
+      /* The index links across journeys as `/projects#chapter-focus`,
+         and Next resolves that fragment by calling focus() on the
+         element it names. A bare <section> is not focusable, so the
+         call did nothing and the screen reader was left at the head
+         of a document parked halfway through chapter three. -1 makes
+         the target reachable by script without adding it to the tab
+         order, and does the same for the skip link. */
+      tabIndex={-1}
       className={`${styles.chapter} ${className ?? ''}`}
       style={{ height: `${vh * 100}vh` }}
     >

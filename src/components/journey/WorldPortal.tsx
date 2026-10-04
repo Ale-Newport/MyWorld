@@ -3,34 +3,61 @@
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { getLenis } from '@/hooks/useLenisScroll'
-import { useJourney } from '@/state/journey'
-import { clamp, easeOutCubic } from '@/lib/math'
+import { getLenis, scrollToProgress } from '@/hooks/useLenisScroll'
+import { frame, useJourney, type PerformanceTier } from '@/state/journey'
+import { portal } from '@/state/portal'
+import { clamp, damp } from '@/lib/math'
 import { subscribe } from '@/lib/ticker'
+import { garden } from '@/components/home/botanical/garden'
 import styles from './WorldPortal.module.css'
 
 /* ============================================================
    THE WAY OUT
    The journey ends at the foot of the document, so the last
    gesture anyone makes is the one that opens the world: keep
-   pushing past the end and a veil the colour of the page
-   climbs over everything behind it. It is deliberately heavy —
-   a stray flick must never fire a navigation — and the route
-   downloads while the effort is being spent, so the door is
-   already open by the time it is pushed.
+   pushing past the end and the garden closes in over everything —
+   first the room behind the page, whose ivy runs on over the wall
+   the copy had kept clear, then the ivy itself, come loose of the
+   wall and grown out towards the eye over the page and the chrome
+   — until there is nothing left but leaves. The world is behind
+   them.
+
+   Three things make the effort honest rather than decorative.
+   The page is HELD BACK while it is being spent, so a hundred
+   pixels of wheel buy visibly fewer than a hundred pixels of
+   movement, and fewer still the closer the charge gets to full.
+   The canopy grows inward layer by layer, the nearest last and
+   largest, so the last scroll is something being pushed through
+   rather than a bar being filled. And a phone TICKS under the
+   finger at milestones that crowd together as the end approaches.
+
+   THE WAIT IS SPENT BEFORE IT IS ASKED FOR
+   The world is downloaded while the reader is still reading the
+   last chapter, and its engine is evaluated in the idle beat after
+   the page comes to rest at the foot. By the time the leaves have
+   closed, everything the world needs is in the cache; it arrives
+   under the very same leaves — literally the same elements, which
+   live in the root layout (see `garden.ts`) — and they part when
+   it is ready. There is no loading screen in between.
+
+   THE PAGE IS FINISHED UNTIL IT IS PUSHED
+   Nothing grows over the copy on the approach: at the foot, unspent,
+   the room alone frames the page. The canopy is prepared there, out
+   of sight, and the charge alone grows it.
    ============================================================ */
 
 /**
- * Charge, 0..1. Module state on purpose: the contact chapter
- * retreats ahead of the veil from its own frame loop, and two
- * subscribers sharing one number is far better behaved than two
- * loops fighting over the same inline styles. Same arrangement,
- * and same reason, as `frame`.
+ * The gateway's intent, 0..1, and the stretch in pixels the page is
+ * currently being held back by. Module state on purpose (it lives in
+ * `state/portal`): the contact chapter retreats and the home room is
+ * taken over from their own frame loops by reading the same numbers,
+ * and subscribers sharing one value are better behaved than loops
+ * fighting over the same inline styles.
  */
-export const portal = { pull: 0 }
+export { portal }
 
 /** Wheel pixels for a full charge before resistance is applied. */
-const CHARGE_PX = 900
+const CHARGE_PX = 1250
 /** A finger crossing a small screen is worth more than a wheel notch. */
 const TOUCH_GAIN = 1.6
 /** Lines and pages, normalised to pixels. */
@@ -39,120 +66,425 @@ const LINE_PX = 16
     and how much of Lenis's easing tail is forgiven on the way there. */
 const ARM_PX = 2
 const SETTLE_PX = 90
+/**
+ * AND THE PAGE HAS TO HAVE STOPPED. Reaching the foot at speed is one
+ * gesture running out of document, not a reader asking for a door —
+ * measured, an uninterrupted ride used to enter the world during the
+ * descent. So intent counts only once the page has come to rest at
+ * the limit with no wheel or touch for this long: longer than any
+ * pause inside one continuous scroll, far shorter than the beat a
+ * reader spends deciding to push.
+ */
+const REST_MS = 180
 /** One gesture arrives in bursts; the gaps inside it are not a pause. */
 const IDLE_GRACE = 0.12
 /** Seconds for an abandoned charge to bleed away, and for one let go
     of by scrolling back up the page. */
 const DECAY_S = 0.9
 const RELEASE_S = 0.35
-/** The sheet rests 112 points below the stage — its own height plus
-    the soft leading edge riding above it — and a full charge is worth
-    104 of them, so there is always somewhere left to travel when the
-    charge is spent. Both figures are shared with the module's CSS. */
-const REST_PCT = 112
-const TRAVEL_PCT = 104
-/** How long the sheet is left to finish before the route swaps
-    underneath it. Shorter than the transition in the module's CSS
-    on purpose: by here the easing is within a pixel of home, and
-    waiting out the tail would only be a wait. */
-const COMMIT_MS = 560
+/** Viewport heights of document over which the approach arrives,
+    measured from the foot so `?quick` and a phone's address bar give
+    the same answer. */
+const REVEAL_VH = 1.35
+/** How far into the approach the world starts downloading. */
+const PRELOAD_AT = 0.45
+/** After the leaves have closed, how long before the route swaps
+    beneath them: one frame of solid canopy is the seam. */
+const COMMIT_MS = 420
+/** The homepage's WebGL context is handed back just before. */
+const RELEASE_MS = 250
+/** Put the canopy (and its WebGL context) away after this long well away from the foot. */
+const PARK_MS = 4000
+
+/* ---- resistance -------------------------------------------
+   GIVE is how much of a spent pixel the page hands back as
+   movement, multiplied by the same curve the charge uses, so the
+   stretch shortens exactly as the charge gets heavy. RELAX pulls
+   the stretch home continuously: a sustained push settles at an
+   offset proportional to how hard it is, a stopped one springs
+   back. */
+const DRAG_GIVE = 0.3
+const DRAG_MAX = 72
+const DRAG_RELAX = 7
+
+/* ---- momentum ---------------------------------------------
+   A trackpad fling keeps delivering wheel events after the fingers
+   leave the glass, and inertia has one signature no hand has: it
+   only ever gets smaller. A run of non-increasing notches once a
+   burst is past its peak is scored as coasting and worth a fraction
+   of its pixels; the moment a delta rises again, full value returns. */
+const MOMENTUM_RUN = 6
+const MOMENTUM_FALL = 0.99
+const MOMENTUM_GAIN = 0.3
+
+/* ---- haptics ----------------------------------------------
+   Milestones, not frames, crowding together toward the end so the
+   wrist feels the charge accelerating. */
+const MILESTONES = [0.18, 0.33, 0.46, 0.57, 0.66, 0.74, 0.81, 0.87, 0.92, 0.96]
+/** Backing off past a milestone re-arms it, with slack against rattling. */
+const MILESTONE_SLACK = 0.04
+
+/**
+ * `?nature-tier=high` in development: headless Chromium reports
+ * SwiftShader, the store scores that `low`, and an acceptance run
+ * would otherwise measure a composition no visitor is shown.
+ */
+function forcedTier(): PerformanceTier | null {
+  if (process.env.NODE_ENV !== 'development' || typeof window === 'undefined') return null
+  const v = new URLSearchParams(window.location.search).get('nature-tier')
+  return v === 'high' || v === 'medium' || v === 'low' ? v : null
+}
+
+/**
+ * Told to the world across the navigation, in sessionStorage: a
+ * query parameter would be shareable and re-fired by a reload; module
+ * state is lost to a hard navigation. `World2Route` holds the other
+ * half of this contract and the same key.
+ */
+const ARRIVAL_KEY = 'portal:arrival'
+/**
+ * Where the visitor was when they went through, so Back is a return
+ * rather than a reset — `history.scrollRestoration` is manual for the
+ * whole site, so the browser restores nothing on its own.
+ */
+const RETURN_KEY = 'journey:return'
+/** Set the first time anyone goes through; the index reads it. */
+const UNLOCKED_KEY = 'world2Unlocked'
+/**
+ * Where a returning visitor is put down: the last chapter on screen
+ * and the portal NOT armed, so the tail of a fling still in flight
+ * cannot charge a door the visitor is not touching.
+ */
+const RETURN_TO = 0.93
+/** And a lock-out on top of that, for the fling that arrives anyway. */
+const DISARM_MS = 500
+/** The canopy's darkest green: what <html> is painted across the swap. */
+const SEAM = '#0f1804'
+
+/** Read once and held: Strict Mode mounts effects twice in development. */
+let consumed: { at: number; value: string | null } | null = null
+
+function consumeReturn(): string | null {
+  const now = Date.now()
+  if (consumed && now - consumed.at < 2000) return consumed.value
+  let value: string | null = null
+  try {
+    value = window.sessionStorage.getItem(RETURN_KEY)
+    window.sessionStorage.removeItem(RETURN_KEY)
+    /* A visitor who went through and came straight back still holds
+       a live arrival key; a plain click on the link inside that window
+       would otherwise arrive under a cover nobody pushed for. */
+    window.sessionStorage.removeItem(ARRIVAL_KEY)
+  } catch {
+    // Storage denied. There is nothing to restore and nothing to clear.
+  }
+  consumed = { at: now, value }
+  return value
+}
+
+function markArrival() {
+  try {
+    window.sessionStorage.setItem(ARRIVAL_KEY, String(Date.now()))
+    window.sessionStorage.setItem(RETURN_KEY, String(frame.progress))
+    window.localStorage.setItem(UNLOCKED_KEY, '1')
+  } catch {
+    // Private mode, or storage denied. The world simply shows its
+    // own gate and the return simply starts at the top.
+  }
+}
+
+/**
+ * Who is spared the speculative megabytes: a device the journey has
+ * already judged slow, and a browser asking for saved data. Neither
+ * is shut out of the world — they pay for it on arrival, under the
+ * leaves, instead of in advance.
+ */
+interface SaveDataConnection {
+  saveData?: boolean
+}
+
+function thrifty() {
+  if ((forcedTier() ?? useJourney.getState().performanceTier) === 'low') return true
+  if (typeof navigator === 'undefined') return true
+  const conn = (navigator as Navigator & { connection?: SaveDataConnection }).connection
+  return conn?.saveData === true
+}
+
+/** A browser that ignores vibration must cost exactly nothing. */
+function buzz(pattern: number | number[]) {
+  if (typeof navigator === 'undefined' || typeof navigator.vibrate !== 'function') return
+  try {
+    navigator.vibrate(pattern)
+  } catch {
+    // Some engines expose the method and refuse the call.
+  }
+}
+
+type IdleWindow = Window & {
+  requestIdleCallback?: (cb: () => void, o?: { timeout: number }) => number
+}
+
+/**
+ * THE HAND-OFF, once committed, belongs to no render. A re-run of the
+ * gesture's effect (a performance tier or a motion setting changing in
+ * the next few hundred milliseconds) must not cancel it, and leaving by
+ * some other way meanwhile (Back, a link through the leaves) must not
+ * leave the cover and its seam colour over the page left for.
+ */
+function handOff(push: (href: string) => void) {
+  const from = window.location.pathname
+  /* The homepage's WebGL contexts, released a beat before the
+     navigation: browsers cap live contexts and the world wants one. */
+  window.setTimeout(() => window.dispatchEvent(new CustomEvent('journey:leaving')), RELEASE_MS)
+  window.setTimeout(() => {
+    if (window.location.pathname === from) {
+      push('/world2')
+      return
+    }
+    garden.hide()
+    document.documentElement.style.background = ''
+    try {
+      window.sessionStorage.removeItem(ARRIVAL_KEY)
+    } catch {
+      // Storage denied: nothing was written to take back.
+    }
+  }, COMMIT_MS)
+}
 
 export function WorldPortal() {
   const reducedMotion = useJourney((s) => s.reducedMotion)
   const router = useRouter()
   const [committed, setCommitted] = useState(false)
 
-  const veilRef = useRef<HTMLDivElement>(null)
+  const hostRef = useRef<HTMLDivElement>(null)
   const fillRef = useRef<HTMLSpanElement>(null)
   const idleWordRef = useRef<HTMLSpanElement>(null)
   const goWordRef = useRef<HTMLSpanElement>(null)
   const liveRef = useRef<HTMLParagraphElement>(null)
-  /* The charge can cross 1 on consecutive frames, and pointer
-     intent can fire many times; both are one-way doors. */
+  /* The charge can cross 1 on consecutive frames; it is a one-way door. */
   const sealed = useRef(false)
-  const warmed = useRef(false)
+  const warmed = useRef(0)
 
-  const warm = useCallback(() => {
-    if (warmed.current) return
-    warmed.current = true
-    router.prefetch('/world')
-  }, [router])
+  /**
+   * Warming, in stages, all of it before the push is over.
+   *
+   *   1  the route's own prefetch
+   *   2  the world's React chunk
+   *   3  the island: 13 MB of geometry and its manifest, fetched at low
+   *      priority and thrown away — the engine's own loader then hits
+   *      the HTTP cache
+   *   4  the engine and its physics, which parse rather than merely
+   *      arrive: evaluated — and the physics' WebAssembly compiled —
+   *      in the idle beat after the page comes to rest at the foot,
+   *      before the reader starts to push. A client navigation keeps
+   *      this JS context, so the world's own `rapier.init()` finds
+   *      the instance already there and returns at once.
+   *
+   * Never here: constructing the game, which opens a WebGL context,
+   * binds input and starts a loop. That belongs to the world.
+   */
+  const warm = useCallback(
+    (level: number) => {
+      if (warmed.current >= level) return
+      const from = warmed.current
+      warmed.current = level
+      if (from < 1) router.prefetch('/world2')
+      if (from < 2 && level >= 2) void import('@/world2/World2Experience').catch(() => {})
+      if (level < 3 || thrifty()) return
+      if (from < 3 && level >= 3) {
+        for (const asset of [
+          '/world2/world-manifest.json',
+          '/world2/interactions.json',
+          '/world2/models/world.glb',
+          '/world2/models/vegetation.glb',
+        ]) {
+          void fetch(asset, { priority: 'low', mode: 'same-origin' } as RequestInit).catch(() => {})
+        }
+      }
+      if (from < 4 && level >= 4) {
+        void import('@/world2/World2Game').catch(() => {})
+        void import('@dimforge/rapier3d-compat').then((rapier) => rapier.init()).catch(() => {})
+      }
+    },
+    [router],
+  )
+
+  /* ============================================================
+     THE RETURN
+     Back from the world lands here; the position recorded at commit
+     is spent once the document has its height, and the seam colour
+     painted on <html> for the swap is taken away again.
+     ============================================================ */
+  useEffect(() => {
+    let raf = 0
+    let tries = 0
+    const stored = consumeReturn()
+    const nav = performance.getEntriesByType('navigation')[0] as
+      | PerformanceNavigationTiming
+      | undefined
+    const back = nav?.type === 'back_forward'
+    document.documentElement.style.background = ''
+
+    if (stored === null && !back) return
+    const target = Number(stored)
+    const to = Number.isFinite(target) && target > 0 ? Math.min(target, RETURN_TO) : RETURN_TO
+
+    const settle = () => {
+      const tall = document.documentElement.scrollHeight > window.innerHeight * 4
+      if (!tall && tries++ < 40) {
+        raf = requestAnimationFrame(settle)
+        return
+      }
+      scrollToProgress(to, { immediate: true })
+    }
+    raf = requestAnimationFrame(settle)
+    return () => cancelAnimationFrame(raf)
+  }, [])
 
   useEffect(() => {
     if (reducedMotion) return
     portal.pull = 0
+    portal.drag = 0
 
     let pull = 0
-    let lastPull = 0
+    let drag = 0
+    let lastCharge = -1
+    let lastFill = -1
+    let lastReveal = -1
     let idle = 0
     let armed = false
+    let rested = false
+    let lastInput = performance.now()
+    let milestone = 0
     let touchY = 0
     let touchId: number | null = null
-    let timer = 0
+    let vh = window.innerHeight
+    let stopped = false
+    let parkedSince = 0
+    let isNear = false
+    let idleWarm = false
+
+    let burstPeak = 0
+    let burstLast = 0
+    let burstFall = 0
+    let lastEvent = 0
+
+    const mounted = performance.now()
+    const win = window as IdleWindow
 
     const announce = (message: string) => {
       const live = liveRef.current
       if (live && live.textContent !== message) live.textContent = message
     }
 
-    /* Lenis owns the scroll position, so ask Lenis rather than the
-       document. Two readings, because one is not enough: the target
-       says the visitor has asked for the end of the page, which the
-       easing may still be a few pixels short of, and the rendered
-       position says the page has very nearly arrived, so a long
-       fling cannot arm the portal in mid-air. */
-    const atFoot = () => {
-      // An overlay locks the page with `body { overflow: hidden }`, which
-      // Lenis never hears about: without this the visitor scrolling the
-      // chapter index open over the last chapter would charge the portal
-      // and be navigated somewhere they were not going.
+    /* An overlay locks the page with `overflow: hidden`, which Lenis
+       never hears about: scrolling the index open over the last
+       chapter must not charge the portal. */
+    const overlaid = () => {
       const journey = useJourney.getState()
-      if (journey.indexOpen || journey.activeProject) return false
+      return journey.indexOpen || journey.activeProject !== null
+    }
 
+    /** Pixels of document left below the fold. */
+    const remaining = () => {
       const lenis = getLenis()
-      if (!lenis) {
-        return document.documentElement.scrollHeight - window.innerHeight - window.scrollY <= ARM_PX
-      }
+      if (lenis) return lenis.limit - lenis.scroll
+      return document.documentElement.scrollHeight - window.innerHeight - window.scrollY
+    }
+
+    const atFoot = () => {
+      if (overlaid()) return false
+      if (performance.now() - mounted < DISARM_MS) return false
+      const lenis = getLenis()
+      if (!lenis) return remaining() <= ARM_PX
       return lenis.limit - lenis.targetScroll <= ARM_PX && lenis.limit - lenis.scroll <= SETTLE_PX
+    }
+
+    let unsubscribe: (() => void) | null = null
+    const teardown = () => {
+      if (stopped) return
+      stopped = true
+      unsubscribe?.()
+      unsubscribe = null
+      window.removeEventListener('wheel', onWheel)
+      window.removeEventListener('touchstart', onTouchStart)
+      window.removeEventListener('touchmove', onTouchMove)
+      window.removeEventListener('touchend', onTouchEnd)
+      window.removeEventListener('touchcancel', onTouchEnd)
+      window.removeEventListener('resize', onResize)
     }
 
     const commit = () => {
       if (sealed.current) return
       sealed.current = true
       announce('Entering the world')
+      // Two short knocks and a long one: the door opened, not another milestone.
+      buzz([16, 40, 90])
+      markArrival()
       setCommitted(true)
-      timer = window.setTimeout(() => router.push('/world'), COMMIT_MS)
+      garden.set(1)
+      /* THE SEAM. <html> survives an App Router navigation, so the
+         canopy's own green painted on it here is underneath /world2's
+         first frame: no white blink between two greens. */
+      document.documentElement.style.background = SEAM
+      /* Under the canopy nothing can be reached any more, by pointer
+         (the cover takes the clicks) or by keyboard. */
+      for (const el of document.querySelectorAll('#journey, [data-hud]')) el.setAttribute('inert', '')
+      warm(4)
+      handOff((href) => router.push(href))
+    }
+
+    /** One notch or one finger's travel, scored for intent. */
+    const intent = (delta: number, now: number): number => {
+      if (now - lastEvent > IDLE_GRACE * 1000) {
+        burstPeak = 0
+        burstFall = 0
+        burstLast = 0
+      }
+      lastEvent = now
+      const size = Math.abs(delta)
+      if (size > burstPeak) burstPeak = size
+      if (burstLast > 0 && size < burstLast * MOMENTUM_FALL) burstFall++
+      else burstFall = 0
+      burstLast = size
+      const coasting = burstFall >= MOMENTUM_RUN && size < burstPeak * 0.6
+      return coasting ? delta * MOMENTUM_GAIN : delta
     }
 
     const charge = (delta: number) => {
+      lastInput = performance.now()
       if (sealed.current) return
       if (delta <= 0) {
-        // Pushing back up the page lets go of the charge faster than
-        // it was gathered.
+        // Pushing back up lets go of the charge faster than it was gathered.
         pull = clamp(pull + (delta / CHARGE_PX) * 1.5)
         return
       }
       if (!armed) return
-      // Resistance grows with the charge, so the last stretch is the
-      // one the visitor feels paying for.
-      pull = clamp(pull + (delta / CHARGE_PX) * (1 - 0.55 * pull * pull))
+      const spent = intent(delta, performance.now())
+      // Resistance grows with the charge: the last stretch is the one paid for.
+      const resistance = 1 - 0.68 * pull * pull
+      pull = clamp(pull + (spent / CHARGE_PX) * resistance)
+      drag = Math.min(DRAG_MAX, drag + spent * DRAG_GIVE * resistance)
       idle = 0
-      warm()
-      if (pull > 0.25) announce('Keep scrolling to enter the world')
+
+      while (milestone < MILESTONES.length && pull >= MILESTONES[milestone]) {
+        buzz(4 + milestone)
+        milestone++
+      }
+      if (pull > 0.7) announce('Almost there — keep scrolling')
+      else if (pull > 0.25) announce('Keep scrolling to enter the world')
     }
 
-    const onWheel = (e: WheelEvent) => {
+    function onWheel(e: WheelEvent) {
       const d =
         e.deltaMode === 1 ? e.deltaY * LINE_PX
-        : e.deltaMode === 2 ? e.deltaY * window.innerHeight
+        : e.deltaMode === 2 ? e.deltaY * vh
         : e.deltaY
       charge(d)
     }
 
-    /* One finger, followed by identity rather than by array position:
-       a second finger landing reindexes `touches`, and the gap between
-       two fingers would otherwise arrive as a single huge charge. */
-    const onTouchStart = (e: TouchEvent) => {
+    /* One finger, followed by identity rather than array position. */
+    function onTouchStart(e: TouchEvent) {
       if (touchId !== null) return
       const t = e.changedTouches[0]
       if (!t) return
@@ -160,7 +492,7 @@ export function WorldPortal() {
       touchY = t.clientY
     }
 
-    const onTouchMove = (e: TouchEvent) => {
+    function onTouchMove(e: TouchEvent) {
       if (touchId === null) return
       const t = Array.from(e.touches).find((x) => x.identifier === touchId)
       if (!t) return
@@ -168,13 +500,39 @@ export function WorldPortal() {
       touchY = t.clientY
     }
 
-    const onTouchEnd = (e: TouchEvent) => {
+    function onTouchEnd(e: TouchEvent) {
       if (Array.from(e.changedTouches).some((t) => t.identifier === touchId)) touchId = null
     }
 
-    const stop = subscribe((dt) => {
-      if (sealed.current) return
-      armed = atFoot()
+    function onResize() {
+      vh = window.innerHeight
+    }
+
+    unsubscribe = subscribe((dt) => {
+      if (sealed.current) {
+        // The charge is over; let the held-back page relax under the leaves.
+        if (portal.drag !== 0) {
+          drag = damp(drag, 0, DRAG_RELAX, dt)
+          portal.drag = drag < 0.05 ? 0 : drag
+        }
+        return
+      }
+      const foot = atFoot()
+      if (!foot) rested = false
+      else if (!rested && remaining() <= ARM_PX && performance.now() - lastInput >= REST_MS) {
+        rested = true
+      }
+      armed = foot && rested
+
+      /* The engine is evaluated in the first idle moment after the
+         page has come to rest at the foot — the beat in which the
+         reader is reading the instruction, not pushing. */
+      if (armed && !idleWarm) {
+        idleWarm = true
+        const go = () => warm(4)
+        if (win.requestIdleCallback) win.requestIdleCallback(go, { timeout: 1500 })
+        else window.setTimeout(go, 300)
+      }
 
       if (!armed) pull = clamp(pull - dt / RELEASE_S)
       else {
@@ -182,26 +540,63 @@ export function WorldPortal() {
         if (idle > IDLE_GRACE) pull = clamp(pull - dt / DECAY_S)
       }
 
-      portal.pull = pull
-      if (pull === 0 && lastPull === 0) return
-      lastPull = pull
+      drag = damp(drag, 0, DRAG_RELAX, dt)
+      if (drag < 0.05) drag = 0
+      while (milestone > 0 && pull < MILESTONES[milestone - 1] - MILESTONE_SLACK) milestone--
 
-      /* Ahead of linear at the start, so the first flick plainly does
-         something, and honest afterwards, so the last stretch looks
-         like the work it costs. */
-      const rise = pull * 0.7 + easeOutCubic(pull) * 0.3
-      if (veilRef.current) {
-        veilRef.current.style.transform = `translate3d(0, ${REST_PCT - rise * TRAVEL_PCT}%, 0)`
+      portal.pull = pull
+      portal.drag = drag
+
+      /* ---- the approach ------------------------------------ */
+      const reveal = overlaid() ? 0 : clamp(1 - remaining() / (vh * REVEAL_VH))
+      /* The canopy only exists near the foot: a WebGL context is not
+         something to carry through the whole journey. It is built on
+         the approach, so it is ready before anyone pushes. */
+      if (reveal > 0.02) {
+        parkedSince = 0
+        if (!isNear) {
+          isNear = true
+          // The tier is read now, not subscribed to: a demotion in the
+          // middle of a push must not re-run (and reset) this gesture.
+          const low = (forcedTier() ?? useJourney.getState().performanceTier) === 'low'
+          garden.show({ initial: 0, budget: low ? 0.6 : 1 })
+        }
+      } else if (isNear) {
+        parkedSince ||= performance.now()
+        if (performance.now() - parkedSince > PARK_MS) {
+          isNear = false
+          garden.hide()
+        }
       }
+      /* The world downloads while the last chapter is being read. */
+      if (reveal > PRELOAD_AT) warm(3)
+      else if (reveal > 0.1) warm(2)
+
+      /* The garden holds the value until the canopy has mounted. */
+      const cq = Math.round(pull * 400)
+      if (isNear && cq !== lastCharge) {
+        lastCharge = cq
+        garden.set(cq / 400)
+      }
+
+      const fq = Math.round(pull * 200)
+      const rq = Math.round(reveal * 100)
+      if (fq === lastFill && rq === lastReveal) {
+        if (pull >= 1) commit()
+        return
+      }
+      lastFill = fq
+      lastReveal = rq
       if (fillRef.current) fillRef.current.style.transform = `scaleX(${pull})`
 
-      /* The two words share one cell, so a plain cross-fade blends
-         them into an unreadable hybrid for the length of the swap.
-         They ride through a mask instead — the site's own idiom for
-         one piece of type replacing another. */
-      const swap = clamp((pull - 0.7) / 0.2)
+      /* The instruction appears only once the page has run out, and
+         changes its mind through a one-line mask as the charge builds. */
+      // Early enough to be read: the canopy closes over the foot of the
+      // screen from about half way.
+      const swap = clamp((pull - 0.3) / 0.15)
+      const appear = clamp((reveal - 0.55) / 0.35)
       if (idleWordRef.current) {
-        idleWordRef.current.style.opacity = String(1 - swap)
+        idleWordRef.current.style.opacity = String((1 - swap) * appear)
         idleWordRef.current.style.transform = `translate3d(0, ${-swap * 100}%, 0)`
       }
       if (goWordRef.current) {
@@ -217,70 +612,51 @@ export function WorldPortal() {
     window.addEventListener('touchmove', onTouchMove, { passive: true })
     window.addEventListener('touchend', onTouchEnd, { passive: true })
     window.addEventListener('touchcancel', onTouchEnd, { passive: true })
+    window.addEventListener('resize', onResize)
 
+    /* `frame` and `portal` survive a route change in the same JS
+       context; reset them on the way out so a return does not start
+       from the final frame of the page it left. */
     return () => {
-      stop()
-      window.removeEventListener('wheel', onWheel)
-      window.removeEventListener('touchstart', onTouchStart)
-      window.removeEventListener('touchmove', onTouchMove)
-      window.removeEventListener('touchend', onTouchEnd)
-      window.removeEventListener('touchcancel', onTouchEnd)
-      if (timer) window.clearTimeout(timer)
+      teardown()
+      /* Leaving any other way than through the door — the index, a
+         link — takes the leaves with it. Through the door, the world
+         takes them over. */
+      if (!sealed.current) garden.hide()
       portal.pull = 0
+      portal.drag = 0
+      frame.progress = 0
+      frame.velocity = 0
+      frame.chapterProgress = 0
     }
   }, [reducedMotion, router, warm])
-
-  /* Once sealed the frame loop lets go, so the closing values are
-     written here exactly once and the transition armed by the phase
-     attribute carries them home. */
-  useEffect(() => {
-    if (!committed) return
-    if (veilRef.current) veilRef.current.style.transform = 'translate3d(0, 0, 0)'
-    if (fillRef.current) fillRef.current.style.transform = 'scaleX(1)'
-    if (idleWordRef.current) {
-      idleWordRef.current.style.opacity = '0'
-      idleWordRef.current.style.transform = 'translate3d(0, -100%, 0)'
-    }
-    if (goWordRef.current) {
-      goWordRef.current.style.opacity = '1'
-      goWordRef.current.style.transform = 'translate3d(0, 0, 0)'
-    }
-  }, [committed])
 
   return (
     <div
       className={styles.host}
+      ref={hostRef}
       data-phase={committed ? 'entering' : 'idle'}
       data-plain={reducedMotion ? 'true' : undefined}
     >
-      {!reducedMotion && (
-        <>
-          <div className={styles.veil} ref={veilRef} aria-hidden="true">
-            <span className={styles.veilFade} />
-            <span className={styles.veilEdge} />
-          </div>
-          <p className="sr-only" role="status" aria-live="polite" ref={liveRef} />
-        </>
-      )}
+      {!reducedMotion && <p className="sr-only" role="status" aria-live="polite" ref={liveRef} />}
 
       <div className={styles.readout}>
         {!reducedMotion && (
           <span className={styles.state} aria-hidden="true">
-            <span className={styles.word} ref={idleWordRef}>Keep scrolling</span>
-            <span className={`${styles.word} ${styles.wordGo}`} ref={goWordRef}>Entering</span>
+            <span className={styles.word} ref={idleWordRef}>
+              Keep scrolling<span className={styles.wordTail}> — the garden takes over</span>
+            </span>
+            <span className={`${styles.word} ${styles.wordGo}`} ref={goWordRef}>Almost through</span>
           </span>
         )}
 
-        {/* The scroll is an enhancement; this is the way through.
-            Prefetching is deliberately tied to intent rather than to
-            the link merely being on screen — the world is a large
-            download for a visitor who may never open it. */}
+        {/* The scroll is an enhancement; this is the way through. */}
         <Link
-          href="/world"
+          href="/world2"
           prefetch={false}
           className={styles.enter}
-          onPointerEnter={warm}
-          onFocus={warm}
+          onPointerEnter={() => warm(3)}
+          onFocus={() => warm(3)}
           data-cursor="link"
           data-cursor-text="DRIVE"
         >

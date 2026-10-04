@@ -150,10 +150,22 @@ export function ToolboxScene() {
     // strength — until a technology is picked, and then the edges
     // that prove it come forward. Hovering a tile is what lights the
     // lattice; the lattice is never competing with the tile.
+    //
+    // TWO SYSTEMS WERE ANSWERING ONE QUESTION
+    // The lift used to run the edges from 0.10 to 0.55 in rust
+    // rays, which drew a grey-and-vermilion scribble across
+    // x 490–1180 / y 370–560 of a near-white page — and the vine
+    // that now threads the wall's own gutters answers the same
+    // hover in the grid's own space. Two answers to one question
+    // is one too many, so the lift drops to about a third of what
+    // it was: enough that the lattice is visibly the thing being
+    // asked, quiet enough that it stays a watermark and the plant
+    // is what the eye follows. The resting strengths are
+    // untouched; only the `lit` terms move.
     const lit = active ? 1 : 0
-    ;(edges.current.material as THREE.LineBasicMaterial).opacity = opacity.current * (0.1 + lit * 0.45)
-    ;(techMesh.current.material as THREE.MeshBasicMaterial).opacity = opacity.current * (0.22 + lit * 0.5)
-    ;(projMesh.current.material as THREE.MeshBasicMaterial).opacity = opacity.current * (0.22 + lit * 0.55)
+    ;(edges.current.material as THREE.LineBasicMaterial).opacity = opacity.current * (0.1 + lit * 0.15)
+    ;(techMesh.current.material as THREE.MeshBasicMaterial).opacity = opacity.current * (0.22 + lit * 0.17)
+    ;(projMesh.current.material as THREE.MeshBasicMaterial).opacity = opacity.current * (0.22 + lit * 0.18)
 
     group.current.position.set(0, 0.4, -9)
     group.current.scale.setScalar(0.72)

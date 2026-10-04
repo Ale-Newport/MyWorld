@@ -5,13 +5,19 @@ import nextTypeScript from 'eslint-config-next/typescript'
 const spread = (c) => (Array.isArray(c) ? c : [c])
 
 /** Flat config — ESLint 9 / eslint-config-next 16 native format. */
-export default [
+const config = [
   /* `.next-verify` is the escape-hatch dist dir a verification build
      writes to while a dev server holds `.next` (see next.config.ts's
      NEXT_DIST_DIR). Un-ignored, `eslint .` lints the compiled bundle:
      156 errors and 9,400 warnings from Turbopack's own output, which
      buries the handful that are actually about this repo's source. */
-  { ignores: ['public/archipelago/**', '.next/**', '.next-verify/**', 'node_modules/**', 'out/**', '.qa/**', 'next-env.d.ts'] },
+  /* Every dist dir, not two of them by name. `NEXT_DIST_DIR` takes an
+     arbitrary value, so naming them one at a time guarantees the day
+     someone builds to a third and `eslint .` reports twelve thousand
+     errors out of compiled output — which has already happened once,
+     with `.next-prod`. tsconfig's include list has the same shape of
+     hole and the same fix. */
+  { ignores: ['public/archipelago/**', '.next*/**', 'node_modules/**', 'out/**', '.qa/**', 'next-env.d.ts'] },
   ...spread(next),
   ...spread(nextCoreWebVitals),
   ...spread(nextTypeScript),
@@ -48,3 +54,5 @@ export default [
     },
   },
 ]
+
+export default config

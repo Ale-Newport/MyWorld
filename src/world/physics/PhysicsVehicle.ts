@@ -80,8 +80,12 @@ export interface Wheel {
   groundCollider: RAPIER.Collider | null
 }
 
-/** Per-surface grip. `null` means "use the default frictionSlip". */
-export type SurfaceFriction = (collider: RAPIER.Collider) => number | null
+/**
+ * Per-surface grip. `null` means "use the default frictionSlip"; a null
+ * collider means "a wheel with nothing under it", which the vehicle never
+ * asks about but a caller wanting to know the default can.
+ */
+export type SurfaceFriction = (collider: RAPIER.Collider | null) => number | null
 
 export class PhysicsVehicle {
   readonly events = new Events<VehicleEvent>()
@@ -365,7 +369,28 @@ export class PhysicsVehicle {
     const dt = this.ticker.deltaScaled
     this.speed = this.velocity.length() / dt
     this.xzSpeed = Math.hypot(this.velocity.x, this.velocity.z) / dt
-    this.forwardRatio = this.direction.dot(this.forward)
+    /*
+      "Am I travelling the way I am pointing" is a question about the GROUND.
+      `direction` is the normalised per-step position delta and `forward` is
+      the chassis axis, so taking that dot product in three dimensions makes a
+      car with its nose in the air — or its nose down off a ramp — read as
+      travelling sideways: the ratio falls under 0.5 while the car is going
+      dead ahead, and `updatePrePhysics` hands the driver the handbrake
+      instead of the throttle. Measured over a boosted lap of the world-02
+      circuit, that accounted for 8 of the 43 fixed steps where the throttle
+      was held and no engine force came out, arriving as 17-83 ms episodes at
+      30 m/s — a pedal that drops out for a few thousandths at a time.
+
+      Flattening both vectors asks the question that is actually being asked.
+      With no horizontal motion at all there is no such question, and the
+      answer that does no harm is "forwards": a car falling straight down does
+      not want the handbrake.
+    */
+    const flatDirection = Math.hypot(this.direction.x, this.direction.z)
+    const flatForward = Math.hypot(this.forward.x, this.forward.z)
+    this.forwardRatio = flatDirection > 1e-4 && flatForward > 1e-4
+      ? (this.direction.x * this.forward.x + this.direction.z * this.forward.z) / (flatDirection * flatForward)
+      : 1
     this.goingForward = this.forwardRatio > 0.5
     this.forwardSpeed = this.speed * this.forwardRatio
 

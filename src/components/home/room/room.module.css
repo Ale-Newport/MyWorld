@@ -1,0 +1,64 @@
+/* ============================================================
+   THE ROOM LAYER
+   Fixed to the viewport at the bottom of the stack, beneath the
+   journey's own canvas (z 1) and its copy (z 10). It never takes
+   a pointer, a wheel or a touch: every event falls through to the
+   page above it.
+
+   Height is the LARGE viewport (lvh), deliberately: when a phone's
+   toolbars slide away the canvas does not resize, re-render or
+   jump — the toolbar simply stops covering its foot. 100vh is the
+   fallback for engines without the unit; the two are never mixed
+   on the same box.
+   ============================================================ */
+
+.host {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100vh;
+  z-index: 0;
+  pointer-events: none;
+  overflow: hidden;
+  contain: strict;
+  /* The wall's own tone, so the first paint and any gap read as
+     the same plaster the canvas is about to draw. */
+  background: #e9e5dd;
+}
+
+@supports (height: 100lvh) {
+  .host { height: 100lvh; }
+}
+
+.canvas,
+.still {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.canvas {
+  opacity: 0;
+  transition: opacity 700ms var(--ease-out-expo);
+}
+
+.host[data-ready='true'] .canvas { opacity: 1; }
+
+/* A still rendered from this same scene stands in when WebGL
+   cannot start or its context is lost for good. */
+.still {
+  object-fit: cover;
+  object-position: 50% 100%;
+  opacity: 0;
+  transition: opacity 500ms ease;
+}
+
+.host[data-fallback='true'] .still { opacity: 1; }
+.host[data-fallback='true'] .canvas { opacity: 0; }
+
+@media (prefers-reduced-motion: reduce) {
+  .canvas, .still { transition: none; }
+}

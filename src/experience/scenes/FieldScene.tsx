@@ -59,7 +59,7 @@ export function FieldScene() {
     // The field fades in as the story leaves the prelude and steps
     // aside for the chapters that bring a scene of their own. The
     // list mirrors the field's mount window in SceneManager.
-    const fieldChapter = ['prelude', 'about', 'kcl', 'pansofia', 'teaching', 'focus', 'gym', 'ucl'].includes(s.chapter)
+    const fieldChapter = ['pansofia', 'teaching', 'focus', 'gym'].includes(s.chapter)
     const preludeFade = s.chapter === 'prelude' ? clamp((frame.progress - 0.004) * 90) : 1
     const target = fieldChapter ? preludeFade : 0
     u.uFade.value = damp(u.uFade.value, target, 2.2, d)

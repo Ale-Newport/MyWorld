@@ -1,22 +1,30 @@
 'use client'
 
+import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useJourney, frame } from '@/state/journey'
-import { chapters, timelineYears } from '@/content/chapters'
+import { useActiveChapter, useJourneyRoute } from '@/components/journey/JourneyProvider'
+import { journeys } from '@/content/chapters'
 import { profile } from '@/content/profile'
 import { scrollToProgress } from '@/hooks/useLenisScroll'
 import { clamp } from '@/lib/math'
 import { subscribe } from '@/lib/ticker'
 import styles from './Hud.module.css'
 
-/** Persistent chrome: identity, index, sound, progress timeline. */
+/** Persistent chrome: identity, cross-journey link, index, sound, scrub. */
 export function Hud({ onOpenIndex }: { onOpenIndex: () => void }) {
   const soundEnabled = useJourney((s) => s.soundEnabled)
   const toggleSound = useJourney((s) => s.toggleSound)
   const quickView = useJourney((s) => s.quickView)
-  const chapter = useJourney((s) => s.chapter)
-  const ranges = useJourney((s) => s.ranges)
   const indexOpen = useJourney((s) => s.indexOpen)
+  /* The route, not the store. This chrome is the first thing the
+     HTML says about which story the visitor has opened, and it has
+     to be right in the markup the server sends. */
+  const { id: journeyId, chapters, ranges } = useJourneyRoute()
+  const current = useActiveChapter()
+  const widestTitle = chapters.reduce((w, c) => (c.title.length > w.length ? c.title : w), '')
+  const router = useRouter()
 
   const barRef = useRef<HTMLDivElement>(null)
   const fillRef = useRef<HTMLDivElement>(null)
@@ -57,18 +65,55 @@ export function Hud({ onOpenIndex }: { onOpenIndex: () => void }) {
     }
   }, [dragging, seekFromEvent])
 
-  const current = chapters.find((c) => c.id === chapter)
+  /* Position within the MOUNTED journey. `ranges` is the only
+     honest source for it: the chapter's own index belongs to its
+     journey, and the slider is measuring this one. */
+  const position = Math.max(0, ranges.findIndex((r) => r.id === current.id))
+
+  const home = journeyId === 'home'
+  const other = journeys[home ? 'projects' : 'home']
 
   return (
-    <div className={styles.hud} data-hidden={indexOpen ? 'true' : 'false'}>
+    <div className={styles.hud} data-hud="" data-journey={journeyId} data-hidden={indexOpen ? 'true' : 'false'}>
       <header className={styles.top}>
-        <a href="#chapter-prelude" className={styles.brand} data-cursor="link" data-cursor-text="TOP">
+        <a href={`#chapter-${chapters[0].id}`} className={styles.brand} data-cursor="link" data-cursor-text="TOP">
           <span className={styles.mark} aria-hidden="true">{profile.initials}</span>
           <span className={styles.brandName}>{profile.name}</span>
         </a>
 
         <div className={styles.topRight}>
           {quickView && <span className={styles.mode}>QUICK VIEW</span>}
+
+          {/* ============================================================
+              THE OTHER JOURNEY
+              Splitting the story in two makes each half a dead end
+              unless the persistent chrome carries the way across. It
+              sits in the top bar, in the same mono label as the rest,
+              because it is navigation and not a call to action.
+
+              It is also on screen from first paint on every page, so
+              Next's default prefetch would pull the other route down
+              for every visitor, on any connection, whether or not
+              they ever cross. Warmed on intent instead — the same
+              bargain the portal's link to `/world` strikes, and for
+              the same reason.
+              ============================================================ */}
+          <Link
+            href={other.path}
+            prefetch={false}
+            onPointerEnter={() => router.prefetch(other.path)}
+            onFocus={() => router.prefetch(other.path)}
+            className={styles.cross}
+            data-back={home ? 'false' : 'true'}
+            aria-label={home ? 'Go to the projects' : 'Go back to the portfolio'}
+            data-cursor="link"
+            data-cursor-text={home ? 'WORK' : 'BACK'}
+          >
+            {!home && <span className={styles.crossArrow} aria-hidden="true">←</span>}
+            <span className={styles.crossLabel}>{other.label}</span>
+            {home && <span className={styles.crossArrow} aria-hidden="true">→</span>}
+          </Link>
+
           <button
             type="button"
             className={styles.hudBtn}
@@ -95,31 +140,40 @@ export function Hud({ onOpenIndex }: { onOpenIndex: () => void }) {
 
       <footer className={styles.bottom}>
         <div className={styles.chapterTag}>
-          <span className={styles.chapterNo}>{current?.number}</span>
-          <span className={styles.chapterName}>{current?.title}</span>
+          <span className={styles.chapterNo}>{current.number}</span>
+          {/* The home room keeps this label's ground clear for its
+              longest title, not just the one it shows now. */}
+          <span className={styles.chapterName} data-room-reserve-text={widestTitle}>{current.title}</span>
         </div>
 
+        {/* ============================================================
+            THE SCRUB
+            This was a timeline, with year markers and an arrow into
+            the future. The journeys are ordered thematically now, so
+            a chronology drawn under them was a claim the page no
+            longer makes. What survives is the control: drag it,
+            arrow-key it, read the percentage off it.
+            ============================================================ */}
         <div
-          className={styles.timeline}
+          className={styles.scrub}
           ref={barRef}
           role="slider"
           tabIndex={0}
           aria-label="Journey progress. Use arrow keys to move between chapters."
           aria-valuemin={0}
-          aria-valuemax={chapters.length - 1}
-          aria-valuenow={current?.index ?? 0}
-          aria-valuetext={current?.title}
+          aria-valuemax={Math.max(0, ranges.length - 1)}
+          aria-valuenow={position}
+          aria-valuetext={current.title}
           onPointerDown={(e) => { setDragging(true); seekFromEvent(e.clientX) }}
           onKeyDown={(e) => {
-            const i = current?.index ?? 0
             if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
               e.preventDefault()
-              const n = ranges[Math.min(ranges.length - 1, i + 1)]
+              const n = ranges[Math.min(ranges.length - 1, position + 1)]
               if (n) scrollToProgress(n.start + 0.002)
             }
             if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
               e.preventDefault()
-              const n = ranges[Math.max(0, i - 1)]
+              const n = ranges[Math.max(0, position - 1)]
               if (n) scrollToProgress(n.start + 0.002)
             }
           }}
@@ -128,25 +182,6 @@ export function Hud({ onOpenIndex }: { onOpenIndex: () => void }) {
         >
           <div className={styles.track} />
           <div className={styles.fill} ref={fillRef} />
-          {timelineYears.map((y) => {
-            const r = ranges.find((x) => x.id === y.chapter)
-            if (!r || r.end <= r.start) return null
-            return (
-              <button
-                key={y.year}
-                type="button"
-                className={styles.marker}
-                style={{ left: `${r.start * 100}%` }}
-                onClick={(e) => { e.stopPropagation(); scrollToProgress(r.start + 0.002) }}
-                aria-label={`Jump to ${y.year}`}
-                data-cursor="link"
-              >
-                <span className={styles.dot} />
-                <span className={styles.year}>{y.year}</span>
-              </button>
-            )
-          })}
-          <span className={styles.future} aria-hidden="true">→</span>
         </div>
 
         <div className={styles.pct}>

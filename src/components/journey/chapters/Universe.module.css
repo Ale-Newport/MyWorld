@@ -2,7 +2,7 @@
 
 .head {
   position: absolute;
-  top: clamp(4.5rem, 10vh, 7rem);
+  top: clamp(6rem, 15vh, 9rem);
   left: var(--gutter);
   display: flex; flex-direction: column; gap: var(--sp-3);
   max-width: min(30ch, 44vw);
@@ -77,6 +77,35 @@
 }
 .listToggle:hover { background: var(--text-primary); color: var(--bg-primary); }
 
+/* The doorway to the projects journey sits beside the list toggle
+   rather than replacing it: one opens the archive in place, the
+   other leaves for the long version. It is set as text with a rule
+   under it, not as a second box, so the pair reads as "or" rather
+   than as two equal buttons. */
+/* Raised out of the sheet's way. `.list` is `inset: 0` and comes
+   last in the stage, so when it opens it paints over this corner and
+   swallows the pointer there — the same interception as the closed
+   list below, mirrored: the constellation could not be reached with
+   the list shut, and with it open neither "Close list" nor the way
+   across to /projects could be, while Escape closes the project
+   overlay and not the drawer. A visitor who opened the archive had
+   no way back to it. `.footer` is positioned with `z-index: auto`
+   and so raises no stacking context of its own, which is what lets
+   one index here lift the two controls clear of the sheet without
+   also lifting the hint beside them — that line talks about
+   dragging a constellation nobody can see while the list is up. */
+.actions { position: relative; z-index: 1; display: flex; align-items: center; gap: var(--sp-3); }
+.cross {
+  font-family: var(--font-mono); font-size: var(--fs-micro);
+  letter-spacing: var(--tracking-label); text-transform: uppercase;
+  color: var(--text-muted);
+  padding: 0.45rem 0;
+  border-bottom: var(--hair) solid var(--border-strong);
+  white-space: nowrap;
+  transition: color var(--dur-fast), border-color var(--dur-fast);
+}
+.cross:hover { color: var(--text-primary); border-color: var(--text-primary); }
+
 .list {
   position: absolute;
   inset: 0;
@@ -89,6 +118,19 @@
   pointer-events: none;
   transition: opacity var(--dur-mid) var(--ease-out-expo);
 }
+/* `.stage > *` in chapters.module.css sets `pointer-events: auto`
+   on every direct child of a stage, and it is the same specificity
+   as `.list` — so which of the two wins is decided by the order
+   the two stylesheets happen to be injected in, and it was winning.
+   The closed list is `inset: 0` at zero opacity, so an invisible
+   sheet was covering the whole chapter: the constellation could not
+   be clicked and the filters underneath it could not be reached.
+   Found while hit-testing this chapter for the nature layer, which
+   turned out not to be the thing intercepting anything.
+
+   `:not()` raises the specificity past the stage rule, so the
+   closed state no longer depends on injection order. */
+.list:not([data-open='true']) { pointer-events: none; }
 .list[data-open='true'] { opacity: 1; pointer-events: auto; }
 
 .listItem {

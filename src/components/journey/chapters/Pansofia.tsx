@@ -5,6 +5,7 @@ import { Chapter } from '@/components/journey/Chapter'
 import { Reveal } from '@/components/typography/Reveal'
 import { TagRow, MetricBlock } from '@/components/journey/parts'
 import { Counter } from '@/components/typography/Counter'
+import { useJourneyRoute } from '@/components/journey/JourneyProvider'
 import { experienceById } from '@/content/experience'
 import { chapterById } from '@/content/chapters'
 import { clientProjects, featuredClientProjects } from '@/content/projects/client'
@@ -15,7 +16,7 @@ import shared from './chapters.module.css'
 import styles from './Pansofia.module.css'
 
 /* ============================================================
-   31 – 40%  CHAPTER II — FROM PROJECTS TO PRODUCTS
+   PROJECTS · 00 – 15%  FROM PROJECTS TO PRODUCTS
    One browser pane becomes many and the count resolves to 14.
    Then a horizontal gallery of the real
    sites — the one place on this site where screenshots are the
@@ -35,13 +36,36 @@ export function Pansofia() {
   const stackRef = useRef<HTMLDivElement>(null)
   const [hover, setHover] = useState<string | null>(null)
   const setActiveProject = useJourney((s) => s.setActiveProject)
+  const { chapters } = useJourneyRoute()
+
+  /* ============================================================
+     THE FRONT DOOR OF A JOURNEY HAS NO RUN-UP
+
+     Every chapter fades its head in over its first tenth, which
+     is what carries the reader across the seam from the chapter
+     before. Since the split this one OPENS `/projects`, where
+     there is no chapter before: the same fade meets a visitor
+     with an empty white screen and asks them to scroll half a
+     viewport before the page says what it is. So when this
+     chapter is first in its journey the entry is already
+     finished at t = 0. The exit is untouched — there is still
+     something after it to leave for.
+
+     The running order comes from the route rather than the store,
+     so the very first frame this chapter draws already knows it is
+     the landing screen — read from a store corrected by an effect
+     it would run the fade it is meant to skip and then cut.
+     ============================================================ */
+  const opensJourney = chapters[0]?.id === 'pansofia'
+  const entry = (t: number, from: number, to: number) =>
+    (opensJourney ? 1 : clamp(range(t, from, to)))
 
   useChapterFrame('pansofia', (t) => {
     if (reducedMotion) return
 
     const head = headRef.current
     if (head) {
-      const a = clamp(range(t, 0.0, 0.1)) * (1 - clamp(range(t, 0.26, 0.36)))
+      const a = entry(t, 0.0, 0.1) * (1 - clamp(range(t, 0.26, 0.36)))
       head.style.opacity = String(a)
       head.style.transform = `translate3d(0, ${(1 - a) * 1.6}rem, 0)`
     }
@@ -49,9 +73,16 @@ export function Pansofia() {
     // The browser panes fan out of one, then collapse behind the count.
     const stack = stackRef.current
     if (stack) {
+      /* The fan itself is NOT given a head start on the landing
+         screen. It was tried: the panes spread symmetrically about
+         the centre, so opening them halfway throws the left half of
+         the stack across the heading, which is worse than the one
+         number the closed stack clips. The pane crossing the copy
+         is the chapter's own idiom anyway — it does it at every
+         small t, and always did. */
       const fan = clamp(range(t, 0.05, 0.3))
       const collapse = clamp(range(t, 0.3, 0.42))
-      const a = clamp(range(t, 0.02, 0.12)) * (1 - clamp(range(t, 0.34, 0.44)))
+      const a = entry(t, 0.02, 0.12) * (1 - clamp(range(t, 0.34, 0.44)))
       stack.style.opacity = String(a)
       const panes = stack.children
       for (let i = 0; i < panes.length; i++) {

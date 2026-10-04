@@ -16,7 +16,7 @@ import shared from './chapters.module.css'
 import styles from './Contact.module.css'
 
 /* ============================================================
-   98 – 100%  WHAT'S NEXT?
+   HOME · 86 – 100%  WHAT'S NEXT?
    The camera pulls all the way back and everything the visitor
    passed reassembles into one body. The ending mirrors the
    opening: open space, now full of what was built in it.
@@ -39,8 +39,20 @@ export function Contact() {
     const dim = 1 - rise * 0.82
     const lift = rise * 3.2
 
+    /* And the whole stage is held back by whatever the portal is
+       currently refusing to hand over. The page is already at its
+       foot, so this is the only place the resistance can be seen:
+       scroll spent against the portal moves the last chapter a
+       fraction of what it asked for, and lets it spring back the
+       moment the pushing stops. One number, two chapters' worth of
+       loops — the portal computes it, this one spends it. */
     const stage = stageRef.current
-    if (stage) stage.style.setProperty('--portal-dim', String(rise))
+    if (stage) {
+      stage.style.setProperty('--portal-dim', String(rise))
+      // Tenths of a pixel. Anything finer is a longer string for a
+      // difference no screen has.
+      stage.style.setProperty('--portal-drag', (Math.round(portal.drag * 10) / 10).toFixed(1))
+    }
 
     const q = questionRef.current
     if (q) {

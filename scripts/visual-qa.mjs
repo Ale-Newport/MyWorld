@@ -11,7 +11,16 @@ import { mkdir, writeFile, rm } from 'node:fs/promises'
 import path from 'node:path'
 
 const BASE = process.argv[2] ?? 'http://localhost:3000'
-const OUT = path.resolve('.qa')
+/* `.qa/` is a shared yard, not this sweep's workshop. Every other
+   harness in `scripts/` writes into a subdirectory it owns — `.qa/tour`,
+   `.qa/grass`, `.qa/world2` — and this one used to take the root and
+   then empty it, so a single run deleted every other harness's evidence
+   along with its own, including the nature-proof sheets and the live
+   captures the redesign is being judged against. It now owns
+   `.qa/visual-qa` and wipes only that: same clean slate for its own
+   artefacts, none of anybody else's. Overridable, like the
+   reduced-motion sweep, so two runs can sit side by side. */
+const OUT = path.resolve(process.env.VISUAL_QA_OUT ?? '.qa/visual-qa')
 
 const VIEWPORTS = [
   { name: '1920x1080', width: 1920, height: 1080 },

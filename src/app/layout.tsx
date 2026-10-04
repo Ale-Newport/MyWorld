@@ -3,6 +3,7 @@ import { GeistSans } from 'geist/font/sans'
 import { GeistMono } from 'geist/font/mono'
 import { siteConfig, profile, contact } from '@/content/profile'
 import { education } from '@/content/education'
+import { GardenCover } from '@/components/home/botanical/GardenCover'
 import '@/styles/globals.css'
 
 export const metadata: Metadata = {
@@ -37,7 +38,7 @@ export const viewport: Viewport = {
   // visitor's OS is set to, and advertising a dark variant would
   // only paint the phone's browser chrome against it. Must track
   // --bg-primary in tokens.css.
-  themeColor: '#ffffff',
+  themeColor: '#f6f0e6',
   width: 'device-width',
   initialScale: 1,
   viewportFit: 'cover',
@@ -73,6 +74,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           dangerouslySetInnerHTML={{ __html: JSON.stringify(personJsonLd) }}
         />
         {children}
+        {/* Outlives every route: the leaves the homepage closes over
+            itself are the ones the world arrives under. */}
+        <GardenCover />
       </body>
     </html>
   )

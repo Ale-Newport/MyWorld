@@ -1,8 +1,8 @@
 'use client'
 
 import { create } from 'zustand'
-import type { ChapterId } from '@/content/types'
-import { chapters, chapterRanges, type ChapterRange } from '@/content/chapters'
+import type { ChapterId, JourneyId } from '@/content/types'
+import { chapters, chapterRanges, journeys, type ChapterRange } from '@/content/chapters'
 
 export type PerformanceTier = 'low' | 'medium' | 'high'
 
@@ -13,12 +13,24 @@ export interface JourneyState {
   /** 0..1 within the active chapter. */
   chapterProgress: number
   chapter: ChapterId
+  /** Position within the ACTIVE journey, never global. */
   chapterIndex: number
   /** Signed scroll velocity in px/frame, smoothed. */
   velocity: number
   direction: 1 | -1
 
   /* ---- presentation ------------------------------------- */
+  /**
+   * Which of the two scroll stories is mounted, for the readers
+   * that live outside React's tree: the scroll driver, the frame
+   * loops, and the scene manager inside the R3F canvas, which no
+   * DOM context reaches. Anything that renders markup takes the
+   * route from `useJourneyRoute` instead — this copy is only ever
+   * correct in the browser, and the chrome has to be right in the
+   * HTML the server sends. Either way it is one journey's chapters
+   * and never the global list, because no route renders fourteen.
+   */
+  journeyId: JourneyId
   ranges: ChapterRange[]
 
   /* ---- modes -------------------------------------------- */
@@ -36,6 +48,7 @@ export interface JourneyState {
   /* ---- actions ------------------------------------------ */
   setScroll: (p: { progress: number; velocity: number }) => void
   setPointer: (x: number, y: number) => void
+  setJourney: (id: JourneyId) => void
   setQuickView: (v: boolean) => void
   setReducedMotion: (v: boolean) => void
   setPerformanceTier: (t: PerformanceTier) => void
@@ -58,17 +71,27 @@ function resolve(progress: number, ranges: ChapterRange[]) {
   return { active, chapterProgress }
 }
 
-const initialRanges = chapterRanges(false)
+/* The store boots on the home journey because a module singleton
+   has to boot on something, and on the server it must then stay
+   exactly as it is: one process answers many requests at once, so
+   a route written in here would be a route leaked between them.
+   What the chrome renders therefore comes from the route context
+   in `JourneyProvider`, not from this. `setJourney` corrects this
+   copy in the browser, during that provider's render and before
+   any child of it has looked — it is what the scroll driver reads
+   from outside React, where a context cannot be reached. */
+const initialJourney = journeys.home
 
 export const useJourney = create<JourneyState>((set, get) => ({
   progress: 0,
   chapterProgress: 0,
-  chapter: 'prelude',
+  chapter: initialJourney.chapters[0].id,
   chapterIndex: 0,
   velocity: 0,
   direction: 1,
 
-  ranges: initialRanges,
+  journeyId: initialJourney.id,
+  ranges: chapterRanges(false, initialJourney.chapters),
 
   quickView: false,
   reducedMotion: false,
@@ -93,9 +116,29 @@ export const useJourney = create<JourneyState>((set, get) => ({
 
   setPointer: (x, y) => set({ pointer: { x, y } }),
 
-  setQuickView: (v) => {
-    const ranges = chapterRanges(v)
+  /* Swapping journeys is a hard reset of everything derived from
+     scroll. The two stories are different documents of different
+     heights: carrying 0.72 progress across the boundary would
+     land the visitor in an arbitrary chapter of the new one. */
+  setJourney: (id) => {
     const s = get()
+    if (s.journeyId === id) return
+    const list = journeys[id].chapters
+    set({
+      journeyId: id,
+      ranges: chapterRanges(s.quickView, list),
+      chapter: list[0].id,
+      chapterIndex: 0,
+      progress: 0,
+      chapterProgress: 0,
+      velocity: 0,
+      direction: 1,
+    })
+  },
+
+  setQuickView: (v) => {
+    const s = get()
+    const ranges = chapterRanges(v, journeys[s.journeyId].chapters)
     const { active, chapterProgress } = resolve(s.progress, ranges)
     set({
       quickView: v,
@@ -136,4 +179,5 @@ export const frame = {
   time: 0,
 }
 
+/** Chapters across BOTH journeys. No single route renders this many. */
 export const chapterCount = chapters.length

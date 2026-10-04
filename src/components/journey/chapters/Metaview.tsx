@@ -14,7 +14,7 @@ import shared from './chapters.module.css'
 import styles from './Metaview.module.css'
 
 /* ============================================================
-   65 – 74%  CHAPTER IV — INTELLIGENCE
+   PROJECTS · 55 – 75%  INTELLIGENCE
    The site turns dark here, and it turns dark because the
    subject changes: half a million documents become a space you
    can fly through. The DOM layer stays quiet — six beats, each

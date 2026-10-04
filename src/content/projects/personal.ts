@@ -179,7 +179,7 @@ export const personalProjects: Project[] = [
     ],
     technologies: ['Python', 'NumPy', 'SciPy', 'pandas', 'matplotlib', 'seaborn', 'Flask', 'pytest', 'Reinforcement Learning', 'MCTS'],
     repository: gh('Designing-and-Analysing-a-Fair-Variant-of-Cinquillo'),
-    chapter: 'kcl',
+    chapter: 'education',
     timelinePosition: 0.68,
     presentation: {
       type: 'procedural',

@@ -22,7 +22,15 @@
     "world:water": "node scripts/world-water-drive.mjs",
     "world:grass": "node scripts/world-grass-check.mjs",
     "world:minigames": "VENUES_JSON=$(node scripts/_venues.mjs) node scripts/world-minigame-qa.mjs",
-    "world:loop": "ROADS_JSON=$(node scripts/_roads.mjs) node scripts/world-loop-drive.mjs"
+    "world:loop": "ROADS_JSON=$(node scripts/_roads.mjs) node scripts/world-loop-drive.mjs",
+    "world2:export": "node scripts/export-world2.mjs",
+    "world2:qa": "node scripts/world2-qa.mjs",
+    "world2:qa:platform": "node scripts/world2-platform-qa.mjs",
+    "world2:qa:production": "node scripts/world2-production-qa.mjs",
+    "world2:interactions": "node scripts/world2-interaction-qa.mjs",
+    "world2:routes": "node scripts/world2-routes-qa.mjs",
+    "world2:glyphs": "node scripts/gen-title-glyphs.mjs",
+    "world2:references": "node scripts/gen-world2-interactions.mjs"
   },
   "dependencies": {
     "@dimforge/rapier3d-compat": "^0.17.3",

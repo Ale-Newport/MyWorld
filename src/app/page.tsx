@@ -7,7 +7,7 @@ export default function Home() {
       {/* Server-rendered, crawlable, screen-reader-first summary of
           the entire profile. The experience layers on top of it. */}
       <StaticProfile />
-      <Journey />
+      <Journey journey="home" />
     </>
   )
 }

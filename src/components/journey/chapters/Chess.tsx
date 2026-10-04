@@ -15,7 +15,7 @@ import shared from './chapters.module.css'
 import styles from './Chess.module.css'
 
 /* ============================================================
-   74 – 81%  SEEING THE BOARD
+   PROJECTS · 75 – 90%  SEEING THE BOARD
    The CV pipeline runs in the DOM canvas; the reconstructed
    board resolves in WebGL behind it. Two layers, one idea.
    ============================================================ */

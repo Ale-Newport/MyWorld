@@ -175,9 +175,12 @@ Full text: https://creativecommons.org/publicdomain/zero/1.0/legalcode
 ### Trademarks
 
 CC0 covers the drawings, not the marks they depict. Every logo in the toolbox
-remains the trademark of its owner. They are used here nominatively — to
-identify the technologies behind real projects on this site — and imply no
-endorsement, sponsorship or affiliation, in either direction. If you own one
+remains the trademark of its owner. They are used here nominatively — to name
+the technologies this site's work is built with — and imply no endorsement,
+sponsorship or affiliation, in either direction. Where a technology has no
+public project behind it, its tile is dashed and dimmed and the readout says
+"no public repository yet", so a mark on this wall is never a claim about the
+mark's owner. If you own one
 of these marks and would rather it were not shown, the contact details are on
 the [home page](https://alejandronewport.com).
 
@@ -185,11 +188,15 @@ the [home page](https://alejandronewport.com).
 
 A few tiles wear the mark of the project a technology belongs to rather than
 one of its own, because that is the mark that exists: Java shows OpenJDK,
-"C / C++" shows C++, "Express / Node" shows Node.js, "TensorFlow / Keras"
-shows TensorFlow, "CI / GitHub Actions" shows GitHub Actions, and React
-Native shows the React mark it shares officially. Each tile is captioned with
-the technology it actually stands for, so nothing is passed off as something
+"C / C++" shows C++, "TensorFlow / Keras" shows TensorFlow, "CI / GitHub
+Actions" shows GitHub Actions, and React Native shows the React mark it
+shares officially. Each tile carries the technology it actually stands for in
+its accessible name and its tooltip, so nothing is passed off as something
 else.
+
+Node.js and Express used to share one tile under the Node mark. They are two
+tiles now, each with its own mark, because Simple Icons carries both and a
+runtime is not its web framework.
 
 ### Where there is no mark
 
