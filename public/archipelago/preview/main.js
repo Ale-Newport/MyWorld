@@ -135,4 +135,6 @@ if(/^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname)||new URLSearchPa
 /** Typing belongs to the field that has focus, never to the car, the map or the editor shortcuts. */
 export function typingInto(e){return e.isComposing||!!e.target?.closest?.('input,textarea,select,[contenteditable]:not([contenteditable="false"])');}
 addEventListener('keydown',e=>{if(typingInto(e)||$('#help-dialog').open||editor?.assetStudio?.active)return;if(mode==='drive'){if(['Space','Tab','ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.code))e.preventDefault();keys.add(e.code);if(e.repeat)return;if(e.code==='Escape'){if(trackGameplay?.busy)trackGameplay.exit();else if(gameplay?.active())gameplay.active().exit();else exitDrive();}if(e.code==='Tab')atlas?.toggle();}});addEventListener('keyup',e=>keys.delete(e.code));addEventListener('blur',()=>keys.clear());
+// The admin's bar around the studio asks for saves (and forced saves after a conflict).
+if(!PLAYER_MODE)addEventListener('message',e=>{if(e.origin!==location.origin||e.source!==parent)return;if(e.data?.type==='archipelago:save')void editor?.save(false,{force:!!e.data.force});});
 init().catch(e=>{console.error(e);const m=$('#load-message');if(m)m.textContent='Error: '+e.message;tellHost('archipelago:error',{message:e?.message??String(e)});});
