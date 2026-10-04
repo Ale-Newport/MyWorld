@@ -13,6 +13,7 @@ import { useSound } from '@/hooks/useSound'
 import { useEasterEggs } from '@/hooks/useEasterEggs'
 import type { ChapterId, JourneyId } from '@/content/types'
 import { useEditing, useSite } from '@/cms/context'
+import { track } from '@/components/analytics/track'
 import { CustomSection } from '@/cms/sections'
 import { Chapter } from './Chapter'
 
@@ -105,6 +106,19 @@ export function Journey({ journey }: { journey: JourneyId }) {
     if (w.requestIdleCallback) w.requestIdleCallback(start, { timeout: 1200 })
     else window.setTimeout(start, 400)
   }, [])
+
+  /* Audience statistics: how far into this journey a visit gets (each mark once per visit to the page). */
+  useEffect(() => {
+    const marks = [25, 50, 75, 100]
+    let next = 0
+    return useJourney.subscribe((s) => {
+      while (next < marks.length && s.progress * 100 >= (marks[next] === 100 ? 98.5 : marks[next])) {
+        track('journey_progress', { journey, pct: marks[next] })
+        if (marks[next] === 100) track('journey_complete', { journey })
+        next++
+      }
+    })
+  }, [journey])
 
   /* Global keyboard shortcuts. */
   useEffect(() => {

@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useRef } from 'react'
+import { track } from '@/components/analytics/track'
 import { useJourney } from '@/state/journey'
 import { useSite } from '@/cms/context'
 import { E } from '@/cms/editable'
@@ -20,6 +21,9 @@ export function ProjectOverlay() {
   const panel = useRef<HTMLDivElement>(null)
   const closeBtn = useRef<HTMLButtonElement>(null)
   const project = slug ? projectBySlug[slug] : undefined
+
+  /* Audience statistics: an open case study, once per opening. */
+  useEffect(() => { if (slug && project) track('project_open', { slug, from: 'overlay' }) }, [slug, project])
 
   /* URL hash sync — deep links in and out. */
   useEffect(() => {
