@@ -13,7 +13,7 @@ export default function SparklineEffect({ params, active, reducedMotion }: Effec
   const values = raw.length >= 2 ? raw : [0, 1]
   const smooth = bool(params.smooth, true)
   const area = bool(params.area, true)
-  const label = str(params.label, 'Weekly active learners', 80)
+  const label = str(params.label, 'Example series', 80)
   const duration = num(params.duration, 1.8, 0.1, 10)
   /* Drawn in the plot's own pixels: no scaling, so the dash that draws the line measures true. */
   const plot = useRef<HTMLDivElement>(null)

@@ -6,8 +6,8 @@ import s from './css/gauge.module.css'
 
 /** A ring that fills to a value while the number counts up with it. */
 export default function GaugeEffect({ params, active, reducedMotion }: EffectProps) {
-  const value = num(params.value, 72, 0, 100)
-  const label = str(params.label, 'Accuracy', 80)
+  const value = num(params.value, 64, 0, 100)
+  const label = str(params.label, 'Example', 80)
   const suffix = str(params.suffix, '%', 6)
   const thickness = num(params.thickness, 10, 1, 30)
   const duration = num(params.duration, 1.6, 0.1, 8)
