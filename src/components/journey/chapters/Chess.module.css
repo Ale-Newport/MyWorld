@@ -136,7 +136,8 @@
     text-align: left;
   }
   .step { justify-content: flex-start; gap: var(--sp-2); }
-  .metric { grid-column: 1 / span 7; grid-row: 4; }
+  /* At the foot of a short stage there is no room to rise from: it fades in place. */
+  .metric { grid-column: 1 / span 7; grid-row: 4; transform: none !important; }
   .metricValue { font-size: clamp(2rem, min(30cqi, 7vh), 3.5rem); }
   .stage .spec { grid-column: 8 / span 5; grid-row: 4; }
 }
@@ -162,6 +163,7 @@
   /* The figure, with its label and the button stacked beside it. */
   .metric {
     grid-column: 1 / span 4; grid-row: 3;
+    transform: none !important;
     display: grid;
     grid-template-columns: auto minmax(0, 1fr);
     align-items: end;

@@ -149,6 +149,8 @@
   .head { grid-column: 1 / -1; }
   .scene { grid-column: 1 / -1; grid-row: 2; }
   .beats { grid-column: 1 / -1; grid-row: 3; align-self: start; }
+  /* The rail sits right under the outcome here: they cross-fade in place. */
+  .beat { transform: none !important; }
   .beatValue { font-size: clamp(2.1rem, min(15cqi, 8vh), 5rem); }
   .pipeline { grid-row: 4; }
   .all { display: none; }
