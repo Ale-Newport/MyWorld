@@ -1,24 +1,31 @@
-.stage { align-content: center; }
+/* ============================================================
+   CHESS — three regions that never overlap
 
-.visual {
-  position: absolute;
-  inset: clamp(4rem, 10vh, 7rem) 15% clamp(5rem, 12vh, 7rem) var(--gutter);
-  z-index: -1;
-  pointer-events: auto;
-  will-change: transform, opacity;
-}
-@media (max-width: 1000px) {
-  .visual { inset: clamp(9rem, 20vh, 12rem) var(--gutter) clamp(11rem, 26vh, 14rem); }
+   The vision pipeline (a 2D canvas) and the board it resolves
+   into (the WebGL layer, drawn into `.scene`) take turns in the
+   same middle region; the words keep to the columns either side
+   of it. Wide screens: heading and the metric down the left, the
+   stage list on the right. Narrow and tall screens: heading,
+   board, stages, metric, top to bottom. A phone on its side goes
+   back to three columns.
+   ============================================================ */
+
+.stage {
+  --stage-rows: auto minmax(0, 1fr) auto;
+  --stage-align: stretch;
+  --stage-row-gap: clamp(1rem, 3vh, 2rem);
+  --stage-top: clamp(5rem, 11vh, 7rem);
+  --stage-bottom: clamp(5.25rem, 11vh, 7rem);
 }
 
 .head {
   grid-column: 1 / span 4;
-  position: absolute;
-  top: clamp(4.5rem, 10vh, 7rem);
-  left: var(--gutter);
+  grid-row: 1;
+  align-self: start;
   display: flex; flex-direction: column; gap: var(--sp-3);
-  max-width: min(34ch, 44vw);
+  min-width: 0;
 }
+.head > p { max-width: 34ch; }
 
 .title {
   font-size: clamp(1.9rem, 1.1rem + 3.2vw, 4rem);
@@ -26,13 +33,29 @@
   white-space: pre-line; text-transform: uppercase;
 }
 
+/* The pipeline canvas and the board's region share one cell. */
+.visual, .scene {
+  grid-column: 5 / span 5;
+  grid-row: 1 / -1;
+  min-width: 0;
+  min-height: 0;
+}
+.visual {
+  position: relative;
+  z-index: -1;
+  pointer-events: auto;
+  will-change: transform, opacity;
+}
+.scene { pointer-events: none; }
+
 .pipeline {
-  position: absolute;
-  right: var(--gutter);
-  top: 50%;
-  transform: translateY(-50%);
+  grid-column: 10 / span 3;
+  grid-row: 1 / span 2;
+  align-self: center;
+  justify-self: end;
   display: flex; flex-direction: column; gap: 0.3rem;
   text-align: right;
+  min-width: 0;
 }
 .step {
   display: flex; justify-content: flex-end; gap: var(--sp-3); align-items: baseline;
@@ -46,17 +69,21 @@
 .step[data-on='true'] .stepNo { color: var(--accent); }
 
 .metric {
-  position: absolute;
-  left: var(--gutter);
-  bottom: clamp(4.5rem, 11vh, 6.5rem);
+  grid-column: 1 / span 4;
+  grid-row: 3;
+  align-self: end;
   display: flex; flex-direction: column; gap: var(--sp-2);
+  min-width: 0;
+  container-type: inline-size;
   opacity: 0;
   will-change: transform, opacity;
 }
+/* Sized by its column, so the figure never reaches the board. */
 .metricValue {
-  font-size: var(--fs-mega);
+  font-size: clamp(2.4rem, min(26cqi, 15vh), 7rem);
   font-weight: 500; letter-spacing: -0.05em; line-height: 0.8;
   font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 .metricLabel {
   font-family: var(--font-mono); font-size: var(--fs-nano);
@@ -64,8 +91,9 @@
   color: var(--text-muted);
 }
 .play {
-  margin-top: var(--sp-3);
+  margin-top: var(--sp-2);
   align-self: flex-start;
+  min-height: 2.25rem;
   font-family: var(--font-mono); font-size: var(--fs-micro);
   letter-spacing: var(--tracking-label); text-transform: uppercase;
   border: var(--hair) solid var(--border-strong);
@@ -74,71 +102,94 @@
 }
 .play:hover { background: var(--accent); border-color: var(--accent); color: var(--paper); }
 
-@media (max-width: 800px) {
-  .pipeline { top: auto; bottom: 14rem; transform: none; }
-  .head { max-width: 62vw; }
-  .metricValue { font-size: clamp(2.6rem, 14vw, 4rem); }
+/* The corner note joins the grid at the foot of the stage list: two
+   classes, so it outranks the shared corner's own absolute placement
+   whatever order the two stylesheets arrive in. */
+.stage .spec {
+  position: static;
+  grid-column: 10 / span 3;
+  grid-row: 3;
+  align-self: end;
+  justify-self: end;
 }
 
-/* ============================================================
-   STATIC STATE
-   On the animated path the board arrives long after the title
-   has gone; with nothing moving they hold the stage together,
-   and the words end up lying across the squares. So the two are
-   given separate ground — type down the left, the reconstructed
-   board to the right of it — and on a narrow screen, one column
-   in reading order.
-   ============================================================ */
-
-@media (prefers-reduced-motion: reduce) {
-  .visual, .metric { opacity: 1 !important; transform: none !important; }
-  /* Read rather than scrubbed, the pipeline has already run. */
-  .step { color: var(--text-primary); }
-}
-
-@media (prefers-reduced-motion: reduce) and (min-width: 1001px) {
-  /* The board gives up the left third of the stage to the heading,
-     the lead and the metric, and keeps the room between them and
-     the stage list on the right. */
-  .visual { inset: clamp(4rem, 10vh, 7rem) 15% clamp(5rem, 12vh, 7rem) 34%; }
-  /* Sized to sit inside that column instead of running under the
-     board, which is where the full display size ends up. */
-  .metricValue { font-size: clamp(2.4rem, 5.4vw, 6rem); }
-}
-
-@media (prefers-reduced-motion: reduce) and (max-width: 1000px) {
-  /* Too narrow to set anything beside anything else, so the chapter
-     reads as one column: what it is, what it looks at, the stages it
-     runs, what it gets right. The board is the only elastic row —
-     it takes whatever the words leave it, which is what keeps the
-     column inside a stage that clips. */
+/* ---- narrow and tall: one column, the board in the middle ---- */
+@media (max-width: 800px), (max-aspect-ratio: 4/5) {
   .stage {
-    --stage-top: clamp(3.5rem, 6.5vh, 5rem);
-    --stage-rows: auto minmax(9rem, 23rem) auto auto;
-    --stage-row-gap: var(--sp-4);
+    --stage-rows: auto minmax(0, 1fr) auto auto;
+    --stage-row-gap: clamp(0.85rem, 2.2vh, 1.4rem);
+    --stage-top: clamp(4.5rem, 9vh, 6rem);
+    --stage-bottom: clamp(4.75rem, 9vh, 6rem);
   }
-  .head, .visual, .pipeline, .metric {
-    position: static;
-    inset: auto;
-    transform: none;
-    grid-column: 1 / span 12;
-  }
-  .head { grid-row: 1; max-width: none; gap: var(--sp-2); }
-  .head p { max-width: var(--measure-wide); }
-  /* Full bleed, because the board is the widest thing here and the
-     stage labels it carries only sit on one line at full width. */
-  .visual {
-    grid-row: 2;
-    min-height: 0;
-    margin-inline: calc(var(--gutter) * -1);
-  }
+  .head { grid-column: 1 / -1; gap: var(--sp-2); }
+  .head > p { max-width: var(--measure-wide); }
+  /* Full bleed, because the pipeline canvas labels its stages along
+     the foot and only fits them on one line at full width. */
+  .visual, .scene { grid-column: 1 / -1; grid-row: 2; }
+  .visual { margin-inline: calc(var(--gutter) * -1); }
   .pipeline {
+    grid-column: 1 / -1;
     grid-row: 3;
+    justify-self: start;
     flex-flow: row wrap;
     gap: 0.3rem clamp(0.75rem, 3vw, 1.5rem);
     text-align: left;
   }
   .step { justify-content: flex-start; gap: var(--sp-2); }
-  .metric { grid-row: 4; }
-  .metricValue { font-size: clamp(1.9rem, 9vw, 3rem); }
+  /* At the foot of a short stage there is no room to rise from: it fades in place. */
+  .metric { grid-column: 1 / span 7; grid-row: 4; transform: none !important; }
+  .metricValue { font-size: clamp(2rem, min(30cqi, 7vh), 3.5rem); }
+  .stage .spec { grid-column: 8 / span 5; grid-row: 4; }
+}
+@media (max-width: 460px) {
+  .stage .spec { display: none; }
+  .metric { grid-column: 1 / -1; }
+}
+
+/* ---- a phone on its side: three columns, the foot left free ---- */
+@media (max-height: 520px) and (orientation: landscape) {
+  .stage {
+    --stage-col-gap: clamp(1rem, 2.5vw, 1.5rem);
+    --stage-rows: auto minmax(0, 1fr) auto;
+    --stage-row-gap: 0.5rem;
+    --stage-top: 4rem;
+    --stage-bottom: 4rem;
+  }
+  .head { grid-column: 1 / span 4; gap: var(--sp-2); }
+  .title { font-size: clamp(1.4rem, 9vh, 2.4rem); }
+  .head > p { font-size: var(--fs-tiny); }
+  .visual, .scene { grid-column: 5 / span 5; grid-row: 1 / -1; margin-inline: 0; }
+  .pipeline { grid-column: 10 / span 3; grid-row: 1 / -1; flex-flow: column; gap: 0.15rem; }
+  /* The figure, with its label and the button stacked beside it. */
+  .metric {
+    grid-column: 1 / span 4; grid-row: 3;
+    transform: none !important;
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: end;
+    gap: 0.25rem var(--sp-3);
+  }
+  .metricValue { grid-row: 1 / span 2; font-size: clamp(1.5rem, 9vh, 2.4rem); }
+  .metricLabel { grid-column: 2; grid-row: 1; }
+  .play { grid-column: 2; grid-row: 2; justify-self: start; margin-top: 0; min-height: 2rem; padding-block: 0.3rem; }
+  .stage .spec { display: none; }
+}
+
+/* A small phone on its side: the words take a column more, the board one less. */
+@media (max-height: 520px) and (orientation: landscape) and (max-width: 799px) {
+  .head, .metric { grid-column: 1 / span 5; }
+  .visual, .scene { grid-column: 6 / span 4; }
+}
+
+/* ============================================================
+   STATIC STATE
+   On this path nothing hands over: the pipeline holds its region
+   with the board already reconstructed in it (the 3D scene stands
+   down), the metric is on the page from the start, and every stage
+   has run.
+   ============================================================ */
+@media (prefers-reduced-motion: reduce) {
+  .visual, .metric { opacity: 1 !important; transform: none !important; }
+  .step { color: var(--text-primary); }
+  .stepNo { color: var(--accent); }
 }

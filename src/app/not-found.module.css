@@ -18,15 +18,22 @@
   font-family: var(--font-mono); font-size: var(--fs-nano);
   letter-spacing: var(--tracking-wide); color: var(--accent);
 }
+/* The band the lost object tumbles in: the canvas draws it at the middle
+   of this box and keeps its ring inside it. Sized by the height as well,
+   so a phone on its side still has a headline under it. */
+.beacon {
+  width: 100%;
+  height: clamp(4.5rem, 26vh, 12rem);
+}
 .title {
-  font-size: clamp(2.2rem, 1.2rem + 4.4vw, 5rem);
+  font-size: clamp(2.2rem, min(1.2rem + 4.4vw, 13vh), 5rem);
   font-weight: 500; letter-spacing: -0.05em; line-height: 0.9;
   text-transform: uppercase;
-  margin-top: 12rem;
 }
 .body { font-size: var(--fs-small); color: var(--text-muted); line-height: 1.55; }
 .link {
-  margin-top: var(--sp-4);
+  display: inline-flex; align-items: center;
+  min-height: 2.75rem;
   font-family: var(--font-mono); font-size: var(--fs-micro);
   letter-spacing: var(--tracking-label); text-transform: uppercase;
   border: var(--hair) solid var(--border-strong);
@@ -38,6 +45,15 @@
 .actions {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--sp-5);
-  align-items: baseline;
+  justify-content: center;
+  gap: var(--sp-3) var(--sp-4);
+  margin-top: var(--sp-3);
+}
+
+/* A phone on its side: the same column, tighter, so all of it is on the
+   one screen there is. */
+@media (max-height: 520px) and (orientation: landscape) {
+  .content { gap: var(--sp-2); max-width: 64ch; padding-block: var(--sp-4); }
+  .beacon { height: clamp(4.25rem, 22vh, 6rem); }
+  .actions { margin-top: var(--sp-2); }
 }

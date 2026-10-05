@@ -1,11 +1,32 @@
-.stage { align-content: center; }
+/* ============================================================
+   METAVIEW — the copy and the galaxy never share ground
+
+   The galaxy is drawn by the WebGL layer into `.scene`, an empty
+   box this grid lays out like any other region (see SceneRegion):
+   the camera contains the galaxy's whole motion — the sheet, the
+   fold, the dolly into the clusters — inside it.
+
+   Wide screens: heading on the left, the outcomes under it one at
+   a time, the galaxy in the seven columns to their right, the
+   pipeline rail along the foot. Narrow and tall screens: heading,
+   galaxy, outcome, rail, top to bottom. A phone on its side goes
+   back to two columns.
+   ============================================================ */
+
+.stage {
+  --stage-rows: auto minmax(0, 1fr) auto;
+  --stage-align: stretch;
+  --stage-row-gap: clamp(1rem, 3vh, 2rem);
+  --stage-top: clamp(5rem, 11vh, 7rem);
+  --stage-bottom: clamp(5.25rem, 11vh, 7rem);
+}
 
 .head {
-  grid-column: 1 / span 4;
-  position: absolute;
-  top: clamp(4.5rem, 10vh, 7rem);
-  left: var(--gutter);
+  grid-column: 1 / span 5;
+  grid-row: 1;
+  align-self: start;
   display: flex; flex-direction: column; gap: var(--sp-3);
+  min-width: 0;
   will-change: transform, opacity;
 }
 
@@ -19,48 +40,45 @@
   letter-spacing: var(--tracking-label); text-transform: uppercase; color: var(--accent);
 }
 
-.beats {
-  grid-column: 1 / span 12;
-  position: absolute;
-  inset: 0;
-  display: grid;
-  place-items: center;
+.scene {
+  grid-column: 6 / span 7;
+  grid-row: 2;
+  min-height: 0;
   pointer-events: none;
 }
-/* A soft ground under the beat text. Not a card — no edge, no
-   radius, no border: just enough falloff that a metric stays
-   readable over a half-million points. */
-.beat::before {
-  content: '';
-  position: absolute;
-  inset: -18% -14%;
-  background: radial-gradient(ellipse at center,
-    color-mix(in oklab, var(--bg-primary) 88%, transparent) 0%,
-    color-mix(in oklab, var(--bg-primary) 55%, transparent) 45%,
-    transparent 72%);
+
+/* One outcome at a time, all in the same cell, read from the left. */
+.beats {
+  grid-column: 1 / span 5;
+  grid-row: 2;
+  align-self: center;
+  display: grid;
+  min-width: 0;
+  container-type: inline-size;
   pointer-events: none;
-  z-index: -1;
 }
 
 .beat {
-  position: relative;
   grid-area: 1 / 1;
-  display: flex; flex-direction: column; align-items: center;
+  display: flex; flex-direction: column; align-items: flex-start;
   gap: var(--sp-3);
-  text-align: center;
   opacity: 0;
   will-change: transform, opacity;
-  max-width: min(46ch, 82vw);
+  max-width: 46ch;
+  min-width: 0;
 }
 .beatKicker {
   font-family: var(--font-mono); font-size: var(--fs-nano);
   letter-spacing: var(--tracking-wide); text-transform: uppercase;
   color: var(--accent);
 }
+/* Sized by the column it stands in, so the longest figure ("9 CLUSTERS")
+   still fits it, and by the height, so a short screen keeps its line. */
 .beatValue {
-  font-size: var(--fs-mega);
-  font-weight: 500; letter-spacing: -0.05em; line-height: 0.82;
+  font-size: clamp(2.1rem, min(16cqi, 13vh), 8.5rem);
+  font-weight: 500; letter-spacing: -0.05em; line-height: 0.86;
   font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 .beatLine {
   font-size: var(--fs-lead);
@@ -69,11 +87,10 @@
 }
 
 .pipeline {
-  position: absolute;
-  left: var(--gutter); right: var(--gutter);
-  bottom: clamp(4.5rem, 11vh, 6.5rem);
+  grid-column: 1 / -1;
+  grid-row: 3;
   display: flex; flex-wrap: wrap; align-items: center;
-  gap: clamp(0.5rem, 1.6vw, 1.5rem);
+  gap: 0.35rem clamp(0.5rem, 1.6vw, 1.5rem);
   opacity: 0;
   pointer-events: none;
 }
@@ -93,81 +110,99 @@
   opacity: 0.5;
 }
 
+/* The full set, always reachable. It sits above the galaxy's region
+   rather than over it: opened, its row grows and the region gives up
+   the height. */
 .all {
-  position: absolute;
-  top: clamp(4.5rem, 10vh, 7rem);
-  right: var(--gutter);
-  max-width: min(320px, 40vw);
+  grid-column: 9 / span 4;
+  grid-row: 1;
+  justify-self: end;
+  align-self: start;
+  max-width: min(320px, 100%);
   font-family: var(--font-mono);
   font-size: var(--fs-nano);
 }
 .all summary {
+  display: flex; align-items: center;
+  min-height: 2rem;
   letter-spacing: var(--tracking-label); text-transform: uppercase;
   color: var(--text-muted); cursor: pointer; list-style: none;
   border-bottom: var(--hair) solid var(--border);
-  padding-bottom: 0.35rem;
   transition: color var(--dur-fast);
 }
 .all summary::-webkit-details-marker { display: none; }
-.all summary::after { content: ' +'; }
-.all[open] summary::after { content: ' −'; }
+.all summary::after { content: '\00a0+'; }
+.all[open] summary::after { content: '\00a0−'; }
 .all summary:hover { color: var(--text-primary); }
 .all ul { margin-top: var(--sp-3); display: flex; flex-direction: column; gap: 0.3rem; }
 .all li { color: var(--text-faint); line-height: 1.4; }
 .all li span { color: var(--accent); display: inline-block; min-width: 4.2em; }
 
-@media (max-width: 800px) {
+/* ---- narrow and tall: one column, the galaxy in the middle ---- */
+@media (max-width: 800px), (max-aspect-ratio: 4/5) {
+  .stage {
+    --stage-rows: auto minmax(0, 1fr) auto auto;
+    --stage-row-gap: clamp(0.85rem, 2.4vh, 1.5rem);
+    --stage-top: clamp(4.5rem, 9vh, 6rem);
+    --stage-bottom: clamp(4.75rem, 9vh, 6rem);
+  }
+  .head { grid-column: 1 / -1; }
+  .scene { grid-column: 1 / -1; grid-row: 2; }
+  .beats { grid-column: 1 / -1; grid-row: 3; align-self: start; }
+  /* The rail sits right under the outcome here: they cross-fade in place. */
+  .beat { transform: none !important; }
+  .beatValue { font-size: clamp(2.1rem, min(15cqi, 8vh), 5rem); }
+  .pipeline { grid-row: 4; }
   .all { display: none; }
-  .beatValue { font-size: clamp(2.6rem, 12vw, 4.5rem); }
-  .head { max-width: 60vw; }
+}
+
+/* ---- a phone on its side: two columns again, nothing on the foot ---- */
+@media (max-height: 520px) and (orientation: landscape) {
+  .stage {
+    --stage-col-gap: clamp(1rem, 2.5vw, 1.5rem);
+    --stage-rows: auto minmax(0, 1fr);
+    --stage-row-gap: 0.75rem;
+    --stage-top: 4rem;
+    --stage-bottom: 4.5rem;
+  }
+  .head { grid-column: 1 / span 6; gap: var(--sp-2); }
+  .title { font-size: clamp(1.5rem, 8vh, 2.4rem); }
+  .scene { grid-column: 7 / span 6; grid-row: 1 / span 2; }
+  .beats { grid-column: 1 / span 6; grid-row: 2; align-self: center; }
+  .beat { gap: var(--sp-2); }
+  .beatValue { font-size: clamp(1.8rem, min(14cqi, 13vh), 3.5rem); }
+  .beatLine { font-size: var(--fs-small); }
+  .pipeline, .all { display: none; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  /* Without the loop the six beats cannot take the centre of the
-     stage in turn, so they are read at once: a ruled table of
-     outcomes held between the heading and the pipeline, sized to sit
-     inside the pinned viewport — nothing that falls out of it can be
-     scrolled to. Heading, table and rail are all on screen together
-     now, so they take one measure: dropping the column placement
-     lifts the absolute layers off the inner grid and back onto the
-     stage's own gutters, where the page's other furniture sits. */
-  .head, .beats { grid-column: auto; }
+  /* Without the loop the six beats cannot take the stage in turn, so
+     they are read at once: a ruled table of outcomes beside the galaxy,
+     sized to sit inside the pinned viewport — nothing that falls out of
+     it can be scrolled to. */
   .head { opacity: 1 !important; transform: none !important; }
+  .stage { --stage-rows: auto minmax(0, 1fr) auto; }
 
   .beats {
-    inset: clamp(11.5rem, 25vh, 15rem) var(--gutter) clamp(6.5rem, 15vh, 8.5rem);
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
+    grid-column: 1 / span 7;
+    grid-row: 2;
+    align-self: center;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     grid-auto-rows: min-content;
-    align-content: center;
-    gap: clamp(2rem, 5vh, 3.5rem) clamp(1.5rem, 3vw, 3rem);
-    place-items: start stretch;
+    gap: clamp(1.25rem, 3.5vh, 2.5rem) clamp(1.25rem, 2.5vw, 2.5rem);
   }
+  .scene { grid-column: 8 / span 5; }
 
   .beat {
     opacity: 1 !important;
     transform: none !important;
     grid-area: auto;
-    align-items: flex-start;
-    text-align: left;
     gap: var(--sp-2);
     max-width: none;
     border-top: var(--hair) solid var(--border);
     padding-top: var(--sp-3);
   }
-  /* The ground was cut for one enormous number in the middle of the
-     frame. The table reads from the left, and the query vector still
-     travels the field behind it, so the falloff leans that way too:
-     strongest under the text, gone by the next column. */
-  .beat::before {
-    inset: -14% -8%;
-    background: radial-gradient(ellipse at 34% 50%,
-      color-mix(in oklab, var(--bg-primary) 88%, transparent) 0%,
-      color-mix(in oklab, var(--bg-primary) 60%, transparent) 52%,
-      transparent 80%);
-  }
-
-  .beatValue { font-size: clamp(1.75rem, 0.9rem + 2.2vw, 2.75rem); line-height: 0.95; }
+  .beatValue { font-size: clamp(1.6rem, min(9cqi, 6vh), 2.75rem); line-height: 0.95; }
   .beatLine { font-size: var(--fs-small); line-height: 1.45; }
 
   /* The rail names the pipeline rather than tracking a query
@@ -176,15 +211,32 @@
   .pipeline .pipeStep[data-on] { color: var(--text-muted); }
 }
 
-@media (prefers-reduced-motion: reduce) and (max-width: 800px) {
-  /* One column, and each outcome on two lines: the label sits on
-     the number's baseline so six of them still clear the fold. */
-  .head { max-width: none; }
+/* A wide but short window: three columns of two rows, the lines set
+   small, so the table keeps clear of the rail under it. */
+@media (prefers-reduced-motion: reduce) and (min-width: 801px) and (max-height: 760px) {
+  .beats { grid-column: 1 / span 8; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: clamp(0.75rem, 2.5vh, 1.5rem) clamp(1rem, 2vw, 2rem); }
+  .scene { grid-column: 9 / span 4; }
+  .beatValue { font-size: clamp(1.4rem, min(12cqi, 5.5vh), 2.2rem); }
+  .beatLine { font-size: var(--fs-tiny); line-height: 1.4; }
+}
+@media (prefers-reduced-motion: reduce) and (min-width: 801px) and (max-height: 600px) {
+  .beatLine { display: none; }
+}
+
+@media (prefers-reduced-motion: reduce) and (max-width: 800px), (prefers-reduced-motion: reduce) and (max-aspect-ratio: 4/5) {
+  /* One column, each outcome on two lines: the label sits on the
+     number's baseline so six of them still clear the fold. The galaxy
+     takes what the table leaves above the rail, and stands down where
+     that is too little to draw it in. */
+  .stage { --stage-rows: auto auto minmax(0, 1fr) auto; }
   .beats {
-    inset: clamp(10.5rem, 23vh, 13rem) var(--gutter) clamp(3.5rem, 8vh, 5rem);
+    grid-column: 1 / -1;
+    grid-row: 2;
+    align-self: start;
     grid-template-columns: 1fr;
-    gap: clamp(0.85rem, 2.2vh, 1.4rem);
+    gap: clamp(0.6rem, 1.8vh, 1.2rem);
   }
+  .scene { grid-column: 1 / -1; grid-row: 3; min-height: 7rem; }
   .beat {
     flex-direction: row;
     flex-wrap: wrap;
@@ -196,23 +248,31 @@
   /* A column wide enough for the longest label, so the numbers
      start on one line rather than stepping in and out. */
   .beatKicker { flex: none; min-width: 9.5em; }
-  .beatValue { font-size: clamp(1.5rem, 7vw, 2rem); }
+  .beatValue { font-size: clamp(1.4rem, 6.5vw, 2rem); }
   .beatLine { flex-basis: 100%; font-size: var(--fs-tiny); line-height: 1.5; }
   /* The rail is decoration for a query in flight, and there is no
      room for it once the table is stacked. */
   .pipeline { display: none; }
 }
 
-@media (prefers-reduced-motion: reduce) and (max-width: 800px) and (max-height: 720px) {
+@media (prefers-reduced-motion: reduce) and (max-height: 760px) and (max-width: 800px) {
   /* A short phone holds the same six outcomes, so the table gives up
-     scale rather than a row: nothing here is worth cutting to save a
-     few millimetres. */
-  .beats {
-    inset: clamp(9.5rem, 24vh, 11rem) var(--gutter) clamp(2rem, 5vh, 3rem);
-    gap: clamp(0.4rem, 1.2vh, 0.8rem);
-  }
+     scale rather than a row, and the galaxy gives up its place. */
+  .stage { --stage-rows: auto auto; }
+  .beats { gap: clamp(0.4rem, 1.2vh, 0.8rem); }
   .beat { padding-top: var(--sp-1); }
   .beatKicker { min-width: 8.5em; }
   .beatValue { font-size: clamp(1.25rem, 5.5vw, 1.5rem); }
   .beatLine { line-height: 1.4; }
+  .scene { display: none; }
+}
+
+@media (prefers-reduced-motion: reduce) and (max-height: 520px) and (orientation: landscape) {
+  .stage { --stage-rows: auto minmax(0, 1fr); --stage-col-gap: clamp(1rem, 2.5vw, 1.5rem); }
+  .head { grid-column: 1 / span 7; }
+  .beats { grid-column: 1 / span 7; grid-row: 2; gap: 0.4rem 1rem; align-self: start; }
+  .beat { padding-top: var(--sp-1); gap: 0.15rem; }
+  .beatValue { font-size: clamp(1.1rem, 5vh, 1.4rem); }
+  .beatLine { display: none; }
+  .scene { grid-column: 8 / span 5; grid-row: 1 / span 2; }
 }

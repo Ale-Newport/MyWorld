@@ -6,6 +6,7 @@ import { useSite } from '@/cms/context'
 import { E, useCms, useCmsText } from '@/cms/editable'
 import { Reveal } from '@/components/typography/Reveal'
 import { TagRow } from '@/components/journey/parts'
+import { SceneRegion } from '@/components/journey/SceneRegion'
 import { Counter } from '@/components/typography/Counter'
 import { ProjectVisual } from '@/components/project-visuals/ProjectVisual'
 import { useChapterFrame } from '@/hooks/useChapterProgress'
@@ -17,7 +18,8 @@ import styles from './Chess.module.css'
 /* ============================================================
    PROJECTS · 75 – 90%  SEEING THE BOARD
    The CV pipeline runs in the DOM canvas; the reconstructed
-   board resolves in WebGL behind it. Two layers, one idea.
+   board resolves in WebGL in the same region once it hands over.
+   Two layers, one idea, one place on the stage for both.
    ============================================================ */
 
 const PIPELINE = ['CAMERA', 'BOARD DETECTION', 'GRID', 'PIECE DETECTION', 'CLASSIFICATION', 'BOARD STATE', 'FEN', 'STOCKFISH', 'BEST MOVE']
@@ -71,6 +73,7 @@ export function Chess() {
         <div className={`${styles.visual} ${shared.driven}`} ref={visualRef}>
           <ProjectVisual project={project} progress={progress} active reducedMotion={reducedMotion} interactive />
         </div>
+        <SceneRegion chapter="chess" className={styles.scene} />
 
         <div className={styles.head}>
           <E cms="chess.tag" kind="container" label="Chapter tag"><TagRow items={[chapterById['chess'].number, tag, '2025']} /></E>
@@ -105,7 +108,7 @@ export function Chess() {
           </button>
         </div>
 
-        <div className={`${shared.corner} ${shared.cornerBR}`}>
+        <div className={`${shared.corner} ${styles.spec}`}>
           MOBILENETV2 · CNN
           <br />
           1,200 SYNTHETIC BOARDS

@@ -7,6 +7,10 @@ import { frame, useJourney } from '@/state/journey'
 import { fieldVertex, fieldFragment } from '@/experience/shaders/field'
 import { detectDevice } from '@/lib/perf'
 import { clamp, damp, seeded } from '@/lib/math'
+import { lens } from '@/experience/camera/regions'
+
+/** The chapters that stand on the ground. Mirrors the field's mount window in SceneManager. */
+const FIELD_CHAPTERS = ['pansofia', 'teaching', 'focus', 'gym']
 
 /**
  * THE FIELD.
@@ -47,6 +51,7 @@ export function FieldScene() {
   }, [device.density])
 
   const moteMat = useRef<THREE.PointsMaterial>(null!)
+  const fade = useRef(0)
 
   useFrame((_, dt) => {
     const u = mat.current?.uniforms
@@ -57,12 +62,17 @@ export function FieldScene() {
     u.uProgress.value = frame.progress
 
     // The field fades in as the story leaves the prelude and steps
-    // aside for the chapters that bring a scene of their own. The
-    // list mirrors the field's mount window in SceneManager.
-    const fieldChapter = ['pansofia', 'teaching', 'focus', 'gym'].includes(s.chapter)
+    // aside for the chapters that bring a scene of their own.
+    const fieldChapter = FIELD_CHAPTERS.includes(s.chapter)
     const preludeFade = s.chapter === 'prelude' ? clamp((frame.progress - 0.004) * 90) : 1
     const target = fieldChapter ? preludeFade : 0
-    u.uFade.value = damp(u.uFade.value, target, 2.2, d)
+    fade.current = s.reducedMotion ? target : damp(fade.current, target, 2.2, d)
+    // The ground is drawn across the whole screen. When the camera
+    // carries its projection into another chapter's region the ground
+    // would be carried with it, so it is gone by the time the lens gets
+    // there, and only returns once the lens is back on the full screen.
+    const onGround = lens.chapter === null || FIELD_CHAPTERS.includes(lens.chapter)
+    u.uFade.value = fade.current * (onGround ? lens.settled : 1 - lens.settled)
     u.uAmp.value = damp(u.uAmp.value, 0.3 + Math.abs(frame.velocity) * 6, 3, d)
 
     mesh.current.visible = u.uFade.value > 0.01

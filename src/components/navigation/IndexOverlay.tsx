@@ -151,6 +151,9 @@ export function IndexOverlay({ open, onClose }: { open: boolean; onClose: () => 
       aria-label="Chapter index"
       aria-hidden={!open}
       inert={!open}
+      /* The smooth scroller drives the page by the wheel; over the index
+         the wheel belongs to the list, not to the journey behind it. */
+      data-lenis-prevent=""
     >
       <div className={styles.scrim} onClick={onClose} />
       <div className={styles.panel} ref={panel}>

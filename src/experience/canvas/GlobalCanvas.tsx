@@ -7,6 +7,8 @@ import { SceneManager, scenesFor } from '@/experience/scenes/SceneManager'
 import { JourneyCamera } from '@/experience/camera/JourneyCamera'
 import { useJourney, frame } from '@/state/journey'
 import { detectDevice, createFpsWatchdog } from '@/lib/perf'
+import { subscribe } from '@/lib/ticker'
+import { hasSceneRegions, sceneRegionsVersion } from '@/experience/camera/regions'
 import styles from './GlobalCanvas.module.css'
 
 /**
@@ -37,6 +39,36 @@ function FpsGovernor() {
 function Settle({ live }: { live: boolean }) {
   const invalidate = useThree((s) => s.invalidate)
   useEffect(() => { invalidate() }, [live, invalidate])
+  return null
+}
+
+/* With motion reduced the canvas draws on demand, and for a long time
+   nothing on the page made a demand: the copy scrolled on and the
+   canvas kept showing whatever it last drew — the galaxy's sheet of
+   points went on hanging behind the chess chapter. Nothing animates
+   on this path, but the subjects still have to arrive and leave with
+   their chapters and keep to their regions, so a frame is drawn
+   whenever the scroll, the chapter or a region has moved — on a journey
+   that lays out regions. The home journey lays out none, and its one
+   scene keeps exactly the frames it was drawn with before. */
+function DrawOnScroll({ active }: { active: boolean }) {
+  const invalidate = useThree((s) => s.invalidate)
+  useEffect(() => {
+    if (!active) return
+    let progress = -1
+    let chapter = ''
+    let regions = -1
+    return subscribe(() => {
+      if (!hasSceneRegions()) return
+      const s = useJourney.getState()
+      const v = sceneRegionsVersion()
+      if (frame.progress === progress && s.chapter === chapter && v === regions) return
+      progress = frame.progress
+      chapter = s.chapter
+      regions = v
+      invalidate()
+    })
+  }, [active, invalidate])
   return null
 }
 
@@ -106,6 +138,7 @@ export function GlobalCanvas() {
           }}
         >
           <Settle live={live} />
+          <DrawOnScroll active={reducedMotion && live} />
           <ReleaseOnLeave />
           <JourneyCamera />
           <FpsGovernor />
