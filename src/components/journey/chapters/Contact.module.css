@@ -23,16 +23,20 @@
   transform: translate3d(0, calc(var(--portal-drag) * -1px), 0);
 }
 
-.visual {
-  position: absolute;
-  inset: 0;
-  z-index: 0;
-  pointer-events: none;
-}
-
 .chrome {
   opacity: calc(1 - var(--portal-dim) * 0.85);
   transform: translate3d(0, calc(var(--portal-dim) * -1.2rem), 0);
+}
+
+/* The section's animation fills the whole stage, behind the words,
+   and never takes the pointer. The selector outranks the shared
+   `.stage > *` that hands every other child of the stage the
+   pointer. */
+.stage > .visual {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
 }
 
 .center {

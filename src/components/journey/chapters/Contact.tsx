@@ -38,10 +38,16 @@ function layoutRect(el: HTMLElement, stage: HTMLElement, range: Range): DOMRect 
   // portal's drag) back out. The words' own reveal offsets are what
   // the margins below are for.
   let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity
-  range.selectNodeContents(el)
-  for (const r of Array.from(range.getClientRects())) {
-    if (r.width < 1 || r.height < 1) continue
-    x0 = Math.min(x0, r.left); y0 = Math.min(y0, r.top); x1 = Math.max(x1, r.right); y1 = Math.max(y1, r.bottom)
+  const walk = document.createTreeWalker(el, NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT)
+  for (let node = walk.nextNode(); node; node = walk.nextNode()) {
+    // A screen reader's copy of the words (Reveal's) is laid out on one
+    // unclipped line beside them but never seen: it is not their box.
+    if ((node instanceof Element ? node : node.parentElement)?.closest('.sr-only')) continue
+    if (!(node instanceof Element)) range.selectNodeContents(node)
+    for (const r of Array.from(node instanceof Element ? node.getClientRects() : range.getClientRects())) {
+      if (r.width < 1 || r.height < 1) continue
+      x0 = Math.min(x0, r.left); y0 = Math.min(y0, r.top); x1 = Math.max(x1, r.right); y1 = Math.max(y1, r.bottom)
+    }
   }
   if (!Number.isFinite(x0)) { x0 = own.left; y0 = own.top; x1 = own.right; y1 = own.bottom }
   return new DOMRect(x0 - s.left, y0 - s.top, x1 - x0, y1 - y0)
