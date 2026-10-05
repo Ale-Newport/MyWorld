@@ -1,8 +1,9 @@
 'use client'
 
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { Chapter } from '@/components/journey/Chapter'
 import { Reveal } from '@/components/typography/Reveal'
+import { widestWordEm } from '@/components/typography/capitals'
 import { TagRow } from '@/components/journey/parts'
 import { WorldPortal, portal } from '@/components/journey/WorldPortal'
 import { useSite } from '@/cms/context'
@@ -196,7 +197,9 @@ export function Contact() {
           {techNodes.length} TECHNOLOGIES
         </E>
 
-        <div className={styles.center}>
+        {/* The closing words are set as large as their longest word allows
+            (capitals.ts), so a long answer wraps between words, never inside one. */}
+        <div className={styles.center} style={{ '--word-em': (Math.max(widestWordEm(profile.closing.question, -0.052), widestWordEm(profile.closing.answer, -0.052)) + 0.1).toFixed(3) } as CSSProperties}>
           <E cms="contact.question" as="p" kind="heading" label="Closing question" bind="profile.closing.question" className={`${styles.question} ${shared.driven}`} ref={questionRef} aria-hidden="true" data-safe="headline" data-room-travel="3.2rem 2.4rem">
             {profile.closing.question}
           </E>

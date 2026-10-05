@@ -54,7 +54,8 @@
    the band it has rather than to its width alone. */
 .question, .answer {
   grid-area: 1 / 1;
-  font-size: clamp(2.4rem, min(0.5rem + 9.4vw, 19vh), 10rem);
+  /* No larger than its longest word allows (--word-em, from the server). */
+  font-size: min(clamp(2.4rem, min(0.5rem + 9.4vw, 19vh), 10rem), calc((100vw - var(--gutter-left) - var(--gutter-right) - 1rem) / var(--word-em, 4)));
   font-weight: 500;
   letter-spacing: -0.052em;
   line-height: 0.82;
