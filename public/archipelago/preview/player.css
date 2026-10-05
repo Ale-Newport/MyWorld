@@ -7,3 +7,39 @@ body.player #loading{z-index:15}
 body.player #gameplay-hud{top:75px}
 @media(max-width:720px){#player-nav{inset:10px 10px auto 10px;justify-content:space-between}#player-nav a,#player-nav button{padding:9px;font-size:11px}body.player #drive-hud{left:15px;bottom:25px}body.player #drive-hud div{max-width:230px;font-size:8px}body.player #speed{font-size:42px}}
 #player-nav kbd{margin-left:6px;padding:0 4px;border:1px solid #6a9997;border-radius:3px;font:10px ui-monospace,monospace;color:#bcd8d2}
+/* ---- Touch (touch-controls.js): only while the last input was a finger, body[data-input=touch].
+   The key hints, the help's key lines and the M on the map button give way to their touch versions. */
+#touch-hints,#help-touch,#touch-controls{display:none}
+body.player[data-input=touch] #key-hints,body.player[data-input=touch] .help-keys,body.player[data-input=touch] #player-nav kbd{display:none}
+body.player[data-input=touch] #touch-hints,body.player[data-input=touch] #help-touch{display:block}
+#touch-hints p{margin:0}
+#touch-hints .plane-hint,body[data-vehicle=plane] #touch-hints .car-hint{display:none}
+body[data-vehicle=plane] #touch-hints .plane-hint{display:block}
+/* On a touch screen the readouts never take a finger meant for the world, in any input mode: the key hints a
+   key brings back are wide enough to cover the car on a phone on its side. The paint swatch stays a control. */
+@media(pointer:coarse){body.player #drive-hud,body.player #gameplay-hud{pointer-events:none}body.player #vehicle-paint{pointer-events:auto}}
+/* The hints stop short of the buttons' column. */
+body.player[data-input=touch] #touch-hints{max-width:min(230px,calc(100vw - 132px))}
+/* The buttons: one column at the right edge, a thumb's reach from the corner, above the band the notices
+   use and below the map button; 44 px is the floor for every target. The interact button (E) stands on
+   top of the column. A notice keeps to the middle, between the speed readout and the column — on a tall
+   narrow screen, above the readout; on a short one there is no room above it that is not the car. */
+body.player{--touch-right:max(14px,env(safe-area-inset-right));--touch-bottom:calc(max(22px,env(safe-area-inset-bottom)) + 78px);--touch-height:188px}
+body.player.driving[data-input=touch]:not(.map-open) #touch-controls{display:flex}
+#touch-controls{position:absolute;z-index:12;right:var(--touch-right);bottom:var(--touch-bottom);width:78px;flex-direction:column;gap:10px;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+body.player[data-input=touch] #interact-action{right:var(--touch-right);bottom:calc(var(--touch-bottom) + var(--touch-height) + 12px);max-width:calc(100% - 28px)}
+@media(min-width:721px){body.player[data-input=touch] #notice{max-width:calc(100% - 520px)}}
+@media(max-width:720px) and (min-height:700px){body.player[data-input=touch] #notice{bottom:200px;max-width:calc(100% - 204px)}}
+#touch-controls button{display:block;margin:0;min-height:48px;padding:6px 4px;border:1px solid #6a9997;border-radius:10px;background:#152c35e8;color:#eff9f2;font:600 9px/1.25 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;letter-spacing:.09em;text-transform:uppercase;touch-action:none;-webkit-tap-highlight-color:transparent;transition:transform .08s ease,background .12s ease,opacity .2s ease}
+#touch-controls button:hover{background:#152c35e8}
+#touch-controls button:active,#touch-controls button[data-pressed]{background:#24515c;transform:scale(.95)}
+#touch-controls button[aria-disabled=true]{opacity:.38;transform:none}
+#touch-controls button:focus-visible{outline:2px solid #f2c14e;outline-offset:2px}
+#touch-vehicle b{display:block;font-weight:600;opacity:.55}
+#touch-vehicle[aria-pressed=false] b:first-child,#touch-vehicle[aria-pressed=true] b:last-child{opacity:1;color:#f2c14e}
+#touch-controls #touch-jump{align-self:center;width:72px;height:72px;border-radius:50%;background:#e86738;border-color:#ffc4a6;color:#fff;font-size:12px;letter-spacing:.12em;box-shadow:0 3px 12px #0006}
+#touch-controls #touch-jump:active,#touch-controls #touch-jump[data-pressed]{background:#b84a22}
+#touch-controls #touch-jump[aria-disabled=true]{background:#152c35e8;border-color:#6a9997}
+@media(prefers-reduced-motion:reduce){#touch-controls button{transition:none}#touch-controls button:active,#touch-controls button[data-pressed]{transform:none}}
+/* A phone on its side: the compact HUD of a narrow screen, and a shorter column. */
+@media(max-height:500px){body.player{--touch-height:166px}body.player[data-input=touch] #drive-hud{left:max(15px,env(safe-area-inset-left));bottom:25px}body.player[data-input=touch] #drive-hud div{font-size:8px}body.player[data-input=touch] #speed{font-size:42px}#touch-controls{gap:8px}#touch-controls button{min-height:44px}#touch-controls #touch-jump{width:62px;height:62px}}
