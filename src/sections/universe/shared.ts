@@ -186,8 +186,8 @@ const CAPTURE = /^\/assets\/client-work\/.+\.webp$/
 /**
  * The capture to hang for a project, or null when it has none.
  * Narrow frames take the phone capture when the project has one:
- * it is portrait like the frames, legible at that size and a
- * fifth of the desktop capture's weight once decoded.
+ * it is portrait like the frames, legible at that size, and once
+ * decoded it holds an eighth of the desktop capture's memory.
  */
 export function shotOf(p: SiteProject, narrow: boolean): { src: string; avif: string | null } | null {
   const list = p.assets?.screenshots ?? []
