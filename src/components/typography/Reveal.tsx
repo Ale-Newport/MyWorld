@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useRef } from 'react'
+import { Fragment, useEffect, useMemo, useRef } from 'react'
 import { useJourney } from '@/state/journey'
 import styles from './typography.module.css'
 
@@ -85,6 +85,8 @@ export function Reveal({
     return <Tag id={id} className={className} {...attrs}>{children}</Tag>
   }
 
+  const byWord = mode === 'words' || mode === 'perspective'
+
   return (
     <Tag
       id={id}
@@ -94,8 +96,15 @@ export function Reveal({
       data-mode={mode}
       data-state="hidden"
     >
-      {units.map((u, i) => (
+      {units.map((u, i) => {
+        /* Between words the space stays a space, so a line that wraps
+           does not start on one, and a written line break breaks the
+           line — boxed as a unit, it did neither. */
+        if (byWord && /^\s+$/.test(u)) {
+          return <Fragment key={i}>{u.includes('\n') ? <br /> : ' '}</Fragment>
+        }
         // The animated units are presentation (scrambling shows random glyphs); assistive tech reads the copy below.
+        return (
         <span className={styles.unitWrap} key={i} aria-hidden="true">
           <span
             className={styles.unit}
@@ -106,7 +115,8 @@ export function Reveal({
             {u === ' ' ? ' ' : u}
           </span>
         </span>
-      ))}
+        )
+      })}
       <span className="sr-only">{children}</span>
     </Tag>
   )
