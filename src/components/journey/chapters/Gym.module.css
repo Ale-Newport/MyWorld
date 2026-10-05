@@ -103,7 +103,8 @@
     grid-column: 1 / -1; grid-row: 3;
     flex-direction: row; flex-wrap: wrap; gap: 0.4rem 1rem;
   }
-  .equation { grid-column: 1 / -1; grid-row: 4; }
+  /* At the foot of a short stage there is no room to rise from: it fades in place. */
+  .equation { grid-column: 1 / -1; grid-row: 4; transform: none !important; }
   /* The three disciplines are the heading's own subject; the foot of a
      phone's stage is the HUD's. */
   .stage .spec { display: none; }
@@ -123,7 +124,7 @@
   .title { font-size: clamp(1.4rem, 9vh, 2.4rem); }
   .visual { grid-column: 7 / span 4; grid-row: 1; }
   .stages { grid-column: 11 / span 2; grid-row: 1; gap: 0.2rem; }
-  .equation { grid-column: 1 / -1; grid-row: 2; }
+  .equation { grid-column: 1 / -1; grid-row: 2; transform: none !important; }
   .eqTerm { font-size: var(--fs-small); }
   .stage .spec { display: none; }
 }
