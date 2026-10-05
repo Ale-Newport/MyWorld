@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { useEffect, useMemo, useState } from 'react'
 import { useSiteStore } from '../store/site'
 import { DraftBar } from '../DraftBar'
+import { Loading, PageHeader, Tabs, WEBSITE_TABS } from '../ui/kit'
 import type { Project } from '@/cms/schema'
 
 const STATUS_TONE: Record<string, string> = { published: 'ok', draft: 'warn', archived: '' }
@@ -48,21 +49,20 @@ export function ProjectsAdmin() {
 
   return (
     <main className="a-page">
-      <header className="a-head">
-        <div>
-          <p className="a-label">Content</p>
-          <h1 className="a-title">Projects</h1>
-          <p className="a-sub">Drag rows to reorder the listings. Drafts and archived projects never reach the public site; hidden ones keep their page but leave every listing.</p>
-        </div>
-        <DraftBar>
+      <PageHeader
+        eyebrow="Website"
+        title="Projects"
+        description="Drag rows to reorder the listings. Drafts and archived projects never reach the public site; hidden ones keep their page but leave every listing."
+        actions={<DraftBar>
           <button type="button" className="btn btn-primary" disabled={!doc} onClick={() => {
             const p = blankProject(doc!)
             apply((d) => { d.projects.push(p) })
             router.push(`/admin/projects/${encodeURIComponent(p.id)}`)
           }}>+ New project</button>
-        </DraftBar>
-      </header>
-      {status !== 'ready' || !doc ? <p className="a-sub">Loading…</p> : (
+        </DraftBar>}
+        tabs={<Tabs label="Website" tabs={WEBSITE_TABS} />}
+      />
+      {status !== 'ready' || !doc ? <Loading label="Loading the draft…" /> : (
         <section className="card">
           <div className="row" style={{ marginBottom: 12 }}>
             <input className="input" style={{ maxWidth: 320 }} placeholder="Search title, slug, technology…" value={query} onChange={(e) => setQuery(e.target.value)} aria-label="Search projects" />

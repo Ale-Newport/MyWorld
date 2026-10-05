@@ -1,7 +1,9 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { api } from './api'
+import { PageHeader, Segmented, Tabs, WEBSITE_TABS } from './ui/kit'
 import { toast } from './toast'
 import { describeAction } from './describe'
 import { useSiteStore } from './store/site'
@@ -16,7 +18,9 @@ const when = (at: number) => new Date(at).toLocaleString('en-GB', { dateStyle: '
    is the draft, and the audit trail. Restoring copies a revision forward as
    the new draft; publishing it is a separate, explicit step. */
 export function HistoryView() {
-  const [tab, setTab] = useState<'site' | 'world' | 'audit'>('site')
+  // The world editor links here with ?tab=world.
+  const initial = useSearchParams().get('tab')
+  const [tab, setTab] = useState<'site' | 'world' | 'audit'>(initial === 'world' || initial === 'audit' ? initial : 'site')
   const [data, setData] = useState<{ head: Head; revisions: Rev[] } | null>(null)
   const [audit, setAudit] = useState<Audit[] | null>(null)
   const [busy, setBusy] = useState<string | null>(null)
@@ -66,19 +70,13 @@ export function HistoryView() {
 
   return (
     <main className="a-page">
-      <header className="a-head">
-        <div>
-          <p className="a-label">Changes</p>
-          <h1 className="a-title">History</h1>
-          <p className="a-sub">Every saved draft and publication. Restoring makes an old revision the draft again; nothing is ever overwritten.</p>
-          <Storage />
-        </div>
-        <div className="btn-group" role="tablist" aria-label="History">
-          {(['site', 'world', 'audit'] as const).map((t) => (
-            <button key={t} type="button" role="tab" aria-selected={tab === t} className="btn" onClick={() => { setData(null); setTab(t) }}>{t === 'site' ? 'Site content' : t === 'world' ? 'World' : 'Activity log'}</button>
-          ))}
-        </div>
-      </header>
+      <PageHeader
+        eyebrow="Website"
+        title="History"
+        description={<>Every saved draft and publication of the website and the world. Restoring makes an old revision the draft again; nothing is ever overwritten. <Storage /></>}
+        actions={<Segmented<'site' | 'world' | 'audit'> label="History of" value={tab} onChange={(t) => { setData(null); setTab(t) }} options={[{ value: 'site', label: 'Website' }, { value: 'world', label: 'World' }, { value: 'audit', label: 'Activity log' }]} />}
+        tabs={<Tabs label="Website" tabs={WEBSITE_TABS} />}
+      />
       {tab === 'audit' ? (
         <section className="card">
           {!audit ? <p className="a-sub">Loading…</p> : audit.length === 0 ? <p className="empty">Nothing recorded yet.</p> : (

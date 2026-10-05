@@ -182,6 +182,8 @@
 .admin-root .a-seg button { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 30px; padding: 0 10px; border: 0; border-radius: 7px; background: transparent; color: var(--a-muted); font-size: 12.5px; font-weight: 500; cursor: pointer; white-space: nowrap; }
 .admin-root .a-seg[data-size='sm'] button { min-height: 26px; padding: 0 8px; font-size: 12px; }
 .admin-root .a-seg button:hover { color: var(--a-ink); }
+.admin-root .a-seg .a-seg-link { display: inline-flex; align-items: center; min-height: 28px; padding: 0 10px; border-radius: 7px; color: var(--a-muted); font-size: 12.5px; font-weight: 500; text-decoration: none; }
+.admin-root .a-seg .a-seg-link[aria-current='page'] { background: var(--a-panel); color: var(--a-ink); box-shadow: 0 1px 2px rgb(0 0 0 / 0.12); }
 .admin-root .a-seg button[aria-checked='true'] { background: var(--a-panel); color: var(--a-ink); box-shadow: 0 1px 2px rgb(0 0 0 / 0.12); }
 
 .admin-root .a-panel { background: var(--a-panel); border: 1px solid var(--a-line); border-radius: var(--a-radius); }
