@@ -106,16 +106,27 @@ function lengthPx(value: string, el: Element): number {
   }
 }
 
-/** How far an element's copy travels up and down with the scroll (`data-room-travel`). */
-function travelOf(el: Element, cache: Map<Element, [number, number]>): [number, number] {
-  const host = el.closest<HTMLElement>('[data-room-travel]')
+/** One host's declared travel, up and down, in px. */
+function hostTravel(host: HTMLElement | null, value: string | undefined, cache: Map<Element, [number, number]>): [number, number] {
   if (!host) return [0, 0]
   const hit = cache.get(host)
   if (hit) return hit
-  const [up = '0', down = '0'] = (host.dataset.roomTravel ?? '').split(/\s+/)
+  const [up = '0', down = '0'] = (value ?? '').split(/\s+/)
   const t: [number, number] = [lengthPx(up, host), lengthPx(down, host)]
   cache.set(host, t)
   return t
+}
+
+/** How far an element's copy travels up and down with the scroll: its own
+    movement (`data-room-travel`) plus its stage's, when the stage's words
+    are taller than the screen and travel through it (`data-stage-travel`,
+    set by components/journey/stageFit.ts). */
+function travelOf(el: Element, cache: Map<Element, [number, number]>): [number, number] {
+  const own = el.closest<HTMLElement>('[data-room-travel]')
+  const stage = el.closest<HTMLElement>('[data-stage-travel]')
+  const [u1, d1] = hostTravel(own, own?.dataset.roomTravel, cache)
+  const [u2, d2] = hostTravel(stage, stage?.dataset.stageTravel, cache)
+  return [u1 + u2, d1 + d2]
 }
 
 export function measureReadingBoxes(root: ParentNode = document): ReadingBox[] {
