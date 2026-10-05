@@ -14,7 +14,7 @@ export async function generateMetadata(): Promise<Metadata> {
       type: 'website',
       url: `${doc.settings.siteUrl}/world`,
       title: `Enter my world — ${name}`,
-      description: 'A drivable portfolio. WASD to drive, Space to jump, Space twice to fly, E to interact, M for the map.',
+      description: 'A drivable portfolio. WASD to drive, Space to jump (hold to raise the wheels), Space twice to fly, E to interact, M for the map: select a place to travel there.',
     },
     // The world is a companion to the portfolio, not a second copy of
     // it. Everything here is indexable at `/`, so this route is
