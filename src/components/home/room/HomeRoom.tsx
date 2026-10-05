@@ -232,6 +232,8 @@ export function HomeRoom() {
     // The copy itself changed (the admin's live preview, a section's
     // text): measure again, whenever it happens.
     window.addEventListener('cms:content', read)
+    // A stage's words started or stopped travelling through it (stageFit.ts).
+    window.addEventListener('journey:layout', read)
     const unsubStore = useJourney.subscribe((s, prev) => {
       if (s.quickView !== prev.quickView || s.reducedMotion !== prev.reducedMotion) read()
       if (s.reducedMotion !== prev.reducedMotion || s.indexOpen !== prev.indexOpen || s.activeProject !== prev.activeProject) applyMotion()
@@ -311,6 +313,7 @@ export function HomeRoom() {
       mo.disconnect()
       window.clearTimeout(stopWatching)
       window.removeEventListener('cms:content', read)
+      window.removeEventListener('journey:layout', read)
       window.clearTimeout(readTimer)
       window.clearTimeout(resizeTimer)
       dprQuery?.removeEventListener('change', onDpr)
