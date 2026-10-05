@@ -26,6 +26,7 @@ export function Gym() {
   const { projectById, chapterById } = useSite()
   const titleCms = useCms('gym.title', { kind: 'heading', label: 'Title' })
   const title = useCmsText('gym.title', 'Gym App')
+  const tag = useCmsText('gym.tag', 'ONE MODEL, MANY MOVEMENTS')
   const project = projectById['gym-app']
   const reducedMotion = useJourney((s) => s.reducedMotion)
   const [progress, setProgress] = useState(0)
@@ -62,7 +63,7 @@ export function Gym() {
         </div>
 
         <div className={styles.head}>
-          <E cms="gym.tag" label="Chapter tag"><TagRow items={[chapterById['gym'].number, 'ONE MODEL, MANY MOVEMENTS']} /></E>
+          <E cms="gym.tag" kind="container" label="Chapter tag"><TagRow items={[chapterById['gym'].number, tag]} /></E>
           <Reveal as="h2" mode="clip" className={styles.title} id="gym-title" attrs={titleCms}>
             {title}
           </Reveal>

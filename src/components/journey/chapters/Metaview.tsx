@@ -44,6 +44,7 @@ export function Metaview() {
   const { experienceById, chapterById } = useSite()
   const titleCms = useCms('metaview.title', { kind: 'heading', label: 'Title' })
   const title = useCmsText('metaview.title', 'Metaview')
+  const tag = useCmsText('metaview.tag', '[ AI / DATA ]')
   const role = experienceById.metaview
   const reducedMotion = useJourney((s) => s.reducedMotion)
   const beatsRef = useRef<HTMLOListElement>(null)
@@ -91,7 +92,7 @@ export function Metaview() {
     <Chapter id="metaview" labelledBy="metaview-title">
       <div className={`${shared.stage} ${styles.stage}`}>
         <div className={`${styles.head} ${shared.driven}`} ref={headRef}>
-          <E cms="metaview.tag" label="Chapter tag"><TagRow items={[chapterById['metaview'].number, '[ AI / DATA ]', role.dates]} /></E>
+          <E cms="metaview.tag" kind="container" label="Chapter tag"><TagRow items={[chapterById['metaview'].number, tag, role.dates]} /></E>
           <Reveal as="h2" mode="chars" className={styles.title} id="metaview-title" attrs={titleCms}>
             {title}
           </Reveal>

@@ -37,6 +37,7 @@ export function Focus() {
   const { projectById, experienceById, chapterById } = useSite()
   const titleCms = useCms('focus.title', { kind: 'heading', label: 'Title' })
   const title = useCmsText('focus.title', 'Focus')
+  const tag = useCmsText('focus.tag', 'BUILDING A PRODUCT')
   const project = projectById.focus
   const role = experienceById.focus
   const reducedMotion = useJourney((s) => s.reducedMotion)
@@ -82,7 +83,7 @@ export function Focus() {
         </div>
 
         <div className={`${styles.head} ${shared.driven}`} ref={headRef}>
-          <E cms="focus.tag" label="Chapter tag"><TagRow items={[chapterById['focus'].number, 'BUILDING A PRODUCT', role.dates]} /></E>
+          <E cms="focus.tag" kind="container" label="Chapter tag"><TagRow items={[chapterById['focus'].number, tag, role.dates]} /></E>
           <Reveal as="h2" mode="mask" className={styles.title} id="focus-title" attrs={titleCms}>
             {title}
           </Reveal>

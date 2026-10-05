@@ -30,6 +30,7 @@ export function Pansofia() {
   const { experienceById, chapterById, clientProjects, featuredClientProjects } = useSite()
   const titleCms = useCms('pansofia.title', { kind: 'heading', label: 'Title' })
   const title = useCmsText('pansofia.title', 'Pansofia /\nGrupo Newport')
+  const tag = useCmsText('pansofia.tag', 'FROM PROJECTS TO PRODUCTS')
   const role = experienceById.pansofia
   const reducedMotion = useJourney((s) => s.reducedMotion)
   const railRef = useRef<HTMLDivElement>(null)
@@ -124,7 +125,7 @@ export function Pansofia() {
     <Chapter id="pansofia" labelledBy="pansofia-title">
       <div className={`${shared.stage} ${styles.stage}`}>
         <div className={`${styles.head} ${shared.driven}`} ref={headRef}>
-          <E cms="pansofia.tag" label="Chapter tag"><TagRow items={[chapterById['pansofia'].number, 'FROM PROJECTS TO PRODUCTS', role.dates]} /></E>
+          <E cms="pansofia.tag" kind="container" label="Chapter tag"><TagRow items={[chapterById['pansofia'].number, tag, role.dates]} /></E>
           <Reveal as="h2" mode="mask" className={styles.title} id="pansofia-title" attrs={titleCms}>
             {title}
           </Reveal>
