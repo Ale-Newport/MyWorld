@@ -1,6 +1,8 @@
 'use client'
 
 import { useEffect, type RefObject } from 'react'
+import type { ChapterId } from '@/content/types'
+import { writeStageShift } from '@/experience/camera/regions'
 import { subscribe } from '@/lib/ticker'
 
 /* ============================================================
@@ -58,7 +60,7 @@ export function hudEdges(): { top: number; bottom: number } | null {
   return head && foot ? { top: head.hi, bottom: foot.lo } : null
 }
 
-export function useStageFit(section: RefObject<HTMLElement | null>, stage: RefObject<HTMLElement | null>, enabled: boolean) {
+export function useStageFit(id: ChapterId, section: RefObject<HTMLElement | null>, stage: RefObject<HTMLElement | null>, enabled: boolean) {
   useEffect(() => {
     const host = section.current
     const pin = stage.current
@@ -82,7 +84,10 @@ export function useStageFit(section: RefObject<HTMLElement | null>, stage: RefOb
       const y = from + (to - from) * p
       if (Math.abs(y - applied) < 0.25) return
       applied = y
-      el.style.translate = Math.abs(y) < 0.25 ? '' : `0 ${y.toFixed(1)}px`
+      const shift = Math.abs(y) < 0.25 ? 0 : Math.round(y * 10) / 10
+      el.style.translate = shift ? `0 ${shift}px` : ''
+      // A 3D subject laid out among these words moves with them.
+      writeStageShift(id, shift)
     }
 
     const declare = (el: HTMLElement, span: number) => {
@@ -167,6 +172,7 @@ export function useStageFit(section: RefObject<HTMLElement | null>, stage: RefOb
         node.style.translate = ''
         delete node.dataset.stageTravel
       }
+      writeStageShift(id, 0)
     }
-  }, [section, stage, enabled])
+  }, [id, section, stage, enabled])
 }

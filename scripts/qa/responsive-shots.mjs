@@ -16,7 +16,8 @@
      cut        with --cut: visible text partly hidden by a box that clips
                 its overflow (a pinned stage too short for its words)
      overlap    with --overlap: lines of text that run into other text,
-                the HUD's labels included
+                the HUD's labels included (`data-over-copy` marks a layer
+                drawn over the copy on purpose)
      travels    the stage's words are taller than the screen and travel
                 through it (stageFit.ts): checked at both ends of the
                 travel, first line clear of the HUD's header, last line
@@ -156,6 +157,8 @@ for (const w of WIDTHS) {
           let t
           while ((t = w.nextNode())) {
             if (!t.textContent.trim() || !t.parentElement || !visible(t.parentElement)) continue
+            // Marked as drawn over the copy on purpose (collaborators' cursors over code).
+            if (t.parentElement.closest('[data-over-copy]')) continue
             range.selectNodeContents(t)
             for (const r of range.getClientRects()) {
               let l = r.left, rt = r.right, tp = r.top + r.height * 0.18, bt = r.bottom - r.height * 0.18
