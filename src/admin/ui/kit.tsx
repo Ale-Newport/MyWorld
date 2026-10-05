@@ -75,12 +75,26 @@ export function Switch({ checked, onChange, label, hint, disabled }: { checked: 
   )
 }
 
+/** Arrow keys move the choice within a radio group, as the ARIA pattern has it; only the chosen option is in the tab order. */
+export function radioKeys<T>(values: T[], value: T, onChange: (v: T) => void) {
+  return (e: React.KeyboardEvent<HTMLElement>) => {
+    const i = values.indexOf(value)
+    const step = e.key === 'ArrowRight' || e.key === 'ArrowDown' ? 1 : e.key === 'ArrowLeft' || e.key === 'ArrowUp' ? -1 : 0
+    if (!step) return
+    e.preventDefault()
+    const next = values[(i + step + values.length) % values.length]
+    onChange(next)
+    const group = e.currentTarget
+    requestAnimationFrame(() => group.querySelector<HTMLElement>('[aria-checked="true"]')?.focus())
+  }
+}
+
 /** A small set of exclusive choices (device sizes, inherit/show/hide). */
 export function Segmented<T extends string>({ value, options, onChange, label, size = 'md' }: { value: T; options: { value: T; label: ReactNode; title?: string; icon?: IconName }[]; onChange: (v: T) => void; label: string; size?: 'sm' | 'md' }) {
   return (
-    <div className="a-seg" role="radiogroup" aria-label={label} data-size={size}>
+    <div className="a-seg" role="radiogroup" aria-label={label} data-size={size} onKeyDown={radioKeys(options.map((o) => o.value), value, onChange)}>
       {options.map((o) => (
-        <button key={o.value} type="button" role="radio" aria-checked={value === o.value} title={o.title} onClick={() => onChange(o.value)}>
+        <button key={o.value} type="button" role="radio" aria-checked={value === o.value} tabIndex={value === o.value ? 0 : -1} title={o.title} onClick={() => onChange(o.value)}>
           {o.icon && <Icon name={o.icon} size={16} />}
           {o.label}
         </button>
