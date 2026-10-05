@@ -33,7 +33,7 @@ export function Chapter({ id, children, flow, className, noPin, grow, labelledBy
   const cms = useCms(`section.${id}`, { kind: 'section', label: meta?.title })
   const sectionRef = useRef<HTMLElement>(null)
   const stageRef = useRef<HTMLDivElement>(null)
-  useStageFit(sectionRef, stageRef, !noPin && !!meta)
+  useStageFit(id, sectionRef, stageRef, !noPin && !!meta)
   if (!meta) return null
   const vh = quickView ? meta.quickVh : meta.vh
 

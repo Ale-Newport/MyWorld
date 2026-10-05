@@ -124,7 +124,8 @@ export function Teaching() {
             ))}
           </pre>
 
-          <div className={styles.cursors} ref={cursorsRef} aria-hidden="true">
+          {/* Collaborators' cursors, drawn over the code on purpose. */}
+          <div className={styles.cursors} ref={cursorsRef} aria-hidden="true" data-over-copy="">
             {['AN', 'S1', 'S2'].map((n) => (
               <span key={n} className={styles.cursor}>
                 <i />
