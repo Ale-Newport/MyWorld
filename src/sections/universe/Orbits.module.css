@@ -1,0 +1,196 @@
+/* ============================================================
+   ORBITAL SYSTEM — hairline orbits, small bodies, quiet type
+   ============================================================ */
+
+.root {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  contain: layout paint style;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.chart,
+.motion {
+  position: absolute;
+  inset: 0;
+  overflow: visible;
+  pointer-events: none;
+}
+.chart { will-change: transform, opacity; }
+
+/* The near half of an orbit is a solid hairline; the half behind
+   the centre is dotted, as a hidden edge is in a drawing. */
+.front,
+.back {
+  fill: none;
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
+}
+.front {
+  stroke: color-mix(in oklab, var(--ink) 24%, transparent);
+  transition: stroke var(--dur-mid) var(--ease-out-expo);
+}
+.back {
+  stroke: color-mix(in oklab, var(--ink) 30%, transparent);
+  stroke-dasharray: 1 5;
+  stroke-linecap: round;
+  transition: stroke var(--dur-mid) var(--ease-out-expo);
+}
+/* The orbit of the body under the pointer or focus firms up. */
+.orbit[data-hot] .front { stroke: color-mix(in oklab, var(--ink) 46%, transparent); }
+.orbit[data-hot] .back { stroke: color-mix(in oklab, var(--ink) 50%, transparent); }
+
+/* The short stretch of orbit a body has just travelled. */
+.wake {
+  fill: none;
+  stroke-linecap: round;
+}
+.wakeHost { transition: opacity 700ms var(--ease-out-expo); }
+.wakeHost[data-dim] { opacity: 0.12; }
+
+.caption {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  fill: var(--ink-4);
+}
+
+.sun { fill: var(--ink); }
+.halo {
+  fill: none;
+  stroke: color-mix(in oklab, var(--ink) 34%, transparent);
+  stroke-width: 1;
+}
+
+/* The arm from the centre to the body under the pointer or focus. */
+.leader {
+  stroke: var(--accent);
+  stroke-width: 1;
+  stroke-dasharray: 2 4;
+  opacity: 0;
+  transition: opacity var(--dur-fast) linear;
+}
+
+/* ---- bodies ---------------------------------------------------- */
+
+/* A finger-sized square centred on the body (the transform moves its
+   centre); the node sits in the middle and the name hangs below,
+   and both are the button's hit area. */
+.body {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 26px;
+  height: 26px;
+  margin: -13px 0 0 -13px;
+  padding: 0;
+  border-radius: 50%;
+  will-change: transform, opacity;
+  -webkit-tap-highlight-color: transparent;
+}
+.body:focus-visible { outline: none; }
+.body[data-dim] { pointer-events: none; }
+
+.inner {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transition: opacity 700ms var(--ease-out-expo), filter 700ms var(--ease-out-expo);
+}
+.body[data-dim] .inner {
+  opacity: 0.13;
+  filter: grayscale(1);
+}
+
+.node {
+  position: absolute;
+  left: calc(var(--d) * -0.5);
+  top: calc(var(--d) * -0.5);
+  width: var(--d);
+  height: var(--d);
+  border-radius: 50%;
+  background: var(--tone);
+  transition: box-shadow var(--dur-mid) var(--ease-out-expo);
+}
+.body[data-tier='0'] .node {
+  box-shadow:
+    0 0 0 3px color-mix(in oklab, var(--bg-primary) 80%, transparent),
+    0 0 0 4px color-mix(in oklab, var(--tone) 42%, transparent);
+}
+.body[data-hot] .node,
+.body:focus-visible .node {
+  box-shadow:
+    0 0 0 3px var(--bg-primary),
+    0 0 0 4.5px var(--accent);
+}
+
+.label {
+  position: absolute;
+  left: 0;
+  top: calc(var(--d) * 0.5 + 6px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  width: max-content;
+  max-width: var(--lw);
+  line-height: 1.12;
+  opacity: 0;
+  will-change: transform, opacity;
+}
+.body[data-tier='0'] .label { top: calc(var(--d) * 0.5 + 9px); }
+
+/* Up to two balanced lines before a name is cut. */
+.name {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  max-width: 100%;
+  overflow: hidden;
+  text-align: center;
+  text-wrap: balance;
+  color: var(--ink-2);
+  text-shadow: 0 0 2px var(--bg-primary), 0 0 8px var(--bg-primary);
+  text-decoration: underline;
+  text-decoration-color: transparent;
+  text-underline-offset: 3px;
+  text-decoration-thickness: 1px;
+  transition: color var(--dur-fast) linear, text-decoration-color var(--dur-fast) linear;
+}
+.body[data-tier='0'] .name {
+  font-size: var(--t0);
+  font-weight: 500;
+  letter-spacing: -0.018em;
+  color: var(--ink);
+}
+.body[data-tier='1'] .name {
+  font-size: var(--t1);
+  font-weight: 450;
+  letter-spacing: -0.008em;
+}
+.body[data-tier='2'] .name {
+  font-family: var(--font-mono);
+  font-size: var(--t2);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+.body[data-hot] .name,
+.body:focus-visible .name {
+  color: var(--ink);
+  text-decoration-color: var(--accent);
+}
+
+.meta {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: color-mix(in oklab, var(--tone) 82%, var(--ink));
+  text-shadow: 0 0 2px var(--bg-primary), 0 0 8px var(--bg-primary);
+}
