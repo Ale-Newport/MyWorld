@@ -37,7 +37,8 @@ export class Driving {
   this.placement=new Placement({physics,root,bounds:navigation.bounds,seaLevel:navigation.seaLevel??physics.waterElevation,exclude:this.vehicle.chassis.physical.body,cameraDirection:()=>this.cameraDirection(),cameraOffset:()=>new THREE.Vector3().setFromSphericalCoords(1,this.view.spherical.phi,this.view.spherical.theta)});
   this.recovery=new Recovery(this,{root,navigation,bounds:navigation.bounds});this.bin.add(()=>this.recovery.dispose());
   // R, a failed unstuck and any hazard respawn: races keep their gate respawn (onRespawnRequest), the rest recover nearby.
-  this.player.respawn=(name=null)=>{const stuck=this.unstuck;this.unstuck=false;if(name===null&&this.player.onRespawnRequest?.())return;this.recover(stuck?'stuck':'respawn');};
+  // Only R itself ('manual', the key is down) may set the car back where it stands; a hazard's respawn moves it away.
+  this.player.respawn=(name=null)=>{const stuck=this.unstuck;this.unstuck=false;if(name===null&&this.player.onRespawnRequest?.())return;this.recover(stuck?'stuck':this.inputs.isActive('respawn')?'manual':'respawn');};
   const unstuckFailed=()=>{this.unstuck=true;};this.player.events.on('unstuckFailed',unstuckFailed);
   this.player.rightItself=()=>this.rightInPlace();
   this.vehicleInput=new VehicleInput(this.inputs,()=>this.modes.toggle(),undefined,()=>this.hop());this.bin.add(()=>this.vehicleInput.dispose());
@@ -92,6 +93,7 @@ export class Driving {
   * snaps the wheel visuals and the camera, and — except for the spawn and righting in place — tells the
   * activities, as a respawn always has (a run in progress ends). */
  place(pose,{reason='respawn'}={}){
+  if(!pose?.position||!Number.isFinite(pose.position.x+pose.position.y+pose.position.z))return null;
   const v=this.vehicle,b=v.chassis.physical.body,at=pose.position,heading=pose.rotation??pose.heading??0;
   if(this.modes.isPlane){this.modes.setMode(false);this.camera.fov=25;this.camera.updateProjectionMatrix();}
   this.modes.transition=0;this.modes.state=this.modes.mode;this.modes.drop=false;b.enableCcd(this.modes.originalCCD);
@@ -108,15 +110,15 @@ export class Driving {
   this.events.trigger('placed',[pose,reason]);return pose;
  }
  flatHeading(){const f=this.vehicle.forward,d=new THREE.Vector3(f.x,0,f.z);return d.lengthSq()>1e-6?headingOf(d.normalize()):0;}
- /** Back on the wheels near the incident (runtime/recovery.js). R first tries the very spot the car is on. */
+ /** Back on the wheels near the incident (runtime/recovery.js). R ('manual') first tries the very spot the car is on. */
  recover(reason='respawn'){
   if(this.recovering)return false;this.recovering=true;
   try{
    const v=this.vehicle,p=v.position,finite=Number.isFinite(p.x+p.y+p.z);
-   // A race in progress keeps its own respawn: back through the last gate.
-   if(!['respawn','stuck'].includes(reason)&&this.player.onRespawnRequest?.()){this.recovery.placed(null,'race');return true;}
+   // A race in progress keeps its own respawn: back through the last gate (player.respawn already asked for R and hazards).
+   if(!['manual','respawn','stuck'].includes(reason)&&this.player.onRespawnRequest?.()){this.recovery.placed(null,'race');return true;}
    let pose=null;
-   if(reason==='respawn'&&finite){const c=this.placement.check(p.x,p.z,this.flatHeading(),{dynamicMargin:1});if(c.ok&&p.y<c.y+PLACEMENT.rest+4)pose=Object.assign(c,{source:'in place'});}
+   if(reason==='manual'&&finite){const c=this.placement.check(p.x,p.z,this.flatHeading(),{dynamicMargin:1});if(c.ok&&p.y<c.y+PLACEMENT.rest+4)pose=Object.assign(c,{source:'in place'});}
    pose??=this.recovery.choose(reason,finite?p.clone():null);if(!pose)return false;
    this.place(pose,{reason:'recover'});this.events.trigger('recovered',[reason,pose]);return true;
   }finally{this.recovering=false;}
