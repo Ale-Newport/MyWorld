@@ -16,13 +16,23 @@ import {PlaneVisual} from './plane-visual.js';
 import {CarJump} from './jump.js';
 import {Placement,PLACEMENT,START_VIEW,centralPlaza,plazaSpawn,arrivalFor,framed,headingOf} from './placement.js';
 import {Recovery} from './recovery.js';
+import {TouchJoystick} from './touch-joystick.js';
 const vec=p=>new THREE.Vector3(p[0],p[2],-p[1]);
 /** World2 car tuning plus isolated parking, water, vehicle-mode, placement and recovery extensions.
  * Every way the car is put somewhere — the first spawn, travel from the M map, R, and recovery from the
- * sea, the void or a wreck — is validated by runtime/placement.js and carried out by place(), here. */
+ * sea, the void or a wreck — is validated by runtime/placement.js and carried out by place(), here.
+ * TOUCH: /world2's joystick on the ground (runtime/touch-joystick.js) is wired here as Game.ts wires it —
+ * built before the Player and handed to it, on the scene, polled each frame after the devices (poll),
+ * fed every 'orbit' action while the input mode is 'touch', destroyed with the drive. Two additions make
+ * a drag work: poll() sends 'orbit' again on each frame a finger moves (Inputs passes one 'change' per
+ * press on), and only fingers that came down on the world are read, so a thumb on a HUD button is not a
+ * second finger. Car only: in the plane a finger steers through VehicleInput.flight(). A tap on the car
+ * is this runtime's jump (hop()). Whatever lets go of the keyboard lets go of the joystick
+ * (releaseTouch): the map, place() — so travel and every recovery —, car ↔ plane, a run that holds the
+ * car, another device, a blur, a hidden tab. */
 export class Driving {
  constructor(physics,scene,camera,navigation,keys,canvas=document.querySelector('#world'),{root=null}={}){
-  Object.assign(this,{physics,camera,nav:navigation,keys,root});this.cameraMode=2;this.wet=0;this.bin=new Bin();this.events=new Events();this.hopHeld=false;
+  Object.assign(this,{physics,camera,nav:navigation,keys,root});this.cameraMode=2;this.wet=0;this.bin=new Bin();this.events=new Events();this.hopHeld=false;this.orbitSent=false;
   this.ticker={events:new Events(),elapsed:0,elapsedScaled:0,deltaScaled:1/30,scale:2,delta:1/60,alpha:1};physics.ticker=this.ticker;
   this.inputs=new Inputs(canvas);this.inputs.add(ACTION_DEFINITIONS.filter(a=>a.name!=='jump').map(a=>({...a,keys:a.keys.filter(k=>k!=='Keyboard.Space')})));this.inputs.add([{name:'hop',label:'Jump',categories:['driving'],keys:['Keyboard.Numpad5','Gamepad.triangle','Touch.jump']}]);this.inputs.add([{name:'boardPrevious',label:'Previous project',categories:['minigame'],keys:['Keyboard.ArrowLeft','Keyboard.KeyA','Gamepad.left']},{name:'boardNext',label:'Next project',categories:['minigame'],keys:['Keyboard.ArrowRight','Keyboard.KeyD','Gamepad.right']}]);this.inputs.setFilters(['driving','camera']);this.bin.add(()=>this.inputs.destroy());
   this.tweens=new Tweens(this.ticker,this.bin);
@@ -30,10 +40,13 @@ export class Driving {
   this.view=new View(this.ticker,this.viewport,this.inputs,physics,this.bin,false);camera.copy(this.view.camera);this.view.camera=camera;
   this.vehicle=new PhysicsVehicle(physics,this.ticker,this.bin,vec(navigation.spawn));tuneVehicle(this.vehicle);
   this.vehicle.parking.enabled=true;
+  this.nipple=new TouchJoystick(this.tweens,this.vehicle);scene.add(this.nipple.group);this.bin.add(()=>this.nipple.destroy());
   this.roads=navigation.roads.flatMap(r=>r.samples.slice(0,-1).map((p,i)=>({p:vec(p),next:vec(r.samples[i+1]),width:r.width,name:r.name})));
   // Provisional until spawnInitial(): main.js calls it once every World2 prop exists, so they can be avoided.
   const provisional=()=>navigation.directSpawn?{...navigation.directSpawn,position:new THREE.Vector3(...navigation.directSpawn.position)}:{name:'Spawn',position:vec(navigation.spawn),rotation:0};
-  this.player=new Player(this.inputs,this.vehicle,this.view,{getDefault:provisional,getClosest:provisional,getByName:()=>null},this.ticker,this.tweens,null,this.bin);
+  this.player=new Player(this.inputs,this.vehicle,this.view,{getDefault:provisional,getClosest:provisional,getByName:()=>null},this.ticker,this.tweens,this.nipple,this.bin);
+  // A tap on the car is this runtime's jump: Player's own (a 0.2 s 'high' pulse) is undone by runtime/jump.js on its next step.
+  this.nipple.events.off('tap');this.nipple.events.on('tap',()=>this.hop());
   this.placement=new Placement({physics,root,bounds:navigation.bounds,seaLevel:navigation.seaLevel??physics.waterElevation,exclude:this.vehicle.chassis.physical.body,cameraDirection:()=>this.cameraDirection(),cameraOffset:()=>new THREE.Vector3().setFromSphericalCoords(1,this.view.spherical.phi,this.view.spherical.theta)});
   this.recovery=new Recovery(this,{root,navigation,bounds:navigation.bounds});this.bin.add(()=>this.recovery.dispose());
   // R, a failed unstuck and any hazard respawn: races keep their gate respawn (onRespawnRequest), the rest recover nearby.
@@ -51,7 +64,19 @@ export class Driving {
   if(navigation.playerCarTemplate)this.visual.applyTemplate(navigation.playerCarTemplate);if(navigation.vehicleColor)this.setColor(navigation.vehicleColor);
   this.plane=new PlaneVisual(this.vehicle,physics,scene,navigation.planeTemplate);this.bin.add(()=>this.plane.dispose());
   this.loop=new LoopAssist(this.vehicle,navigation.loop?.points??[]);this.ticker.events.on('fixed',()=>{if(!this.modes.isPlane&&this.loop.points.length)this.loop.beforeStep();},1.5);this.ticker.events.on('fixed',()=>physics.step(),3);
-  this.modes.events.on('change',()=>{this.loop.reset();this.jump.reset();this.hopHeld=false;this.visual.group.visible=!this.modes.isPlane;});
+  this.modes.events.on('change',()=>{this.loop.reset();this.jump.reset();this.hopHeld=false;this.visual.group.visible=!this.modes.isPlane;this.releaseTouch();});
+  // The joystick reads the camera the player sees. An 'orbit' release while a finger is still down is the map, a
+  // teleport or a filter letting go, not a finger lifting: that must not be read as a tap (a jump).
+  const steer=action=>{this.orbitSent=true;if(action.trigger==='end'&&this.inputs.pointer.isDown){this.releaseTouch();return;}if(this.inputs.mode!=='touch'||this.modes.isPlane){this.releaseTouch();return;}this.nipple.updateFromPointer(this.inputs.pointer,action,this.camera,this.viewport);};
+  const device=mode=>{if(mode!=='touch')this.releaseTouch();},carTaken=state=>{if(state!=='default')this.releaseTouch();},ring=()=>{if(this.inputs.mode==='touch')this.nipple.jump();};
+  this.inputs.events.on('orbit',steer);this.inputs.events.on('modeChange',device);this.player.events.on('stateChange',carTaken);this.jump.events.on('jump',ring);
+  this.bin.add(()=>{this.inputs.events.off('orbit',steer);this.inputs.events.off('modeChange',device);this.player.events.off('stateChange',carTaken);this.jump.events.off('jump',ring);});
+  // Only fingers that came down on the world count (targetTouches, not every finger on the screen): a thumb held
+  // on a HUD button must not turn the driving finger into a two-finger camera gesture.
+  this.inputs.pointer.readTouches=function(event){const list=event.targetTouches??event.touches,{left,top}=this.rectOffset(),out=[];for(let i=0;i<list.length;i++){const t=list[i];out.push({id:t.identifier,x:t.clientX-left,y:t.clientY-top});}return out;};
+  this.bin.listen(window,'blur',()=>this.releaseTouch());
+  // A finger lifted while the tab was hidden never reports it: let go of it now rather than drive on with it later.
+  this.bin.listen(document,'visibilitychange',()=>{if(!document.hidden)return;this.releaseTouch();if(this.inputs.pointer.mode==='touch')this.inputs.pointer.onBlur();});
   this.save={data:{settings:{muted:true,volume:.5}},schedule(){}};this.audio=new Audio(this.ticker,this.player,this.vehicle,this.save,this.bin);this.audio.resume();
   this.vehicle.events.on('land',air=>{if(air>.35)this.view.kick(Math.min(1,air*.9));});this.vehicle.events.on('collision',force=>{if(force>24)this.view.kick(Math.min(1,force/140));});
   this.water=new VehicleWater(physics,this.vehicle,{seaLevel:navigation.seaLevel??physics.waterElevation,onRecover:()=>this.recover('water')});
@@ -60,8 +85,26 @@ export class Driving {
  nearest(position=this.vehicle.position){let best=null,d=Infinity;for(const road of this.roads){const n=road.p.distanceToSquared(position);if(n<d){d=n;best=road;}}if(!best){const p=this.home?.position??vec(this.nav.spawn);best={p,next:p.clone().add(new THREE.Vector3(1,0,0)),width:8,name:"Open ground"};d=p.distanceToSquared(position);}return {...best,distance:Math.sqrt(d)};}
  /** A press the car can act on: ignored in the air, in the plane, during a transition or an activity that holds the car. */
  hop(){if(this.modes.isPlane||this.modes.transition||this.player.state!=='default')return false;return this.jump.request();}
- /** Lets go of a held SPACE (or △): the wheels come down, nothing jumps. */
+ /** Lets go of a held SPACE (or △, or the touch JUMP): the wheels come down, nothing jumps. */
  releaseHold(){this.vehicleInput.reset();this.hopHeld=false;this.jump.release();}
+ /** Lets go of a finger on the ground joystick, with no tap: the ring goes, the car is no longer driven by it. */
+ releaseTouch(){this.nipple.cancel();}
+ /** Once per rendered frame, before the fixed steps (Game.ts pollInputs): the devices, then the touch joystick.
+  * Inputs passes a pointer's 'change' on once per press (a pointer's value is always 1 and a repeated value is
+  * skipped), which would leave a drag at its first move. In touch mode only, the 'orbit' action is sent again on
+  * every frame a finger moves or a pinch changes, so the joystick and the two-finger camera follow the fingers. */
+ poll(){
+  this.orbitSent=false;this.inputs.update();
+  const p=this.inputs.pointer,orbit=this.inputs.actions.get('orbit');
+  if(!this.orbitSent&&this.inputs.mode==='touch'&&(p.hasMoved||p.pinch.distanceDelta!==0)&&orbit?.active&&this.inputs.allowed(orbit)){orbit.trigger='change';this.inputs.events.trigger('orbit',[orbit]);}
+  this.nipple.update();
+ }
+ /** The touch JUMP button (touch-controls.js): SPACE's own press and release, without the double-press flight. */
+ jumpButton(down){if(down)this.vehicleInput.press(this.vehicleInput.now(),{toggle:false});else this.vehicleInput.release();}
+ /** BACK ON YOUR WHEELS: R's own action, so it recovers exactly as R does (Player → respawn → recover('manual')). */
+ recoverButton(){this.inputs.pressTouchAction('respawn');this.inputs.releaseTouchAction('respawn');}
+ /** CAR / PLANE: what SPACE twice does. */
+ toggleVehicle(){return this.modes.toggle();}
  get mode(){return this.modes.mode;}
  get status(){return {mode:this.mode,state:this.modes.state,parked:this.vehicle.parking.active,wetness:this.water.wetness,deepWater:this.water.deepTime>0,altitude:Math.max(0,this.vehicle.position.y-(this.nav.seaLevel??this.physics.waterElevation)),controls:this.modes.isPlane?'W/S speed · A/D turn · Q/E or ↑/↓ pitch · drag mouse to steer · SPACE SPACE → Car':'WASD · SPACE jump, hold to raise the wheels · B brake · SPACE SPACE → Plane · Shift boost · R back on your wheels'};}
  setColor(color){this.visual.setColor(color);}
@@ -97,7 +140,7 @@ export class Driving {
   const v=this.vehicle,b=v.chassis.physical.body,at=pose.position,heading=pose.rotation??pose.heading??0;
   if(this.modes.isPlane){this.modes.setMode(false);this.camera.fov=25;this.camera.updateProjectionMatrix();}
   this.modes.transition=0;this.modes.state=this.modes.mode;this.modes.drop=false;b.enableCcd(this.modes.originalCCD);
-  this.releaseHold();this.inputs.releaseAll();this.jump.reset();this.player.suspensions.fill('low');
+  this.releaseHold();this.releaseTouch();this.inputs.releaseAll();this.jump.reset();this.player.suspensions.fill('low');
   const wasStuck=v.stuck.active,wasUpsideDown=v.upsideDown.active;
   v.moveTo(at,heading);
   v.upward.set(0,1,0).applyQuaternion(v.quaternion);v.forward.set(1,0,0).applyQuaternion(v.quaternion);v.sideward.set(0,0,1).applyQuaternion(v.quaternion);v.airborneSince=this.ticker.elapsed;
