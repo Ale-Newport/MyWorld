@@ -1,11 +1,30 @@
-.stage { align-content: center; }
+/* ============================================================
+   PANSOFIA — one beat at a time, each with its ground
+
+   The chapter is told in three beats that never share the stage:
+   the role with its fan of browser panes, the count those panes
+   resolve to, and the gallery. In the first beat the panes fan
+   out inside `.stack`, a region of their own beside the heading
+   (under it on a narrow screen) — they used to fan across the
+   whole stage, through the heading they were meant to illustrate.
+   The count and the gallery each have the stage to themselves.
+   ============================================================ */
+
+.stage {
+  --stage-rows: minmax(0, 1fr);
+  --stage-align: stretch;
+  --stage-items: center;
+  --stage-top: clamp(5rem, 11vh, 7rem);
+  --stage-bottom: clamp(5.25rem, 11vh, 7rem);
+}
 
 .head {
   grid-column: 1 / span 6;
+  grid-row: 1;
   display: flex; flex-direction: column; gap: var(--sp-4);
+  min-width: 0;
   will-change: transform, opacity;
 }
-@media (max-width: 900px) { .head { grid-column: 1 / span 12; } }
 
 .title {
   font-size: clamp(1.9rem, 1.1rem + 3.2vw, 4rem);
@@ -27,18 +46,25 @@
 }
 
 /* ---- fanning browser panes ---- */
+/* The fan's region. The spread is measured from this box, so however
+   wide the panes fan they stay inside it. */
 .stack {
-  position: absolute;
-  inset: 0;
+  grid-column: 8 / span 5;
+  grid-row: 1;
+  align-self: stretch;
+  position: relative;
   z-index: 1;
   display: grid;
   place-items: center;
+  min-width: 0;
+  min-height: 0;
+  container-type: size;
   pointer-events: none;
   opacity: 0;
 }
 .pane {
   grid-area: 1 / 1;
-  width: min(340px, 30vw);
+  width: min(340px, 52cqw, 90cqh);
   aspect-ratio: 16 / 10;
   background: var(--bg-primary);
   border: var(--hair) solid var(--border-strong);
@@ -50,7 +76,7 @@
 .paneBar { display: flex; gap: 4px; padding: 7px 9px; }
 .paneBar i { width: 5px; height: 5px; border-radius: 50%; background: var(--border-strong); }
 
-/* ---- big count ---- */
+/* ---- big count: the stage to itself ---- */
 .count {
   position: absolute;
   inset: 0;
@@ -83,10 +109,10 @@
    rail longer than the viewport on a large screen — otherwise the
    scrub would run out of travel halfway through the chapter. */
 .rail {
-  --tile: clamp(240px, 32vw, 520px);
+  --tile: clamp(170px, min(32vw, 50vh), 520px);
   position: absolute;
   left: 0; right: 0;
-  bottom: clamp(7rem, 17vh, 10rem);
+  bottom: clamp(5rem, 17vh, 10rem);
   overflow-x: auto;
   overflow-y: hidden;
   opacity: 0;
@@ -167,8 +193,48 @@
 }
 
 @media (max-width: 700px) {
-  .rail { --tile: 72vw; }
+  .rail { --tile: min(72vw, 40vh); }
   .metrics { grid-template-columns: repeat(2, 1fr); }
+}
+
+/* The gallery's note arrives with the gallery: it is about the rail, and
+   before the rail is there it would only sit on the heading's ground. */
+.hint { opacity: 0; }
+
+/* ---- narrow and tall: heading, then the fan under it ---- */
+@media (max-width: 900px), (max-aspect-ratio: 4/5) {
+  .stage {
+    --stage-rows: auto minmax(0, 1fr);
+    --stage-row-gap: clamp(1rem, 3vh, 2rem);
+    --stage-top: clamp(4.5rem, 9vh, 6rem);
+    --stage-bottom: clamp(4.75rem, 9vh, 6rem);
+  }
+  .head { grid-column: 1 / -1; grid-row: 1; gap: var(--sp-3); }
+  .stack { grid-column: 1 / -1; grid-row: 2; }
+}
+
+/* A small phone cannot hold the numbers and the fan at once, and the
+   numbers are the one block that says nothing new: the lead has already
+   given three of the four, and all four are in the server-rendered
+   profile. The fan keeps the room. */
+@media (max-width: 700px) and (max-height: 820px) {
+  .metrics { display: none; }
+}
+
+/* ---- a phone on its side ---- */
+@media (max-height: 520px) and (orientation: landscape) {
+  .stage {
+    --stage-col-gap: clamp(1rem, 2.5vw, 1.5rem);
+    --stage-rows: minmax(0, 1fr);
+    --stage-row-gap: 0;
+    --stage-top: 4rem;
+    --stage-bottom: 4.5rem;
+  }
+  .head { grid-column: 1 / span 7; grid-row: 1; gap: var(--sp-2); }
+  .title { font-size: clamp(1.4rem, 8.5vh, 2.4rem); }
+  .stage .lead { font-size: var(--fs-small); line-height: 1.45; }
+  .metrics { display: none; }
+  .stack { grid-column: 8 / span 5; grid-row: 1; }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -177,13 +243,15 @@
      its foot, and an open band between the two. The rail rejoins the
      flow rather than hanging off the bottom edge, so the two can never
      come to sit on top of one another however tall the type runs. */
-  .stage { --stage-align: space-between; }
-  .head, .stack, .count { opacity: 1 !important; transform: none !important; }
+  .stage { --stage-rows: auto auto; --stage-align: space-between; --stage-items: normal; }
+  .head, .stack, .count, .hint { opacity: 1 !important; transform: none !important; }
   .stack, .count { display: none; }
+  .head { grid-row: 1; }
 
   .rail {
     position: static;
     grid-column: 1 / span 12;
+    grid-row: 2;
     opacity: 1 !important;
     /* Full-bleed again now that it sits on the grid: the first tile
        holds the text's left edge, the last still runs off the right. */
@@ -208,7 +276,7 @@
    One line higher is the middle of the only band that is clear of the
    label above it and of the second line below it. */
 @media (prefers-reduced-motion: reduce) and (max-width: 700px) {
-  .hint { transform: translateY(var(--sp-5)); }
+  .hint { transform: translateY(var(--sp-5)) !important; }
 }
 
 /* A short phone cannot hold the numbers and the gallery at once. The
@@ -226,6 +294,23 @@
    there down the two blocks want ~802px of a screen that has less. */
 @media (prefers-reduced-motion: reduce) and (max-width: 700px) and (max-height: 820px) {
   .metrics { display: none; }
+}
+
+/* A phone on its side has no height for the heading above the gallery,
+   so the two sit side by side: the role on the left, the gallery running
+   off the right edge, standing on the foot of the stage clear of the note
+   in the corner above it. */
+@media (prefers-reduced-motion: reduce) and (max-height: 520px) and (orientation: landscape) {
+  .stage { --stage-rows: minmax(0, 1fr); --stage-align: stretch; --stage-items: center; --stage-col-gap: clamp(1rem, 2.5vw, 1.5rem); }
+  .head { grid-column: 1 / span 5; grid-row: 1; }
+  .rail {
+    grid-column: 6 / span 7;
+    grid-row: 1;
+    align-self: end;
+    margin-inline: 0 calc(var(--gutter-right) * -1);
+    padding-inline: 0 var(--gutter-right);
+    --tile: clamp(150px, 44vh, 260px);
+  }
 }
 
 /* Wide enough to set the numbers beside the prose instead of under it,
