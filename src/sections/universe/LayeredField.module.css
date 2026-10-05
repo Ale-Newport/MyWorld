@@ -1,0 +1,173 @@
+/* ============================================================
+   LAYERED FIELD — cards on three planes, composed in register
+   ============================================================ */
+
+.root {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  overflow: clip;
+  contain: layout paint style;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.card {
+  position: absolute;
+  left: 0;
+  top: 0;
+  padding: 0;
+  text-align: left;
+  will-change: transform, opacity;
+  -webkit-tap-highlight-color: transparent;
+}
+.card:focus-visible { outline: none; }
+.card[data-dim] { pointer-events: none; }
+.card[data-hot],
+.card:focus-visible { z-index: 10 !important; }
+
+/* Nearer planes are crisper and cast more shadow; the far plane is
+   paler, flatter and lets more of the wall through. */
+.face {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 9px 11px 10px;
+  overflow: hidden;
+  border-radius: 4px;
+  background: color-mix(in oklab, #fbf7ef 74%, transparent);
+  box-shadow:
+    inset 0 0 0 1px color-mix(in oklab, var(--ink) 12%, transparent),
+    inset 0 1px 0 rgba(255, 255, 255, 0.55),
+    0 16px 26px -20px rgba(58, 40, 18, 0.5);
+  transition:
+    transform 600ms var(--ease-out-expo),
+    box-shadow var(--dur-mid) var(--ease-out-expo),
+    opacity 700ms var(--ease-out-expo),
+    filter 700ms var(--ease-out-expo);
+}
+.card[data-tier='0'] .face {
+  padding: 12px 14px 13px;
+  background: color-mix(in oklab, var(--accent-p) 9%, #fbf7ef);
+  box-shadow:
+    inset 0 0 0 1px color-mix(in oklab, var(--ink) 16%, transparent),
+    inset 0 1px 0 rgba(255, 255, 255, 0.6),
+    0 26px 40px -24px rgba(58, 40, 18, 0.6);
+}
+.card[data-tier='2'] .face {
+  background: color-mix(in oklab, #fbf7ef 54%, transparent);
+  box-shadow:
+    inset 0 0 0 1px color-mix(in oklab, var(--ink) 10%, transparent),
+    0 8px 14px -12px rgba(58, 40, 18, 0.35);
+}
+.card[data-hot] .face,
+.card:focus-visible .face {
+  transform: scale(1.045);
+  box-shadow:
+    inset 0 0 0 1.5px var(--accent),
+    inset 0 1px 0 rgba(255, 255, 255, 0.6),
+    0 30px 44px -24px rgba(58, 40, 18, 0.6);
+}
+.card[data-dim] .face {
+  opacity: 0.2;
+  filter: grayscale(1);
+  transform: scale(0.96);
+}
+@media (prefers-reduced-motion: reduce) {
+  .card[data-hot] .face,
+  .card:focus-visible .face { transform: none; }
+}
+
+.head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  font-family: var(--font-mono);
+  font-size: 8.5px;
+  line-height: 1;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--ink-4);
+  white-space: nowrap;
+}
+.mark {
+  flex: none;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--tone);
+}
+.cat {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.year { margin-left: auto; }
+
+.title {
+  margin-top: auto;
+  font-size: clamp(10.5px, calc(var(--cw) * 0.1), 14px);
+  font-weight: 500;
+  line-height: 1.12;
+  letter-spacing: -0.012em;
+  color: var(--ink);
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  text-decoration: underline;
+  text-decoration-color: transparent;
+  text-underline-offset: 3px;
+  transition: text-decoration-color var(--dur-fast) linear;
+}
+.card[data-tier='0'] .title {
+  font-size: clamp(14px, calc(var(--cw) * 0.12), 24px);
+  line-height: 1.02;
+  letter-spacing: -0.03em;
+}
+.card[data-tier='2'] .title { color: var(--ink-2); }
+.card[data-hot] .title,
+.card:focus-visible .title { text-decoration-color: var(--accent); }
+
+.desc {
+  font-size: clamp(10.5px, calc(var(--cw) * 0.05), 12.5px);
+  line-height: 1.35;
+  color: var(--ink-3);
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+/* Small cards: the name alone beside its mark. */
+.card:not([data-roomy]) .face {
+  flex-direction: row;
+  align-items: center;
+  gap: 5px;
+  padding: 0 7px;
+}
+.card:not([data-roomy]) .head { flex: none; }
+.card:not([data-roomy]) .year { display: none; }
+.card:not([data-roomy]) .title {
+  display: block;
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  font-size: 10px;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+/* A tag tall enough for two lines wraps its name instead of cutting it. */
+.card[data-two] .title {
+  display: -webkit-box;
+  white-space: normal;
+  -webkit-line-clamp: 2;
+  line-height: 1.15;
+}
+/* A headline card on a short row gives its year's line to its name. */
+.card[data-low] .head { display: none; }
+.card[data-low] .title { -webkit-line-clamp: 2; }
