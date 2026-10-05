@@ -1,6 +1,6 @@
 'use client'
 
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Chapter } from '@/components/journey/Chapter'
 import { useSite } from '@/cms/context'
 import { E, useCms, useCmsText } from '@/cms/editable'
@@ -37,6 +37,7 @@ export function Pansofia() {
   const headRef = useRef<HTMLDivElement>(null)
   const countRef = useRef<HTMLDivElement>(null)
   const stackRef = useRef<HTMLDivElement>(null)
+  const hintRef = useRef<HTMLDivElement>(null)
   const [hover, setHover] = useState<string | null>(null)
   const setActiveProject = useJourney((s) => s.setActiveProject)
   const { chapters } = useJourneyRoute()
@@ -63,6 +64,28 @@ export function Pansofia() {
   const entry = (t: number, from: number, to: number) =>
     (opensJourney ? 1 : clamp(range(t, from, to)))
 
+  /* How far the panes may travel from the middle of their region and
+     still be wholly inside it, rotation included. Measured when the
+     region or the panes change size, never per frame. */
+  const fanRef = useRef({ x: 0, y: 0 })
+  useEffect(() => {
+    const stack = stackRef.current
+    const pane = stack?.firstElementChild as HTMLElement | null | undefined
+    if (!stack || !pane) return
+    const measure = () => {
+      const tilt = (6.5 * Math.PI) / 180
+      const halfW = (pane.offsetWidth / 2) * Math.cos(tilt) + (pane.offsetHeight / 2) * Math.sin(tilt)
+      const halfH = (pane.offsetHeight / 2) * Math.cos(tilt) + (pane.offsetWidth / 2) * Math.sin(tilt)
+      fanRef.current.x = Math.max(0, stack.clientWidth / 2 - halfW - 4)
+      fanRef.current.y = Math.max(0, stack.clientHeight / 2 - halfH - 4)
+    }
+    const ro = new ResizeObserver(measure)
+    ro.observe(stack)
+    ro.observe(pane)
+    measure()
+    return () => ro.disconnect()
+  }, [])
+
   useChapterFrame('pansofia', (t) => {
     if (reducedMotion) return
 
@@ -73,35 +96,33 @@ export function Pansofia() {
       head.style.transform = `translate3d(0, ${(1 - a) * 1.6}rem, 0)`
     }
 
-    // The browser panes fan out of one, then collapse behind the count.
+    // The browser panes fan out of one, then collapse and clear the
+    // stage for the count. The fan is measured from its own region, so
+    // its outermost pane stops at that region's edge, never on the copy.
     const stack = stackRef.current
     if (stack) {
-      /* The fan itself is NOT given a head start on the landing
-         screen. It was tried: the panes spread symmetrically about
-         the centre, so opening them halfway throws the left half of
-         the stack across the heading, which is worse than the one
-         number the closed stack clips. The pane crossing the copy
-         is the chapter's own idiom anyway — it does it at every
-         small t, and always did. */
-      const fan = clamp(range(t, 0.05, 0.3))
-      const collapse = clamp(range(t, 0.3, 0.42))
-      const a = entry(t, 0.02, 0.12) * (1 - clamp(range(t, 0.34, 0.44)))
+      const fan = clamp(range(t, 0.05, 0.28))
+      const collapse = clamp(range(t, 0.28, 0.36))
+      const a = entry(t, 0.02, 0.12) * (1 - clamp(range(t, 0.32, 0.4)))
       stack.style.opacity = String(a)
       const panes = stack.children
+      const { x: tx, y: ty } = fanRef.current
       for (let i = 0; i < panes.length; i++) {
         const el = panes[i] as HTMLElement
         const k = i / Math.max(1, panes.length - 1)
         const spread = easeOutCubic(fan) * (1 - collapse)
-        const x = (k - 0.5) * spread * 62
-        const y = (k - 0.5) * spread * 16 + Math.sin(k * 6) * spread * 5
+        const x = (k - 0.5) * 2 * spread * tx
+        const y = ((k - 0.5) * 1.2 + Math.sin(k * 6) * 0.4) * spread * ty
         const rot = (k - 0.5) * spread * 13
-        el.style.transform = `translate3d(${x}vw, ${y}vh, 0) rotate(${rot}deg) scale(${0.9 + spread * 0.1})`
+        el.style.transform = `translate3d(${x}px, ${y}px, 0) rotate(${rot}deg) scale(${0.9 + spread * 0.1})`
       }
     }
 
+    // The count has the stage to itself: in once the panes have gone,
+    // out before the gallery arrives.
     const count = countRef.current
     if (count) {
-      const a = clamp(range(t, 0.40, 0.48)) * (1 - clamp(range(t, 0.56, 0.63)))
+      const a = clamp(range(t, 0.40, 0.48)) * (1 - clamp(range(t, 0.53, 0.59)))
       count.style.opacity = String(a)
       count.style.transform = `scale(${0.9 + a * 0.1})`
     }
@@ -115,6 +136,7 @@ export function Pansofia() {
     if (rail) {
       const a = clamp(range(t, 0.6, 0.68))
       rail.style.opacity = String(a)
+      if (hintRef.current) hintRef.current.style.opacity = String(a)
       const travel = Math.max(0, rail.scrollWidth - rail.clientWidth)
       const p = clamp(range(t, 0.62, 0.98))
       rail.scrollLeft = travel * p
@@ -130,7 +152,7 @@ export function Pansofia() {
             {title}
           </Reveal>
           <p className={styles.role}>{role.role}</p>
-          <p className={shared.lead}>{role.summary}</p>
+          <p className={`${shared.lead} ${styles.lead}`}>{role.summary}</p>
           <div className={styles.metrics}>
             {role.metrics.map((m) => (
               <MetricBlock key={m.label} value={m.value} label={m.label} size="sm" />
@@ -219,7 +241,7 @@ export function Pansofia() {
           </ul>
         </div>
 
-        <div className={`${shared.corner} ${shared.cornerTR} ${styles.hint}`}>
+        <div className={`${shared.corner} ${shared.cornerTR} ${styles.hint}`} ref={hintRef}>
           DRAG OR SCROLL
           <br />
           SELECTED WORK · 2025
