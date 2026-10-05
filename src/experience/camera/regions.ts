@@ -52,6 +52,11 @@ export function readSceneRegion(id: ChapterId): SceneRegion | undefined {
   return regions.get(id)
 }
 
+/** Whether the mounted journey lays out any region at all. */
+export function hasSceneRegions() {
+  return regions.size > 0
+}
+
 /**
  * Where the region is on screen right now, for a document scrolled
  * to `scrollY`: the stage is sticky, so it rides in from below,

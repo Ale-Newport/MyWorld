@@ -8,7 +8,7 @@ import { JourneyCamera } from '@/experience/camera/JourneyCamera'
 import { useJourney, frame } from '@/state/journey'
 import { detectDevice, createFpsWatchdog } from '@/lib/perf'
 import { subscribe } from '@/lib/ticker'
-import { sceneRegionsVersion } from '@/experience/camera/regions'
+import { hasSceneRegions, sceneRegionsVersion } from '@/experience/camera/regions'
 import styles from './GlobalCanvas.module.css'
 
 /**
@@ -48,7 +48,9 @@ function Settle({ live }: { live: boolean }) {
    points went on hanging behind the chess chapter. Nothing animates
    on this path, but the subjects still have to arrive and leave with
    their chapters and keep to their regions, so a frame is drawn
-   whenever the scroll, the chapter or a region has moved. */
+   whenever the scroll, the chapter or a region has moved — on a journey
+   that lays out regions. The home journey lays out none, and its one
+   scene keeps exactly the frames it was drawn with before. */
 function DrawOnScroll({ active }: { active: boolean }) {
   const invalidate = useThree((s) => s.invalidate)
   useEffect(() => {
@@ -57,6 +59,7 @@ function DrawOnScroll({ active }: { active: boolean }) {
     let chapter = ''
     let regions = -1
     return subscribe(() => {
+      if (!hasSceneRegions()) return
       const s = useJourney.getState()
       const v = sceneRegionsVersion()
       if (frame.progress === progress && s.chapter === chapter && v === regions) return
