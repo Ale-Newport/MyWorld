@@ -6,6 +6,7 @@ import { useSite } from '@/cms/context'
 import { E, useCms, useCmsText } from '@/cms/editable'
 import { Reveal } from '@/components/typography/Reveal'
 import { TagRow } from '@/components/journey/parts'
+import { SceneRegion } from '@/components/journey/SceneRegion'
 import { Counter } from '@/components/typography/Counter'
 import { useChapterFrame } from '@/hooks/useChapterProgress'
 import { useJourney } from '@/state/journey'
@@ -15,10 +16,11 @@ import styles from './Metaview.module.css'
 
 /* ============================================================
    PROJECTS · 55 – 75%  INTELLIGENCE
-   The site turns dark here, and it turns dark because the
-   subject changes: half a million documents become a space you
-   can fly through. The DOM layer stays quiet — six beats, each
-   one number and one line — over the galaxy in the canvas.
+   The subject changes here: half a million documents become a
+   space you can fly through. The DOM layer stays quiet — six
+   beats, each one number and one line — beside the galaxy,
+   which the canvas draws into the region this stage keeps for
+   it (`.scene`), never under the words.
    ============================================================ */
 
 interface Beat {
@@ -70,7 +72,7 @@ export function Metaview() {
         const outA = clamp(range(t, a1 - 0.05, a1))
         const a = inA * (1 - outA)
         el.style.opacity = String(a)
-        el.style.transform = `translate3d(0, ${(1 - a) * 2.4}rem, 0)`
+        el.style.transform = `translate3d(0, ${(1 - a) * 1.2}rem, 0)`
         el.style.pointerEvents = a > 0.4 ? 'auto' : 'none'
       }
     }
@@ -98,6 +100,8 @@ export function Metaview() {
           </Reveal>
           <p className={styles.role}>{role.role}</p>
         </div>
+
+        <SceneRegion chapter="metaview" className={styles.scene} />
 
         <ol className={styles.beats} ref={beatsRef}>
           {BEATS.map((b) => (
