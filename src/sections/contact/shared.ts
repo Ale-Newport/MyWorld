@@ -394,6 +394,12 @@ function pixelRatio(w: number, h: number) {
 
 type QAWindow = Window & { __contactQA?: ContactQA }
 const qaMode = () => new URLSearchParams(window.location.search).has('qa-safe')
+/** In QA mode only, `?qa-intensity=` and `?qa-speed=` stand in for the administrator's knobs, so a check can try their extremes. */
+function qaKnob(name: string): number | null {
+  const q = new URLSearchParams(window.location.search)
+  const v = q.has('qa-safe') && q.has(name) ? Number(q.get(name)) : NaN
+  return Number.isFinite(v) ? v : null
+}
 
 const rootStyle = { position: 'absolute', inset: 0, pointerEvents: 'none', overflow: 'hidden' } as const
 const canvasStyle = { position: 'absolute', inset: 0, width: '100%', height: '100%', display: 'block' } as const
@@ -444,7 +450,7 @@ export function useContactCanvas<S>(id: string, props: ContactAnimationProps, pa
     canvas.height = Math.max(1, Math.round(box.h * box.dpr))
     const c0 = performance.now()
     const stage = makeStage(box.w, box.h, safe.current)
-    const scene = painter.compose(stage, Math.min(1, Math.max(0, intensity)), readPalette())
+    const scene = painter.compose(stage, Math.min(1, Math.max(0, qaKnob('qa-intensity') ?? intensity)), readPalette())
     const win = window as QAWindow
     const record: ContactQA | null = qaMode() ? { id, safe: stage.safe, keep: stage.keep, canvas, w: box.w, h: box.h, paints: 0, ms: 0, p: 0, composeMs: performance.now() - c0, scene } : null
     if (record) win.__contactQA = record
@@ -492,8 +498,9 @@ export function useContactCanvas<S>(id: string, props: ContactAnimationProps, pa
   useEffect(() => {
     if (!active || reducedMotion) return
     const lv = live.current
+    const rate = qaKnob('qa-speed') ?? speed
     return subscribe((dt) => {
-      lv.t += dt * speed
+      lv.t += dt * rate
       lv.paint()
     })
   }, [active, reducedMotion, speed])
