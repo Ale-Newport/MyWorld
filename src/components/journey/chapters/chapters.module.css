@@ -97,8 +97,10 @@
 .cornerTR { top: clamp(4.5rem, 9vh, 6.5rem); right: var(--gutter-right); text-align: right; }
 .cornerBL { bottom: clamp(4.5rem, 9vh, 5.5rem); left: var(--gutter-left); }
 .cornerBR { bottom: clamp(4.5rem, 9vh, 5.5rem); right: var(--gutter-right); text-align: right; }
+/* Each corner keeps to its half of the stage, so a long note wraps
+   rather than running into the one beside it. */
+.cornerTL, .cornerTR, .cornerBL, .cornerBR { max-width: calc(50% - max(var(--gutter-left), var(--gutter-right)) - 0.75rem); }
 
 @media (max-width: 700px) {
   .corner { font-size: 9px; }
-  .cornerTR, .cornerBR { max-width: 42vw; }
 }
