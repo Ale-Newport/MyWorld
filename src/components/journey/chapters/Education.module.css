@@ -132,6 +132,18 @@
 @media (max-height: 760px) and (min-width: 901px) {
   .moduleBlurb { display: none; }
 }
+/* A short desktop window: the cards' modules become a compact two-
+   column list and the title steps down, so heading, cards and the
+   credentials line fit between the corner band and the HUD. */
+@media (max-height: 700px) and (min-width: 901px) {
+  .stage { --stage-top: clamp(4.5rem, 12vh, 6rem); --stage-bottom: clamp(3.75rem, 10vh, 5rem); --stage-row-gap: 0.6rem; }
+  .title { font-size: clamp(1.5rem, 0.6rem + 2.4vw, 2.6rem); }
+  .card { padding: 0.75rem 1rem; gap: 0.3rem; }
+  .modules { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: var(--sp-4); }
+  .module { padding: 0.2rem 0; border-bottom: 0; }
+  .glyph { width: 22px; height: 22px; }
+  .glyph svg { width: 20px; height: 20px; }
+}
 
 /* A phone on its side, or any very short window: the two cards stand
    side by side again (there is width, not height), their modules
