@@ -385,6 +385,9 @@ function Constellation({ projects, visible, filter, progress, active, reducedMot
     return set
   }, [sky, hotIndex])
 
+  // Keyboard order: the headline stars first, then each figure's in turn (the drawing is unaffected).
+  const tabOrder = useMemo(() => (sky ? sky.stars.map((_, i) => i).sort((a, b) => sky.stars[a].tier - sky.stars[b].tier || a - b) : []), [sky])
+
   const visibleRef = useRef(visible)
   useEffect(() => {
     visibleRef.current = visible
@@ -538,7 +541,8 @@ function Constellation({ projects, visible, filter, progress, active, reducedMot
           </span>
         ) : null,
       )}
-      {sky?.stars.map((s, i) => {
+      {sky && tabOrder.map((i) => {
+        const s = sky.stars[i]
         const dim = !visible.has(s.p.id)
         return (
           <button

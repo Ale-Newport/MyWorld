@@ -20,7 +20,9 @@ import styles from './Orbits.module.css'
    Each orbit turns at its own slow pace (inner ones faster, as in
    a real system), scrolling turns them a little further, and
    anything under the pointer or the keyboard's focus brings the
-   whole system to rest, so it can be read and chosen.
+   whole system to rest, so it can be read and chosen; a body
+   reached with the keyboard is first brought round to the front
+   of its orbit, where names are read.
 
    Names: every body is named where its orbit has the room. On a
    crowded orbit (a phone, a very large archive) the front of the
@@ -118,7 +120,7 @@ function layout(projects: SiteProject[], w: number, h: number, intensity: number
       named: tier === 0 || h >= 240,
       // Leaning inward at the ends, a name must stop short of the centre;
       // a name read at the front only has the width of the box to mind.
-      labelMax: Math.max(56, Math.min(240, all ? Math.min(front * 1.1 - 12, (rx - 14) / (0.5 + 0.5 * lean)) : w * 0.62)),
+      labelMax: Math.max(56, Math.min(240, all ? Math.min(front - 14, (rx - 14) / (0.5 + 0.5 * lean)) : w * 0.62)),
       lean,
       turn: 0.9 - 0.22 * k,
       caption: TIER_NAME[tier].length * 4.4 + 8,
@@ -147,8 +149,8 @@ function Orbits({ projects, visible, progress, active, reducedMotion, intensity,
   const root = useRef<HTMLDivElement>(null)
   const { w, h } = useBoxSize(root)
   const model = useMemo(() => (w > 0 && h > 0 ? layout(projects, w, h, intensity) : null), [projects, w, h, intensity])
-  const { hot, bind } = useHot(onHover)
-  const uid = useId().replace(/:/g, '')
+  const { hot, byKeys, bind } = useHot(onHover)
+  const uid = useId().replace(/[^a-zA-Z0-9_-]/g, '')
 
   const els = useRef<(HTMLButtonElement | null)[]>([])
   const labels = useRef<(HTMLSpanElement | null)[]>([])
@@ -157,11 +159,12 @@ function Orbits({ projects, visible, progress, active, reducedMotion, intensity,
   const captions = useRef<(SVGTextElement | null)[]>([])
   const system = useRef<SVGSVGElement>(null)
   const leader = useRef<SVGLineElement>(null)
-  const sim = useRef({ spin: [0, 0, 0], pace: 1, open: -1, z: [] as number[], hot: null as string | null })
+  const sim = useRef({ spin: [0, 0, 0], pace: 1, open: -1, z: [] as number[], hot: null as string | null, keys: false })
 
   useEffect(() => {
     sim.current.hot = hot
-  }, [hot])
+    sim.current.keys = byKeys
+  }, [hot, byKeys])
 
   /** Writes the pose for the current clock and scroll. Called per frame, and once for a still state. */
   const pose = (still: boolean) => {
@@ -192,7 +195,9 @@ function Orbits({ projects, visible, progress, active, reducedMotion, intensity,
       const alpha = (1 - model.depth * 0.5 * (1 - z) * 0.5) * open
       el.style.transform = `translate3d(${x.toFixed(2)}px, ${y.toFixed(2)}px, 0) scale(${scale.toFixed(4)})`
       el.style.opacity = alpha.toFixed(3)
-      const zi = 10 + Math.round((z + 1) * 20) + (r.tier === 0 ? 1 : 0)
+      const isHot = s.hot === b.p.slug
+      // Nearer bodies over farther ones; the body under the pointer or focus over everything.
+      const zi = (isHot ? 100 : 10) + Math.round((z + 1) * 20) + (r.tier === 0 ? 1 : 0)
       if (s.z[i] !== zi) {
         s.z[i] = zi
         el.style.zIndex = String(zi)
@@ -200,7 +205,6 @@ function Orbits({ projects, visible, progress, active, reducedMotion, intensity,
 
       const label = labels.current[i]
       if (label) {
-        const isHot = s.hot === b.p.slug
         let la = 1
         let lean = c * r.lean
         if (!isHot && !r.named) la = 0
@@ -231,7 +235,7 @@ function Orbits({ projects, visible, progress, active, reducedMotion, intensity,
       }
 
       if (z < -0.4) clear[b.ring] = Math.min(clear[b.ring], Math.abs(x - model.cx))
-      if (s.hot === b.p.slug) {
+      if (isHot) {
         hotIndex = i
         hx = x
         hy = y
@@ -269,6 +273,14 @@ function Orbits({ projects, visible, progress, active, reducedMotion, intensity,
     model?.rings.forEach((r, k) => {
       s.spin[k] += r.omega * dt * speed * s.pace
     })
+    // A body reached with the keyboard is brought round to the front of its orbit, where names are read.
+    const b = s.keys && s.hot ? model?.bodies.find((x) => x.p.slug === s.hot) : undefined
+    if (b && model) {
+      const k = b.ring
+      const goal = b.theta - clamp01(progress.current) * model.rings[k].turn - Math.PI / 2
+      const off = Math.atan2(Math.sin(goal - s.spin[k]), Math.cos(goal - s.spin[k]))
+      s.spin[k] += off * (1 - Math.exp(-3.2 * speed * dt))
+    }
     pose(false)
   })
 

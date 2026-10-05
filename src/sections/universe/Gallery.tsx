@@ -144,12 +144,17 @@ function Gallery({ projects, visible, progress, active, reducedMotion, intensity
 
   const slots = useRef<(HTMLDivElement | null)[]>([])
   const buttons = useRef<(HTMLButtonElement | null)[]>([])
-  const sim = useRef({ c: NaN, t: 0, focus: -1, shown: [] as boolean[] })
-  const visibleRef = useRef(visible)
+  const sim = useRef({ c: NaN, t: 0, focus: -1, shown: [] as boolean[], kept: [] as Frame[] })
+  // The frames the filter keeps (all of them when it keeps none): what scrolling turns the room through.
+  const kept = useMemo(() => {
+    const all = model?.frames ?? []
+    const some = all.filter((f) => visible.has(f.p.id))
+    return some.length ? some : all
+  }, [model, visible])
   useEffect(() => {
-    visibleRef.current = visible
+    sim.current.kept = kept
     sim.current.focus = focused
-  }, [visible, focused])
+  }, [kept, focused])
 
   /** Where along the wall the room faces: the focused frame, else the scroll's share of the frames the filter keeps. */
   const target = () => {
@@ -157,8 +162,7 @@ function Gallery({ projects, visible, progress, active, reducedMotion, intensity
     const f = model.frames
     const s = sim.current
     if (s.focus >= 0 && f[s.focus]) return f[s.focus].s
-    const kept = f.filter((x) => visibleRef.current.has(x.p.id))
-    const list = kept.length ? kept : f
+    const list = s.kept
     if (!list.length) return 0
     // The room comes to rest on each frame in turn, then moves on to the next.
     const at = (list.length - 1) * smooth(0.04, 0.96, progress.current)
@@ -173,7 +177,7 @@ function Gallery({ projects, visible, progress, active, reducedMotion, intensity
     const goal = target()
     s.t += dt * speed
     s.c = Number.isNaN(s.c) || still ? goal : approach(s.c, goal, 2.6 * speed, dt)
-    const sway = still ? 0 : Math.sin(s.t * 0.32) * model.frames[0]?.fw * 0.04
+    const sway = still ? 0 : Math.sin(s.t * 0.32) * (model.frames[0]?.fw ?? 0) * 0.04
     const c = s.c + sway
     const R = model.radius
     const reach = w / 2 + (model.frames[0]?.fw ?? 0) * 1.2
@@ -190,7 +194,8 @@ function Gallery({ projects, visible, progress, active, reducedMotion, intensity
       const z = R * (1 - Math.cos(phi))
       el.style.transform = `translate3d(${x.toFixed(1)}px, 0, ${z.toFixed(1)}px) rotateY(${(-phi).toFixed(4)}rad)`
       el.style.opacity = inView ? smooth(reach, reach - f.fw * 0.9, Math.abs(d)).toFixed(3) : '0'
-      el.style.visibility = inView ? 'visible' : 'hidden'
+      // Transparent, never hidden: a hidden frame would drop out of the tab order and refuse focus.
+      el.style.pointerEvents = inView ? '' : 'none'
       s.shown[i] = inView
     })
   }
@@ -279,9 +284,10 @@ function Gallery({ projects, visible, progress, active, reducedMotion, intensity
               data-tier={tierOf(f.p)}
               onClick={() => onOpen(f.p.slug)}
               {...bind(f.p.slug)}
-              onFocus={() => {
-                bind(f.p.slug).onFocus()
-                setFocused(i)
+              onFocus={(e) => {
+                bind(f.p.slug).onFocus(e)
+                // Only the keyboard turns the room: a frame pressed with the mouse must not slide away mid-click.
+                if (e.currentTarget.matches(':focus-visible')) setFocused(i)
               }}
               onBlur={() => {
                 bind(f.p.slug).onBlur()

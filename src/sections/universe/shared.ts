@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState, useSyncExternalStore, type PointerEvent as ReactPointerEvent, type RefObject } from 'react'
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore, type FocusEvent as ReactFocusEvent, type PointerEvent as ReactPointerEvent, type RefObject } from 'react'
 import { subscribe } from '@/lib/ticker'
 import { categoryAccent } from '@/content/project-meta'
 import type { SiteProject } from '../types'
@@ -128,15 +128,24 @@ export const useFinePointer = () => useSyncExternalStore(onMediaChange, () => wi
  * the readout back. Touch never hovers: a tap opens the project.
  */
 export function useHot(onHover: (slug: string | null) => void) {
-  const state = useRef<{ pointer: string | null; focus: string | null; last: string | null }>({ pointer: null, focus: null, last: null })
-  const [hot, setHot] = useState<string | null>(null)
+  const state = useRef<{ pointer: string | null; focus: string | null; keys: boolean; last: string | null; lastKeys: boolean }>({
+    pointer: null,
+    focus: null,
+    keys: false,
+    last: null,
+    lastKeys: false,
+  })
+  const [hot, setHot] = useState<{ slug: string | null; keys: boolean }>({ slug: null, keys: false })
   const report = useCallback(() => {
     const s = state.current
     const next = s.pointer ?? s.focus
-    if (next === s.last) return
+    // Whether the hot project came by keyboard (focus-visible, nothing pointed at): an option may bring it into view.
+    const keys = !s.pointer && !!s.focus && s.keys
+    if (next === s.last && keys === s.lastKeys) return
+    if (next !== s.last) onHover(next)
     s.last = next
-    setHot(next)
-    onHover(next)
+    s.lastKeys = keys
+    setHot({ slug: next, keys })
   }, [onHover])
   const bind = useCallback(
     (slug: string) => ({
@@ -150,8 +159,9 @@ export function useHot(onHover: (slug: string | null) => void) {
         state.current.pointer = null
         report()
       },
-      onFocus: () => {
+      onFocus: (e: ReactFocusEvent) => {
         state.current.focus = slug
+        state.current.keys = e.currentTarget.matches(':focus-visible')
         report()
       },
       onBlur: () => {
@@ -166,7 +176,7 @@ export function useHot(onHover: (slug: string | null) => void) {
   useEffect(() => () => {
     if (state.current.last !== null) onHover(null)
   }, [onHover])
-  return { hot, bind }
+  return { hot: hot.slug, byKeys: hot.keys, bind }
 }
 
 /* ---- screenshots ------------------------------------------------ */
