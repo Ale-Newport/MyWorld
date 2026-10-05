@@ -135,7 +135,7 @@ const painter: Painter<Scene> = {
         const side = r.x + r.w / 2 >= hx ? -1 : 1
         // Size first; then the right of the words, the climb over the run, and a place level with the words.
         const level = Math.max(0, Math.min(r.y + r.h, hy + (v.eh * s) / 2) - Math.max(r.y, hy - (v.eh * s) / 2)) / Math.max(1, v.eh * s)
-        const score = s * (side < 0 ? 1.06 : 1) * (vi === 0 ? 1.04 : 1) * (0.85 + 0.15 * level)
+        const score = s * (side < 0 ? 1.06 : 1) * (vi === 0 ? 1.04 : 1) * (0.6 + 0.4 * level)
         if (!best || score > best.score) best = { s, score, r, v, side }
       }
     }
@@ -152,7 +152,7 @@ const painter: Painter<Scene> = {
       mote: css(mix(pal.bloom, [255, 255, 255], 0.5), 0.95),
     }
     // Too small to read as stones and a door: the margins stay empty.
-    if (!best || best.s * best.v.lay.door.h < 22) return { ok: false, ox: 0, oy: 0, s: 1, flip: 1, lay: variants[0].lay, drop, shadow, ink }
+    if (!best || best.s * best.v.lay.door.h < 16) return { ok: false, ox: 0, oy: 0, s: 1, flip: 1, lay: variants[0].lay, drop, shadow, ink }
     const { s, r, v, side } = best
     const flip = side > 0 ? 1 : -1
     // Close to the words across, level with them if the rectangle allows.

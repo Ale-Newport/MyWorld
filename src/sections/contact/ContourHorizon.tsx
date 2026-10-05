@@ -6,50 +6,48 @@ import { css, lerp, mix, rng, sd, smooth, useContactCanvas, type Painter } from 
 /* ============================================================
    CONTOUR HORIZON
 
-   A topographic relief laid around the closing words: the words sit
-   on a level floor and the land rises away from them, so the contour
-   lines ring them at a respectful distance and turn into hills and
-   valleys further out, gathering toward the foot of the free ground
-   like a horizon below the words. Every fourth line is an index
-   contour, a little heavier, as on a survey map; all are drawn in the
-   brown of the garden's stems.
+   A survey map of open country laid around the closing words: hills
+   and valleys drawn as contour lines, layered more and more closely
+   toward the foot of the free ground, so the land reads as deepening
+   into a horizon below the words. Around the words themselves the
+   map opens into a clearing, and it thins away as it nears every
+   other line of text. Every fourth line is an index contour, a little
+   heavier, as on a survey sheet; all are in the brown of the garden's
+   stems.
 
-   As the section scrolls the relief forms from the edges of the stage
-   inward, deepening toward the words, and once it is whole the land
-   drifts — slowly, sideways — while the levels themselves creep
-   outward, so lines are always being born near the words and moving
-   off toward the edges.
+   As the section scrolls the map is drawn from the top down, the
+   close-packed lines toward the horizon last. Once it is whole the
+   land drifts slowly sideways and the levels flow down toward the
+   horizon, so lines are always rising out of the top of the map and
+   settling into the distance.
 
-   The lines are isolines of a height field that is below the lowest
-   drawn level wherever a word is near, and the grid cells within
-   reach of a safe rectangle are never traced at all.
+   The lines are isolines of a height field, traced only in grid cells
+   that are clear of every safe rectangle (and of the HUD) by more
+   than a cell's reach; the map's own edge — the clearing and its
+   thinning toward text — is a mask that is zero well before that.
 
    intensity → number of contours · speed → the drift
    ============================================================ */
 
 const PAD = 2.5
+const LAT = 64
 
 interface Scene {
   cols: number; rows: number; cell: number
-  /** Static part of the height at each grid point, and how much the terrain may move it there. */
+  /** The strata at each grid point (the horizon term), before the terrain. */
   base: Float32Array
-  weight: Float32Array
-  /** Cells that may be traced (far enough from every safe rectangle). */
+  /** Cells that may be traced at all. */
   open: Uint8Array
-  /** Grid coordinates of the noise lattice (two octaves). */
   lattice: Float32Array
   freq: number
+  amp: number
   levels: number
   spacing: number
-  top: number
-  amp: number
-  /** Where the map fades toward the HUD and the foot (y from, y to, at each), and the mask made of it on the first paint. */
-  band: [number, number, number, number]
-  fade: CanvasGradient | null
+  /** The map's edge: opaque where it may be seen, clear around the words. */
+  mask: HTMLCanvasElement | null
+  w: number; h: number
   ink: { line: string; index: string }
 }
-
-const LAT = 64
 
 /** Smooth value noise on a wrapping lattice. */
 function noise(lat: Float32Array, x: number, y: number) {
@@ -64,82 +62,93 @@ function noise(lat: Float32Array, x: number, y: number) {
 
 const painter: Painter<Scene> = {
   compose(stage, intensity, pal) {
-    const { w, h, keep, safe, top, foot, head, u } = stage
-    const cell = Math.max(8, Math.sqrt((w * h) / 14000))
+    const { w, h, keep, top, foot, head, u } = stage
+    const cell = Math.max(7, Math.sqrt((w * h) / 16000))
     const cols = Math.ceil(w / cell) + 1, rows = Math.ceil(h / cell) + 1
-    const base = new Float32Array(cols * rows), weight = new Float32Array(cols * rows)
-    const corner = new Float32Array(cols * rows)
-    // The floor the words stand on, then land rising away from it.
-    const clear = PAD + 10 * Math.max(0.6, u)
-    const S = Math.max(60, Math.min(w, h) * 0.15)
-    const hy = head ? head.y + head.h : (top + foot) / 2
+    const levels = Math.round(lerp(14, 34, intensity))
+    const spacing = 1 / levels
+    // The strata: level k at (k / levels) ^ (1 / 1.7) of the way down — closer and closer toward the foot.
+    const base = new Float32Array(cols * rows)
     for (let j = 0; j < rows; j++) {
-      for (let i = 0; i < cols; i++) {
-        const x = i * cell, y = j * cell
-        const k = j * cols + i
-        const sText = safe.length ? sd(safe, x, y) : Math.hypot(x - w / 2, y - h / 2) - Math.min(w, h) * 0.2
-        corner[k] = sd(keep, x, y)
-        // Gathering toward the foot of the free ground: a horizon below the words.
-        const low = smooth(hy - S * 0.5, foot, y)
-        base[k] = (sText - clear) / S + 1.1 * low * low
-        // The terrain is felt even on the first ring, a little; fully further out.
-        weight[k] = 0.4 + 0.6 * smooth(0, S * 1.6, sText - clear)
-      }
+      const yr = Math.max(0, Math.min(1, (j * cell - top) / Math.max(1, foot - top)))
+      const v = yr ** 1.7
+      for (let i = 0; i < cols; i++) base[j * cols + i] = v
     }
-    // A cell is traced only if every point of it is clear of the safe rectangles and the HUD.
+    // Never traced: cells within a cell's reach of a safe rectangle or the HUD.
     const open = new Uint8Array(cols * rows)
     const need = PAD + 1.2 + cell * 0.72
+    const corner = new Float32Array(cols * rows)
+    for (let j = 0; j < rows; j++) for (let i = 0; i < cols; i++) corner[j * cols + i] = sd(keep, i * cell, j * cell)
     for (let j = 0; j < rows - 1; j++) {
       for (let i = 0; i < cols - 1; i++) {
         const k = j * cols + i
         open[k] = Math.min(corner[k], corner[k + 1], corner[k + cols], corner[k + cols + 1]) >= need ? 1 : 0
       }
     }
+    // The map's edge, at a quarter of the resolution: a clearing around the words, and a thinning toward any other text.
+    let mask: HTMLCanvasElement | null = null
+    if (typeof document !== 'undefined') {
+      const q = 4
+      const mw = Math.ceil(w / q), mh = Math.ceil(h / q)
+      mask = document.createElement('canvas')
+      mask.width = mw
+      mask.height = mh
+      const mctx = mask.getContext('2d')
+      if (mctx) {
+        const img = mctx.createImageData(mw, mh)
+        const fade = 30 * Math.max(0.6, u)
+        // The clearing: a little room around the words, then the map comes in over a soft edge.
+        const c0 = 8 + 30 * u, c1 = 30 + 70 * u
+        for (let j = 0; j < mh; j++) {
+          for (let i = 0; i < mw; i++) {
+            const x = (i + 0.5) * q, y = (j + 0.5) * q
+            let a = smooth(need + 2, need + 2 + fade, sd(keep, x, y))
+            if (head) a *= smooth(c0, c0 + c1, sd([head], x, y))
+            img.data[(j * mw + i) * 4 + 3] = Math.round(a * 255)
+          }
+        }
+        mctx.putImageData(img, 0, 0)
+      }
+    }
     const r = rng(0x70b0)
     const lattice = new Float32Array(LAT * LAT * 2)
     for (let i = 0; i < lattice.length; i++) lattice[i] = r() * 2 - 1
     return {
-      cols, rows, cell, base, weight, open, lattice,
-      freq: 1 / Math.max(160, Math.min(w, h) * 0.38),
-      levels: Math.round(lerp(9, 22, intensity)),
-      spacing: 1 / lerp(2.6, 5.2, intensity),
-      top,
-      amp: 0.55,
-      band: [top, top + 70 * Math.max(0.6, u), foot - 50 * Math.max(0.6, u), foot],
-      fade: null,
-      ink: { line: css(mix(pal.stem, pal.ink3, 0.35), 0.38), index: css(mix(pal.stem, pal.ink2, 0.4), 0.55) },
+      cols, rows, cell, base, open, lattice, mask, w, h,
+      freq: 1 / Math.max(150, Math.min(w, h) * 0.34),
+      // Hills about four levels high: enough for closed rings on the tops, not enough to scramble the strata.
+      amp: 4.2 * spacing,
+      levels,
+      spacing,
+      ink: { line: css(mix(pal.stem, pal.ink3, 0.35), 0.52), index: css(mix(pal.stem, pal.ink2, 0.4), 0.72) },
     }
   },
 
   draw(ctx, sc, f) {
-    const { cols, rows, cell, base, weight, open, lattice, freq, levels, spacing } = sc
-    // The land drifts sideways; the levels creep outward.
-    const drift = f.still ? 0 : f.t * 0.018
-    const creep = f.still ? 0 : (f.t * 0.035) % 1
-    const F = new Float32Array(cols * rows)
+    const { cols, rows, cell, base, open, lattice, freq, levels, spacing } = sc
+    const drift = f.still ? 0 : f.t * 0.016
+    // The levels flow down toward the horizon, one spacing every so often.
+    const flow = f.still ? 0 : (f.t * 0.04) % 1
     const lat2 = lattice.subarray(LAT * LAT)
+    const F = new Float32Array(cols * rows)
     for (let j = 0; j < rows; j++) {
       for (let i = 0; i < cols; i++) {
         const k = j * cols + i
         const x = i * cell * freq, y = j * cell * freq
-        // Stretched across: strata, as land seen toward a horizon.
-        const n = noise(lattice, x + drift, y * 1.7) * 0.66 + noise(lat2, x * 2.3 - drift * 1.4, y * 3.6 + 7) * 0.28 + noise(lattice, x * 4.7 + 13, y * 6 - drift * 2) * 0.06
-        F[k] = base[k] + n * sc.amp * weight[k]
+        F[k] = base[k] + sc.amp * (noise(lattice, x + drift, y * 1.5) * 0.7 + noise(lat2, x * 2.2 - drift * 1.3, y * 3 + 9) * 0.3)
       }
     }
-    // Forming from the edges inward as the section scrolls: the highest levels first.
-    const reveal = lerp(levels + 2, 0, smooth(0.1, 0.72, f.p))
+    // Drawn from the top down as the section scrolls, the close lines at the horizon last.
+    const reveal = lerp(-2, levels + 2, smooth(0.06, 0.64, f.p))
     const ex = [0, 0, 0, 0], ey = [0, 0, 0, 0]
     ctx.lineCap = 'round'
-    for (let l = 0; l < levels; l++) {
-      const lv = l + 1 - creep
-      // Born faint near the words, gone at the edges, and not yet there before the reveal reaches them.
-      const alpha = smooth(0, 1, lv) * smooth(levels, levels - 2, lv) * smooth(reveal, reveal + 2, lv)
+    for (let l = -2; l < levels + 2; l++) {
+      const lv = l + flow
+      const alpha = smooth(-2, 0.5, lv) * smooth(levels + 2, levels, lv) * smooth(reveal, reveal - 2, lv)
       if (alpha <= 0.02) continue
-      // Levels start above the most the terrain can lower the first ring, so no line reaches the floor around the words.
-      const L = 0.4 * sc.amp + lv * spacing
-      // Every fourth level is an index contour; the count follows the levels as they creep, so a line keeps its weight.
-      const isIndex = (l + (f.still ? 0 : Math.floor(f.t * 0.035))) % 4 === 0
+      const L = lv * spacing
+      // Every fourth level is an index contour; the count travels with the flow, so a line keeps its weight.
+      const isIndex = ((l + (f.still ? 0 : Math.floor(f.t * 0.04))) % 4 + 4) % 4 === 0
       const path = new Path2D()
       for (let j = 0; j < rows - 1; j++) {
         for (let i = 0; i < cols - 1; i++) {
@@ -149,7 +158,7 @@ const painter: Painter<Scene> = {
           const idx = (a > L ? 1 : 0) | (b > L ? 2 : 0) | (c > L ? 4 : 0) | (d > L ? 8 : 0)
           if (idx === 0 || idx === 15) continue
           const x0 = i * cell, y0 = j * cell
-          // Crossing points on the four edges: top, right, bottom, left.
+          // Crossings on the four edges: top, right, bottom, left.
           ex[0] = x0 + ((L - a) / (b - a)) * cell; ey[0] = y0
           ex[1] = x0 + cell; ey[1] = y0 + ((L - b) / (c - b)) * cell
           ex[2] = x0 + ((L - d) / (c - d)) * cell; ey[2] = y0 + cell
@@ -170,30 +179,19 @@ const painter: Painter<Scene> = {
           }
         }
       }
-      // One stroke per level, so each carries its own fade.
       ctx.globalAlpha = alpha
       ctx.strokeStyle = isIndex ? sc.ink.index : sc.ink.line
-      ctx.lineWidth = isIndex ? 1.15 : 0.75
+      ctx.lineWidth = isIndex ? 1.1 : 0.7
       ctx.stroke(path)
     }
     ctx.globalAlpha = 1
-    // The map fades out toward the HUD above and the foot below, rather than stopping at a line nobody can see.
-    if (!sc.fade) {
-      const H = rows * cell
-      const g = ctx.createLinearGradient(0, 0, 0, H)
-      const [a, b, c, d] = sc.band.map((v) => Math.min(1, Math.max(0, v / H)))
-      g.addColorStop(0, 'rgba(0,0,0,0)')
-      g.addColorStop(a, 'rgba(0,0,0,0)')
-      g.addColorStop(Math.max(a, b), 'rgba(0,0,0,1)')
-      g.addColorStop(Math.max(b, c), 'rgba(0,0,0,1)')
-      g.addColorStop(Math.max(c, d), 'rgba(0,0,0,0)')
-      g.addColorStop(1, 'rgba(0,0,0,0)')
-      sc.fade = g
+    // The map's edge: the clearing around the words, the thinning toward other text and the HUD.
+    if (sc.mask) {
+      ctx.globalCompositeOperation = 'destination-in'
+      ctx.imageSmoothingEnabled = true
+      ctx.drawImage(sc.mask, 0, 0, sc.w, sc.h)
+      ctx.globalCompositeOperation = 'source-over'
     }
-    ctx.globalCompositeOperation = 'destination-in'
-    ctx.fillStyle = sc.fade
-    ctx.fillRect(0, 0, cols * cell, rows * cell)
-    ctx.globalCompositeOperation = 'source-over'
   },
 }
 
