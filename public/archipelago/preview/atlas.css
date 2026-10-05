@@ -17,16 +17,33 @@
 .atlas-detail[hidden]{display:none}
 .atlas-pins{position:absolute;inset:0;pointer-events:none}
 .atlas-pin{position:absolute;display:flex;align-items:center;gap:6px;transform:translate(-7px,-7px);pointer-events:auto;white-space:nowrap}
-.atlas-pin i{display:grid;place-items:center;width:14px;height:14px;border-radius:50%;background:var(--pin);border:2px solid #f6f2e8;box-shadow:0 1px 4px #0007;font:normal 8px/1 sans-serif;color:#fff}
+.atlas-pin[hidden]{display:none}
+/* Places are buttons when the map can travel: no button chrome, a clear hover and focus. */
+.atlas button.atlas-pin{margin:0;padding:0;border:0;border-radius:999px;background:none;color:inherit;font:inherit;cursor:pointer}
+.atlas button.atlas-pin:hover{background:none}
+.atlas-pin i{display:grid;place-items:center;width:14px;height:14px;border-radius:50%;background:var(--pin);border:2px solid #f6f2e8;box-shadow:0 1px 4px #0007;font:normal 8px/1 sans-serif;color:#fff;transition:transform .12s ease,box-shadow .12s ease}
 .atlas-pin[data-flip='true']{flex-direction:row-reverse;transform:translate(calc(-100% + 7px),-7px)}
 .atlas-pin-activity i{border-radius:3px;transform:rotate(45deg)}
 .atlas-pin span{padding:2px 7px;border-radius:999px;background:#f6f2e8f0;color:#15262c;font:600 11px/1.3 -apple-system,sans-serif;box-shadow:0 1px 5px #0005}
 .atlas-pin[data-label='false'] span{display:none}
-.atlas-pin[data-label='false']:hover span{display:block;position:relative;z-index:2}
+.atlas-pin[data-label='false']:hover span,.atlas-pin[data-label='false']:focus-visible span{display:block;position:relative;z-index:2}
+.atlas-pin:hover,.atlas-pin:focus-visible{z-index:3}
+.atlas button.atlas-pin:hover i,.atlas button.atlas-pin:focus-visible i{transform:scale(1.35);box-shadow:0 0 0 3px #f2c14e,0 2px 6px #0008}
+.atlas button.atlas-pin-activity:hover i,.atlas button.atlas-pin-activity:focus-visible i{transform:rotate(45deg) scale(1.35)}
+.atlas button.atlas-pin:hover span,.atlas button.atlas-pin:focus-visible span{background:#fff;box-shadow:0 0 0 2px #f2c14e,0 2px 6px #0006}
+.atlas button.atlas-pin:focus-visible{outline:none}
+.atlas-stage.atlas-travel{cursor:crosshair}
+.atlas-stage.dragging{cursor:grabbing}
+/* Said where it was asked: why there is no driving to that point. */
+.atlas-feedback{position:absolute;z-index:5;margin:0;padding:6px 11px;border-radius:8px;background:#3a1612f2;color:#ffe8e1;border:1px solid #ef8a6e;font:600 12px/1.3 -apple-system,sans-serif;white-space:nowrap;pointer-events:none;transform:translate(-50%,calc(-100% - 12px));box-shadow:0 3px 10px #0007}
+.atlas-feedback::after{content:'';position:absolute;left:50%;bottom:-17px;width:10px;height:10px;margin-left:-7px;border:2px solid #ef8a6e;border-radius:50%;background:#3a161288}
+.atlas-feedback[hidden]{display:none}
+.atlas-feedback.show{animation:atlas-say 2.8s ease forwards}
+@keyframes atlas-say{0%{opacity:0;transform:translate(-50%,calc(-100% - 6px))}8%{opacity:1;transform:translate(-50%,calc(-100% - 12px))}82%{opacity:1}100%{opacity:0}}
 .atlas-player{position:absolute;width:0;height:0;border-left:11px solid transparent;border-right:11px solid transparent;border-bottom:27px solid #f2c14e;filter:drop-shadow(0 0 1.5px #fff) drop-shadow(0 0 1.5px #fff) drop-shadow(0 2px 5px #000c)}
 .atlas-player::after{content:'';position:absolute;left:-23px;top:-9px;width:46px;height:46px;border-radius:50%;border:2px solid #f2c14e80;animation:atlas-ping 2.4s ease-out infinite}
 @keyframes atlas-ping{from{transform:scale(.4);opacity:1}to{transform:scale(1.3);opacity:0}}
-@media (prefers-reduced-motion:reduce){.atlas-player::after{animation:none;opacity:.6}}
+@media (prefers-reduced-motion:reduce){.atlas-player::after{animation:none;opacity:.6}.atlas-feedback.show{animation:none}.atlas-pin i{transition:none}}
 .atlas-side{display:flex;flex-direction:column;gap:14px;min-height:0;overflow:auto}
 .atlas-zoom{display:flex;gap:6px}
 .atlas-zoom button{width:40px;padding:8px 0;font-size:16px;line-height:1}
