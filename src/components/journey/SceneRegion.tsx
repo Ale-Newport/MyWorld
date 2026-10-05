@@ -10,9 +10,10 @@ import { writeSceneRegion } from '@/experience/camera/regions'
  * It renders nothing visible: the chapter's own CSS places and
  * sizes it in the stage grid like any other region, and the
  * camera fits the scene into it (see experience/camera/regions).
- * It is measured whenever it, its stage, its section or any of
- * its neighbours change size — a heading that wraps to another
- * line moves the box without resizing it — and never per frame.
+ * It is measured whenever it, its stage, its section, the journey
+ * or any of its neighbours change size — a heading that wraps to
+ * another line moves the box without resizing it — and never per
+ * frame.
  */
 export function SceneRegion({ chapter, className }: { chapter: ChapterId; className?: string }) {
   const ref = useRef<HTMLDivElement>(null)
@@ -50,6 +51,9 @@ export function SceneRegion({ chapter, className }: { chapter: ChapterId; classN
     ro.observe(el)
     ro.observe(stage)
     ro.observe(section)
+    // The journey as a whole: a chapter above this one changing length
+    // moves this section without resizing anything observed here.
+    if (section.parentElement) ro.observe(section.parentElement)
     const parent = el.parentElement
     if (parent) for (const sibling of parent.children) if (sibling !== el) ro.observe(sibling)
     window.addEventListener('resize', schedule)
