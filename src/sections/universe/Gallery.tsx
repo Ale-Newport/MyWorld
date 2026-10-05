@@ -120,7 +120,9 @@ function hang(projects: SiteProject[], w: number, h: number, intensity: number, 
  */
 function Print({ p, fw, mode }: { p: SiteProject; fw: number; mode: 'words' | 'year' | 'title' }) {
   const m = mode === 'words' && !p.shortDescription ? 'title' : mode
-  const size = m === 'words' ? 0.07 : m === 'year' ? 0.27 : 0.15
+  // A title is set as large as its longest word allows: a word is never broken across lines.
+  const longest = Math.max(4, ...p.title.split(/\s+/).map((word) => word.length))
+  const size = m === 'words' ? 0.07 : m === 'year' ? 0.27 : Math.min(0.15, 1.3 / longest)
   return (
     <span className={styles.print} data-tier={tierOf(p)} data-mode={m} style={{ '--pf': `${(fw * size).toFixed(1)}px` } as CSSProperties}>
       {fw >= 72 && (
