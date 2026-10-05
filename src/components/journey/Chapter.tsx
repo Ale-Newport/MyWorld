@@ -4,7 +4,6 @@ import { useJourney } from '@/state/journey'
 import type { ChapterId } from '@/content/types'
 import { useSite } from '@/cms/context'
 import { useCms } from '@/cms/editable'
-import { CmsSlot } from '@/cms/blocks'
 import styles from './Chapter.module.css'
 
 interface ChapterProps {
@@ -15,6 +14,8 @@ interface ChapterProps {
   className?: string
   /** Disables the sticky stage (for chapters that scroll naturally). */
   noPin?: boolean
+  /** Lets content taller than the section's scroll length extend it (content sections). */
+  grow?: boolean
   labelledBy?: string
 }
 
@@ -23,7 +24,7 @@ interface ChapterProps {
  * single full-viewport stage inside it. Native scroll semantics are
  * preserved throughout — nothing is hijacked.
  */
-export function Chapter({ id, children, flow, className, noPin, labelledBy }: ChapterProps) {
+export function Chapter({ id, children, flow, className, noPin, grow, labelledBy }: ChapterProps) {
   const quickView = useJourney((s) => s.quickView)
   const meta = useSite().chapterById[id]
   const cms = useCms(`section.${id}`, { kind: 'section', label: meta?.title })
@@ -45,13 +46,9 @@ export function Chapter({ id, children, flow, className, noPin, labelledBy }: Ch
          order, and does the same for the skip link. */
       tabIndex={-1}
       className={`${styles.chapter} ${className ?? ''}`}
-      style={{ height: `${vh * 100}vh` }}
+      style={grow ? { minHeight: `${vh * 100}vh` } : { height: `${vh * 100}vh` }}
     >
-      {noPin ? (
-        <>{children}<CmsSlot section={id} /></>
-      ) : (
-        <div className={styles.stage}>{children}<CmsSlot section={id} /></div>
-      )}
+      {noPin ? children : <div className={styles.stage}>{children}</div>}
       {flow}
     </section>
   )

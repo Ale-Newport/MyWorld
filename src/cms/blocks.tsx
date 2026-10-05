@@ -1,38 +1,27 @@
 'use client'
 
-import { createElement, type ReactNode } from 'react'
-import { useEditing, useSite } from './context'
+import { createElement } from 'react'
+import { useSite } from './context'
 import { renderRich } from './rich'
 import { safeHref, safeSrc, tableData, type ElementNode } from './schema'
 import { EffectSlot } from '@/animations/EffectSlot'
 import styles from './blocks.module.css'
 
 /* ============================================================
-   ELEMENTS ADDED IN THE EDITOR
+   CONTENT KEPT FROM THE RETIRED PAGE BUILDER
 
-   Each section of the site ends with a slot: a layer over its
-   stage that holds what an administrator added — headings,
-   paragraphs, images, buttons, tables, cards, containers and
-   animations from the library. They are ordinary semantic HTML
-   (a table is a <table> with a caption and header cells, a
-   button is a link), styled by the same compiled stylesheet as
-   every other element.
-
-   `flow` elements stack in the slot's own layout (a column by
-   default; any container can be made a row or a grid); `anchored`
-   elements are positioned against the section's edges, with
-   distances the editor writes per breakpoint.
+   Schema v1's visual editor let an administrator add headings,
+   paragraphs, images, buttons, tables, cards and effects to a
+   section and place them anywhere. v2 keeps every one of them
+   but none of their geometry: they live in a section of their
+   own (migrate.ts moves them there) and stack in normal flow in
+   one readable column, styled entirely by the site, so they
+   compose at every screen size like the rest of the page. Their
+   text stays editable; new ones are not created.
    ============================================================ */
 
-function attrs(node: ElementNode, editing: boolean): Record<string, string> {
-  const a: Record<string, string> = { 'data-cms-id': node.id, 'data-cms-added': 'true' }
-  if (editing) {
-    a['data-cms-kind'] = node.type === 'animation' ? 'animation' : node.type === 'container' || node.type === 'card' ? 'container' : node.type === 'table' ? 'table' : node.type === 'image' || node.type === 'video' ? 'image' : node.type === 'button' ? 'button' : node.type === 'heading' ? 'heading' : 'text'
-    a['data-cms-label'] = node.name
-    if (node.locked) a['data-cms-locked'] = 'true'
-    if (node.layout.mode === 'anchored') a['data-cms-anchored'] = 'true'
-  }
-  return a
+function attrs(node: ElementNode): Record<string, string> {
+  return node.hidden ? { 'data-cms-id': node.id, 'data-cms-hidden': '' } : { 'data-cms-id': node.id }
 }
 
 const str = (v: unknown, max = 2000) => (typeof v === 'string' ? v.slice(0, max) : '')
@@ -40,9 +29,8 @@ const href = (v: unknown) => (typeof v === 'string' && safeHref.safeParse(v).suc
 const src = (v: unknown) => (typeof v === 'string' && v && safeSrc.safeParse(v).success ? v : undefined)
 
 export function Block({ node }: { node: ElementNode }) {
-  const editing = useEditing()
-  const a = attrs(node, editing)
-  const cls = `${styles.block} ${node.layout.mode === 'anchored' ? styles.anchored : ''}`
+  const a = attrs(node)
+  const cls = styles.block
   const p = node.props
   switch (node.type) {
     case 'heading': {
@@ -134,14 +122,13 @@ export function Block({ node }: { node: ElementNode }) {
   }
 }
 
-export function CmsSlot({ section, children }: { section: string; children?: ReactNode }) {
+/** A content section's blocks, in one column. */
+export function AddedContent({ section }: { section: string }) {
   const { doc } = useSite()
-  const editing = useEditing()
   const nodes = doc.additions[section] ?? []
-  if (!nodes.length && !editing && !children) return null
+  if (!nodes.length) return null
   return (
-    <div className={styles.slot} data-cms-slot={section} data-cms-id={`slot.${section}`} {...(editing ? { 'data-cms-kind': 'container', 'data-cms-label': 'Added elements' } : {})}>
-      {children}
+    <div className={styles.flow} data-cms-content={section}>
       {nodes.map((n) => <Block key={n.id} node={n} />)}
     </div>
   )

@@ -5,75 +5,69 @@ import { Chapter } from '@/components/journey/Chapter'
 import { Reveal } from '@/components/typography/Reveal'
 import { TagRow } from '@/components/journey/parts'
 import { useSite } from '@/cms/context'
-import { E, useCms } from '@/cms/editable'
+import { E, useCms, useCmsText } from '@/cms/editable'
 import { useChapterFrame } from '@/hooks/useChapterProgress'
 import { useJourney } from '@/state/journey'
 import { clamp, range } from '@/lib/math'
+import { SectionAnimation } from '@/sections/SectionAnimation'
 import shared from './chapters.module.css'
 import styles from './About.module.css'
 
 /* ============================================================
    HOME · 12 – 25%  A LITTLE ABOUT ME
-   The camera pulls back from the title into open space. Four
-   transition markers establish the through-line of the whole
-   story before any chapter starts.
+   The introduction on one side, the section's animation on the
+   other (stacked below it on narrow and tall screens). The two
+   never share pixels: the layout gives each its own region, so
+   the summary stays readable whatever the animation does and
+   however long the summary becomes.
+
+   The through-lines (Spain → London, KCL → UCL…) are content:
+   the animations draw them, and a list below names them for
+   anyone who cannot see the drawing.
    ============================================================ */
+
+/** Long summaries step the type down rather than spill out of the stage. */
+const lengthClass = (text: string) => (text.length > 260 ? 'long' : text.length > 150 ? 'medium' : 'short')
 
 export function About() {
   const { profile, chapterById } = useSite()
   const summaryCms = useCms('about.summary', { kind: 'heading', label: 'Summary', bind: 'profile.summary' })
+  const tag = useCmsText('about.tag', 'A LITTLE ABOUT ME')
   const reducedMotion = useJourney((s) => s.reducedMotion)
-  const markersRef = useRef<HTMLUListElement>(null)
   const introRef = useRef<HTMLDivElement>(null)
 
   useChapterFrame('about', (t) => {
     if (reducedMotion) return
     const intro = introRef.current
-    if (intro) {
-      const a = clamp(range(t, 0.02, 0.2)) * (1 - clamp(range(t, 0.62, 0.85)))
-      intro.style.opacity = String(a)
-      intro.style.transform = `translate3d(0, ${(1 - a) * 2}rem, 0)`
-    }
-    const m = markersRef.current
-    if (!m) return
-    const items = m.children
-    for (let i = 0; i < items.length; i++) {
-      const el = items[i] as HTMLElement
-      const from = 0.3 + i * 0.09
-      const a = clamp(range(t, from, from + 0.14))
-      el.style.opacity = String(a)
-      el.style.transform = `translate3d(${(1 - a) * -1.5}rem, 0, 0)`
-      const bar = el.querySelector<HTMLElement>('[data-bar]')
-      if (bar) bar.style.transform = `scaleX(${a})`
-    }
+    if (!intro) return
+    const a = clamp(range(t, 0.02, 0.2)) * (1 - clamp(range(t, 0.7, 0.9)))
+    intro.style.opacity = String(a)
+    intro.style.transform = `translate3d(0, ${(1 - a) * 2}rem, 0)`
   })
 
   return (
     <Chapter id="about" labelledBy="about-title">
       <div className={`${shared.stage} ${styles.stage}`}>
-        <E cms="about.tag" as="div" kind="text" label="Chapter tag" className={`${shared.corner} ${shared.cornerTL}`}>
-          <TagRow items={[chapterById['about'].number, 'A LITTLE ABOUT ME']} />
+        <E cms="about.tag" as="div" kind="container" label="Chapter tag" className={`${shared.corner} ${shared.cornerTL}`}>
+          <TagRow items={[chapterById['about'].number, tag]} />
         </E>
 
         <div className={`${styles.intro} ${shared.driven}`} ref={introRef} data-about-intro="">
-          <Reveal as="h2" mode="mask" className={styles.summary} id="about-title" attrs={summaryCms}>
+          <Reveal as="h2" mode="mask" className={styles.summary} id="about-title" attrs={{ ...summaryCms, 'data-length': lengthClass(profile.summary) }}>
             {profile.summary}
           </Reveal>
+          <ul className="sr-only" aria-label="Career through-lines">
+            {profile.markers.map((m, i) => (
+              <li key={`${m.from}-${i}`}>
+                {m.from} to {m.to}
+              </li>
+            ))}
+          </ul>
         </div>
 
-        <E cms="about.markers" as="ul" kind="list" label="Through-lines" className={styles.markers} ref={markersRef} aria-label="Career through-lines">
-          {profile.markers.map((m, i) => (
-            <li key={m.from} className={styles.marker}>
-              <E cms={`about.markers.${i}.from`} kind="text" label={`Marker ${i + 1} from`} bind={`profile.markers.${i}.from`} className={styles.markerFrom}>{m.from}</E>
-              <span className={styles.markerBarWrap} aria-hidden="true">
-                <span className={styles.markerBar} data-bar="" />
-              </span>
-              <E cms={`about.markers.${i}.to`} kind="text" label={`Marker ${i + 1} to`} bind={`profile.markers.${i}.to`} className={styles.markerTo}>{m.to}</E>
-            </li>
-          ))}
-        </E>
+        <SectionAnimation section="about" className={styles.visual} reserve />
 
-        <E cms="about.corner" as="div" kind="text" label="Corner note" className={`${shared.corner} ${shared.cornerBR}`}>
+        <E cms="about.corner" as="div" kind="text" label="Corner note" className={`${shared.corner} ${shared.cornerBR} ${styles.corner}`}>
           THE PATH BELOW
           <br />
           IS THE TIMELINE

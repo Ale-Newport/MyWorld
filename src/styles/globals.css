@@ -126,6 +126,9 @@ a { color: inherit; text-decoration: none; }
 }
 
 /* Screen-reader only, but focusable */
+/* An optional line the content editor switched off (cms/editable.tsx). */
+[data-cms-hidden] { display: none !important; }
+
 .sr-only {
   position: absolute;
   width: 1px; height: 1px;

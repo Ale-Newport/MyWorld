@@ -1,6 +1,7 @@
 import type { Chapter, ChapterId, Project as LegacyProject, TechNode } from '@/content/types'
-import type { Project, Section, SiteDocument } from './schema'
+import type { Project, Section, SiteDocument, ToolboxDisplay } from './schema'
 import { CHAPTER_REQUIRES } from './chapters'
+import { resolveAnimation, type AnimatedSection, type SectionAnimationSettings } from '@/sections/catalog'
 
 /* ============================================================
    WHAT THE PAGES READ
@@ -11,7 +12,18 @@ import { CHAPTER_REQUIRES } from './chapters'
    never reach a page; hidden ones are reachable by slug but left
    out of every listing. Technology weights and the reverse index
    are recomputed from the evidence that is actually public.
+
+   The Tech Toolbox is a listing too: a technology's evidence on
+   the wall counts and names only listed projects, so neither a
+   draft nor a hidden project is ever disclosed through it. A
+   project's own page still names the technologies it used.
    ============================================================ */
+
+/** A technology on the Tech Toolbox wall, with what it may show resolved from the section and the tool's own override. */
+export interface ToolboxTech extends TechNode {
+  showCount: boolean
+  showNames: boolean
+}
 
 export const TECH_GROUPS = [
   { id: 'language', label: 'Languages' },
@@ -54,9 +66,15 @@ export interface SiteContent {
   allProjects: (LegacyProject & Project)[]
   projectBySlug: Record<string, LegacyProject & Project>
   projectById: Record<string, LegacyProject & Project>
-  techNodes: TechNode[]
-  techById: Record<string, TechNode>
+  /** Evidence restricted to listed projects (published, not hidden; drafts too in the admin's preview). */
+  techNodes: ToolboxTech[]
+  techById: Record<string, ToolboxTech>
+  /** Every technology a live project used, hidden ones included: for that project's own page. */
   techByProject: Record<string, string[]>
+  /** The Tech Toolbox section's own settings (each tool may override them). */
+  toolbox: ToolboxDisplay
+  /** The animation each animated section shows, already validated. */
+  animations: Record<AnimatedSection, SectionAnimationSettings>
   journeys: Record<'home' | 'projects', JourneyView>
   chapterById: Record<string, Chapter>
 }
@@ -90,12 +108,27 @@ export function deriveSite(doc: SiteDocument, { preview = false }: { preview?: b
   const live = doc.projects.filter((p) => p.status === 'published' || (preview && p.status === 'draft')).sort((a, b) => a.order - b.order) as (LegacyProject & Project)[]
   const listed = live.filter((p) => !p.hidden && p.status === 'published')
   const ids = new Set(live.map((p) => p.id))
-  const techNodes: TechNode[] = doc.techNodes.map((n) => {
-    const evidence = n.evidence.filter((e) => ids.has(e))
-    return { ...n, evidence, weight: evidence.length >= 5 ? 3 : evidence.length >= 2 ? 2 : 1 }
+  const onWall = new Set(live.filter((p) => !p.hidden).map((p) => p.id))
+  const toolboxSection = doc.journeys.home.sections.find((s) => s.id === 'toolbox')
+  const toolbox: ToolboxDisplay = { showCounts: toolboxSection?.toolbox?.showCounts ?? true, showNames: toolboxSection?.toolbox?.showNames ?? true }
+  const techNodes: ToolboxTech[] = doc.techNodes.map((n) => {
+    const evidence = n.evidence.filter((e) => onWall.has(e))
+    return {
+      ...n,
+      evidence,
+      weight: evidence.length >= 5 ? 3 : evidence.length >= 2 ? 2 : 1,
+      showCount: n.showCounts ?? toolbox.showCounts,
+      showNames: n.showNames ?? toolbox.showNames,
+    }
   })
   const techByProject: Record<string, string[]> = {}
-  for (const t of techNodes) for (const p of t.evidence) (techByProject[p] ??= []).push(t.id)
+  for (const n of doc.techNodes) for (const p of n.evidence) if (ids.has(p)) (techByProject[p] ??= []).push(n.id)
+  const sectionById = (id: string) => doc.journeys.home.sections.find((s) => s.id === id) ?? doc.journeys.projects.sections.find((s) => s.id === id)
+  const animations = {
+    about: resolveAnimation('about', sectionById('about')?.animation),
+    universe: resolveAnimation('universe', sectionById('universe')?.animation),
+    contact: resolveAnimation('contact', sectionById('contact')?.animation),
+  }
   const home = chaptersOf(doc.journeys.home, doc)
   const projects = chaptersOf(doc.journeys.projects, doc)
   return {
@@ -119,6 +152,8 @@ export function deriveSite(doc: SiteDocument, { preview = false }: { preview?: b
     techNodes,
     techById: Object.fromEntries(techNodes.map((t) => [t.id, t])),
     techByProject,
+    toolbox,
+    animations,
     journeys: {
       home: { id: 'home', path: '/', title: doc.journeys.home.title, label: doc.journeys.home.label, chapters: home, sections: doc.journeys.home.sections.filter((s) => !s.hidden) },
       projects: { id: 'projects', path: '/projects', title: doc.journeys.projects.title, label: doc.journeys.projects.label, chapters: projects, sections: doc.journeys.projects.sections.filter((s) => !s.hidden) },
