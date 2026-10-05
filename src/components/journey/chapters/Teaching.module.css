@@ -1,10 +1,30 @@
-.stage { align-content: center; }
+/* ============================================================
+   TEACHING — heading, the edit, the suite
 
-.head { grid-column: 1 / span 5; display: flex; flex-direction: column; gap: var(--sp-4); }
-@media (max-width: 1000px) { .head { grid-column: 1 / span 12; } }
+   Wide screens: heading on the left, the editor and the test
+   suite beside it, the technical note along the foot. Narrow and
+   tall screens: heading, editor, the suite as a row of results.
+   A phone on its side: heading beside the editor.
+   ============================================================ */
+
+.stage {
+  --stage-rows: minmax(0, 1fr) auto;
+  --stage-align: stretch;
+  --stage-items: center;
+  --stage-row-gap: clamp(0.75rem, 2.4vh, 1.75rem);
+  --stage-top: clamp(5rem, 11vh, 7rem);
+  --stage-bottom: clamp(5.25rem, 11vh, 7rem);
+}
+
+.head {
+  grid-column: 1 / span 5;
+  grid-row: 1;
+  display: flex; flex-direction: column; gap: var(--sp-4);
+  min-width: 0;
+}
 
 .title {
-  font-size: clamp(1.3rem, 0.9rem + 1.9vw, 2.5rem);
+  font-size: clamp(1.3rem, min(0.9rem + 1.9vw, 6vh), 2.5rem);
   font-weight: 500; letter-spacing: -0.03em; line-height: 1.06;
   white-space: pre-line; text-wrap: balance;
 }
@@ -14,21 +34,22 @@
 }
 
 .editor {
-  grid-column: 7 / span 4;
+  grid-column: 6 / span 4;
+  grid-row: 1;
   position: relative;
+  min-width: 0;
   border: var(--hair) solid var(--border);
   background: var(--bg-secondary);
 }
-@media (max-width: 1000px) { .editor { grid-column: 1 / span 12; margin-top: var(--sp-5); } }
 
 .editorBar {
-  display: flex; justify-content: space-between; align-items: center;
+  display: flex; justify-content: space-between; align-items: center; gap: var(--sp-3);
   padding: 0.45rem 0.7rem;
   border-bottom: var(--hair) solid var(--border);
   font-family: var(--font-mono); font-size: var(--fs-nano);
   letter-spacing: 0.08em; color: var(--text-faint);
 }
-.editorStat { color: var(--accent); font-variant-numeric: tabular-nums; }
+.editorStat { color: var(--accent); font-variant-numeric: tabular-nums; white-space: nowrap; }
 .editorStat[data-ok='true'] { color: var(--signal); }
 
 .code {
@@ -70,22 +91,86 @@
 .cursor:nth-child(3) em { background: var(--text-secondary); }
 
 .tests {
-  grid-column: 11 / span 2;
+  grid-column: 10 / span 3;
+  grid-row: 1;
   display: flex; flex-direction: column; gap: 0.18rem;
-  align-self: center;
-}
-@media (max-width: 1000px) {
-  .tests { grid-column: 1 / span 12; margin-top: var(--sp-5); flex-direction: row; flex-wrap: wrap; gap: 0.3rem 0.8rem; }
+  min-width: 0;
 }
 
-.test { display: flex; gap: var(--sp-3); align-items: baseline; font-family: var(--font-mono); font-size: var(--fs-nano); }
+.test { display: flex; gap: var(--sp-3); align-items: baseline; min-width: 0; font-family: var(--font-mono); font-size: var(--fs-nano); }
 .testState {
+  flex: none;
   color: var(--accent);
   letter-spacing: var(--tracking-label);
   transition: color 300ms var(--ease-out-expo);
   min-width: 2.4em;
 }
 .test[data-pass='true'] .testState { color: var(--signal); }
-.testName { color: var(--text-faint); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.testName { min-width: 0; color: var(--text-faint); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .test[data-pass='true'] .testName { color: var(--text-muted); }
-@media (max-width: 1000px) { .testName { display: none; } }
+
+/* The corner note joins the foot row: two classes, so it outranks the
+   shared corner's absolute placement whatever order the two
+   stylesheets arrive in. */
+.stage .spec {
+  position: static;
+  grid-column: 7 / span 6;
+  grid-row: 2;
+  align-self: end;
+  justify-self: end;
+}
+
+/* ---- between: the heading beside the editor, the suite under it ----
+   One column needs the height of all three blocks, which a short laptop
+   window or a tablet on its side does not have. */
+@media (max-width: 1000px) {
+  .stage {
+    --stage-rows: auto auto;
+    --stage-align: center;
+    --stage-items: start;
+    --stage-row-gap: clamp(0.75rem, 2vh, 1.25rem);
+  }
+  .head { grid-column: 1 / span 6; grid-row: 1 / span 2; align-self: center; }
+  .editor { grid-column: 7 / span 6; grid-row: 1; }
+  .tests { grid-column: 7 / span 6; grid-row: 2; flex-direction: row; flex-wrap: wrap; gap: 0.3rem 0.8rem; }
+  .testName { display: none; }
+  .stage .spec { display: none; }
+}
+
+/* ---- narrow and tall: one column ---- */
+@media (max-width: 760px), (max-aspect-ratio: 4/5) {
+  .stage {
+    --stage-rows: auto auto auto;
+    --stage-align: center;
+    --stage-items: start;
+    --stage-row-gap: clamp(1rem, 3vh, 2rem);
+    --stage-top: clamp(4.5rem, 9vh, 6rem);
+    --stage-bottom: clamp(4.75rem, 9vh, 6rem);
+  }
+  .head { grid-column: 1 / -1; grid-row: 1; gap: var(--sp-3); align-self: start; }
+  .editor { grid-column: 1 / -1; grid-row: 2; }
+  .tests { grid-column: 1 / -1; grid-row: 3; flex-direction: row; flex-wrap: wrap; gap: 0.3rem 0.8rem; }
+  .testName { display: none; }
+  .stage .spec { display: none; }
+}
+
+/* ---- a phone on its side ---- */
+@media (max-height: 520px) and (orientation: landscape) {
+  .stage {
+    --stage-col-gap: clamp(1rem, 2.5vw, 1.5rem);
+    --stage-rows: auto auto;
+    --stage-align: center;
+    --stage-items: start;
+    --stage-row-gap: 0.6rem;
+    --stage-top: 4rem;
+    --stage-bottom: 4.5rem;
+  }
+  .head { grid-column: 1 / span 6; grid-row: 1 / span 2; gap: var(--sp-2); align-self: center; }
+  .title { font-size: clamp(1.05rem, 5.6vh, 1.6rem); }
+  .head > p:last-child { font-size: var(--fs-tiny); }
+  .editor { grid-column: 7 / span 6; grid-row: 1; }
+  .code { padding-block: var(--sp-2); line-height: 1.6; }
+  .tests { grid-column: 7 / span 6; grid-row: 2; flex-direction: row; flex-wrap: wrap; gap: 0.2rem 0.7rem; }
+  .testName { display: none; }
+  .stage .spec { display: none; }
+}

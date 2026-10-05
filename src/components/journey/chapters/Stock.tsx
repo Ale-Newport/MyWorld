@@ -7,6 +7,7 @@ import { useSite } from '@/cms/context'
 import { E, useCms, useCmsText } from '@/cms/editable'
 import { Reveal } from '@/components/typography/Reveal'
 import { TagRow } from '@/components/journey/parts'
+import { SceneRegion } from '@/components/journey/SceneRegion'
 import { ProjectVisual } from '@/components/project-visuals/ProjectVisual'
 import { useChapterFrame } from '@/hooks/useChapterProgress'
 import { useJourney } from '@/state/journey'
@@ -69,6 +70,8 @@ export function Stock() {
         <div className={styles.visual}>
           <ProjectVisual project={project} progress={progress} active reducedMotion={reducedMotion} />
         </div>
+        {/* The order lanes the canvas draws behind the book keep to the book's box. */}
+        <SceneRegion chapter="stock" className={styles.scene} />
 
         <div className={styles.head}>
           <E cms="stock.tag" kind="container" label="Chapter tag"><TagRow items={[chapterById['stock'].number, tag, '2025']} /></E>
@@ -104,18 +107,17 @@ export function Stock() {
             the block gives up the corner and lies along the foot, and the
             groups have to be able to sit beside each other without a line
             break landing in the middle of one. */}
-        <div className={`${shared.corner} ${shared.cornerBR} ${styles.spec}`}>
+        <div className={`${shared.corner} ${styles.spec}`}>
           <span>JAVA · MAVEN</span>
           <span>PRICE-TIME PRIORITY</span>
           <span>4 TRADER THREADS</span>
         </div>
 
-        {/* THE WAY BACK. The band above the HUD is the one the gateway
-            used to stand in, so the closing line takes it rather than
-            leaving the last screen of the journey with nothing under
-            it. It is deliberately the quietest thing on the stage: one
-            rule, one note and one link, in the same mono the technical
-            labels above it are set in. */}
+        {/* THE WAY BACK. The last row of the stage, right above the HUD,
+            so the last screen of the journey does not end on nothing. It
+            is deliberately the quietest thing on the stage: one rule, one
+            note and one link, in the same mono the technical labels above
+            it are set in. */}
         <div className={styles.close}>
           <span className={styles.closeNote} aria-hidden="true">End of the projects</span>
           <Link href="/" className={styles.closeLink} data-cursor="link" data-cursor-text="HOME">

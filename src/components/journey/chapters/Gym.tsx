@@ -17,7 +17,8 @@ import styles from './Gym.module.css'
    PROJECTS · 42 – 55%  ONE MODEL, MANY MOVEMENTS
    Skin → rig → joints → pose data → equipment → exercise.
    The argument of the chapter is an equation, so the chapter
-   is laid out as one.
+   is laid out as one: terms on the left, the rig in the middle,
+   the sum along the foot.
    ============================================================ */
 
 const STAGES = ['FIGURE', 'RIG', 'JOINTS', 'POSE DATA', 'EQUIPMENT', 'EXERCISE']
@@ -89,7 +90,7 @@ export function Gym() {
           <span className={`${styles.eqTerm} ${styles.eqResult}`}>A LARGE EXERCISE LIBRARY</span>
         </div>
 
-        <div className={`${shared.corner} ${shared.cornerBR}`}>
+        <div className={`${shared.corner} ${styles.spec}`}>
           3D · RIGGING
           <br />
           DATA ARCHITECTURE

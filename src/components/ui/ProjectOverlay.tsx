@@ -25,18 +25,9 @@ export function ProjectOverlay() {
   /* Audience statistics: an open case study, once per opening. */
   useEffect(() => { if (slug && project) track('project_open', { slug, from: 'overlay' }) }, [slug, project])
 
-  /* URL hash sync — deep links in and out. The query string stays:
-     it can carry a campaign's parameters or `?section-animation=`,
-     which the page keeps reading after the case study closes. */
-  useEffect(() => {
-    const here = `${window.location.pathname}${window.location.search}`
-    if (slug) {
-      window.history.replaceState(null, '', `${here}#project/${slug}`)
-    } else if (window.location.hash.startsWith('#project/')) {
-      window.history.replaceState(null, '', here)
-    }
-  }, [slug])
-
+  /* Deep links in. Read before the sync below runs: on the first render
+     nothing is open yet, and the sync would otherwise clear the very hash
+     this is about to open. */
   useEffect(() => {
     const h = window.location.hash
     if (h.startsWith('#project/')) {
@@ -44,6 +35,20 @@ export function ProjectOverlay() {
       if (projectBySlug[s]) setActiveProject(s)
     }
   }, [setActiveProject, projectBySlug])
+
+  /* URL hash sync — deep links out. The query string stays: it can carry
+     a campaign's parameters or `?section-animation=`, which the page keeps
+     reading after the case study closes. */
+  const opened = useRef(false)
+  useEffect(() => {
+    const here = `${window.location.pathname}${window.location.search}`
+    if (slug) {
+      opened.current = true
+      window.history.replaceState(null, '', `${here}#project/${slug}`)
+    } else if (opened.current && window.location.hash.startsWith('#project/')) {
+      window.history.replaceState(null, '', here)
+    }
+  }, [slug])
 
   useEffect(() => {
     if (!slug) return
@@ -79,6 +84,9 @@ export function ProjectOverlay() {
       aria-label={project ? `${project.title} case study` : 'Project'}
       aria-hidden={!project}
       inert={!project}
+      /* The smooth scroller drives the page by the wheel; over the case
+         study the wheel belongs to the case study's own column. */
+      data-lenis-prevent=""
     >
       <div className={styles.scrim} onClick={() => setActiveProject(null)} />
       {project && (

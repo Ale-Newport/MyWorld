@@ -17,7 +17,8 @@ import styles from './Focus.module.css'
    PROJECTS · 23 – 42%  BUILDING A PRODUCT
    The longest chapter on the site. A finished video plays,
    freezes, and deconstructs into the ten layers that made it;
-   the camera travels the stack and reassembles it.
+   the camera travels the stack and reassembles it — in the
+   columns between the heading and the list of those layers.
    ============================================================ */
 
 const LAYERS = [
@@ -111,10 +112,10 @@ export function Focus() {
           ))}
         </ol>
 
-        <div className={`${shared.corner} ${shared.cornerBL}`}>
+        <div className={`${shared.corner} ${styles.chain}`}>
           PROMPT → SCRIPT → VOICE → CAPTIONS → RENDER
         </div>
-        <div className={`${shared.corner} ${shared.cornerBR}`}>
+        <div className={`${shared.corner} ${styles.credit}`}>
           CO-FOUNDER
           <br />
           {role.dates.toUpperCase()}

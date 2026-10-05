@@ -15,7 +15,7 @@
      modules would otherwise be decided by whichever stylesheet the
      bundler happened to inject last. */
   grid-template-rows: var(--stage-rows, none);
-  gap: var(--stage-row-gap, 0) clamp(0.75rem, 1.6vw, 1.75rem);
+  gap: var(--stage-row-gap, 0) var(--stage-col-gap, clamp(0.75rem, 1.6vw, 1.75rem));
   align-content: var(--stage-align, center);
   align-items: var(--stage-items, normal);
   padding: var(--stage-top, clamp(4.5rem, 9vh, 7rem)) var(--gutter) var(--stage-bottom, clamp(4.5rem, 9vh, 6rem));
@@ -37,7 +37,7 @@
 
 @media (max-width: 900px) {
   .c1_6, .c1_5, .c1_7, .c7_6, .c8_5, .c6_7 { grid-column: 1 / span 12; }
-  .stage { gap: var(--stage-row-gap, var(--sp-5)) 0; }
+  .stage { gap: var(--stage-row-gap, var(--sp-5)) var(--stage-col-gap, 0); }
 }
 
 .mega {
