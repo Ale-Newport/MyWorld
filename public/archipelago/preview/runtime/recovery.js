@@ -118,7 +118,7 @@ export class Recovery{
    for(const {a} of ranked){pose=this.orient(a,at,options);if(pose){source='anchor:'+a.source;break;}}}
   // 3. Anything valid near the incident; 4. the session's spawn.
   if(!pose){const n=this.placement.near(reference.x,reference.z,{radius:RECOVERY.nearRadius,step:2,prefer:this.prefer(null,at,reference),accept:c=>away(c)&&Math.hypot(c.x-at.x,c.z-at.z)>=Math.min(backoff,RECOVERY.backoff),...options});if(n){pose=n;source='near';}}
-  if(!pose&&this.driving.home){pose=this.driving.home;source='spawn';}
+  if(!pose&&this.driving.home){pose={...this.driving.home,position:this.driving.home.position.clone()};source='spawn';}
   this.incidents.push({x:at.x,z:at.z,time:now,reason,pick:pose?{x:pose.position.x,z:pose.position.z}:null});if(this.incidents.length>12)this.incidents.shift();
   if(pose){pose.source=source;pose.reason=reason;}return pose;
  }
