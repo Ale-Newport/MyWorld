@@ -150,15 +150,6 @@ const painter: Painter<Scene> = {
     const room = Math.max(side, hy - by - top)
     const k0 = Math.max(0.55, Math.min(1.3, u))
     const wish = lerp(7, 21, intensity) * k0
-    const k = k0 * Math.min(1, Math.max(0.35, room / (8.4 * wish + 76 * k0)))
-    const hw = lerp(7, 21, intensity) * k
-    const sx = 4 * k, sy = 7 * k
-    const need = hw + PAD + Math.hypot(sx, sy) + 1
-    const lane = 2 * hw + 12 * k
-    // With no room beside the words (a phone), the courses flatten into the band above them.
-    const flat = clamp01(1 - side / (3 * lane))
-    // A flattened course passes far wide of the corners; it need not be lifted for them.
-    const corner = lerp(CORNER, 1, flat)
     const tones: Tone[] = [
       // [face lit, face edge-on, back lit, back edge-on]
       [mix(pal.bg, pal.signal, 0.2), mix(pal.bg, pal.signal, 0.42), mix(pal.signal, pal.bg, 0.18), mix(pal.signal, pal.ink, 0.42)],
@@ -168,35 +159,7 @@ const painter: Painter<Scene> = {
     // How far the ribbons sway across one another, and step back as the aperture opens: less where there is little room.
     const sway = 0.35 * Math.min(1, room / 160)
     const expand = Math.min(1, room / 220)
-    const course = (g0: number, r: number) => {
-      // Up one side, over the words and down the other, mirror-symmetric about the top.
-      const from = Math.PI * 0.6, to = Math.PI * 2.4
-      const lay = (open: number) => {
-        const cx = new Float32Array(SAMPLES), cy = new Float32Array(SAMPLES)
-        for (let i = 0; i < SAMPLES; i++) {
-          const t = i / (SAMPLES - 1)
-          const g = g0 + lane * sway * (Math.sin(TAU * Math.abs(t - 0.5) * 1.6 + r * 2.1) + 1) + open * (14 + 10 * r) * k * expand
-          // Radii that pass the corners of the words' box rather than cut them: through (bx, by) at 45 degrees.
-          const [x, y] = superellipse(hx, hy, bx * corner + g + flat * w * 1.2, by * corner + g, EXP, from + t * (to - from))
-          cx[i] = x
-          cy[i] = y
-        }
-        return { cx, cy }
-      }
-      const closed = lay(0), opened = lay(1)
-      // Clear all the way through the opening.
-      const ok = clearAlong(keep, closed, opened, need)
-      // Kept: the stretch through the top that is clear on both sides alike, so the frame is even.
-      const apex = (SAMPLES - 1) / 2
-      let half = 0
-      while (half < apex && ok[Math.floor(apex - half - 1)] && ok[Math.ceil(apex + half + 1)]) half++
-      if (!ok[Math.floor(apex)] || !ok[Math.ceil(apex)]) half = -1
-      return { closed, opened, ok, a: Math.floor(apex - half), b: Math.ceil(apex + half), len: 2 * half }
-    }
-    const ribbons: Ribbon[] = []
-    let inner = need + 4 * k
-    /** How much of the longest ribbon over the top is on screen: the frame the words get. */
-    let frame = 0
+    /** How much of a course is on screen. */
     const onScreen = (c: { cx: Float32Array; cy: Float32Array }, a: number, b: number) => {
       let len = 0
       for (let i = a + 1; i <= b; i++) {
@@ -205,58 +168,106 @@ const painter: Painter<Scene> = {
       }
       return len
     }
-    for (let r = 0; r < 3; r++) {
-      const t = tones[r]
-      const add = (c: ReturnType<typeof course>, a: number, b: number, rev: boolean) => ribbons.push({
-        cx0: c.closed.cx, cy0: c.closed.cy, cx1: c.opened.cx, cy1: c.opened.cy, i0: a, i1: b, rev, ds: stepOf(c.closed, a, b),
-        phase: r * 1.9 + (rev ? 1 : 0), g0: 0.08 + 0.07 * r, g1: 0.48 + 0.07 * r, front: ramp(t[0], t[1]), back: ramp(t[2], t[3]),
-      })
-      // The innermost lane that gives this ribbon a generous stretch over the top (the longest one, if none does).
-      let best: ReturnType<typeof course> | null = null, bestG = inner
-      for (let g0 = inner; g0 <= inner + lane * 3; g0 += Math.max(3, lane / 6)) {
-        const c = course(g0, r)
-        if (c.len > SAMPLES * 0.12 && (!best || c.len > best.len)) { best = c; bestG = g0 }
-        if (best && best.len >= SAMPLES * 0.42) break
+
+    /** The iris at a given narrowing of the ribbons: its ribbons, and how much of a frame over the top it makes. */
+    const iris = (narrow: number) => {
+      const k = k0 * Math.min(1, Math.max(0.35, room / (8.4 * wish + 76 * k0))) * narrow
+      const hw = lerp(7, 21, intensity) * k
+      const sx = 4 * k, sy = 7 * k
+      const need = hw + PAD + Math.hypot(sx, sy) + 1
+      const lane = 2 * hw + 12 * k
+      // With no room beside the words (a phone), the courses flatten into the band above them.
+      const flat = clamp01(1 - side / (3 * lane))
+      // A flattened course passes far wide of the corners; it need not be lifted for them.
+      const corner = lerp(CORNER, 1, flat)
+      const course = (g0: number, r: number) => {
+        // Up one side, over the words and down the other, mirror-symmetric about the top.
+        const from = Math.PI * 0.6, to = Math.PI * 2.4
+        const lay = (open: number) => {
+          const cx = new Float32Array(SAMPLES), cy = new Float32Array(SAMPLES)
+          for (let i = 0; i < SAMPLES; i++) {
+            const t = i / (SAMPLES - 1)
+            const g = g0 + lane * sway * (Math.sin(TAU * Math.abs(t - 0.5) * 1.6 + r * 2.1) + 1) + open * (14 + 10 * r) * k * expand
+            // Radii that pass the corners of the words' box rather than cut them: through (bx, by) at 45 degrees.
+            const [x, y] = superellipse(hx, hy, bx * corner + g + flat * w * 1.2, by * corner + g, EXP, from + t * (to - from))
+            cx[i] = x
+            cy[i] = y
+          }
+          return { cx, cy }
+        }
+        const closed = lay(0), opened = lay(1)
+        // Clear all the way through the opening.
+        const ok = clearAlong(keep, closed, opened, need)
+        // Kept: the stretch through the top that is clear on both sides alike, so the frame is even.
+        const apex = (SAMPLES - 1) / 2
+        let half = 0
+        while (half < apex && ok[Math.floor(apex - half - 1)] && ok[Math.ceil(apex + half + 1)]) half++
+        if (!ok[Math.floor(apex)] || !ok[Math.ceil(apex)]) half = -1
+        return { closed, opened, ok, a: Math.floor(apex - half), b: Math.ceil(apex + half), len: 2 * half }
       }
-      if (best && best.len >= SAMPLES * 0.25) {
-        inner = bestG + lane * (1 + sway)
-        add(best, best.a, best.b, false)
-        frame = Math.max(frame, onScreen(best.closed, best.a, best.b))
-        continue
+      const ribbons: Ribbon[] = []
+      let inner = need + 4 * k
+      let frame = 0
+      for (let r = 0; r < 3; r++) {
+        const t = tones[r]
+        const add = (c: ReturnType<typeof course>, a: number, b: number, rev: boolean) => ribbons.push({
+          cx0: c.closed.cx, cy0: c.closed.cy, cx1: c.opened.cx, cy1: c.opened.cy, i0: a, i1: b, rev, ds: stepOf(c.closed, a, b),
+          phase: r * 1.9 + (rev ? 1 : 0), g0: 0.08 + 0.07 * r, g1: 0.48 + 0.07 * r, front: ramp(t[0], t[1]), back: ramp(t[2], t[3]),
+        })
+        // The innermost lane that gives this ribbon a generous stretch over the top (the longest one, if none does).
+        let best: ReturnType<typeof course> | null = null, bestG = inner
+        for (let g0 = inner; g0 <= inner + lane * 3; g0 += Math.max(3, lane / 6)) {
+          const c = course(g0, r)
+          if (c.len > SAMPLES * 0.12 && (!best || c.len > best.len)) { best = c; bestG = g0 }
+          if (best && best.len >= SAMPLES * 0.42) break
+        }
+        if (best && best.len >= SAMPLES * 0.25) {
+          inner = bestG + lane * (1 + sway)
+          add(best, best.a, best.b, false)
+          frame = Math.max(frame, onScreen(best.closed, best.a, best.b))
+          continue
+        }
+        /* Nothing worth the name passes over the top (the words come close
+           to the labels there): the lane's two sides instead, a pair of
+           arcs either side of the words, both rising from below. */
+        const c = course(inner, r)
+        const apex = Math.floor((SAMPLES - 1) / 2)
+        let a = 0, b = -1
+        for (let i = 0; i < apex;) {
+          if (!c.ok[i]) { i++; continue }
+          let j = i
+          while (j + 1 < apex && c.ok[j + 1]) j++
+          if (j - i > b - a) { a = i; b = j }
+          i = j + 1
+        }
+        inner += lane * (1 + sway)
+        if (b - a < SAMPLES * 0.12) continue
+        // As a pair or not at all: one arc alone would tip the frame.
+        const ma = SAMPLES - 1 - b, mb = SAMPLES - 1 - a
+        let mirrored = true
+        for (let i = ma; i <= mb && mirrored; i++) mirrored = !!c.ok[i]
+        if (!mirrored) continue
+        add(c, a, b, false)
+        add(c, ma, mb, true)
       }
-      /* Nothing worth the name passes over the top (the words come close
-         to the labels there): the lane's two sides instead, a pair of
-         arcs either side of the words, both rising from below. */
-      const c = course(inner, r)
-      const apex = Math.floor((SAMPLES - 1) / 2)
-      let a = 0, b = -1
-      for (let i = 0; i < apex;) {
-        if (!c.ok[i]) { i++; continue }
-        let j = i
-        while (j + 1 < apex && c.ok[j + 1]) j++
-        if (j - i > b - a) { a = i; b = j }
-        i = j + 1
-      }
-      inner += lane * (1 + sway)
-      if (b - a < SAMPLES * 0.12) continue
-      // As a pair or not at all: one arc alone would tip the frame.
-      const ma = SAMPLES - 1 - b, mb = SAMPLES - 1 - a
-      let mirrored = true
-      for (let i = ma; i <= mb && mirrored; i++) mirrored = !!c.ok[i]
-      if (!mirrored) continue
-      add(c, a, b, false)
-      add(c, ma, mb, true)
+      // It frames the words when a ribbon gets well over the top, with room at their sides.
+      const frames = flat <= 0.05 && frame >= (head ? head.w * 0.9 : w * 0.4)
+      return { ribbons, hw, wave: 250 * k, sx, sy, frames }
     }
+
     const ink = { edge: css(pal.ink, 0.22), shadow: css(pal.ink, 0.05) }
-    /* Weave across the free band instead where the words leave the
-       courses no room at their sides (they would only skim the top
-       band), or where no ribbon gets far enough over the top to frame
-       them. */
-    if (flat > 0.05 || frame < (head ? head.w * 0.9 : w * 0.4)) {
-      const band = bandRibbons(stage, lerp(5, 15, intensity) * k0, tones)
-      if (band) return { ...band, ...ink }
+    /* The iris at the width the intensity asks for, or a little finer
+       where that does not fit; failing that, the ribbons weave across
+       the free band instead (on a phone, the words span the width). */
+    for (const narrow of [1, 0.8, 0.64]) {
+      const { frames, ...scene } = iris(narrow)
+      if (frames) return { ...scene, ...ink }
     }
-    return { ribbons, hw, wave: 250 * k, sx, sy, ...ink }
+    const band = bandRibbons(stage, lerp(5, 15, intensity) * k0, tones)
+    if (band) return { ...band, ...ink }
+    const { frames, ...scene } = iris(1)
+    void frames
+    return { ...scene, ...ink }
   },
 
   draw(ctx, sc, f) {
