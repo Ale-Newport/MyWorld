@@ -40,6 +40,16 @@ export function Reveal({
     if (mode === 'words' || mode === 'perspective') return children.split(/(\s+)/)
     return children.split('\n')
   }, [children, mode])
+  /** Words and the spaces between them, each with the index of its first character (the stagger counts characters). */
+  const words = useMemo(() => {
+    const out: { token: string; first: number }[] = []
+    let at = 0
+    for (const token of children.split(/(\s+)/)) {
+      out.push({ token, first: at })
+      at += token.length
+    }
+    return out
+  }, [children])
 
   useEffect(() => {
     const el = host.current
@@ -86,6 +96,49 @@ export function Reveal({
   }
 
   const byWord = mode === 'words' || mode === 'perspective'
+  const byChar = mode === 'chars' || mode === 'scramble'
+
+  const unit = (u: string, i: number) => (
+    // The animated units are presentation (scrambling shows random glyphs); assistive tech reads the copy below.
+    <span className={styles.unitWrap} key={i} aria-hidden="true">
+      <span
+        className={styles.unit}
+        data-unit=""
+        data-final={u}
+        style={{ transitionDelay: `${i * stagger}s`, animationDelay: `${i * stagger}s` }}
+      >
+        {u === ' ' ? ' ' : u}
+      </span>
+    </span>
+  )
+
+  if (byChar) {
+    /* Letter by letter, but a word is never broken between two of its
+       letters: each word's units travel together, and a line wraps only
+       where the words have a space. The stagger still counts every
+       character, spaces included. */
+    return (
+      <Tag
+        id={id}
+        {...attrs}
+        ref={host as React.Ref<never>}
+        className={`${styles.reveal} ${className ?? ''}`}
+        data-mode={mode}
+        data-state="hidden"
+      >
+        {words.map(({ token, first }, k) => {
+          if (!token) return null
+          if (/^\s+$/.test(token)) return <Fragment key={k}>{token.includes('\n') ? <br /> : ' '}</Fragment>
+          return (
+            <span key={k} className={styles.word}>
+              {Array.from(token).map((ch, j) => unit(ch, first + j))}
+            </span>
+          )
+        })}
+        <span className="sr-only">{children}</span>
+      </Tag>
+    )
+  }
 
   return (
     <Tag
@@ -103,19 +156,7 @@ export function Reveal({
         if (byWord && /^\s+$/.test(u)) {
           return <Fragment key={i}>{u.includes('\n') ? <br /> : ' '}</Fragment>
         }
-        // The animated units are presentation (scrambling shows random glyphs); assistive tech reads the copy below.
-        return (
-        <span className={styles.unitWrap} key={i} aria-hidden="true">
-          <span
-            className={styles.unit}
-            data-unit=""
-            data-final={u}
-            style={{ transitionDelay: `${i * stagger}s`, animationDelay: `${i * stagger}s` }}
-          >
-            {u === ' ' ? ' ' : u}
-          </span>
-        </span>
-        )
+        return unit(u, i)
       })}
       <span className="sr-only">{children}</span>
     </Tag>

@@ -6,6 +6,8 @@
 .reveal { display: block; }
 .reveal .unitWrap { display: inline-block; overflow: hidden; vertical-align: top; }
 .reveal .unit { display: inline-block; will-change: transform, opacity, filter; }
+/* Letter-by-letter modes: a word's letters wrap together, never apart. */
+.reveal .word { white-space: nowrap; }
 
 /* Screen readers get the clean string; the animated units are decorative. */
 .reveal > .unitWrap { }
