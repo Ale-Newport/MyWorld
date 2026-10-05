@@ -74,7 +74,8 @@ function lengthen(doc) {
     d.elements[`${id}.tag`] = { ...d.elements[`${id}.tag`], text: 'FROM A SMALL EXPERIMENT TO A REAL PRODUCT PEOPLE USE' }
     d.elements[`${id}.title`] = { ...d.elements[`${id}.title`], text: 'A much longer chapter title,\nwritten over two lines' }
   }
-  d.projects = d.projects.map((pr) => ({ ...pr, title: `${pr.title}: the extended edition`, shortDescription: `${pr.shortDescription} Extended with a second sentence to test how cards hold longer text.`.slice(0, 200) }))
+  // Half the titles gain a subtitle, half simply run on: a long name has no separator to cut at.
+  d.projects = d.projects.map((pr, i) => ({ ...pr, title: i % 2 ? `${pr.title}: the extended edition` : `${pr.title} and Its Much Longer Working Name`, shortDescription: `${pr.shortDescription} Extended with a second sentence to test how cards hold longer text.`.slice(0, 200) }))
   return d
 }
 
