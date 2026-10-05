@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, type CSSProperties } from 'react'
 import { Chapter } from '@/components/journey/Chapter'
 import { TagRow, ScrollHint } from '@/components/journey/parts'
 import { useJourneyRoute } from '@/components/journey/JourneyProvider'
@@ -10,6 +10,7 @@ import { E, useCmsText } from '@/cms/editable'
 import { useChapterFrame } from '@/hooks/useChapterProgress'
 import { useJourney } from '@/state/journey'
 import { clamp, range } from '@/lib/math'
+import { fitName } from './nameFit'
 import shared from './chapters.module.css'
 import styles from './Prelude.module.css'
 
@@ -34,7 +35,9 @@ const MINUTES_PER_VH = 0.15
 export function Prelude() {
   const { profile } = useSite()
   const tag = useCmsText('prelude.tag', 'PORTFOLIO')
-  const [firstName, ...rest] = profile.name.split(' ')
+  // Sized on the server from the face's own widths: as large as the stage allows, never wider.
+  const name = fitName(profile.name)
+  const [firstLine, ...restLines] = name.lines
   const reducedMotion = useJourney((s) => s.reducedMotion)
   /* The corner counts THIS journey, not the archive. The prelude
      stands at the head of one story, and telling its reader there
@@ -103,9 +106,23 @@ export function Prelude() {
         <div className={styles.center}>
           {/* The document's single <h1> is the profile summary that ships
               in the SSR HTML; this is the visible chapter heading. */}
-          <E cms="prelude.name" as="h2" kind="container" label="Name" id="prelude-title" data-room-travel="10vh 0" className={`${styles.name} ${shared.driven}`} ref={nameRef}>
-            <E cms="prelude.name.first" kind="heading" label="Name — first line" className={styles.nameLine}>{firstName}</E>
-            <E cms="prelude.name.last" kind="heading" label="Name — second line" className={styles.nameLine}>{rest.join(' ')}</E>
+          <E
+            cms="prelude.name"
+            as="h2"
+            kind="container"
+            label="Name"
+            id="prelude-title"
+            data-room-travel="10vh 0"
+            className={`${styles.name} ${shared.driven}`}
+            style={{ '--name-em': name.em.toFixed(3), '--name-lines': name.lines.length } as CSSProperties}
+            ref={nameRef}
+          >
+            <E cms="prelude.name.first" kind="heading" label="Name — first line" className={styles.nameLine}>{firstLine}</E>
+            {restLines.length > 0 && (
+              <E cms="prelude.name.last" kind="heading" label="Name — second line" className={styles.nameLine}>
+                {restLines.length === 1 ? restLines[0] : restLines.map((line) => <span key={line} className={styles.nameLine}>{line}</span>)}
+              </E>
+            )}
           </E>
 
           {/* Every role is always in the DOM: the cycle lights one at a
