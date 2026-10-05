@@ -15,15 +15,20 @@
   -webkit-backdrop-filter: blur(18px);
 }
 
+/* A fixed height, not a ceiling: with only a maximum the text column grew
+   with its content and the panel clipped it — a case study with more than
+   a screen of facts lost its links with no way to scroll to them. Held to
+   this height, the text column scrolls inside it. */
 .panel {
   position: relative;
   width: min(1240px, calc(100% - var(--gutter) * 2));
-  max-height: min(88svh, 940px);
+  height: min(88svh, 940px);
   margin: 6svh auto 0;
   background: var(--bg-primary);
   border: var(--hair) solid var(--border);
   display: grid;
   grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr);
   overflow: hidden;
   transform: translateY(2rem) scale(0.985);
   transition: transform 620ms var(--ease-out-expo);
@@ -31,14 +36,26 @@
 .overlay[data-open='true'] .panel { transform: none; }
 
 @media (max-width: 900px) {
-  .panel { grid-template-columns: 1fr; grid-template-rows: minmax(180px, 34svh) 1fr; margin-top: 4svh; max-height: 92svh; }
+  .panel { grid-template-columns: 1fr; grid-template-rows: minmax(180px, 34svh) minmax(0, 1fr); margin-top: 4svh; height: 92svh; }
+}
+
+/* A phone on its side has no height to stack in: the visual takes the left
+   of the panel and the text scrolls on the right, both the panel's full
+   height, instead of the text getting what 180px of picture leaves it. */
+@media (max-height: 520px) and (orientation: landscape) {
+  .panel {
+    grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr);
+    grid-template-rows: minmax(0, 1fr);
+    height: 92svh;
+    margin-top: 4svh;
+  }
 }
 
 .close {
   position: absolute;
   top: var(--sp-4); right: var(--sp-4);
   z-index: 3;
-  width: 34px; height: 34px;
+  width: 2.5rem; height: 2.5rem;
   display: grid; place-items: center;
   border: var(--hair) solid var(--border-strong);
   background: var(--bg-primary);
@@ -55,11 +72,15 @@
   overflow: hidden;
 }
 @media (max-width: 900px) { .visual { border-right: 0; border-bottom: var(--hair) solid var(--border); } }
+@media (max-height: 520px) and (orientation: landscape) { .visual { border-right: var(--hair) solid var(--border); border-bottom: 0; } }
+@media (pointer: coarse) { .close { width: 2.75rem; height: 2.75rem; top: var(--sp-3); right: var(--sp-3); } }
 
 .shot { width: 100%; height: 100%; object-fit: cover; object-position: top center; }
 
 .body {
+  min-height: 0;
   overflow-y: auto;
+  overscroll-behavior: contain;
   padding: clamp(1.5rem, 3vw, 3rem);
   display: flex;
   flex-direction: column;
@@ -139,12 +160,13 @@
   color: var(--text-muted);
 }
 
-.links { display: flex; flex-wrap: wrap; gap: var(--sp-4); align-items: center; margin-top: auto; padding-top: var(--sp-4); }
+.links { display: flex; flex-wrap: wrap; gap: 0 var(--sp-5); align-items: flex-end; margin-top: auto; padding-top: var(--sp-2); }
+/* Tall enough to hit with a thumb; the rule stays on the baseline. */
 .cta {
   font-family: var(--font-mono); font-size: var(--fs-micro);
   letter-spacing: var(--tracking-label); text-transform: uppercase;
   border-bottom: var(--hair) solid var(--border-strong);
-  padding-bottom: 0.2rem;
+  padding: 0.75rem 0 0.2rem;
   transition: color var(--dur-fast), border-color var(--dur-fast);
 }
 .cta:hover { color: var(--project-accent); border-color: var(--project-accent); }
