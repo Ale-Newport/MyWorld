@@ -4,7 +4,7 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, type CSSPrope
 import type { SiteContent } from '@/cms/derive'
 import { clamp, range } from '@/lib/math'
 import type { SectionAnimationProps } from '../types'
-import { easeOut, journeyMilestones, textWidth, useBoxSize, useTicker, type Milestone, type Size } from './shared'
+import { textWidth, useBoxSize, useTicker, type Size } from './shared'
 import styles from './JourneyRibbon.module.css'
 
 /* ============================================================
@@ -72,8 +72,61 @@ interface Layout {
   index: number[]
 }
 
+/* ---- the milestones ------------------------------------------------- */
+
+interface Milestone {
+  key: string
+  kind: 'study' | 'work'
+  /** YYYY-MM as stored, for ordering. */
+  start: string
+  /** The opening half of the entry's own dates ("Sep 2023"). */
+  when: string
+  /** Its year, as written in the entry. */
+  year: string
+  title: string
+  detail: string
+}
+
+const yearOf = (...texts: string[]) => {
+  for (const t of texts) {
+    const m = /\b(19|20)\d{2}\b/.exec(t ?? '')
+    if (m) return m[0]
+  }
+  return ''
+}
+const opening = (dates: string) => (dates ?? '').split(/\s+[–—-]\s+|\s+to\s+/i)[0]?.trim() ?? ''
+
+/** Education and experience, in the order they began. */
+function journeyMilestones(site: SiteContent): Milestone[] {
+  const list: Milestone[] = [
+    // Keys carry the index: ids are not guaranteed unique across a document.
+    ...site.education.map((e, i) => ({
+      key: `study:${i}:${e.id}`,
+      kind: 'study' as const,
+      start: e.start,
+      when: opening(e.dates),
+      year: yearOf(e.start, e.dates),
+      title: e.shortName || e.institution,
+      detail: e.degree,
+    })),
+    ...site.experience.map((x, i) => ({
+      key: `work:${i}:${x.id}`,
+      kind: 'work' as const,
+      start: x.start,
+      when: opening(x.dates),
+      year: yearOf(x.start, x.dates),
+      title: x.organisation,
+      detail: x.role,
+    })),
+  ]
+  const order = (m: Milestone) => (/^\d{4}-\d{2}/.test(m.start) ? m.start : m.year ? `${m.year}-99` : '9999')
+  return list.map((m, i) => ({ m, i })).sort((a, b) => order(a.m).localeCompare(order(b.m)) || a.i - b.i).map(({ m }) => m)
+}
+
+
 /* ---- timing --------------------------------------------------------- */
 
+const easeOut = (t: number) => 1 - Math.pow(1 - t, 3)
 const HEAD_FROM = 0.03
 const HEAD_TO = 0.6
 const headOf = (p: number) => 0.5 - 0.5 * Math.cos(Math.PI * range(p, HEAD_FROM, HEAD_TO))

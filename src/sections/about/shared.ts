@@ -1,6 +1,5 @@
-import { useEffect, useRef, useState, useSyncExternalStore, type RefObject } from 'react'
+import { useEffect, useRef, useState, type RefObject } from 'react'
 import { subscribe } from '@/lib/ticker'
-import type { SiteContent } from '@/cms/derive'
 
 /* ============================================================
    WHAT THE FIVE "A LITTLE ABOUT ME" OPTIONS SHARE
@@ -8,9 +7,8 @@ import type { SiteContent } from '@/cms/derive'
    The box (sized by a ResizeObserver, never measured per frame),
    the shared ticker (subscribed only while the box is active),
    type measurement (once per layout, against the real fonts) and
-   the readings of the site's content every option draws from.
-   Nothing here invents content: each helper only selects, orders
-   and formats what the site document already says.
+   the easings. Turbopack inlines this module into each option's
+   chunk, so a helper only one option uses lives in that option.
    ============================================================ */
 
 export interface Size { w: number; h: number }
@@ -60,19 +58,6 @@ export function useTicker(on: boolean, fn: (dt: number, now: number) => void) {
   }, [on])
 }
 
-/** True on a mouse or trackpad, where a quiet pointer parallax makes sense. */
-export function useFinePointer(): boolean {
-  return useSyncExternalStore(
-    (cb) => {
-      const mq = window.matchMedia('(hover: hover) and (pointer: fine)')
-      mq.addEventListener('change', cb)
-      return () => mq.removeEventListener('change', cb)
-    },
-    () => window.matchMedia('(hover: hover) and (pointer: fine)').matches,
-    () => false,
-  )
-}
-
 /* ---- type measurement --------------------------------------------- */
 
 let measurer: CanvasRenderingContext2D | null = null
@@ -103,70 +88,11 @@ export function textWidth(text: string, size: number, opts: { mono?: boolean; we
 
 /* ---- content readings --------------------------------------------- */
 
-export interface Milestone {
-  key: string
-  kind: 'study' | 'work'
-  /** YYYY-MM as stored, for ordering. */
-  start: string
-  /** The opening half of the entry's own dates ("Sep 2023"). */
-  when: string
-  /** Its year, as written in the entry. */
-  year: string
-  title: string
-  detail: string
-}
-
-const yearOf = (...texts: string[]) => {
-  for (const t of texts) {
-    const m = /\b(19|20)\d{2}\b/.exec(t ?? '')
-    if (m) return m[0]
-  }
-  return ''
-}
-const opening = (dates: string) => (dates ?? '').split(/\s+[–—-]\s+|\s+to\s+/i)[0]?.trim() ?? ''
-
-/** Education and experience, in the order they began. */
-export function journeyMilestones(site: SiteContent): Milestone[] {
-  const list: Milestone[] = [
-    // Keys carry the index: ids are not guaranteed unique across a document.
-    ...site.education.map((e, i) => ({
-      key: `study:${i}:${e.id}`,
-      kind: 'study' as const,
-      start: e.start,
-      when: opening(e.dates),
-      year: yearOf(e.start, e.dates),
-      title: e.shortName || e.institution,
-      detail: e.degree,
-    })),
-    ...site.experience.map((x, i) => ({
-      key: `work:${i}:${x.id}`,
-      kind: 'work' as const,
-      start: x.start,
-      when: opening(x.dates),
-      year: yearOf(x.start, x.dates),
-      title: x.organisation,
-      detail: x.role,
-    })),
-  ]
-  const order = (m: Milestone) => (/^\d{4}-\d{2}/.test(m.start) ? m.start : m.year ? `${m.year}-99` : '9999')
-  return list.map((m, i) => ({ m, i })).sort((a, b) => order(a.m).localeCompare(order(b.m)) || a.i - b.i).map(({ m }) => m)
-}
-
-/** Technologies with public evidence, strongest first. */
-export function strongestTech(site: SiteContent) {
-  return site.techNodes
-    .filter((t) => t.evidence.length > 0)
-    .map((t, i) => ({ t, i }))
-    .sort((a, b) => b.t.evidence.length - a.t.evidence.length || a.i - b.i)
-    .map(({ t }) => t)
-}
-
 /** Non-empty, trimmed strings only. */
 export const present = (list: readonly string[]) => list.map((s) => (s ?? '').trim()).filter(Boolean)
 
 /* ---- small numeric helpers ---------------------------------------- */
 
-export const easeOut = (t: number) => 1 - Math.pow(1 - t, 3)
 /** The site's --ease-out-expo, cubic-bezier(0.16, 1, 0.3, 1), closely enough for scroll-driven motion. */
 export const expo = (t: number) => (t <= 0 ? 0 : t >= 1 ? 1 : 1 - Math.pow(2, -10 * t))
 export const smooth = (t: number) => t * t * (3 - 2 * t)
