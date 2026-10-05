@@ -351,6 +351,20 @@
 .admin-root .a-menu-list > *:hover { background: var(--a-sunk); }
 .admin-root .a-menu-list > *:disabled { opacity: 0.45; cursor: not-allowed; }
 
+/* ---- page layouts ------------------------------------------------ */
+/* A form with a companion column (previews, a selected file's details):
+   side by side where there is room, one after the other where not. */
+.admin-root .a-split { display: grid; grid-template-columns: minmax(0, 1fr) minmax(280px, 380px); gap: 18px; align-items: start; }
+.admin-root .a-split[data-single] { grid-template-columns: minmax(0, 1fr); }
+.admin-root .a-split > aside { position: sticky; top: 16px; }
+@media (max-width: 1000px) {
+  .admin-root .a-split { grid-template-columns: minmax(0, 1fr); }
+  .admin-root .a-split > aside, .admin-root .a-split > :last-child { position: static !important; }
+}
+/* Wide tables scroll sideways inside their card instead of widening the page. */
+.admin-root .table-scroll { width: 100%; overflow-x: auto; overscroll-behavior-x: contain; }
+.admin-root .table-scroll > table.table { min-width: 560px; }
+
 /* ---- narrow screens ----------------------------------------- */
 @media (max-width: 860px) {
   .admin-root .a-shell, .admin-root .a-shell[data-compact='true'] { grid-template-columns: 64px minmax(0, 1fr); }

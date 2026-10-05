@@ -86,7 +86,7 @@ export function MediaAdmin() {
         tabs={<Tabs label="Website" tabs={WEBSITE_TABS} />}
       />
 
-      <div style={{ display: 'grid', gridTemplateColumns: current ? 'minmax(0, 1fr) 360px' : '1fr', gap: 16, alignItems: 'start' }}>
+      <div className="a-split" data-single={current ? undefined : true}>
         <section
           className="card stack"
           data-over={over || undefined}

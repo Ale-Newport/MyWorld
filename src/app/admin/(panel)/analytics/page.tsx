@@ -50,10 +50,11 @@ function Daily({ data, from, to }: { data: { day: string; pageviews: number; vis
 function Table({ head, rows, empty = 'Nothing recorded.' }: { head: string[]; rows: (string | number)[][]; empty?: string }) {
   if (!rows.length) return <p className="a-sub" style={{ fontSize: 12.5 }}>{empty}</p>
   return (
+    <div className="table-scroll">
     <table className="table">
       <thead><tr>{head.map((h, i) => <th key={h} style={{ textAlign: i ? 'right' : 'left' }}>{h}</th>)}</tr></thead>
       <tbody>{rows.map((r, i) => <tr key={i}>{r.map((c, j) => <td key={j} style={{ textAlign: j ? 'right' : 'left', fontVariantNumeric: 'tabular-nums' }}>{typeof c === 'number' ? fmt(c) : c}</td>)}</tr>)}</tbody>
-    </table>
+    </table></div>
   )
 }
 

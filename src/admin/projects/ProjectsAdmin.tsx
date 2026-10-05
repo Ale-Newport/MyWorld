@@ -71,6 +71,7 @@ export function ProjectsAdmin() {
             </div>
             <span className="spacer" /><span className="a-sub">{shown.length} of {projects.length}</span>
           </div>
+          <div className="table-scroll">
           <table className="table">
             <thead><tr><th aria-label="Order" /><th>Project</th><th>Category</th><th>Year</th><th>Status</th><th>Listed</th><th>Featured</th><th /></tr></thead>
             <tbody>
@@ -103,7 +104,7 @@ export function ProjectsAdmin() {
                 </tr>
               ))}
             </tbody>
-          </table>
+          </table></div>
           {shown.length === 0 && <p className="empty">No project matches.</p>}
         </section>
       )}
