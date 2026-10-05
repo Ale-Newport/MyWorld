@@ -14,17 +14,23 @@
 }
 
 .name {
+  /* As large as the stage allows: the mega size, unless the widest
+     line would not fit between the gutters or the lines would not fit
+     the height. The widest line's width in ems and the line count come
+     from the server (nameFit.ts), so the size is right at first paint. */
+  --name-room: calc(100vw - var(--gutter-left) - var(--gutter-right) - 1rem);
   display: flex;
   flex-direction: column;
-  font-size: var(--fs-mega);
+  font-size: min(var(--fs-mega), calc(var(--name-room) / var(--name-em, 6)), calc(50vh / var(--name-lines, 2)));
   font-weight: 500;
   letter-spacing: -0.045em;
   line-height: 0.82;
   text-transform: uppercase;
+  white-space: nowrap;
   margin: 0;
 }
 .nameLine { display: block; }
-.nameLine:last-child { margin-left: 0.06em; }
+.name > .nameLine:last-child { margin-left: 0.06em; }
 
 .rolesWrap {
   position: relative;
@@ -49,6 +55,10 @@
 .role[data-on='true'] { opacity: 1; transform: none; filter: none; }
 
 .thesis {
+  /* A long line folds into a balanced block that stays clear of the
+     corner notes rather than running under them. */
+  max-width: min(100%, 24em);
+  text-wrap: balance;
   font-size: clamp(1.1rem, 0.8rem + 1.6vw, 2.2rem);
   font-weight: 500;
   letter-spacing: -0.028em;
@@ -61,7 +71,7 @@
 /* A phone on its side: the name, the roles and the line must fit
    between the corner labels in under 400 px of height. */
 @media (max-height: 520px) and (orientation: landscape) {
-  .name { font-size: clamp(2.4rem, 17vh, 14rem); }
+  .name { font-size: min(clamp(2.4rem, 17vh, 14rem), calc(var(--name-room) / var(--name-em, 6)), calc(34vh / var(--name-lines, 2))); }
   .center { margin-bottom: 0; gap: 0.5rem; }
 }
 
