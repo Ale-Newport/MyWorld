@@ -15,15 +15,24 @@ import styles from './Toolbox.module.css'
 /* ============================================================
    HOME · 25 – 38%  MY TECH TOOLBOX
    A wall of app icons that is not a logo wall. Every mark is
-   wired to the projects that prove it: hovering one lights only
+   wired to the projects that prove it: hovering one names it and
    its real evidence, and technologies with no public evidence
    sit on a dashed tile and say so out loud.
+
+   What the wall discloses is the administrator's choice, in two
+   independent switches (the section's, which each tool may
+   override): the project COUNT (the badge, the "3 projects" line,
+   the dashed plate) and the project NAMES (the list in the
+   readout). Whatever is switched off is simply not rendered — no
+   gap, no label, no tooltip — and only listed projects ever count
+   (cms/derive.ts).
    ============================================================ */
 
 export function Toolbox() {
   const { techNodes, chapterById, projectById } = useSite()
   const titleCms = useCms('toolbox.title', { kind: 'heading', label: 'Title' })
   const title = useCmsText('toolbox.title', 'Tech\ntoolbox')
+  const tag = useCmsText('toolbox.tag', 'EVIDENCE, NOT KEYWORDS')
   /* Hover previews, click pins. Keeping these separate matters:
      with one piece of state, a click on an already-hovered tile
      toggles it straight back off — and on touch there is no hover
@@ -45,7 +54,7 @@ export function Toolbox() {
     <Chapter id="toolbox" labelledBy="toolbox-title">
       <div className={`${shared.stage} ${styles.stage}`}>
         <E cms="toolbox.head" as="div" kind="container" label="Heading block" className={styles.head}>
-          <E cms="toolbox.tag" label="Chapter tag"><TagRow items={[chapterById['toolbox'].number, 'EVIDENCE, NOT KEYWORDS']} /></E>
+          <E cms="toolbox.tag" kind="container" label="Chapter tag"><TagRow items={[chapterById['toolbox'].number, tag]} /></E>
           <Reveal as="h2" mode="mask" className={styles.title} id="toolbox-title" attrs={titleCms}>
             {title}
           </Reveal>
@@ -88,11 +97,13 @@ export function Toolbox() {
             <>
               <p className={styles.evidenceHead}>
                 <span>{activeNode.name}</span>
-                <span className={styles.evidenceCount}>
-                  {evidence.length > 0 ? `${evidence.length} project${evidence.length === 1 ? '' : 's'}` : 'no public repository yet'}
-                </span>
+                {activeNode.showCount && (
+                  <span className={styles.evidenceCount}>
+                    {evidence.length > 0 ? `${evidence.length} project${evidence.length === 1 ? '' : 's'}` : 'no public repository yet'}
+                  </span>
+                )}
               </p>
-              {evidence.length > 0 ? (
+              {activeNode.showNames && evidence.length > 0 && (
                 <ul className={styles.evidenceList}>
                   {evidence.map((p) => (
                     <li key={p.id}>
@@ -102,7 +113,8 @@ export function Toolbox() {
                     </li>
                   ))}
                 </ul>
-              ) : (
+              )}
+              {(activeNode.showNames || activeNode.showCount) && evidence.length === 0 && activeNode.note && (
                 <p className={styles.evidenceNote}>{activeNode.note}</p>
               )}
             </>

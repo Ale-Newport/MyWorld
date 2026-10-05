@@ -28,12 +28,10 @@ const color = new THREE.Color()
             was meant to sit behind. The ramp is now three explicit
             colours running the other way — quiet is close to the page,
             lit is the accent.
-   Dimming  approaches the paper rather than multiplying toward black,
-            for the same reason. */
-const PAPER = new THREE.Color('#ffffff')
+   No dimming: picking a technology only ever adds emphasis to it
+            and to its evidence; everything else stays at rest. */
 const EDGE_LIT = new THREE.Color('#d4491f')
 const EDGE_RESTING = new THREE.Color('#8a8882')
-const EDGE_MUTED = new THREE.Color('#e4e2dd')
 
 export function ToolboxScene() {
   const { techNodes, projects } = currentContent()
@@ -96,21 +94,24 @@ export function ToolboxScene() {
     group.current.visible = opacity.current > 0.005
     if (!group.current.visible) return
 
+    /* Picking a technology EMPHASISES it and, when the wall shows
+       its evidence at all, the projects and edges that prove it.
+       Nothing else is faded: the other technologies keep their
+       resting size and colour, exactly like the tiles above. */
     const activeNode = active ? techNodes.find((n) => n.id === active) : null
-    const litProjects = new Set(activeNode?.evidence ?? [])
+    const showsEvidence = !!activeNode && (activeNode.showCount || activeNode.showNames)
+    const litProjects = new Set(showsEvidence ? activeNode!.evidence : [])
 
     for (let i = 0; i < techNodes.length; i++) {
       const n = techNodes[i]
-      const on = !active || n.id === active
       dummy.position.copy(techPos[i])
       dummy.position.y += Math.sin(frame.time * 0.4 + i) * 0.05
-      const s = (0.055 + n.weight * 0.028) * (n.id === active ? 2.3 : 1) * (on ? 1 : 0.42)
+      const s = (0.055 + n.weight * 0.028) * (n.id === active ? 2.3 : 1)
       dummy.scale.setScalar(s)
       dummy.rotation.set(frame.time * 0.2 + i, frame.time * 0.14, 0)
       dummy.updateMatrix()
       techMesh.current.setMatrixAt(i, dummy.matrix)
       color.set(n.id === active ? '#d4491f' : '#5c5a56')
-      if (active && n.id !== active) color.lerp(PAPER, 0.72)
       techMesh.current.setColorAt(i, color)
     }
     techMesh.current.instanceMatrix.needsUpdate = true
@@ -118,25 +119,23 @@ export function ToolboxScene() {
 
     for (let i = 0; i < projects.length; i++) {
       const p = projects[i]
-      const lit = !active || litProjects.has(p.id)
+      const lit = litProjects.has(p.id)
       dummy.position.copy(projPos[i])
       dummy.position.y += Math.sin(frame.time * 0.3 + i * 1.7) * 0.06
-      dummy.scale.setScalar((p.importance === 'hero' ? 0.11 : p.importance === 'featured' ? 0.07 : 0.045) * (lit ? 1.3 : 0.6))
+      dummy.scale.setScalar((p.importance === 'hero' ? 0.11 : p.importance === 'featured' ? 0.07 : 0.045) * (lit ? 1.3 : 1))
       dummy.rotation.set(0, frame.time * 0.1, 0)
       dummy.updateMatrix()
       projMesh.current.setMatrixAt(i, dummy.matrix)
-      color.set(lit && active ? '#e8734d' : '#6c6a66')
-      if (active && !lit) color.lerp(PAPER, 0.82)
+      color.set(lit ? '#e8734d' : '#6c6a66')
       projMesh.current.setColorAt(i, color)
     }
     projMesh.current.instanceMatrix.needsUpdate = true
     if (projMesh.current.instanceColor) projMesh.current.instanceColor.needsUpdate = true
 
-    // Edge colours: only evidence for the hovered technology stays lit.
+    // Edge colours: the evidence of the picked technology lights up; every other edge stays at rest.
     const cAttr = edgeGeometry.getAttribute('color') as THREE.BufferAttribute
     for (let i = 0; i < edgeData.length; i++) {
-      const on = !active || techNodes[edgeData[i].ti].id === active
-      const c = !on ? EDGE_MUTED : active ? EDGE_LIT : EDGE_RESTING
+      const c = showsEvidence && techNodes[edgeData[i].ti].id === active ? EDGE_LIT : EDGE_RESTING
       for (let k = 0; k < 6; k += 3) {
         cAttr.array[i * 6 + k] = c.r
         cAttr.array[i * 6 + k + 1] = c.g
