@@ -193,7 +193,10 @@
 
 @media (max-width: 640px) {
   .footer { flex-direction: column; align-items: stretch; gap: var(--sp-3); }
-  .actions { justify-content: space-between; }
+  .actions { justify-content: space-between; align-items: flex-end; }
+  /* The list toggle keeps its one line; on the narrowest phones the
+     way to the projects journey is the one that folds. */
+  .cross { white-space: normal; min-width: 0; }
   .labelDesc { display: none; }
   .listItem { grid-template-columns: 3rem 1fr auto; }
   .listDesc { display: none; }
