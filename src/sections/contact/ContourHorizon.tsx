@@ -97,8 +97,11 @@ const painter: Painter<Scene> = {
       if (mctx) {
         const img = mctx.createImageData(mw, mh)
         const fade = 30 * Math.max(0.6, u)
-        // The clearing: a little room around the words, then the map comes in over a soft edge.
-        const c0 = 8 + 30 * u, c1 = 30 + 70 * u
+        /* The clearing: a little room around the words, then the map comes
+           in over a soft edge. On a phone the only free ground is a thin
+           band above the words, so the clearing there is a hairline's. */
+        const roomy = Math.min(1, Math.max(0.2, (u - 0.3) * 1.6))
+        const c0 = (8 + 30 * u) * roomy, c1 = (30 + 70 * u) * roomy
         for (let j = 0; j < mh; j++) {
           for (let i = 0; i < mw; i++) {
             const x = (i + 0.5) * q, y = (j + 0.5) * q
