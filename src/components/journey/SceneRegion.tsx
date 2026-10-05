@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from 'react'
 import type { ChapterId } from '@/content/types'
-import { writeSceneRegion } from '@/experience/camera/regions'
+import { readStageShift, writeSceneRegion } from '@/experience/camera/regions'
 
 /**
  * The box a chapter's 3D subject is drawn into.
@@ -35,8 +35,10 @@ export function SceneRegion({ chapter, className }: { chapter: ChapterId; classN
         return
       }
       writeSceneRegion(chapter, {
+        chapter,
         x: r.left - s.left,
-        y: r.top - s.top,
+        // Where layout put it: the stage's travel, if any, is added back per frame.
+        y: r.top - s.top - readStageShift(chapter),
         w: r.width,
         h: r.height,
         sectionTop: top,

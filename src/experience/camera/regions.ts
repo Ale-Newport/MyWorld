@@ -23,7 +23,8 @@ import type { ChapterId } from '@/content/types'
    ============================================================ */
 
 export interface SceneRegion {
-  /** The box in CSS px, relative to the chapter's pinned stage. */
+  chapter: ChapterId
+  /** The box in CSS px, relative to the chapter's pinned stage (as laid out, before any travel). */
   x: number
   y: number
   w: number
@@ -36,6 +37,23 @@ export interface SceneRegion {
 
 const regions = new Map<ChapterId, SceneRegion>()
 let version = 0
+
+/* A stage whose words are taller than the screen moves them through
+   it as the chapter scrolls (components/journey/stageFit.ts), and a
+   region laid out among them moves with them: the shift is published
+   here every frame it changes. */
+const shifts = new Map<ChapterId, number>()
+
+export function writeStageShift(id: ChapterId, y: number) {
+  if ((shifts.get(id) ?? 0) === y) return
+  if (y) shifts.set(id, y)
+  else shifts.delete(id)
+  version++
+}
+
+export function readStageShift(id: ChapterId) {
+  return shifts.get(id) ?? 0
+}
 
 export function writeSceneRegion(id: ChapterId, region: SceneRegion | null) {
   if (region) regions.set(id, region)
@@ -67,7 +85,7 @@ export function regionOnScreen(r: SceneRegion, scrollY: number, out: { x: number
   const pinEnd = r.sectionTop + r.sectionHeight - r.stageHeight
   const stageTop = scrollY < pinStart ? pinStart - scrollY : scrollY > pinEnd ? pinEnd - scrollY : 0
   out.x = r.x
-  out.y = r.y + stageTop
+  out.y = r.y + stageTop + readStageShift(r.chapter)
   out.w = r.w
   out.h = r.h
   return out
