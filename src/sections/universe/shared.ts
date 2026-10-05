@@ -48,9 +48,14 @@ export const metaOf = (p: SiteProject) => `${CATEGORY_LABEL[p.category] ?? p.cat
 
 /** Rough advance of a line of type, for fitting labels without reading layout. */
 export const textWidth = (s: string, px: number, mono = false, tracking = 0) => s.length * px * ((mono ? 0.6 : 0.54) + tracking)
-/** The title if it fits `max` px at `px` size, else the short title, else the title (CSS truncates it). */
+/** A title's name before its subtitle — "Name: what it is", "Name — what it is", "Name (2024)" — when there is one. */
+export function titleHead(title: string): string | null {
+  const m = /^(.{3,}?)\s*(?::\s|\s[—–-]\s|\s\()/.exec(title)
+  return m ? m[1].trim() : null
+}
+/** The title if it fits `max` px at `px` size, else the short title, else the name before its subtitle, else the title (CSS truncates it). */
 export const fitTitle = (p: SiteProject, max: number, px: number, mono = false, tracking = 0) =>
-  textWidth(p.title, px, mono, tracking) <= max || !p.shortTitle ? p.title : p.shortTitle
+  textWidth(p.title, px, mono, tracking) <= max ? p.title : p.shortTitle ?? titleHead(p.title) ?? p.title
 
 /** Projects grouped by tier, each tier in category order (display order within a category). */
 export function byTierAndCategory(projects: SiteProject[]): SiteProject[][] {
