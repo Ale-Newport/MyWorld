@@ -19,6 +19,8 @@
   align-content: var(--stage-align, center);
   align-items: var(--stage-items, normal);
   padding: var(--stage-top, clamp(4.5rem, 9vh, 7rem)) var(--gutter) var(--stage-bottom, clamp(4.5rem, 9vh, 6rem));
+  padding-left: var(--gutter-left);
+  padding-right: var(--gutter-right);
   z-index: var(--z-content);
   pointer-events: none;
 }
@@ -91,10 +93,10 @@
   color: var(--text-faint);
   line-height: 1.6;
 }
-.cornerTL { top: clamp(4.5rem, 9vh, 6.5rem); left: var(--gutter); }
-.cornerTR { top: clamp(4.5rem, 9vh, 6.5rem); right: var(--gutter); text-align: right; }
-.cornerBL { bottom: clamp(4.5rem, 9vh, 5.5rem); left: var(--gutter); }
-.cornerBR { bottom: clamp(4.5rem, 9vh, 5.5rem); right: var(--gutter); text-align: right; }
+.cornerTL { top: clamp(4.5rem, 9vh, 6.5rem); left: var(--gutter-left); }
+.cornerTR { top: clamp(4.5rem, 9vh, 6.5rem); right: var(--gutter-right); text-align: right; }
+.cornerBL { bottom: clamp(4.5rem, 9vh, 5.5rem); left: var(--gutter-left); }
+.cornerBR { bottom: clamp(4.5rem, 9vh, 5.5rem); right: var(--gutter-right); text-align: right; }
 
 @media (max-width: 700px) {
   .corner { font-size: 9px; }

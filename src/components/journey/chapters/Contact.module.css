@@ -9,10 +9,25 @@
    sheet is inside this stage and therefore rides it too, keeping
    a fraction of the stretch of its own — see VEIL_LAG. */
 .stage {
-  align-content: center;
+  /* Three rows that never overlap: the closing words take what is
+     left, then the links, then the colophon. The bottom padding is
+     the portal's band (its readout and rule, absolutely placed by
+     WorldPortal at the foot) so nothing in the rows reaches it. */
+  --stage-rows: minmax(0, 1fr) auto auto;
+  --stage-align: stretch;
+  --stage-row-gap: clamp(0.75rem, 2.2vh, 1.75rem);
+  --stage-top: clamp(6.5rem, 14vh, 9rem);
+  --stage-bottom: calc(clamp(4.2rem, 9.5vh, 5.8rem) + 3.25rem);
   --portal-dim: 0;
   --portal-drag: 0;
   transform: translate3d(0, calc(var(--portal-drag) * -1px), 0);
+}
+
+.visual {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
 }
 
 .chrome {
@@ -21,38 +36,43 @@
 }
 
 .center {
-  grid-column: 1 / span 12;
+  grid-column: 1 / -1;
+  grid-row: 1;
   display: grid;
   place-items: center;
-  min-height: 40vh;
+  min-height: 0;
+  position: relative;
+  z-index: 1;
 }
 
+/* Sized by the narrower of the screen's width and height, so a
+   phone on its side or a short laptop window sets the line to fit
+   the band it has rather than to its width alone. */
 .question, .answer {
   grid-area: 1 / 1;
-  font-size: clamp(2.6rem, 0.5rem + 9.4vw, 10rem);
+  font-size: clamp(2.4rem, min(0.5rem + 9.4vw, 19vh), 10rem);
   font-weight: 500;
   letter-spacing: -0.052em;
   line-height: 0.82;
   text-transform: uppercase;
   text-align: center;
+  text-wrap: balance;
+  max-width: 100%;
+  overflow-wrap: anywhere;
   opacity: 0;
   will-change: transform, opacity;
 }
 .answer { color: var(--accent); }
 .answerText { display: block; }
 
-/* The foot of the page reads bottom-up: the HUD, then the portal's
-   own rule, the colophon, and the contact links above them. Each
-   band clears the one below it at any viewport height. On a phone
-   the links leave this stack and rejoin the flow — see the foot of
-   this file. */
 .links {
-  position: absolute;
-  left: var(--gutter); right: var(--gutter);
-  bottom: clamp(9.8rem, 22vh, 13rem);
+  grid-column: 1 / -1;
+  grid-row: 2;
+  position: relative;
+  z-index: 1;
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
-  gap: 0;
+  grid-template-columns: repeat(auto-fit, minmax(min(12rem, 100%), 1fr));
+  gap: 0 var(--sp-5);
   border-top: var(--hair) solid var(--border);
 }
 .links > li { opacity: 0; will-change: transform, opacity; border-bottom: var(--hair) solid var(--border); }
@@ -85,10 +105,11 @@
 .linkArrow { grid-column: 2; grid-row: 1 / span 2; align-self: center; font-size: var(--fs-tiny); }
 
 .colophon {
-  position: absolute;
-  left: var(--gutter); right: var(--gutter);
-  bottom: clamp(7rem, 15vh, 9rem);
-  display: flex; justify-content: space-between; gap: var(--sp-4); flex-wrap: wrap;
+  grid-column: 1 / -1;
+  grid-row: 3;
+  position: relative;
+  z-index: 1;
+  display: flex; justify-content: space-between; gap: var(--sp-2) var(--sp-4); flex-wrap: wrap;
   font-family: var(--font-mono); font-size: var(--fs-nano);
   letter-spacing: var(--tracking-label); text-transform: uppercase;
   color: var(--text-faint);
@@ -96,32 +117,19 @@
 
 @media (max-width: 700px) {
   .colophon span:last-child { display: none; }
-  .colophon { bottom: 6.4rem; }
-
-  /* A phone cannot float the headline in the middle of a stage the
-     four links already fill: stacked, they are most of the height,
-     and the portal band holds them clear of the foot. So the two
-     bands stop competing for the same middle and are laid out one
-     above the other — the links at the foot of the content box, the
-     headline centred in whatever is left above them. The bottom
-     padding is what reserves the colophon and the portal's rule;
-     the top padding clears the corner chrome. */
-  .stage {
-    --stage-rows: 1fr auto;
-    --stage-top: clamp(8rem, 17vh, 10rem);
-    --stage-bottom: 9rem;
-  }
-  /* The 40vh floor is a desktop measure: here it would push the
-     links out through the foot of the pinned stage. */
-  .center { min-height: 0; }
-  .links {
-    position: static;
-    grid-column: 1 / span 12;
-    grid-template-columns: 1fr;
-  }
+  .stage { --stage-top: clamp(7rem, 16vh, 9.5rem); }
   /* Four rows at desktop rhythm do not leave the headline a band to
      sit in; this keeps each row well past a thumb's width. */
   .link { padding-block: var(--sp-3); }
+}
+
+/* A phone on its side: the links go two by two, and the colophon,
+   which says nothing a visitor needs, gives way to them. */
+@media (max-height: 520px) and (orientation: landscape) {
+  .stage { --stage-top: 4.75rem; --stage-bottom: calc(clamp(4.2rem, 9.5vh, 5.8rem) + 2.5rem); --stage-row-gap: 0.5rem; }
+  .links { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .link { padding-block: 0.45rem; }
+  .colophon { display: none; }
 }
 
 @media (prefers-reduced-motion: reduce) {

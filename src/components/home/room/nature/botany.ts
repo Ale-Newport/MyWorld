@@ -422,7 +422,10 @@ export function pointAt(stem: Stem, t: number) {
    stem is followed from its root and stopped at the last node it
    can reach while staying clear of the reading field — with the
    whole envelope of its leaves (their length, their lift, their
-   sway, their shadow) taken into account, not just the stem line.
+   sway, their shadow) taken into account, not just the stem line:
+   SWAY_REACH covers the widest a leaf swings in the air, and
+   SHADOW_REACH the furthest a leaf's cast shadow falls from it on
+   the wall, so neither ever reaches the copy either.
    What lies beyond is never grown: its leaves, its branches, its
    later life. A stem stopped this way ends as stems do, in a
    tapering tip with its youngest leaves, so nothing looks
@@ -442,6 +445,11 @@ export interface Pruning {
   leaves: Uint8Array
 }
 
+/** How far a leaf's tip swings with the air, as a share of its size (sway ±0.058 rad + flutter ±0.065 rad about the stem, with margin). */
+const SWAY_REACH = 0.12
+/** How far a cast shadow can fall from the plant that casts it, in metres on the wall. */
+const SHADOW_REACH = 0.035
+
 export function prune(b: Botany, probe: FieldProbe, limit: number, foliage = 1): Pruning {
   const cuts = new Float32Array(b.stems.length)
   // Main stems first, then branches (whose parents are earlier).
@@ -456,7 +464,7 @@ export function prune(b: Botany, probe: FieldProbe, limit: number, foliage = 1):
       cuts[i] = 0
       continue
     }
-    const envelope = (st.main ? ROOM_CONFIG.vines.leafScale * 1.15 : ROOM_CONFIG.vines.leafScale * 0.95) * foliage
+    const envelope = (st.main ? ROOM_CONFIG.vines.leafScale * 1.15 : ROOM_CONFIG.vines.leafScale * 0.95) * foliage * (1 + SWAY_REACH) + SHADOW_REACH
     let cut = 1
     for (let k = 0; k < st.points.length; k++) {
       const birth = st.start + st.duration * st.s[k]
@@ -480,7 +488,7 @@ export function prune(b: Botany, probe: FieldProbe, limit: number, foliage = 1):
     if (l.stem >= 0 && l.s > cuts[l.stem]) return
     // The leaf itself, at its full size and lift.
     tip.copy(l.position).addScaledVector(l.direction, l.size * 0.6).addScaledVector(l.normal, l.size * Math.sin(l.lift) * 0.5)
-    leaves[i] = probe.at(tip, l.size * 0.65, l.birth) <= limit ? 1 : 0
+    leaves[i] = probe.at(tip, l.size * (0.65 + SWAY_REACH) + SHADOW_REACH, l.birth) <= limit ? 1 : 0
   })
   return { cuts, leaves }
 }

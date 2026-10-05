@@ -58,6 +58,13 @@
   will-change: transform, opacity;
 }
 
+/* A phone on its side: the name, the roles and the line must fit
+   between the corner labels in under 400 px of height. */
+@media (max-height: 520px) and (orientation: landscape) {
+  .name { font-size: clamp(2.4rem, 17vh, 14rem); }
+  .center { margin-bottom: 0; gap: 0.5rem; }
+}
+
 @media (max-width: 620px) {
   .center { margin-bottom: clamp(8rem, 30vh, 16rem); gap: 1rem; }
   .thesis { font-size: clamp(0.95rem, 4.4vw, 1.4rem); }

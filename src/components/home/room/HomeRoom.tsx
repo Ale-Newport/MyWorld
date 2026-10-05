@@ -197,7 +197,15 @@ export function HomeRoom() {
         // value, the stills) sits behind every chapter in turn, so it
         // keeps clear of all of them.
         const held = s.reducedMotion || pinned !== null || capture
-        const ends = ranges.map((r) => (held ? 1 : growthFor(r.end, ranges)))
+        /* A chapter's copy is on screen until its section has scrolled
+           out entirely, which in scroll progress (fractions of the
+           document's height minus one viewport) is later than its range
+           ends (fractions of the whole). Planning against the earlier
+           figure let growth born while the copy was still leaving the
+           top of the screen land on it. */
+        const total = s.chapters.reduce((a, c) => a + (s.quickView ? c.quickVh : c.vh), 0)
+        const stretch = total > 1 ? total / (total - 1) : 1
+        const ends = ranges.map((r) => (held ? 1 : growthFor(Math.min(1, r.end * stretch), ranges)))
         placeEntablature()
         engine.setReadingField(buildReadingField(measureReadingBoxes(), width, height, order, ends))
       }, 120)
@@ -221,6 +229,9 @@ export function HomeRoom() {
     const mo = new MutationObserver(read)
     if (journey) mo.observe(journey, { childList: true, subtree: true })
     const stopWatching = window.setTimeout(() => mo.disconnect(), 6000)
+    // The copy itself changed (the admin's live preview, a section's
+    // text): measure again, whenever it happens.
+    window.addEventListener('cms:content', read)
     const unsubStore = useJourney.subscribe((s, prev) => {
       if (s.quickView !== prev.quickView || s.reducedMotion !== prev.reducedMotion) read()
       if (s.reducedMotion !== prev.reducedMotion || s.indexOpen !== prev.indexOpen || s.activeProject !== prev.activeProject) applyMotion()
@@ -299,6 +310,7 @@ export function HomeRoom() {
       ro.disconnect()
       mo.disconnect()
       window.clearTimeout(stopWatching)
+      window.removeEventListener('cms:content', read)
       window.clearTimeout(readTimer)
       window.clearTimeout(resizeTimer)
       dprQuery?.removeEventListener('change', onDpr)

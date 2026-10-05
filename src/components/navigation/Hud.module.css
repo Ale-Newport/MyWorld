@@ -19,6 +19,11 @@
   align-items: center;
   justify-content: space-between;
   padding: clamp(1rem, 2.2vw, 1.75rem) var(--gutter);
+  /* A notch or rounded corner in landscape, the status bar in a
+     standalone app: the row stays clear of all of them. */
+  padding-top: calc(clamp(1rem, 2.2vw, 1.75rem) + env(safe-area-inset-top, 0px));
+  padding-left: var(--gutter-left);
+  padding-right: var(--gutter-right);
   pointer-events: none;
 }
 .top > * { pointer-events: auto; }
@@ -139,6 +144,10 @@
   align-items: center;
   gap: clamp(0.75rem, 2.5vw, 2.5rem);
   padding: 0 var(--gutter) clamp(1rem, 2.2vw, 1.6rem);
+  /* Above the home indicator, clear of a notch in landscape. */
+  padding-bottom: calc(clamp(1rem, 2.2vw, 1.6rem) + env(safe-area-inset-bottom, 0px));
+  padding-left: var(--gutter-left);
+  padding-right: var(--gutter-right);
   pointer-events: none;
 }
 .bottom > * { pointer-events: auto; }

@@ -1,6 +1,6 @@
 'use client'
 
-import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
+import { createContext, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { deriveSite, type SiteContent } from './derive'
 import type { SiteDocument } from './schema'
 import { setJourneyContent } from '@/state/content'
@@ -54,6 +54,15 @@ export function SiteContentProvider({ doc, editing = false, children }: { doc: S
   const value = useMemo(() => deriveSite(live, { preview: editing }), [live, editing])
   // Non-React readers (the journey store, the canvas scenes) see the same content.
   useMemo(() => setJourneyContent(value), [value])
+  /* Layers that measure the copy (the homepage's vegetation) re-measure
+     when it changes after the first render — in practice, in the
+     admin's live preview. After the DOM has the new words. */
+  const first = useRef(true)
+  useEffect(() => {
+    if (first.current) { first.current = false; return }
+    const raf = requestAnimationFrame(() => window.dispatchEvent(new Event('cms:content')))
+    return () => cancelAnimationFrame(raf)
+  }, [value])
   return (
     <EditingContext.Provider value={editing}>
       <SiteContext.Provider value={value}>
