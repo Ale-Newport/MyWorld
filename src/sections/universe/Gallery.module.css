@@ -1,0 +1,285 @@
+/* ============================================================
+   DIMENSIONAL GALLERY — frames on a curved wall, prints and captures
+   ============================================================ */
+
+.root {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  /* Clip, not a scroll container: focusing a frame past the edge must
+     turn the room, never scroll the box. */
+  overflow: clip;
+  contain: layout paint style;
+  perspective-origin: 50% var(--eye, 50%);
+  /* The wall runs on past the box: its ends fade rather than stop. */
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 4%, #000 96%, transparent);
+  mask-image: linear-gradient(90deg, transparent, #000 4%, #000 96%, transparent);
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.slot {
+  position: absolute;
+  left: 50%;
+  top: var(--eye);
+  width: var(--fw);
+  height: var(--fh);
+  margin: calc(var(--fh) * -0.5) 0 0 calc(var(--fw) * -0.5);
+  transform-style: preserve-3d;
+  will-change: transform, opacity;
+  transition: filter 700ms var(--ease-out-expo);
+}
+.root[data-flat] {
+  -webkit-mask-image: none;
+  mask-image: none;
+}
+.root[data-flat] .slot {
+  left: 0;
+  top: 0;
+  will-change: auto;
+}
+.slot[data-dim] { pointer-events: none; }
+
+/* ---- the picture rail and the wires ---------------------------- */
+
+.hang {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 100%;
+  height: var(--drop);
+  pointer-events: none;
+}
+.rail {
+  position: absolute;
+  top: 0;
+  left: calc(var(--gap) * -0.5 - 0.5px);
+  right: calc(var(--gap) * -0.5 - 0.5px);
+  height: 1px;
+  background: color-mix(in oklab, var(--ink) 22%, transparent);
+}
+.wire {
+  position: absolute;
+  top: 0;
+  left: 24%;
+  width: 52%;
+  height: 100%;
+  overflow: visible;
+  transition: opacity 700ms var(--ease-out-expo);
+}
+.wire path {
+  fill: none;
+  stroke: color-mix(in oklab, var(--ink) 34%, transparent);
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
+}
+.slot[data-dim] .wire { opacity: 0.3; }
+
+/* The moulding below the labels: with the rail above it, the line
+   that shows the wall curving round the visitor. */
+.dado {
+  position: absolute;
+  top: var(--dado);
+  left: calc(var(--gap) * -0.5 - 0.5px);
+  right: calc(var(--gap) * -0.5 - 0.5px);
+  height: 1px;
+  background: color-mix(in oklab, var(--ink) 14%, transparent);
+  pointer-events: none;
+}
+
+/* ---- the frame -------------------------------------------------- */
+
+.frame {
+  position: absolute;
+  inset: 0;
+  display: block;
+  padding: 0;
+  text-align: left;
+  transform: translateZ(0);
+  transition: transform 700ms var(--ease-out-expo), opacity 700ms var(--ease-out-expo);
+  -webkit-tap-highlight-color: transparent;
+}
+.frame:focus-visible { outline: none; }
+.slot[data-hot] .frame,
+.frame:focus-visible { transform: translateZ(46px); }
+.root[data-flat] .slot[data-hot] .frame,
+.root[data-flat] .frame:focus-visible { transform: none; }
+.slot[data-dim] .frame { opacity: 0.2; }
+.slot[data-dim] .mat { filter: grayscale(1); }
+
+/* A thin dark moulding around a cream mat, with the soft shadow of
+   something hung a finger's width off the wall. */
+.mat {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  border-radius: 1px;
+  background: #fbf7ef;
+  box-shadow:
+    inset 0 0 0 1px color-mix(in oklab, var(--ink) 55%, transparent),
+    inset 0 0 0 4px #f4ede1,
+    inset 0 0 0 5px color-mix(in oklab, var(--ink) 12%, transparent),
+    0 1px 1px rgba(58, 40, 18, 0.12),
+    0 18px 30px -20px rgba(58, 40, 18, 0.55);
+  transition: box-shadow 700ms var(--ease-out-expo), filter 700ms var(--ease-out-expo);
+}
+.slot[data-hot] .mat,
+.frame:focus-visible .mat {
+  box-shadow:
+    inset 0 0 0 1px var(--accent),
+    inset 0 0 0 4px #f4ede1,
+    inset 0 0 0 5px color-mix(in oklab, var(--ink) 12%, transparent),
+    0 0 0 2px color-mix(in oklab, var(--accent) 35%, transparent),
+    0 30px 44px -24px rgba(58, 40, 18, 0.6);
+}
+
+.shot {
+  position: absolute;
+  inset: 9%;
+  width: 82%;
+  height: 82%;
+  object-fit: cover;
+  object-position: top center;
+  opacity: 0;
+  outline: 1px solid color-mix(in oklab, var(--ink) 14%, transparent);
+  transition: opacity 600ms var(--ease-out-expo);
+}
+.shot[data-ready] { opacity: 1; }
+
+/* ---- a print: the project's own words, set as the work ------------ */
+
+.print {
+  position: absolute;
+  inset: 9%;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6em;
+  font-size: var(--pf);
+  color: var(--ink);
+}
+.print[data-tier='0'] {
+  inset: 5px;
+  padding: 9% 9% 9%;
+  background: color-mix(in oklab, var(--accent-p) 9%, #fbf7ef);
+}
+.printHead {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+  font-family: var(--font-mono);
+  font-size: max(8px, calc(var(--fw) * 0.036));
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: color-mix(in oklab, var(--tone) 70%, var(--ink));
+  white-space: nowrap;
+}
+.printHead > span:first-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+/* Without words: the year, set as large numerals. */
+.printBody {
+  margin-top: auto;
+  font-size: var(--pf);
+  font-weight: 400;
+  line-height: 0.9;
+  letter-spacing: -0.05em;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-2);
+}
+/* With room: the project's own line, set like a statement. */
+.print[data-mode='words'] .printBody {
+  margin-top: 16%;
+  font-weight: 500;
+  line-height: 1.16;
+  letter-spacing: -0.022em;
+  color: var(--ink);
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 7;
+  text-wrap: pretty;
+}
+.printRule {
+  flex: none;
+  width: 22%;
+  height: 3px;
+  margin-top: auto;
+  background: var(--accent-p);
+}
+
+/* A small frame with no label beneath it carries its own title. */
+.print[data-mode='title'] .printBody {
+  font-weight: 500;
+  line-height: 1.02;
+  letter-spacing: -0.03em;
+  color: var(--ink);
+  overflow-wrap: anywhere;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 4;
+}
+
+/* ---- the wall label --------------------------------------------- */
+
+.caption {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: calc(100% + 12px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  text-align: center;
+}
+.captionTitle {
+  max-width: calc(var(--fw) + var(--gap) * 0.8);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: clamp(12.5px, calc(var(--fw) * 0.055), 17px);
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  color: var(--ink-2);
+  text-decoration: underline;
+  text-decoration-color: transparent;
+  text-underline-offset: 3px;
+  transition: color var(--dur-fast) linear, text-decoration-color var(--dur-fast) linear;
+}
+.captionMeta {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--ink-4);
+  white-space: nowrap;
+}
+.slot[data-hot] .captionTitle,
+.frame:focus-visible .captionTitle {
+  color: var(--ink);
+  text-decoration-color: var(--accent);
+}
+
+/* The still salon wall: small labels, the title alone. */
+.root[data-flat] .caption { top: calc(100% + 5px); }
+.root[data-flat] .captionMeta { display: none; }
+.root[data-flat] .captionTitle {
+  max-width: calc(var(--fw) + 10px);
+  font-size: 10.5px;
+}
+.root[data-flat] .mat {
+  box-shadow:
+    inset 0 0 0 1px color-mix(in oklab, var(--ink) 55%, transparent),
+    inset 0 0 0 3px #f4ede1,
+    0 10px 18px -14px rgba(58, 40, 18, 0.5);
+}
+.root[data-flat] .slot[data-hot] .mat,
+.root[data-flat] .frame:focus-visible .mat {
+  box-shadow:
+    inset 0 0 0 1.5px var(--accent),
+    inset 0 0 0 3px #f4ede1,
+    0 0 0 2px color-mix(in oklab, var(--accent) 35%, transparent);
+}
