@@ -241,7 +241,8 @@ export function Pansofia() {
           </ul>
         </div>
 
-        <div className={`${shared.corner} ${shared.cornerTR} ${styles.hint}`} ref={hintRef}>
+        {/* Arrives with the gallery, long after the heading beside it has gone. */}
+        <div className={`${shared.corner} ${shared.cornerTR} ${styles.hint}`} ref={hintRef} data-corner-apart="">
           DRAG OR SCROLL
           <br />
           SELECTED WORK · 2025

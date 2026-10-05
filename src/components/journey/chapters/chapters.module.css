@@ -18,7 +18,12 @@
   gap: var(--stage-row-gap, 0) var(--stage-col-gap, clamp(0.75rem, 1.6vw, 1.75rem));
   align-content: var(--stage-align, center);
   align-items: var(--stage-items, normal);
-  padding: var(--stage-top, clamp(4.5rem, 9vh, 7rem)) var(--gutter) var(--stage-bottom, clamp(4.5rem, 9vh, 6rem));
+  /* --stage-clear-* are set by the stage itself (journey/stageFit.ts)
+     only when a corner note has grown into the words beside it. */
+  padding:
+    max(var(--stage-top, clamp(4.5rem, 9vh, 7rem)), var(--stage-clear-top, 0px))
+    var(--gutter)
+    max(var(--stage-bottom, clamp(4.5rem, 9vh, 6rem)), var(--stage-clear-bottom, 0px));
   padding-left: var(--gutter-left);
   padding-right: var(--gutter-right);
   z-index: var(--z-content);

@@ -143,7 +143,8 @@ export function Prelude() {
           </E>
         </div>
 
-        <div className={`${shared.corner} ${shared.cornerBL} ${shared.driven}`} ref={hintRef}>
+        {/* Gone before the opening line arrives in the same place. */}
+        <div className={`${shared.corner} ${shared.cornerBL} ${shared.driven}`} ref={hintRef} data-corner-apart="">
           <ScrollHint />
         </div>
         {/* Derived, not typed: a hardcoded count is a promise the
