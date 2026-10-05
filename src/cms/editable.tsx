@@ -3,7 +3,7 @@
 import { createElement, type ComponentPropsWithRef, type ElementType, type ReactNode } from 'react'
 import { useSite } from './context'
 import { renderRich, richToPlain } from './rich'
-import { safeHref } from './schema'
+import { isSafeHref } from './safe'
 
 /* ============================================================
    EDITABLE ELEMENTS
@@ -62,6 +62,6 @@ export function E<T extends ElementType = 'span'>({ cms, as, kind, label, bind, 
   const takesText = !bind && kind !== 'container' && kind !== 'list' && kind !== 'card' && kind !== 'section'
   const content = takesText && override?.text !== undefined ? renderRich(override.text) : children
   const extra: Record<string, unknown> = {}
-  if ((as === 'a' || kind === 'link' || kind === 'button') && override?.href && safeHref.safeParse(override.href).success) extra.href = override.href
+  if ((as === 'a' || kind === 'link' || kind === 'button') && override?.href && isSafeHref(override.href)) extra.href = override.href
   return createElement(as ?? 'span', { ...rest, ...extra, ...attrs }, content)
 }

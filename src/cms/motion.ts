@@ -1,0 +1,2 @@
+/** The project visuals a project can be presented with (src/components/project-visuals). Plain data, shared by the schema and the public runtime. */
+export const MOTION_COMPONENTS = ['ChessMotion', 'StockMotion', 'ThreeBodyMotion', 'VpnMotion', 'GymMotion', 'FocusMotion', 'KeyframesMotion', 'LabyrinthMotion', 'PrimesMotion', 'VoxelMotion', 'CardsMotion', 'DotsBoxesMotion', 'TrainingMotion', 'CatanMotion', 'VideoPlayerMotion', 'WebsiteMotion', 'LibraryMotion', 'JobBoardMotion', 'GenericProjectMotion'] as const
