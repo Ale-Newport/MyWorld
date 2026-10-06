@@ -22,10 +22,10 @@ import { ValidationError } from './auth/guard.ts'
 
 const parsed = new Map<string, SiteDocument>()
 
-function documentOf(revisionId: string): SiteDocument {
+async function documentOf(revisionId: string): Promise<SiteDocument> {
   const hit = parsed.get(revisionId)
   if (hit) return hit
-  const rev = readRevision(revisionId)
+  const rev = await readRevision(revisionId)
   if (!rev?.content) throw new Error(`Site revision ${revisionId} has no content`)
   const doc = migrateSiteDocument<SiteDocument>(JSON.parse(rev.content))
   if (parsed.size > 20) parsed.delete(parsed.keys().next().value!)
@@ -36,11 +36,10 @@ function documentOf(revisionId: string): SiteDocument {
 let seedCache: SiteDocument | null = null
 const seedDoc = () => (seedCache ??= buildSeedDocument())
 
-export function publishedSite(): { doc: SiteDocument; revision: RevisionMeta | null } {
+export async function publishedSite(): Promise<{ doc: SiteDocument; revision: RevisionMeta | null }> {
   try {
-    if (!exists('site')) return { doc: seedDoc(), revision: null }
-    const { published } = head('site')
-    return published ? { doc: documentOf(published.id), revision: published } : { doc: seedDoc(), revision: null }
+    const { published } = await head('site')
+    return published ? { doc: await documentOf(published.id), revision: published } : { doc: seedDoc(), revision: null }
   } catch (error) {
     // A broken store must not take the public site down: fall back to the migrated seed.
     console.error('[site] could not read the published document; serving the seed', error)
@@ -49,12 +48,12 @@ export function publishedSite(): { doc: SiteDocument; revision: RevisionMeta | n
 }
 
 /** The editor's starting point. Seeds the store on first use (an authenticated action). */
-export function draftSite(actor: Actor = SYSTEM): { doc: SiteDocument; head: Head } {
-  if (!exists('site')) {
-    seed('site', 'site', { content: JSON.stringify(seedDoc()), schemaVersion: SCHEMA_VERSION, message: 'Migrated the content that shipped in src/content (schema v1)', actor })
+export async function draftSite(actor: Actor = SYSTEM): Promise<{ doc: SiteDocument; head: Head }> {
+  if (!(await exists('site'))) {
+    await seed('site', 'site', { content: JSON.stringify(seedDoc()), schemaVersion: SCHEMA_VERSION, message: 'Migrated the content that shipped in src/content (schema v1)', actor })
   }
-  const current = head('site')
-  return { doc: documentOf(current.draft!.id), head: current }
+  const current = await head('site')
+  return { doc: await documentOf(current.draft!.id), head: current }
 }
 
 /** For public pages: published, or the draft for a signed-in administrator in Draft Mode. */
@@ -65,8 +64,8 @@ export async function loadSite(): Promise<{ doc: SiteDocument; preview: boolean 
   } catch {
     preview = false
   }
-  if (preview && (await currentSession())) return { doc: draftSite().doc, preview: true }
-  return { doc: publishedSite().doc, preview: false }
+  if (preview && (await currentSession())) return { doc: (await draftSite()).doc, preview: true }
+  return { doc: (await publishedSite()).doc, preview: false }
 }
 
 export function validateSite(input: unknown): SiteDocument {
@@ -80,14 +79,14 @@ export function validateSite(input: unknown): SiteDocument {
   return result.data
 }
 
-export function saveSiteDraft({ base, doc, message, actor, force }: { base: string | null; doc: unknown; message?: string; actor: Actor; force?: boolean }) {
+export async function saveSiteDraft({ base, doc, message, actor, force }: { base: string | null; doc: unknown; message?: string; actor: Actor; force?: boolean }) {
   const valid = validateSite(doc)
-  draftSite(actor)
+  await draftSite(actor)
   return saveDraft('site', { base, content: JSON.stringify(valid), schemaVersion: SCHEMA_VERSION, message, actor, force })
 }
 
 export async function publishSite({ revisionId, actor }: { revisionId?: string; actor: Actor }) {
-  draftSite(actor)
+  await draftSite(actor)
   const rev = await publish('site', {
     revisionId,
     actor,

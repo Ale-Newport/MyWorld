@@ -1,0 +1,12 @@
+{
+  "world": {
+    "path": "/archipelago/seed/editor-world.json.gz",
+    "sha": "b16b56dfbe2bf4f0c1200e067df144f92c5c69700802d0795421c6c31f580c51",
+    "size": 16962139
+  },
+  "assets": {
+    "path": "/archipelago/seed/asset-definitions.json",
+    "sha": "908952c24d284ff11307c53ece72b1b85f5bd610b603ec5203a43b3b1cd6cff4",
+    "size": 4261632
+  }
+}

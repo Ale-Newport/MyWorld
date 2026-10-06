@@ -6,7 +6,7 @@ export const runtime = 'nodejs'
 
 export const GET = adminApi<{ params: Promise<{ id: string }> }>(async (_req, { params }) => {
   const { id } = await params
-  const rev = readRevision(id)
+  const rev = await readRevision(id)
   if (!rev || rev.docId !== 'site' || !rev.content) return problem(404, 'Unknown revision.')
   const { content, blobs, ...meta } = rev
   void blobs

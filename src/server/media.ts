@@ -1,8 +1,7 @@
-import fs from 'node:fs'
-import path from 'node:path'
 import { randomBytes } from 'node:crypto'
-import { config, dataPath } from './config.ts'
-import { db, now } from './db.ts'
+import { config } from './config.ts'
+import { db, now, type Row } from './db.ts'
+import { deleteObjects, getObject, putObject } from './storage.ts'
 import { sha256 } from './blobs.ts'
 import { audit, type Actor } from './audit.ts'
 import { ValidationError } from './errors.ts'
@@ -118,7 +117,6 @@ export function sanitizeSvg(source: string): string {
   return svg
 }
 
-type Row = Record<string, unknown>
 const toItem = (r: Row): MediaItem => ({
   id: r.id as string, kind: r.kind as MediaKind, filename: r.filename as string, mime: r.mime as string, size: Number(r.size), sha256: r.sha256 as string,
   width: r.width == null ? null : Number(r.width), height: r.height == null ? null : Number(r.height), alt: r.alt as string, title: r.title as string,
@@ -126,12 +124,17 @@ const toItem = (r: Row): MediaItem => ({
 })
 
 const ID = /^[a-z0-9]{20}$/
-export function mediaFile(id: string, ext: string) {
+export function mediaKey(id: string, ext: string) {
   if (!ID.test(id) || !/^[a-z0-9]{2,5}$/.test(ext)) throw new Error('Invalid media id')
-  return dataPath('media', `${id}.${ext}`)
+  return `media/${id}.${ext}`
 }
 
-export function saveUpload(bytes: Buffer, originalName: string, actor: Actor, { kind: wanted }: { kind?: MediaKind } = {}): MediaItem {
+/** The stored bytes of an upload. */
+export function mediaBytes(item: MediaItem) {
+  return getObject(mediaKey(item.id, item.filename.split('.').pop()!))
+}
+
+export async function saveUpload(bytes: Buffer, originalName: string, actor: Actor, { kind: wanted }: { kind?: MediaKind } = {}): Promise<MediaItem> {
   let f = detect(bytes)
   if (!f) throw new ValidationError('That file type is not accepted. Use PNG, JPEG, WebP, AVIF, GIF, SVG, ICO, MP4, WebM or GLB.')
   if (bytes.byteLength > f.max) throw new ValidationError(`That file is ${(bytes.byteLength / MB).toFixed(1)} MB; the limit for ${f.ext.toUpperCase()} is ${(f.max / MB).toFixed(0)} MB.`)
@@ -142,48 +145,44 @@ export function saveUpload(bytes: Buffer, originalName: string, actor: Actor, { 
   const id = randomBytes(15).toString('base64url').toLowerCase().replace(/[^a-z0-9]/g, '').padEnd(20, '0').slice(0, 20)
   const base = (originalName.split(/[\\/]/).pop() ?? 'file').replace(/\.[^.]*$/, '').replace(/[^\w.-]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 60) || 'file'
   const filename = `${base}.${f.ext}`
-  fs.mkdirSync(dataPath('media'), { recursive: true })
-  const target = mediaFile(id, f.ext)
-  fs.writeFileSync(`${target}.tmp`, stored)
-  fs.renameSync(`${target}.tmp`, target)
+  await putObject(mediaKey(id, f.ext), stored, f.mime)
   const [width, height] = dimensions(stored, f)
-  db().prepare('insert into media (id, kind, filename, mime, size, sha256, width, height, alt, title, created_at, created_by) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
-    .run(id, f.kind, filename, f.mime, stored.byteLength, sha256(stored), width, height, '', base.replace(/[-_]+/g, ' '), now(), actor.name)
-  audit(actor, 'media.upload', { detail: filename })
-  return getMedia(id)!
+  await (await db()).run('insert into media (id, kind, filename, mime, size, sha256, width, height, alt, title, created_at, created_by) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+    [id, f.kind, filename, f.mime, stored.byteLength, sha256(stored), width, height, '', base.replace(/[-_]+/g, ' '), now(), actor.name])
+  await audit(actor, 'media.upload', { detail: filename })
+  return (await getMedia(id))!
 }
 
-export function getMedia(id: string): MediaItem | null {
+export async function getMedia(id: string): Promise<MediaItem | null> {
   if (!ID.test(id)) return null
-  const row = db().prepare('select * from media where id = ?').get(id) as Row | undefined
+  const row = await (await db()).get('select * from media where id = ?', [id])
   return row ? toItem(row) : null
 }
 
-export function listMedia(): MediaItem[] {
-  return (db().prepare('select * from media order by created_at desc').all() as Row[]).map(toItem)
+export async function listMedia(): Promise<MediaItem[]> {
+  return (await (await db()).all('select * from media order by created_at desc')).map(toItem)
 }
 
-export function updateMedia(id: string, patch: { alt?: string; title?: string }, actor: Actor) {
-  const item = getMedia(id)
+export async function updateMedia(id: string, patch: { alt?: string; title?: string }, actor: Actor) {
+  const item = await getMedia(id)
   if (!item) throw new ValidationError('Unknown file.')
-  db().prepare('update media set alt = ?, title = ? where id = ?').run((patch.alt ?? item.alt).slice(0, 400), (patch.title ?? item.title).slice(0, 200), id)
-  audit(actor, 'media.update', { detail: item.filename })
-  return getMedia(id)!
+  await (await db()).run('update media set alt = ?, title = ? where id = ?', [(patch.alt ?? item.alt).slice(0, 400), (patch.title ?? item.title).slice(0, 200), id])
+  await audit(actor, 'media.update', { detail: item.filename })
+  return (await getMedia(id))!
 }
 
-export function deleteMedia(id: string, usages: string[], actor: Actor) {
-  const item = getMedia(id)
+export async function deleteMedia(id: string, usages: string[], actor: Actor) {
+  const item = await getMedia(id)
   if (!item) throw new ValidationError('Unknown file.')
   if (usages.length) throw new ValidationError(`“${item.filename}” is still used by: ${usages.slice(0, 5).join(', ')}. Remove those references first.`)
-  db().prepare('delete from media where id = ?').run(id)
-  const file = mediaFile(id, path.extname(item.filename).slice(1))
-  if (fs.existsSync(file)) fs.rmSync(file)
-  audit(actor, 'media.delete', { detail: item.filename })
+  await (await db()).run('delete from media where id = ?', [id])
+  await deleteObjects([mediaKey(id, item.filename.split('.').pop()!)])
+  await audit(actor, 'media.delete', { detail: item.filename })
 }
 
-export function mediaStats() {
+export async function mediaStats() {
   try {
-    const row = db().prepare('select count(*) n, coalesce(sum(size), 0) b from media').get() as Row
+    const row = (await (await db()).get('select count(*) n, coalesce(sum(size), 0) b from media'))!
     return { count: Number(row.n), bytes: Number(row.b) }
   } catch {
     return { count: 0, bytes: 0 }

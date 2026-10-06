@@ -23,9 +23,9 @@ function label(doc: SiteDocument, path: string[]): string {
   return path.join(' › ')
 }
 
-export function mediaUsages(): Map<string, string[]> {
+export async function mediaUsages(): Promise<Map<string, string[]>> {
   const usages = new Map<string, Set<string>>()
-  const docs: [string, SiteDocument][] = [['draft', draftSite().doc], ['live', publishedSite().doc]]
+  const docs: [string, SiteDocument][] = [['draft', (await draftSite()).doc], ['live', (await publishedSite()).doc]]
   for (const [which, doc] of docs) {
     walk(doc, [], (s, path) => {
       for (const m of s.matchAll(/\/media\/([a-z0-9]{20})\//g)) {

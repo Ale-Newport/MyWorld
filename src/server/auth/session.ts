@@ -29,37 +29,38 @@ export interface Session {
 
 const hash = (token: string) => createHash('sha256').update(token).digest('hex')
 
-export function createSession(userId: string, userAgent: string | null) {
+export async function createSession(userId: string, userAgent: string | null) {
   const token = randomBytes(32).toString('base64url')
   const csrf = randomBytes(24).toString('base64url')
   const at = now()
-  db().prepare('insert into sessions (id_hash, user_id, csrf, created_at, last_seen_at, expires_at, user_agent) values (?, ?, ?, ?, ?, ?, ?)')
-    .run(hash(token), userId, csrf, at, at, at + config.sessionIdleMs, userAgent?.slice(0, 300) ?? null)
+  await (await db()).run('insert into sessions (id_hash, user_id, csrf, created_at, last_seen_at, expires_at, user_agent) values (?, ?, ?, ?, ?, ?, ?)',
+    [hash(token), userId, csrf, at, at, at + config.sessionIdleMs, userAgent?.slice(0, 300) ?? null])
   return { token, csrf, expiresAt: at + config.sessionIdleMs }
 }
 
-export function readSession(token: string | undefined | null): Session | null {
+export async function readSession(token: string | undefined | null): Promise<Session | null> {
   if (!token || token.length < 30 || token.length > 100) return null
   const idHash = hash(token)
-  const row = db().prepare('select * from sessions where id_hash = ?').get(idHash) as Record<string, unknown> | undefined
+  const d = await db()
+  const row = await d.get('select * from sessions where id_hash = ?', [idHash])
   if (!row) return null
   const at = now()
   const created = Number(row.created_at)
   if (Number(row.expires_at) < at || created + config.sessionMaxMs < at) {
-    db().prepare('delete from sessions where id_hash = ?').run(idHash)
+    await d.run('delete from sessions where id_hash = ?', [idHash])
     return null
   }
-  const user = getUser(row.user_id as string)
+  const user = await getUser(row.user_id as string)
   if (!user || user.disabled) return null
   // Sliding expiry, written at most once a minute.
   if (at - Number(row.last_seen_at) > 60_000) {
-    db().prepare('update sessions set last_seen_at = ?, expires_at = ? where id_hash = ?').run(at, Math.min(at + config.sessionIdleMs, created + config.sessionMaxMs), idHash)
+    await d.run('update sessions set last_seen_at = ?, expires_at = ? where id_hash = ?', [at, Math.min(at + config.sessionIdleMs, created + config.sessionMaxMs), idHash])
   }
   return { idHash, user, csrf: row.csrf as string, createdAt: created, expiresAt: Number(row.expires_at) }
 }
 
-export function destroySession(token: string | undefined | null) {
-  if (token) db().prepare('delete from sessions where id_hash = ?').run(hash(token))
+export async function destroySession(token: string | undefined | null) {
+  if (token) await (await db()).run('delete from sessions where id_hash = ?', [hash(token)])
 }
 
 export function csrfMatches(session: Session, supplied: string | null) {

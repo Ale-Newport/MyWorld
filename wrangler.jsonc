@@ -1,0 +1,19 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  // The Worker that serves the whole site (OpenNext for Cloudflare). Build and
+  // deploy with `npm run deploy`, or let Workers Builds run `npm run cf:build`.
+  "name": "alejandro-newport-portfolio",
+  "main": ".open-next/worker.js",
+  "compatibility_date": "2026-06-01",
+  "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
+  "assets": {
+    "directory": ".open-next/assets",
+    "binding": "ASSETS"
+  },
+  "observability": { "enabled": true },
+  "limits": { "cpu_ms": 30000 }
+  // Optional, faster database connections: create a Hyperdrive config for the
+  // Supabase connection string and add
+  //   "hyperdrive": [{ "binding": "HYPERDRIVE", "id": "<hyperdrive-id>" }]
+  // src/server/db.ts uses it when present, else the DATABASE_URL secret.
+}

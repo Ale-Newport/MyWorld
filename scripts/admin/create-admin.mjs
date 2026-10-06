@@ -9,8 +9,9 @@
    the environment of that one command instead; it is never read
    from argv, so it cannot end up in shell history or `ps`.
 
-   Writes to the same database the server uses: CMS_DATA_DIR, from
-   the environment or .env.local / .env, defaulting to .data/cms. */
+   Writes to the same database the server uses: Supabase Postgres when
+   DATABASE_URL is set (environment or .env.local / .env), else the
+   SQLite file in CMS_DATA_DIR (default .data/cms). */
 import fs from 'node:fs'
 import readline from 'node:readline'
 
@@ -42,18 +43,19 @@ async function password(email) {
 const { config } = await import('../../src/server/config.ts')
 const users = await import('../../src/server/auth/users.ts')
 const { audit } = await import('../../src/server/audit.ts')
+const { connectionString } = await import('../../src/server/db.ts')
 
 const reset = arg('reset')
 if (reset) {
-  const user = users.findByEmail(reset)
+  const user = await users.findByEmail(reset)
   if (!user) { console.error(`No administrator with the email ${reset}.`); process.exit(1) }
   await users.setPassword(user.id, await password(user.email))
-  audit({ id: null, name: 'CLI' }, 'user.password-reset', { detail: user.email })
+  await audit({ id: null, name: 'CLI' }, 'user.password-reset', { detail: user.email })
   console.log(`Password updated for ${user.email}. Every existing session for that account was signed out.`)
   process.exit(0)
 }
 
-if (users.countUsers() > 0 && !args.includes('--additional')) {
+if ((await users.countUsers()) > 0 && !args.includes('--additional')) {
   console.error('An administrator already exists. Pass --additional to create another, or --reset <email> to change a password.')
   process.exit(1)
 }
@@ -61,8 +63,10 @@ const email = arg('email') ?? (await ask('Email: '))
 const name = arg('name') ?? (await ask('Name: '))
 try {
   const user = await users.createUser({ email, name, password: await password(email) })
-  audit({ id: null, name: 'CLI' }, 'user.create', { detail: user.email })
-  console.log(`Administrator ${user.email} created in ${config.dataDir}. Sign in at /admin/login.`)
+  await audit({ id: null, name: 'CLI' }, 'user.create', { detail: user.email })
+  const where = (await connectionString()) ? 'the Supabase database (DATABASE_URL)' : config.dataDir
+  console.log(`Administrator ${user.email} created in ${where}. Sign in at /admin/login.`)
+  process.exit(0)
 } catch (error) {
   console.error(error.message)
   process.exit(1)

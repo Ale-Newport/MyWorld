@@ -1,7 +1,6 @@
-import fs from 'node:fs'
-import path from 'node:path'
 import type { NextRequest } from 'next/server'
 import { readSession, SESSION_COOKIE } from '@/server/auth/session'
+import { STUDIO_HTML } from '@/server/world-studio/studio-template'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -18,10 +17,8 @@ export const dynamic = 'force-dynamic'
    by /admin/world, which adds validation and publishing.
    ============================================================ */
 
-const TEMPLATE = path.join(process.cwd(), 'src', 'server', 'world-studio', 'studio.html')
-
-export function GET(req: NextRequest) {
-  const session = readSession(req.cookies.get(SESSION_COOKIE)?.value)
+export async function GET(req: NextRequest) {
+  const session = await readSession(req.cookies.get(SESSION_COOKIE)?.value)
   if (!session) return Response.redirect(new URL('/admin/login?next=/admin/world', req.url), 307)
   const config = {
     release: '/api/admin/world/draft',
@@ -30,7 +27,7 @@ export function GET(req: NextRequest) {
     csrf: session.csrf,
     studio: true,
   }
-  const html = fs.readFileSync(TEMPLATE, 'utf8').replace('<!--CONFIG-->', `<script>window.ARCHIPELAGO_CONFIG=${JSON.stringify(config).replace(/</g, '\\u003c')}</script>`)
+  const html = STUDIO_HTML.replace('<!--CONFIG-->', `<script>window.ARCHIPELAGO_CONFIG=${JSON.stringify(config).replace(/</g, '\\u003c')}</script>`)
   return new Response(html, {
     headers: {
       'content-type': 'text/html; charset=utf-8',

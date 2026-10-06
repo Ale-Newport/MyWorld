@@ -8,8 +8,8 @@ export const maxDuration = 120
 /* The publish checks, without publishing: the studio shows the result. */
 export const GET = adminApi(async (req, { actor }) => {
   const id = req.nextUrl.searchParams.get('revision')
-  const refs = id ? readRevision(id)?.blobs : draftWorld(actor).refs
+  const refs = id ? (await readRevision(id))?.blobs : (await draftWorld(actor)).refs
   if (!refs?.world || !refs.assets) return problem(404, 'Unknown revision.')
-  const problems = checkWorld({ world: refs.world, assets: refs.assets })
+  const problems = await checkWorld({ world: refs.world, assets: refs.assets })
   return json({ problems })
 })

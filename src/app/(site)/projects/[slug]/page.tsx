@@ -1,17 +1,12 @@
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
-import { loadSite, publishedSite } from '@/server/site'
+import { loadSite } from '@/server/site'
 import { deriveSite } from '@/cms/derive'
 import { ProjectPage } from '@/components/projects/ProjectPage'
 
 /* One page per published project, rendered from the same entity the
    homepage cards, the universe, the toolbox evidence and the case-study
-   overlay read. Static, regenerated on publish. */
-export const revalidate = 300
-
-export function generateStaticParams() {
-  return deriveSite(publishedSite().doc).allProjects.map((p) => ({ slug: p.slug }))
-}
+   overlay read. Rendered on request, like the rest of the site. */
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params

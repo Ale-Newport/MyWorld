@@ -4,7 +4,7 @@ import { WorldFallback } from '@/components/world/WorldFallback'
 import { publishedSite } from '@/server/site'
 
 export async function generateMetadata(): Promise<Metadata> {
-  const { doc } = publishedSite()
+  const { doc } = await publishedSite()
   const name = doc.profile.name
   return {
     title: 'World',
@@ -23,8 +23,8 @@ export async function generateMetadata(): Promise<Metadata> {
   }
 }
 
-export default function WorldPage() {
-  const { doc } = publishedSite()
+export default async function WorldPage() {
+  const { doc } = await publishedSite()
   return (
     <>
       {/* Server-rendered and crawlable: the whole point of the world
