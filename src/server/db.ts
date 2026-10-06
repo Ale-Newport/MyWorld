@@ -85,12 +85,13 @@ async function sqlite(): Promise<Db> {
 /* ---- Postgres (production) -------------------------------------- */
 
 /** The Cloudflare request context, when running on Workers (OpenNext). */
-async function cloudflare(): Promise<{ env: Record<string, unknown>; ctx: object } | null> {
+async function cloudflare(): Promise<{ env: Record<string, unknown>; ctx: object; request: object } | null> {
   if (!(globalThis as { navigator?: { userAgent?: string } }).navigator?.userAgent?.includes('Cloudflare-Workers')) return null
   try {
     const { getCloudflareContext } = await import('@opennextjs/cloudflare')
     const c = getCloudflareContext()
-    return { env: c.env as unknown as Record<string, unknown>, ctx: c.ctx }
+    // `cf` is the request's own object: the one key that is never shared between requests.
+    return { env: c.env as unknown as Record<string, unknown>, ctx: c.ctx, request: (c.cf as object | undefined) ?? c.ctx }
   } catch {
     return null
   }
@@ -114,10 +115,10 @@ const perRequest = new WeakMap<object, postgres.Sql>()
 async function pgClient(url: string): Promise<postgres.Sql> {
   const cf = await cloudflare()
   if (cf) {
-    let client = perRequest.get(cf.ctx)
+    let client = perRequest.get(cf.request)
     if (!client) {
       client = connect(url, 1)
-      perRequest.set(cf.ctx, client)
+      perRequest.set(cf.request, client)
     }
     return client
   }
@@ -147,11 +148,39 @@ function pgDb(sql: postgres.Sql | postgres.TransactionSql): Db {
 const current = new AsyncLocalStorage<Db>()
 
 /** The database, or the transaction this call is running inside. */
+/** A socket the runtime closed under us (a request's I/O cannot outlive it on Workers). */
+const closed = (error: unknown) => {
+  const e = error as { code?: string; message?: string }
+  return e?.code === 'CONNECTION_CLOSED' || e?.code === 'CONNECTION_ENDED' || e?.code === 'CONNECTION_DESTROYED' || /different request|connection.*closed/i.test(e?.message ?? '')
+}
+
+/** Outside a transaction, a query that meets a closed connection is retried once on a fresh one. */
+async function resilient(url: string): Promise<Db> {
+  const first = pgDb(await pgClient(url))
+  const again = async <T>(fn: (d: Db) => Promise<T>): Promise<T> => {
+    try {
+      return await fn(first)
+    } catch (error) {
+      if (!closed(error)) throw error
+      const cf = await cloudflare()
+      if (cf) perRequest.delete(cf.request)
+      else delete (globalThis as Global).__cmsPg
+      return fn(pgDb(await pgClient(url)))
+    }
+  }
+  return {
+    dialect: 'postgres',
+    all: (text, params) => again((d) => d.all(text, params)),
+    get: (text, params) => again((d) => d.get(text, params)),
+    run: (text, params) => again((d) => d.run(text, params)),
+  }
+}
+
 export async function db(): Promise<Db> {
   const inTx = current.getStore()
   if (inTx) return inTx
   const url = await connectionString()
-  return url ? pgDb(await pgClient(url)) : sqlite()
+  return url ? resilient(url) : sqlite()
 }
 
 /** Runs `fn` in one transaction (BEGIN … COMMIT, rolled back on any throw). */
@@ -160,8 +189,16 @@ export async function tx<T>(fn: () => Promise<T>): Promise<T> {
   if (outer) return fn()
   const url = await connectionString()
   if (url) {
-    const client = await pgClient(url)
-    return (await client.begin((t) => current.run(pgDb(t), fn))) as T
+    const run = async () => (await (await pgClient(url)).begin((t) => current.run(pgDb(t), fn))) as T
+    try {
+      return await run()
+    } catch (error) {
+      if (!closed(error)) throw error
+      const cf = await cloudflare()
+      if (cf) perRequest.delete(cf.request)
+      else delete (globalThis as Global).__cmsPg
+      return run()
+    }
   }
   const d = await sqlite()
   const raw = (globalThis as Global).__cmsSqlite!
