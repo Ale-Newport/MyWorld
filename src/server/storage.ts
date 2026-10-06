@@ -2,6 +2,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { randomBytes } from 'node:crypto'
 import { dataPath } from './config.ts'
+import { env } from './env.ts'
 
 /* ============================================================
    THE OBJECT STORE
@@ -26,10 +27,10 @@ export interface StoredObject {
 }
 
 function supabase() {
-  const url = process.env.SUPABASE_URL?.replace(/\/+$/, '')
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY
+  const url = env('SUPABASE_URL')?.replace(/\/+$/, '')
+  const key = env('SUPABASE_SERVICE_ROLE_KEY')
   if (!url || !key) return null
-  return { url: `${url}/storage/v1`, bucket: process.env.SUPABASE_STORAGE_BUCKET || 'cms', headers: { apikey: key, authorization: `Bearer ${key}` } }
+  return { url: `${url}/storage/v1`, bucket: env('SUPABASE_STORAGE_BUCKET') || 'cms', headers: { apikey: key, authorization: `Bearer ${key}` } }
 }
 
 const KEY = /^(blobs|media)\/[a-z0-9._-]+$/

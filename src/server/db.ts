@@ -3,6 +3,7 @@ import { AsyncLocalStorage } from 'node:async_hooks'
 import type { DatabaseSync } from 'node:sqlite'
 import postgres from 'postgres'
 import { config, dataPath } from './config.ts'
+import { env } from './env.ts'
 
 /* ============================================================
    THE CONTENT DATABASE
@@ -98,7 +99,7 @@ async function cloudflare(): Promise<{ env: Record<string, unknown>; ctx: object
 export async function connectionString(): Promise<string | null> {
   const cf = await cloudflare()
   const hyperdrive = cf?.env.HYPERDRIVE as { connectionString?: string } | undefined
-  return hyperdrive?.connectionString ?? process.env.DATABASE_URL ?? null
+  return hyperdrive?.connectionString ?? env('DATABASE_URL') ?? null
 }
 
 const asNumber = { to: 20, from: [20, 1700], serialize: (x: unknown) => String(x), parse: (x: string) => Number(x) }
