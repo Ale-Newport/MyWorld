@@ -6,7 +6,6 @@ import { Panel, radioKeys } from '../ui/kit'
 import { Icon } from '../ui/icons'
 import { ABOUT_THUMBS } from '@/sections/about/thumbs'
 import { UNIVERSE_THUMBS } from '@/sections/universe/thumbs'
-import { CONTACT_THUMBS } from '@/sections/contact/thumbs'
 import { DEFAULT_ANIMATION, INTENSITY, SECTION_ANIMATIONS, SPEED, resolveAnimation, type AnimatedSection } from '@/sections/catalog'
 
 /* ============================================================
@@ -24,7 +23,7 @@ import { DEFAULT_ANIMATION, INTENSITY, SECTION_ANIMATIONS, SPEED, resolveAnimati
    the site's code.
    ============================================================ */
 
-const THUMBS = { ...ABOUT_THUMBS, ...UNIVERSE_THUMBS, ...CONTACT_THUMBS }
+const THUMBS = { ...ABOUT_THUMBS, ...UNIVERSE_THUMBS }
 
 export function AnimationPicker({ section, journey, onPreview }: { section: AnimatedSection; journey: 'home' | 'projects'; onPreview: () => void }) {
   const stored = useSiteStore((s) => s.doc?.journeys[journey].sections.find((x) => x.id === section)?.animation)

@@ -19,7 +19,7 @@
    and the section falls back to its default (cms/migrate.ts).
    ============================================================ */
 
-export const ANIMATED_SECTIONS = ['about', 'universe', 'contact'] as const
+export const ANIMATED_SECTIONS = ['about', 'universe'] as const
 export type AnimatedSection = (typeof ANIMATED_SECTIONS)[number]
 
 export interface SectionAnimationOption {
@@ -66,19 +66,11 @@ export const SECTION_ANIMATIONS: Record<AnimatedSection, SectionAnimationOption[
     option('universe', 'mosaic', 'Magnetic mosaic', 'A tidy mosaic of project tiles that leans gently towards the pointer or the focused tile.', 'Strength of the pull'),
     option('universe', 'layered-field', 'Layered field', 'Project panels drift in on separate depth planes and settle into one composed field as you scroll.', 'Parallax depth'),
   ],
-  contact: [
-    option('contact', 'botanical-gateway', 'Botanical gateway', 'Layered foliage grows in from the edges and frames an opening around the closing words.', 'Density of the foliage'),
-    option('contact', 'converging-paths', 'Converging paths', 'Paths cross the page from every side, carrying small travellers that arrive at one destination together.', 'Number of paths'),
-    option('contact', 'stepping-path', 'Stepping path', 'A short run of dimensional steps rises towards a doorway as the section scrolls.', 'Height of the steps'),
-    option('contact', 'contour-horizon', 'Contour horizon', 'Landscape contour lines drift below and around the text, deepening into a horizon.', 'Number of contours'),
-    option('contact', 'ribbon-aperture', 'Ribbon aperture', 'Soft curved ribbons wind around the edges of the page and open an aperture at its centre.', 'Width of the ribbons'),
-  ],
 }
 
 export const DEFAULT_ANIMATION: Record<AnimatedSection, string> = {
   about: 'about.journey-ribbon',
   universe: 'universe.orbits',
-  contact: 'contact.botanical-gateway',
 }
 
 export const ANIMATION_BY_ID: Record<string, SectionAnimationOption> = Object.fromEntries(

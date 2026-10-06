@@ -53,17 +53,3 @@ export interface UniverseAnimationProps extends SectionAnimationProps {
 
 /** A rectangle in the animation box's own CSS pixels. */
 export interface Rect { x: number; y: number; w: number; h: number }
-
-/** "End of journey": the closing words sit in the middle of the same box the animation fills. */
-export interface ContactAnimationProps extends SectionAnimationProps {
-  /**
-   * The text-safe rectangles (the closing question and answer, the
-   * links, the corner labels), in the box's CSS pixels, with margin
-   * already added. Updated when the layout changes, never per frame.
-   * Nothing the animation draws may enter them, at any point of its
-   * motion.
-   */
-  safe: MutableRefObject<Rect[]>
-  /** Bumped whenever `safe` changes, so an option can recompose. */
-  safeVersion: number
-}
