@@ -9,31 +9,36 @@ import { db, now } from '../db.ts'
 const WINDOW = 15 * 60 * 1000
 const MAX_FAILURES = 5
 
-export function lockedFor(keys: string[]): number {
+export async function lockedFor(keys: string[]): Promise<number> {
   const at = now()
+  const d = await db()
   let until = 0
   for (const key of keys) {
-    const row = db().prepare('select locked_until from login_attempts where key = ?').get(key) as { locked_until: number | null } | undefined
-    if (row?.locked_until && row.locked_until > at) until = Math.max(until, row.locked_until)
+    const row = await d.get<{ locked_until: number | null }>('select locked_until from login_attempts where key = ?', [key])
+    const lockedUntil = row?.locked_until == null ? 0 : Number(row.locked_until)
+    if (lockedUntil > at) until = Math.max(until, lockedUntil)
   }
   return until ? until - at : 0
 }
 
-export function recordFailure(keys: string[]) {
+export async function recordFailure(keys: string[]) {
   const at = now()
+  const d = await db()
   for (const key of keys) {
-    const row = db().prepare('select * from login_attempts where key = ?').get(key) as { failures: number; first_at: number; locked_until: number | null } | undefined
+    const raw = await d.get<{ failures: number; first_at: number; locked_until: number | null }>('select * from login_attempts where key = ?', [key])
+    const row = raw && { failures: Number(raw.failures), first_at: Number(raw.first_at), locked_until: raw.locked_until == null ? null : Number(raw.locked_until) }
     if (!row || at - row.first_at > WINDOW && !(row.locked_until && row.locked_until > at)) {
-      db().prepare('insert into login_attempts (key, failures, first_at, locked_until) values (?, 1, ?, null) on conflict(key) do update set failures = 1, first_at = excluded.first_at, locked_until = null').run(key, at)
+      await d.run('insert into login_attempts (key, failures, first_at, locked_until) values (?, 1, ?, null) on conflict(key) do update set failures = 1, first_at = excluded.first_at, locked_until = null', [key, at])
       continue
     }
     const failures = row.failures + 1
     const locks = Math.floor(failures / MAX_FAILURES)
     const lockedUntil = failures % MAX_FAILURES === 0 ? at + WINDOW * 2 ** Math.max(0, locks - 1) : row.locked_until
-    db().prepare('update login_attempts set failures = ?, locked_until = ? where key = ?').run(failures, lockedUntil, key)
+    await d.run('update login_attempts set failures = ?, locked_until = ? where key = ?', [failures, lockedUntil, key])
   }
 }
 
-export function clearFailures(keys: string[]) {
-  for (const key of keys) db().prepare('delete from login_attempts where key = ?').run(key)
+export async function clearFailures(keys: string[]) {
+  const d = await db()
+  for (const key of keys) await d.run('delete from login_attempts where key = ?', [key])
 }

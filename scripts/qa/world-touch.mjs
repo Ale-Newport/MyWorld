@@ -29,8 +29,6 @@
    world-studio-drive.mjs serves it) never does, on a touch screen either.
    Screenshots of the touch UI go to QA_OUT.
    QA_BASE=http://localhost:3404 node scripts/qa/world-touch.mjs */
-import fs from 'node:fs'
-import path from 'node:path'
 import { BASE, launch, openPlayer, out, sleep, assert, finish, watch } from './lib.mjs'
 const results = []
 const browser = await launch()
@@ -351,7 +349,7 @@ await suite(844, 390)
 
 /* ---- the studio, on a touch screen: never ---- */
 {
-  const html = fs.readFileSync(path.resolve('src/server/world-studio/studio.html'), 'utf8').replace('<!--CONFIG-->', '<script>window.ARCHIPELAGO_CONFIG={}</script>')
+  const html = (await import(new URL('../../src/server/world-studio/studio-template.ts', import.meta.url))).STUDIO_HTML.replace('<!--CONFIG-->', '<script>window.ARCHIPELAGO_CONFIG={}</script>')
   const context = await browser.newContext({ viewport: { width: 1024, height: 768 }, hasTouch: true, isMobile: true })
   const page = await context.newPage(), errors = watch(page, 'studio ')
   await page.route(`${BASE}/archipelago/preview/studio-qa.html`, (route) => route.fulfill({ contentType: 'text/html; charset=utf-8', body: html }))

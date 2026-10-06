@@ -26,17 +26,17 @@ test('SVG is rebuilt from an allow-list: no scripts, handlers, javascript: or ex
   assert.throws(() => M.sanitizeSvg('<html><script>alert(1)</script></html>'))
 })
 
-test('uploads are typed by their bytes, not their name', () => {
-  assert.throws(() => M.saveUpload(Buffer.from('not an image at all'), 'photo.png', actor), /not accepted/)
-  const item = M.saveUpload(png(64, 40), 'Photo.JPG', actor)
+test('uploads are typed by their bytes, not their name', async () => {
+  await assert.rejects(M.saveUpload(Buffer.from('not an image at all'), 'photo.png', actor), /not accepted/)
+  const item = await M.saveUpload(png(64, 40), 'Photo.JPG', actor)
   assert.equal(item.mime, 'image/png')
   assert.equal(item.filename, 'Photo.png', 'the stored name carries the real type')
   assert.deepEqual([item.width, item.height], [64, 40])
 })
 
-test('a file still in use cannot be deleted', () => {
-  const item = M.saveUpload(png(8, 8), 'used.png', actor)
-  assert.throws(() => M.deleteMedia(item.id, ['Settings → favicon'], actor), /still used/)
-  M.deleteMedia(item.id, [], actor)
-  assert.equal(M.getMedia(item.id), null)
+test('a file still in use cannot be deleted', async () => {
+  const item = await M.saveUpload(png(8, 8), 'used.png', actor)
+  await assert.rejects(M.deleteMedia(item.id, ['Settings → favicon'], actor), /still used/)
+  await M.deleteMedia(item.id, [], actor)
+  assert.equal(await M.getMedia(item.id), null)
 })

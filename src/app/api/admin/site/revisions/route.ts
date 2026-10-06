@@ -5,6 +5,6 @@ import { draftSite } from '@/server/site'
 export const runtime = 'nodejs'
 
 export const GET = adminApi(async (_req, { actor }) => {
-  draftSite(actor)
-  return json({ head: head('site'), revisions: history('site', 200) })
+  await draftSite(actor)
+  return json({ head: await head('site'), revisions: await history('site', 200) })
 })

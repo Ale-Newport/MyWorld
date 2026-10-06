@@ -7,7 +7,7 @@ import { audit } from '@/server/audit'
 export const runtime = 'nodejs'
 
 export const POST = adminApi(async (req: NextRequest, { actor }) => {
-  destroySession(req.cookies.get(SESSION_COOKIE)?.value)
+  await destroySession(req.cookies.get(SESSION_COOKIE)?.value)
   audit(actor, 'auth.logout')
   // Signed out, this browser is a visitor again: no draft previews.
   ;(await draftMode()).disable()

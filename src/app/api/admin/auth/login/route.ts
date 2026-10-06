@@ -28,18 +28,18 @@ export async function POST(req: NextRequest) {
   const password = typeof body.password === 'string' ? body.password.slice(0, 256) : ''
   if (!email || !password) return problem(400, 'Enter your email and password.')
   const keys = [`email:${email}`, `ip:${clientAddress(req)}`]
-  const wait = lockedFor(keys)
+  const wait = await lockedFor(keys)
   if (wait) return problem(429, `Too many attempts. Try again in ${Math.ceil(wait / 60000)} minutes.`, { retryAfter: Math.ceil(wait / 1000) })
-  const user = findByEmail(email)
+  const user = await findByEmail(email)
   const ok = await verifyPassword(password, user?.passwordHash ?? DECOY)
   if (!user || !ok || user.disabled) {
-    recordFailure(keys)
+    await recordFailure(keys)
     audit({ id: null, name: null }, 'auth.failed', { detail: email })
     return problem(401, 'That email and password do not match an administrator.')
   }
-  clearFailures(keys)
-  recordLogin(user.id)
-  const session = createSession(user.id, req.headers.get('user-agent'))
+  await clearFailures(keys)
+  await recordLogin(user.id)
+  const session = await createSession(user.id, req.headers.get('user-agent'))
   audit({ id: user.id, name: user.name }, 'auth.login')
   const res = json({ user: { id: user.id, email: user.email, name: user.name }, csrf: session.csrf })
   const cookie = cookieOptions(session.expiresAt)

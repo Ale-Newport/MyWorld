@@ -6,8 +6,8 @@ import { config } from '@/server/config'
 export const runtime = 'nodejs'
 
 export const GET = adminApi(async () => {
-  const usages = mediaUsages()
-  return json({ items: listMedia().map((m) => ({ ...m, usages: usages.get(m.id) ?? [] })), limits: { maxBytes: config.maxMediaBytes } })
+  const usages = await mediaUsages()
+  return json({ items: (await listMedia()).map((m) => ({ ...m, usages: usages.get(m.id) ?? [] })), limits: { maxBytes: config.maxMediaBytes } })
 })
 
 /* multipart/form-data with `file` (and optionally `kind`: texture | icon). */
@@ -18,6 +18,6 @@ export const POST = adminApi(async (req, { actor }) => {
   const file = form?.get('file')
   if (!(file instanceof File)) return problem(400, 'Send the file as multipart form data in a “file” field.')
   const kind = form?.get('kind')
-  const item = saveUpload(Buffer.from(await file.arrayBuffer()), file.name, actor, { kind: kind === 'texture' || kind === 'icon' ? (kind as MediaKind) : undefined })
+  const item = await saveUpload(Buffer.from(await file.arrayBuffer()), file.name, actor, { kind: kind === 'texture' || kind === 'icon' ? (kind as MediaKind) : undefined })
   return json({ item: { ...item, usages: [] } }, 201)
 })

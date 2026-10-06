@@ -1,6 +1,6 @@
 /* The world studio's drive spawn and recovery anchors, without an admin
    session: the studio page is served from its template (src/server/
-   world-studio/studio.html) with an empty config, so it edits the published
+   world-studio/studio-template.ts) with an empty config, so it edits the published
    world in memory and nothing is saved. Checks: "Show recovery anchors" draws
    the anchors for the edited world; "Set drive spawn here" validates, pins
    worldVariant.spawn (spawnPinned, spawnHeading) as an undoable edit and is
@@ -8,11 +8,9 @@
    still wins; leaving DRIVE lets a held SPACE go; undo and "Use the plaza"
    return the drive to the Central Plaza; validation reports the spawn.
    QA_BASE=http://localhost:3404 node scripts/qa/world-studio-drive.mjs */
-import fs from 'node:fs'
-import path from 'node:path'
 import { BASE, launch, out, sleep, assert, finish, watch } from './lib.mjs'
 const results = []
-const html = fs.readFileSync(path.resolve('src/server/world-studio/studio.html'), 'utf8').replace('<!--CONFIG-->', '<script>window.ARCHIPELAGO_CONFIG={}</script>')
+const html = (await import(new URL('../../src/server/world-studio/studio-template.ts', import.meta.url))).STUDIO_HTML.replace('<!--CONFIG-->', '<script>window.ARCHIPELAGO_CONFIG={}</script>')
 const browser = await launch()
 const page = await browser.newPage({ viewport: { width: 1440, height: 900 } })
 const errors = watch(page)

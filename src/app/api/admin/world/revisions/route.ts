@@ -5,6 +5,6 @@ import { draftWorld } from '@/server/world'
 export const runtime = 'nodejs'
 
 export const GET = adminApi(async (_req, { actor }) => {
-  draftWorld(actor)
-  return json({ head: head('world'), revisions: history('world', 200) })
+  await draftWorld(actor)
+  return json({ head: await head('world'), revisions: await history('world', 200) })
 })

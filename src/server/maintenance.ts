@@ -21,21 +21,21 @@ import { db } from './db.ts'
 
 let last = 0
 
-export function storeStats() {
-  const counts = Object.fromEntries((db().prepare('select doc_id, count(*) n from revisions group by doc_id').all() as { doc_id: string; n: number }[]).map((r) => [r.doc_id, Number(r.n)]))
-  return { revisions: { site: counts.site ?? 0, world: counts.world ?? 0 }, blobs: blobStats(), policy: { drafts: config.keepDraftRevisions, worldDrafts: config.keepWorldDraftRevisions, publications: config.keepPublishedRevisions, graceHours: config.blobGraceMs / 3_600_000 } }
+export async function storeStats() {
+  const counts = Object.fromEntries((await (await db()).all<{ doc_id: string; n: number }>('select doc_id, count(*) n from revisions group by doc_id')).map((r) => [r.doc_id, Number(r.n)]))
+  return { revisions: { site: counts.site ?? 0, world: counts.world ?? 0 }, blobs: await blobStats(), policy: { drafts: config.keepDraftRevisions, worldDrafts: config.keepWorldDraftRevisions, publications: config.keepPublishedRevisions, graceHours: config.blobGraceMs / 3_600_000 } }
 }
 
-export function maintain({ actor = SYSTEM, force = false }: { actor?: Actor; force?: boolean } = {}) {
+export async function maintain({ actor = SYSTEM, force = false }: { actor?: Actor; force?: boolean } = {}) {
   if (!force && Date.now() - last < 10 * 60_000) return null
   last = Date.now()
-  const revisions = (exists('site') ? prune('site') : 0) + (exists('world') ? prune('world') : 0)
-  const freed = collectBlobs(referencedBlobs(), { graceMs: config.blobGraceMs })
-  if (revisions || freed.files) audit(actor, 'maintenance', { detail: `Removed ${revisions} old revision(s) and ${freed.files} unused file(s), ${(freed.bytes / 1e6).toFixed(1)} MB` })
-  return { removedRevisions: revisions, removedFiles: freed.files, freedBytes: freed.bytes, ...storeStats() }
+  const revisions = ((await exists('site')) ? await prune('site') : 0) + ((await exists('world')) ? await prune('world') : 0)
+  const freed = await collectBlobs(await referencedBlobs(), { graceMs: config.blobGraceMs })
+  if (revisions || freed.files) await audit(actor, 'maintenance', { detail: `Removed ${revisions} old revision(s) and ${freed.files} unused file(s), ${(freed.bytes / 1e6).toFixed(1)} MB` })
+  return { removedRevisions: revisions, removedFiles: freed.files, freedBytes: freed.bytes, ...(await storeStats()) }
 }
 
 /** After a save: never fails the save it follows. */
-export function maintainQuietly(actor?: Actor) {
-  try { maintain({ actor }) } catch (error) { console.error('[maintenance]', error) }
+export async function maintainQuietly(actor?: Actor) {
+  try { await maintain({ actor }) } catch (error) { console.error('[maintenance]', error) }
 }

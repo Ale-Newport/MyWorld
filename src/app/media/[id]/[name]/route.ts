@@ -1,5 +1,4 @@
-import fs from 'node:fs'
-import { getMedia, mediaFile } from '@/server/media'
+import { getMedia, mediaBytes } from '@/server/media'
 
 export const runtime = 'nodejs'
 
@@ -8,10 +7,10 @@ export const runtime = 'nodejs'
    SVG is sandboxed so even an embedded script could not run. */
 export async function GET(_req: Request, { params }: { params: Promise<{ id: string; name: string }> }) {
   const { id } = await params
-  const item = getMedia(id)
+  const item = await getMedia(id)
   if (!item) return new Response('Not found', { status: 404 })
-  const file = mediaFile(item.id, item.filename.split('.').pop()!)
-  if (!fs.existsSync(file)) return new Response('Not found', { status: 404 })
+  const bytes = await mediaBytes(item)
+  if (!bytes) return new Response('Not found', { status: 404 })
   const headers: Record<string, string> = {
     'content-type': item.mime,
     'content-length': String(item.size),
@@ -22,5 +21,5 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
     'cross-origin-resource-policy': 'same-origin',
   }
   if (item.mime === 'image/svg+xml') headers['content-security-policy'] = "default-src 'none'; style-src 'unsafe-inline'; sandbox"
-  return new Response(new Uint8Array(fs.readFileSync(file)), { headers })
+  return new Response(new Uint8Array(bytes), { headers })
 }

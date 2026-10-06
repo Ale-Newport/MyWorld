@@ -1,8 +1,7 @@
-import fs from 'node:fs'
 import path from 'node:path'
 import { gunzipSync } from 'node:zlib'
 import { config } from './config.ts'
-import { hasBlob, putBlob, readBlob, sha256 } from './blobs.ts'
+import { putBlob, readBlob } from './blobs.ts'
 import { exists, head, publish, readRevision, saveDraft, seed, type BlobRef, type RevisionMeta } from './revisions.ts'
 import { SYSTEM, type Actor } from './audit.ts'
 import { ValidationError } from './auth/guard.ts'
@@ -19,75 +18,81 @@ import { driveSpawnProblems } from './world-spawn.ts'
    and named by a revision; publishing moves a pointer.
 
    Before the first save the published world is the seed in
-   content/seed/world/archipelago, read straight from disk: the
+   public/archipelago/seed, a static asset (hashes in world-seed.json): the
    Archipelago imported from HelloWorld (4ccab18), as saved by the
    portfolio's world editor with its additions (the infield slalom,
    the penguin round-up, the paddock grove and the coastal lookout,
    and the ice props as physics bodies). scripts/world/ rebuilds it.
    ============================================================ */
 
-// Read at run time; next.config's outputFileTracingIncludes ships these two files with the routes that need them.
-const SEED_DIR = path.join(/* turbopackIgnore: true */ process.cwd(), 'content', 'seed', 'world', 'archipelago')
-const SEED = { world: path.join(SEED_DIR, 'editor-world.json.gz'), assets: path.join(SEED_DIR, 'asset-definitions.json') }
+import SEED from './world-seed.json' with { type: 'json' }
+
+/** The seed's two files are static assets (public/archipelago/seed); their hashes are in world-seed.json. */
+async function seedBytes(sha: string): Promise<Buffer | null> {
+  const file = sha === SEED.world.sha ? SEED.world.path : sha === SEED.assets.sha ? SEED.assets.path : null
+  if (!file) return null
+  const cf = await cloudflareAssets()
+  if (cf) {
+    const res = await cf.fetch(new Request(new URL(file, 'https://assets.local')))
+    return res.ok ? Buffer.from(await res.arrayBuffer()) : null
+  }
+  const fs = await import('node:fs')
+  const local = path.join(/* turbopackIgnore: true */ process.cwd(), 'public', file)
+  return fs.existsSync(local) ? fs.readFileSync(local) : null
+}
+
+/** On Cloudflare, the Worker's static-assets binding. */
+async function cloudflareAssets(): Promise<{ fetch: (req: Request) => Promise<Response> } | null> {
+  if (!onWorkers()) return null
+  const { getCloudflareContext } = await import('@opennextjs/cloudflare')
+  return ((getCloudflareContext().env as unknown as { ASSETS?: { fetch: (req: Request) => Promise<Response> } }).ASSETS) ?? null
+}
+
+const onWorkers = () => !!(globalThis as { navigator?: { userAgent?: string } }).navigator?.userAgent?.includes('Cloudflare-Workers')
 
 export interface WorldRefs {
   world: BlobRef
   assets: BlobRef
 }
 
-let seedRefs: (WorldRefs & { files: Record<string, string> }) | null = null
-function seedFiles() {
-  if (seedRefs) return seedRefs
-  const world = fs.readFileSync(/* turbopackIgnore: true */ SEED.world)
-  const assets = fs.readFileSync(/* turbopackIgnore: true */ SEED.assets)
-  seedRefs = {
-    world: { sha: sha256(world), size: world.byteLength },
-    assets: { sha: sha256(assets), size: assets.byteLength },
-    files: {} as Record<string, string>,
-  }
-  seedRefs.files[seedRefs.world.sha] = SEED.world
-  seedRefs.files[seedRefs.assets.sha] = SEED.assets
-  return seedRefs
+const seedRefs = (): WorldRefs => ({ world: { sha: SEED.world.sha, size: SEED.world.size }, assets: { sha: SEED.assets.sha, size: SEED.assets.size } })
+
+export async function publishedWorld(): Promise<{ refs: WorldRefs; revision: RevisionMeta | null }> {
+  const { published } = await head('world')
+  const rev = published && (await readRevision(published.id))
+  if (rev?.blobs?.world && rev.blobs.assets) return { refs: { world: rev.blobs.world, assets: rev.blobs.assets }, revision: published }
+  return { refs: seedRefs(), revision: null }
 }
 
-export function publishedWorld(): { refs: WorldRefs; revision: RevisionMeta | null } {
-  if (exists('world')) {
-    const { published } = head('world')
-    const rev = published && readRevision(published.id)
-    if (rev?.blobs?.world && rev.blobs.assets) return { refs: { world: rev.blobs.world, assets: rev.blobs.assets }, revision: published }
-  }
-  const s = seedFiles()
-  return { refs: { world: s.world, assets: s.assets }, revision: null }
-}
-
-/** Bytes of a blob, from the store or (for the seed) from disk. */
-export function worldBlob(sha: string): Buffer | null {
-  if (hasBlob(sha)) return readBlob(sha)
-  const file = seedFiles().files[sha]
-  return file ? fs.readFileSync(file) : null
+/** Bytes of a blob, from the store or (for the seed) from the static assets. */
+export async function worldBlob(sha: string): Promise<Buffer | null> {
+  return (await readBlob(sha)) ?? (await seedBytes(sha))
 }
 
 /** The public may read exactly the blobs of the published world, nothing else (drafts stay private). */
-export function isPublishedBlob(sha: string) {
-  const { refs } = publishedWorld()
+export async function isPublishedBlob(sha: string) {
+  const { refs } = await publishedWorld()
   return sha === refs.world.sha || sha === refs.assets.sha
 }
 
 /** The editor's starting point; imports the seed into the store on first use. */
-export function draftWorld(actor: Actor = SYSTEM) {
-  if (!exists('world')) {
-    const s = seedFiles()
-    putBlob(fs.readFileSync(/* turbopackIgnore: true */ SEED.world), s.world.sha)
-    putBlob(fs.readFileSync(/* turbopackIgnore: true */ SEED.assets), s.assets.sha)
-    seed('world', 'world', {
+export async function draftWorld(actor: Actor = SYSTEM) {
+  if (!(await exists('world'))) {
+    const s = seedRefs()
+    for (const ref of [s.world, s.assets]) {
+      const bytes = await seedBytes(ref.sha)
+      if (!bytes) throw new Error('The shipped world seed is missing from the static assets.')
+      await putBlob(bytes, ref.sha)
+    }
+    await seed('world', 'world', {
       blobs: { world: s.world, assets: s.assets },
       schemaVersion: 2,
       message: 'Imported the shipped Archipelago (HelloWorld 4ccab18 with the portfolio’s areas) as the first revision',
       actor,
     })
   }
-  const current = head('world')
-  const rev = readRevision(current.draft!.id)!
+  const current = await head('world')
+  const rev = (await readRevision(current.draft!.id))!
   return { head: current, refs: { world: rev.blobs!.world, assets: rev.blobs!.assets } as WorldRefs }
 }
 
@@ -169,39 +174,64 @@ export function validateWorld(world: Json, assets: Json): WorldProblem[] {
   return problems
 }
 
-function readRefs(refs: WorldRefs) {
-  const world = worldBlob(refs.world.sha)
-  const assets = worldBlob(refs.assets.sha)
-  if (!world || !assets) throw new ValidationError('A file of this world revision is missing from the store; upload it again.')
-  return { world: parseWorldBlob(world), assets: JSON.parse(assets.toString('utf8')) as Json }
-}
+/* A world document is ~118 MB once unzipped: more than a Cloudflare Worker's 128 MB
+   can parse. Past this size, on Workers, the server checks only what it can — the
+   files exist, the world is a gzip of a sane size, the asset definitions are sound —
+   and the structural checks are the studio's own (its Validate World runs in the
+   editor's browser before every save). Everywhere else everything is checked. */
+const FULL_CHECK_MAX = 48 * 1024 * 1024
 
-export function checkWorld(refs: WorldRefs): WorldProblem[] {
-  let parsed
+/** Uncompressed size from a gzip's trailer (ISIZE, mod 2^32). */
+const gunzippedSize = (b: Buffer) => (b.length >= 4 && b[0] === 0x1f && b[1] === 0x8b ? b.readUInt32LE(b.length - 4) : b.length)
+
+export async function checkWorld(refs: WorldRefs): Promise<WorldProblem[]> {
+  let worldBytes: Buffer | null, assets: Json
   try {
-    parsed = readRefs(refs)
+    worldBytes = await worldBlob(refs.world.sha)
+    const assetBytes = await worldBlob(refs.assets.sha)
+    if (!worldBytes || !assetBytes) throw new ValidationError('A file of this world revision is missing from the store; upload it again.')
+    assets = JSON.parse(assetBytes.toString('utf8')) as Json
   } catch (error) {
     if (error instanceof ValidationError) throw error
     throw new ValidationError(`The world file could not be read: ${(error as Error).message}`)
   }
-  return validateWorld(parsed.world, parsed.assets)
+  const size = gunzippedSize(worldBytes)
+  if (size > config.maxWorldJsonBytes) throw new ValidationError('The world file is larger than the store accepts.')
+  if (onWorkers() && size > FULL_CHECK_MAX) {
+    const problems: WorldProblem[] = []
+    if (assets.schema !== 1 || !Array.isArray(assets.definitions)) problems.push({ severity: 'error', message: 'Asset definitions are missing or have an unknown schema.' })
+    const ids = new Set<string>()
+    for (const d of (assets.definitions as Json[] | undefined) ?? []) {
+      if (typeof d?.id !== 'string') problems.push({ severity: 'error', message: 'An asset definition has no id.' })
+      else if (ids.has(d.id)) problems.push({ severity: 'error', message: `Two asset definitions share the id “${d.id}”.` })
+      else ids.add(d.id)
+    }
+    return problems
+  }
+  let world: Json
+  try {
+    world = parseWorldBlob(worldBytes)
+  } catch (error) {
+    throw new ValidationError(`The world file could not be read: ${(error as Error).message}`)
+  }
+  return validateWorld(world, assets)
 }
 
-export function saveWorldDraft({ base, refs, message, actor, force }: { base: string | null; refs: WorldRefs; message?: string; actor: Actor; force?: boolean }) {
-  draftWorld(actor)
-  const problems = checkWorld(refs).filter((p) => p.severity === 'error')
+export async function saveWorldDraft({ base, refs, message, actor, force }: { base: string | null; refs: WorldRefs; message?: string; actor: Actor; force?: boolean }) {
+  await draftWorld(actor)
+  const problems = (await checkWorld(refs)).filter((p) => p.severity === 'error')
   if (problems.length) throw new ValidationError(`The world has ${problems.length} problem(s): ${problems.slice(0, 3).map((p) => p.message).join(' ')}`, problems)
   return saveDraft('world', { base, blobs: { world: refs.world, assets: refs.assets }, schemaVersion: 2, message, actor, force })
 }
 
 export async function publishWorld({ revisionId, actor }: { revisionId?: string; actor: Actor }) {
-  draftWorld(actor)
+  await draftWorld(actor)
   return publish('world', {
     revisionId,
     actor,
-    validate: (rev) => {
+    validate: async (rev) => {
       if (!rev.blobs?.world || !rev.blobs.assets) throw new ValidationError('That revision has no world files.')
-      const problems = checkWorld({ world: rev.blobs.world, assets: rev.blobs.assets }).filter((p) => p.severity === 'error')
+      const problems = (await checkWorld({ world: rev.blobs.world, assets: rev.blobs.assets })).filter((p) => p.severity === 'error')
       if (problems.length) throw new ValidationError(`Not published: ${problems.length} problem(s). ${problems.slice(0, 3).map((p) => p.message).join(' ')}`, problems)
     },
   })

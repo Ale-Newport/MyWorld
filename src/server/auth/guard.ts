@@ -55,7 +55,7 @@ type Handler<C> = (req: NextRequest, ctx: C & { session: Session; actor: Actor }
 
 export function adminApi<C = object>(handler: Handler<C>) {
   return async (req: NextRequest, ctx: C) => {
-    const session = readSession(req.cookies.get(SESSION_COOKIE)?.value)
+    const session = await readSession(req.cookies.get(SESSION_COOKIE)?.value)
     if (!session) return problem(401, 'Sign in to continue.')
     if (MUTATING.has(req.method)) {
       if (!sameOrigin(req)) return problem(403, 'Cross-site request refused.')

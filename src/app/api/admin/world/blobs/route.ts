@@ -18,6 +18,6 @@ export const POST = adminApi(async (req) => {
   const isGzip = bytes[0] === 0x1f && bytes[1] === 0x8b
   const isJson = bytes[0] === 0x7b
   if (!isGzip && !isJson) return problem(415, 'Expected gzip-compressed JSON or JSON.')
-  const ref = putBlob(bytes, expected)
+  const ref = await putBlob(bytes, expected)
   return json(ref, 201)
 })
