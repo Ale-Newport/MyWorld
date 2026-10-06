@@ -11,3 +11,14 @@ export function env(name: string): string | undefined {
     return undefined
   }
 }
+
+/** Which settings this process can see, by name only (never values): for the admin's error page. */
+export function envReport(names: string[]): string {
+  let bound: Record<string, unknown> = {}
+  let context = 'no Cloudflare context'
+  try {
+    bound = getCloudflareContext().env as unknown as Record<string, unknown>
+    context = `bindings: ${Object.keys(bound).filter((k) => !k.startsWith('NEXT_')).sort().join(', ') || 'none'}`
+  } catch { /* not on Workers */ }
+  return `${names.map((n) => `${n}: ${process.env[n] ? 'env' : bound[n] ? 'binding' : 'missing'}`).join(' · ')} — ${context}`
+}

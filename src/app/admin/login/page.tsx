@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation'
 import { currentSession } from '@/server/auth/guard'
 import { countUsers } from '@/server/auth/users'
 import { LoginForm } from '@/admin/LoginForm'
+import { envReport } from '@/server/env'
 
 export const dynamic = 'force-dynamic'
 export const metadata = { title: 'Sign in' }
@@ -29,6 +30,7 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
         <h1 style={{ fontSize: '1.4rem' }}>The admin cannot reach its database</h1>
         <p>Check the Worker&apos;s <code>DATABASE_URL</code> secret (Supabase → Connect → Transaction pooler, port 6543).</p>
         <pre style={{ whiteSpace: 'pre-wrap', background: '#f3f3f3', padding: '0.8rem', borderRadius: 6 }}>{reason(error)}</pre>
+        <pre style={{ whiteSpace: 'pre-wrap', background: '#f3f3f3', padding: '0.8rem', borderRadius: 6, fontSize: 12 }}>{envReport(['DATABASE_URL', 'SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY', 'CMS_SECRET'])}</pre>
       </main>
     )
   }
