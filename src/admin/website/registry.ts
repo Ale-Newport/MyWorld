@@ -138,7 +138,7 @@ export const SECTIONS: SectionDef[] = [
     ],
   },
   {
-    id: 'contact', journey: 'home', summary: 'The closing words, your links and the section animation.', animation: 'contact',
+    id: 'contact', journey: 'home', summary: 'The closing words and your links.',
     fields: [
       tag('contact', 'END OF JOURNEY'),
       { kind: 'data', path: 'profile.closing.question', label: 'Closing question', recommended: 16 },

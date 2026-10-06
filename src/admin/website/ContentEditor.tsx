@@ -142,7 +142,7 @@ export function ContentEditor() {
       {def?.animation && <AnimationPicker section={def.animation} journey={page} onPreview={() => scrollTo(section.id, 0.5)} />}
       {def?.toolbox && <ToolboxSettings />}
       {def?.id === 'contact' && (
-        <Panel title="The way into the world" description="At the foot of the page the garden grows over everything and opens onto /world. It is the same whichever animation this section shows.">
+        <Panel title="The way into the world" description="At the foot of the page the garden grows over everything and opens onto /world.">
           <div className="row">
             <button type="button" className="btn btn-sm" aria-pressed={testing} onClick={() => setTesting((v) => !v)}><Icon name="leaf" size={15} />{testing ? 'End the test' : 'Test it in the preview'}</button>
             <Link className="btn btn-sm btn-ghost" href="/admin/settings">Leaf growth and parting speeds</Link>

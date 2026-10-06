@@ -1,5 +1,5 @@
 import type { ComponentType } from 'react'
-import type { ContactAnimationProps, SectionAnimationProps, UniverseAnimationProps } from './types'
+import type { SectionAnimationProps, UniverseAnimationProps } from './types'
 
 /* ============================================================
    ONE CHUNK PER ANIMATION
@@ -28,16 +28,9 @@ export const UNIVERSE_LOADERS: Record<string, Loader<UniverseAnimationProps>> = 
   'universe.layered-field': () => import('./universe/LayeredField'),
 }
 
-export const CONTACT_LOADERS: Record<string, Loader<ContactAnimationProps>> = {
-  'contact.botanical-gateway': () => import('./contact/BotanicalGateway'),
-  'contact.converging-paths': () => import('./contact/ConvergingPaths'),
-  'contact.stepping-path': () => import('./contact/SteppingPath'),
-  'contact.contour-horizon': () => import('./contact/ContourHorizon'),
-  'contact.ribbon-aperture': () => import('./contact/RibbonAperture'),
-}
 
 // Each section passes its own props; the slot only needs to know it can render the module.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export type AnyLoader = () => Promise<{ default: ComponentType<any> }>
 
-export const LOADERS: Record<string, AnyLoader> = { ...ABOUT_LOADERS, ...UNIVERSE_LOADERS, ...CONTACT_LOADERS }
+export const LOADERS: Record<string, AnyLoader> = { ...ABOUT_LOADERS, ...UNIVERSE_LOADERS }
