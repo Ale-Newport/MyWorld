@@ -102,7 +102,7 @@ Pages → a section → its text and its animation → the preview → save or p
 - **Middle:** the selected section's form.
   - **Text** — every piece of text in the section, named in words (*Summary*, *Chapter tag*, *Closing answer*…), with a line of help where it matters. Text that belongs to the portfolio's data (your summary, your contact links) is edited at its source, so it changes everywhere it appears. A counter shows the length the design expects; longer text is accepted and the layout adapts to it (it is set smaller or wrapped), but the counter says so. Optional lines (corner notes, hints, the colophon) have a *Show on the site* switch. *Default* puts back the site's own text.
   - **Lists** — through-lines, rotating roles, universities and their modules, contact links.
-  - **Animation** — for *A little about me*, *Project universe* and *End of journey* (see below).
+  - **Animation** — for *A little about me* and *Project universe* (see below). *End of journey* has no section animation: its closing words stand alone above the links.
   - **Technology details** — for the Tech Toolbox (see below).
   - **Section** — whether it is shown, and its name, label and subtitle in the index.
 - **Right:** the live preview, with the screen-size switch. Selecting a section scrolls the preview to it; clicking a section in the preview selects it in the form. On narrow screens the preview opens with the **Preview** button.
@@ -117,9 +117,8 @@ Three sections have a choice of five animations each. Each option has a still th
 | --- | --- |
 | A little about me | Journey ribbon (default) · Assembling identity · Layered profile frame · Interest constellation · Typographic identity |
 | Project universe | Orbital system (default) · Project constellation · Dimensional gallery · Magnetic mosaic · Layered field |
-| End of journey | Botanical gateway (default) · Converging paths · Stepping path · Contour horizon · Ribbon aperture |
 
-The animations draw only real content — your milestones, roles, skills and projects — and keep clear of the section's text at every size. The *End of journey* animation is separate from the leaf transition into the world, which works the same with every option; **Test it in the preview** runs that transition inside the frame.
+The animations draw only real content — your milestones, roles, skills and projects — and keep clear of the section's text at every size. The leaf transition into the world, at the end of the page, is not a section animation; **Test it in the preview** runs it inside the frame.
 
 A choice that no longer exists (a retired option in an old revision) falls back to the section's default when the page is shown.
 

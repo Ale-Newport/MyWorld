@@ -55,8 +55,8 @@ test('every animated section offers exactly five options, all distinct, with a d
   // A stored id from another section, or one that was retired, falls back to the default with its own knobs.
   assert.equal(catalog.resolveAnimation('about', { id: 'universe.orbits', intensity: 0.1 }).id, catalog.DEFAULT_ANIMATION.about)
   assert.equal(catalog.resolveAnimation('about', { id: 'about.retired-one' }).id, catalog.DEFAULT_ANIMATION.about)
-  const kept = catalog.resolveAnimation('contact', { id: 'contact.ribbon-aperture', intensity: 5, speed: 0.1 })
-  assert.deepEqual(kept, { id: 'contact.ribbon-aperture', intensity: 1, speed: 0.5 })
+  const kept = catalog.resolveAnimation('universe', { id: 'universe.gallery', intensity: 5, speed: 0.1 })
+  assert.deepEqual(kept, { id: 'universe.gallery', intensity: 1, speed: 0.5 })
 })
 
 test('v1 documents migrate to v2: text kept, geometry dropped, added elements moved into a content section', () => {

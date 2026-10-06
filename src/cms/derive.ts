@@ -127,7 +127,6 @@ export function deriveSite(doc: SiteDocument, { preview = false }: { preview?: b
   const animations = {
     about: resolveAnimation('about', sectionById('about')?.animation),
     universe: resolveAnimation('universe', sectionById('universe')?.animation),
-    contact: resolveAnimation('contact', sectionById('contact')?.animation),
   }
   const home = chaptersOf(doc.journeys.home, doc)
   const projects = chaptersOf(doc.journeys.projects, doc)

@@ -6,7 +6,6 @@ Three homepage sections offer a choice of five animations each:
 | --- | --- | --- |
 | A little about me | `about` | `about.journey-ribbon`, `about.identity-assembly`, `about.profile-frame`, `about.interest-constellation`, `about.type-motion` |
 | Project universe | `universe` | `universe.constellation`, `universe.orbits`, `universe.gallery`, `universe.mosaic`, `universe.layered-field` |
-| End of journey | `contact` | `contact.botanical-gateway`, `contact.converging-paths`, `contact.stepping-path`, `contact.contour-horizon`, `contact.ribbon-aperture` |
 
 - `catalog.ts` — ids, names, descriptions, defaults. Plain data, shared by the server (validation), the admin and the public page.
 - `loaders.ts` — one dynamic import per option, so a page downloads only the options it shows.

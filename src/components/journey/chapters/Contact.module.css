@@ -31,17 +31,6 @@
   transform: translate3d(0, calc(var(--portal-dim) * -1.2rem), 0);
 }
 
-/* The section's animation fills the whole stage, behind the words,
-   and never takes the pointer. The selector outranks the shared
-   `.stage > *` that hands every other child of the stage the
-   pointer. */
-.stage > .visual {
-  position: absolute;
-  inset: 0;
-  z-index: -1;
-  pointer-events: none;
-}
-
 .center {
   grid-column: 1 / -1;
   grid-row: 1;
@@ -126,11 +115,6 @@
 @media (max-width: 700px) {
   .colophon span:last-child { display: none; }
   .stage { --stage-top: clamp(6.5rem, 14vh, 8.5rem); }
-  /* The closing words take the top of their row, not its middle, so the
-     space between them and the links is one clear band the section's
-     animation can use (it is handed the words' rectangles and keeps out
-     of them); centred, they left it two slivers too thin to draw in. */
-  .center { place-items: start center; }
   /* Four rows at desktop rhythm do not leave the headline a band to
      sit in; this keeps each row well past a thumb's width. */
   .link { padding-block: var(--sp-3); }

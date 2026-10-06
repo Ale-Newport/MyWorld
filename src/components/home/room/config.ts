@@ -83,15 +83,14 @@ export const ROOM_CONFIG = {
   clearance: {
     /** Clearance round display type (>= 28px), in em, capped in px:
         a 190px name carries its own air. */
-    displayEm: 0.3,
-    displayMax: 52,
+    displayEm: 0.22,
+    displayMax: 44,
     /** Clearance round body type (16–28px), in em. */
-    bodyEm: 0.75,
-    /** Clearance round labels (< 16px), in em: a 10px label in the
-        middle of a leaf is unreadable however clear its glyphs are. */
-    labelEm: 0.9,
+    bodyEm: 0.6,
+    /** Clearance round labels (< 16px), in em. */
+    labelEm: 0.55,
     /** Fixed clearance, as a fraction of min(width, height). */
-    base: 0.008,
+    base: 0.006,
     /** Field value above which no leaf or stem may sit. */
     leafLimit: 0.3,
     /** How strongly the field delays moss, damp and cracks. */
