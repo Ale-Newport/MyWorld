@@ -10,6 +10,6 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
   const { next } = await searchParams
   const safeNext = next && next.startsWith('/admin') && !next.startsWith('//') ? next : '/admin'
   if (await currentSession()) redirect(safeNext)
-  const noAdmins = countUsers() === 0
+  const noAdmins = (await countUsers()) === 0
   return <LoginForm next={safeNext} noAdmins={noAdmins} />
 }

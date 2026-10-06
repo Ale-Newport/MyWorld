@@ -8,7 +8,7 @@ export const runtime = 'nodejs'
 export const POST = adminApi(async (req, { actor }) => {
   const body = (await req.json().catch(() => null)) as { revision?: string; base?: string | null } | null
   if (!body?.revision) return problem(400, 'Send { revision, base }.')
-  draftSite(actor)
-  const revision = restore('site', body.revision, actor, body.base ?? null)
+  await draftSite(actor)
+  const revision = await restore('site', body.revision, actor, body.base ?? null)
   return json({ revision })
 })

@@ -10,11 +10,11 @@ import { Analytics } from '@/components/analytics/Analytics'
    Every public route reads the PUBLISHED site document here, once,
    and hands it to the client tree. An administrator previewing in
    Draft Mode gets the draft instead (see server/site.ts). The
-   pages stay static: they are regenerated when something is
-   published, and at most every five minutes otherwise.
+   pages render on request from the content store, so a publish
+   shows at once (the parsed document is cached per revision).
    ============================================================ */
 
-export const revalidate = 300
+export const dynamic = 'force-dynamic'
 
 export async function generateMetadata(): Promise<Metadata> {
   const { doc } = await loadSite()

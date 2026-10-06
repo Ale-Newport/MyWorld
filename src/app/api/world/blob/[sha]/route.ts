@@ -8,8 +8,8 @@ export const runtime = 'nodejs'
    content, so the response never changes and caches for good. */
 export async function GET(_req: Request, { params }: { params: Promise<{ sha: string }> }) {
   const { sha } = await params
-  if (!/^[a-f0-9]{64}$/.test(sha) || !isPublishedBlob(sha)) return new Response('Not found', { status: 404 })
-  const bytes = worldBlob(sha)
+  if (!/^[a-f0-9]{64}$/.test(sha) || !(await isPublishedBlob(sha))) return new Response('Not found', { status: 404 })
+  const bytes = await worldBlob(sha)
   if (!bytes) return new Response('Not found', { status: 404 })
   return new Response(new Uint8Array(bytes), {
     headers: {

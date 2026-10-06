@@ -62,8 +62,8 @@ export default async function Audience({ searchParams }: { searchParams: Promise
   const { days: raw } = await searchParams
   const days = RANGES.some((r) => String(r.days) === raw) ? Number(raw) : 30
   const { from, to } = period(days)
-  const r = report({ from, to })
-  const site = publishedSite().doc
+  const r = await report({ from, to })
+  const site = (await publishedSite()).doc
   const titles = Object.fromEntries(deriveSite(site).allProjects.map((p) => [p.slug, p.title]))
   const collecting = site.settings.options.analytics
   const pageviews = r.daily.reduce((s, d) => s + d.pageviews, 0)

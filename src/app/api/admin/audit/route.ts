@@ -5,5 +5,5 @@ export const runtime = 'nodejs'
 
 export const GET = adminApi(async (req) => {
   const before = Number(req.nextUrl.searchParams.get('before')) || undefined
-  return json({ entries: recentAudit({ limit: 100, before }) })
+  return json({ entries: await recentAudit({ limit: 100, before }) })
 })

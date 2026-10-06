@@ -5,10 +5,10 @@ import { deriveSite } from '@/cms/derive'
 /* The two journeys and one page per published project, all read from
    the published site document — a project unpublished in the admin
    leaves the sitemap with its next regeneration. */
-export const revalidate = 300
+export const dynamic = 'force-dynamic'
 
-export default function sitemap(): MetadataRoute.Sitemap {
-  const { doc } = publishedSite()
+export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
+  const { doc } = await publishedSite()
   const { allProjects } = deriveSite(doc)
   const url = doc.settings.siteUrl
   const now = new Date()

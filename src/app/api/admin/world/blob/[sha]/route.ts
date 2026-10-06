@@ -7,7 +7,7 @@ export const runtime = 'nodejs'
 export const GET = adminApi<{ params: Promise<{ sha: string }> }>(async (_req, { params }) => {
   const { sha } = await params
   if (!/^[a-f0-9]{64}$/.test(sha)) return problem(404, 'Not found')
-  const bytes = worldBlob(sha)
+  const bytes = await worldBlob(sha)
   if (!bytes) return problem(404, 'Not found')
   return new Response(new Uint8Array(bytes), {
     headers: {

@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto'
 import { cmsSecret } from './config.ts'
-import { db, now } from './db.ts'
+import { db, now, sql, type Row } from './db.ts'
 
 /* ============================================================
    FIRST-PARTY AUDIENCE STATISTICS
@@ -56,7 +56,7 @@ function referrerHost(raw: unknown, ownHost: string | null): string {
 const clean = (v: unknown) => (typeof v === 'string' ? v.slice(0, 160) : typeof v === 'number' && Number.isFinite(v) ? Math.round(v * 100) / 100 : typeof v === 'boolean' ? v : null)
 
 /** Returns how many events were stored (0 when the batch was dropped). */
-export function recordBatch(batch: IncomingBatch, request: { ip: string; ua: string; host: string | null; gpc: boolean; dnt: boolean; admin: boolean }): number {
+export async function recordBatch(batch: IncomingBatch, request: { ip: string; ua: string; host: string | null; gpc: boolean; dnt: boolean; admin: boolean }): Promise<number> {
   if (request.admin || request.gpc || request.dnt || !request.ua || BOT.test(request.ua)) return 0
   if (!Array.isArray(batch.events) || !batch.events.length) return 0
   const at = now()
@@ -68,7 +68,8 @@ export function recordBatch(batch: IncomingBatch, request: { ip: string; ua: str
   if (RATE.size > 5000) for (const [k, v] of RATE) if (at - v.at > 60_000) RATE.delete(k)
   const dev = device(Number(batch.width) || 0, batch.touch === true)
   const ref = referrerHost(batch.referrer, request.host)
-  const insert = db().prepare('insert into events (at, day, type, path, referrer, device, visitor, session, props) values (?, ?, ?, ?, ?, ?, ?, null, ?)')
+  const d = await db()
+  const insert = (...v: (string | number | null)[]) => d.run('insert into events (at, day, type, path, referrer, device, visitor, session, props) values (?, ?, ?, ?, ?, ?, ?, null, ?)', v)
   let stored = 0
   for (const raw of batch.events.slice(0, 40)) {
     const e = raw as { type?: unknown; path?: unknown; props?: unknown }
@@ -77,7 +78,7 @@ export function recordBatch(batch: IncomingBatch, request: { ip: string; ua: str
     if (path?.startsWith('/admin')) continue
     const props: Record<string, unknown> = {}
     if (e.props && typeof e.props === 'object') for (const [k, v] of Object.entries(e.props as Record<string, unknown>).slice(0, 8)) if (/^[a-z_]{1,24}$/i.test(k)) props[k] = clean(v)
-    insert.run(at, day, e.type as string, path, e.type === 'pageview' ? ref : null, dev, visitor, Object.keys(props).length ? JSON.stringify(props) : null)
+    await insert(at, day, e.type as string, path, e.type === 'pageview' ? ref : null, dev, visitor, Object.keys(props).length ? JSON.stringify(props) : null)
     stored++
   }
   return stored
@@ -85,44 +86,47 @@ export function recordBatch(batch: IncomingBatch, request: { ip: string; ua: str
 
 /* ---- queries ------------------------------------------------- */
 
-type Row = Record<string, unknown>
 function range(days: number, endDay?: string) {
   const end = endDay ? new Date(`${endDay}T23:59:59Z`).getTime() : now()
   const start = end - days * 86_400_000
   return { from: new Date(start).toISOString().slice(0, 10), to: new Date(end).toISOString().slice(0, 10) }
 }
 
-export function summary({ days = 7 }: { days?: number } = {}) {
+export async function summary({ days = 7 }: { days?: number } = {}) {
   const { from, to } = range(days)
-  const q = (sql: string) => Number((db().prepare(sql).get(from, to) as Row).n ?? 0)
+  const d = await db()
+  const q = async (text: string) => Number((await d.get(text, [from, to]))?.n ?? 0)
   return {
     from, to,
-    pageviews: q("select count(*) n from events where type = 'pageview' and day between ? and ?"),
-    visitors: q("select coalesce(sum(n), 0) n from (select count(distinct visitor) n from events where day between ? and ? group by day)"),
-    worldEntries: q("select count(*) n from events where type = 'world_entry_start' and day between ? and ?"),
-    worldErrors: q("select count(*) n from events where type = 'world_error' and day between ? and ?"),
+    pageviews: await q("select count(*) n from events where type = 'pageview' and day between ? and ?"),
+    visitors: await q('select coalesce(sum(n), 0) n from (select count(distinct visitor) n from events where day between ? and ? group by day) per_day'),
+    worldEntries: await q("select count(*) n from events where type = 'world_entry_start' and day between ? and ?"),
+    worldErrors: await q("select count(*) n from events where type = 'world_error' and day between ? and ?"),
   }
 }
 
-export function report({ from, to }: { from: string; to: string }) {
-  const all = <T = Row>(sql: string, ...args: (string | number)[]) => db().prepare(sql).all(from, to, ...args) as T[]
-  const one = (sql: string) => db().prepare(sql).get(from, to) as Row
-  const daily = all<{ day: string; pageviews: number; visitors: number }>("select day, sum(type = 'pageview') pageviews, count(distinct visitor) visitors from events where day between ? and ? group by day order by day")
-  const pages = all<{ path: string; views: number; visitors: number }>("select path, count(*) views, count(distinct day || visitor) visitors from events where type = 'pageview' and day between ? and ? group by path order by views desc limit 20")
-  const referrers = all<{ referrer: string; views: number }>("select referrer, count(*) views from events where type = 'pageview' and day between ? and ? group by referrer order by views desc limit 15")
-  const devices = all<{ device: string; views: number }>("select device, count(*) views from events where type = 'pageview' and day between ? and ? group by device order by views desc")
-  const projects = all<{ slug: string; opens: number }>("select json_extract(props, '$.slug') slug, count(*) opens from events where type = 'project_open' and day between ? and ? group by slug order by opens desc limit 20")
-  const projectPages = all<{ path: string; views: number }>("select path, count(*) views from events where type = 'pageview' and path like '/projects/%' and day between ? and ? group by path order by views desc limit 20")
-  const journey = all<{ journey: string; pct: number; n: number }>("select json_extract(props, '$.journey') journey, json_extract(props, '$.pct') pct, count(distinct day || visitor) n from events where type = 'journey_progress' and day between ? and ? group by journey, pct order by journey, pct")
-  const homeViews = Number(one("select count(distinct day || visitor) n from events where type = 'pageview' and path = '/' and day between ? and ?").n ?? 0)
-  const projectsViews = Number(one("select count(distinct day || visitor) n from events where type = 'pageview' and path = '/projects' and day between ? and ?").n ?? 0)
-  const total = Number(one("select count(*) n from events where day between ? and ?").n ?? 0)
-  const entries = all<{ source: string; n: number }>("select coalesce(json_extract(props, '$.source'), 'unknown') source, count(*) n from events where type = 'world_entry_start' and day between ? and ? group by source order by n desc")
-  const ready = one("select count(*) n, avg(json_extract(props, '$.ms')) avg_ms from events where type = 'world_ready' and day between ? and ?")
-  const loadTimes = all<{ ms: number }>("select json_extract(props, '$.ms') ms from events where type = 'world_ready' and day between ? and ? order by ms")
+export async function report({ from, to }: { from: string; to: string }) {
+  const d = await db()
+  const j = (key: string) => sql.json(d, 'props', key)
+  const all = async <T = Row>(text: string) => (await d.all<T>(text, [from, to])).map((r) => Object.fromEntries(Object.entries(r as Row).map(([k, v]) => [k, typeof v === 'bigint' ? Number(v) : v])) as T)
+  const one = async (text: string) => (await d.get(text, [from, to])) ?? {}
+  const num = (v: unknown) => (v == null ? 0 : Number(v))
+  const daily = (await all<{ day: string; pageviews: number; visitors: number }>("select day, count(*) filter (where type = 'pageview') pageviews, count(distinct visitor) visitors from events where day between ? and ? group by day order by day")).map((r) => ({ ...r, pageviews: num(r.pageviews), visitors: num(r.visitors) }))
+  const pages = (await all<{ path: string; views: number; visitors: number }>("select path, count(*) views, count(distinct day || visitor) visitors from events where type = 'pageview' and day between ? and ? group by path order by views desc limit 20")).map((r) => ({ ...r, views: num(r.views), visitors: num(r.visitors) }))
+  const referrers = (await all<{ referrer: string; views: number }>("select referrer, count(*) views from events where type = 'pageview' and day between ? and ? group by referrer order by views desc limit 15")).map((r) => ({ ...r, views: num(r.views) }))
+  const devices = (await all<{ device: string; views: number }>("select device, count(*) views from events where type = 'pageview' and day between ? and ? group by device order by views desc")).map((r) => ({ ...r, views: num(r.views) }))
+  const projects = (await all<{ slug: string; opens: number }>(`select ${j('slug')} slug, count(*) opens from events where type = 'project_open' and day between ? and ? group by 1 order by opens desc limit 20`)).map((r) => ({ ...r, opens: num(r.opens) }))
+  const projectPages = (await all<{ path: string; views: number }>("select path, count(*) views from events where type = 'pageview' and path like '/projects/%' and day between ? and ? group by path order by views desc limit 20")).map((r) => ({ ...r, views: num(r.views) }))
+  const journey = (await all<{ journey: string; pct: number; n: number }>(`select ${j('journey')} journey, ${sql.jsonNumber(d, 'props', 'pct')} pct, count(distinct day || visitor) n from events where type = 'journey_progress' and day between ? and ? group by 1, 2 order by 1, 2`)).map((r) => ({ ...r, pct: num(r.pct), n: num(r.n) }))
+  const homeViews = num((await one("select count(distinct day || visitor) n from events where type = 'pageview' and path = '/' and day between ? and ?")).n)
+  const projectsViews = num((await one("select count(distinct day || visitor) n from events where type = 'pageview' and path = '/projects' and day between ? and ?")).n)
+  const total = num((await one('select count(*) n from events where day between ? and ?')).n)
+  const entries = (await all<{ source: string; n: number }>(`select coalesce(${j('source')}, 'unknown') source, count(*) n from events where type = 'world_entry_start' and day between ? and ? group by 1 order by n desc`)).map((r) => ({ ...r, n: num(r.n) }))
+  const ready = await one(`select count(*) n, avg(${sql.jsonNumber(d, 'props', 'ms')}) avg_ms from events where type = 'world_ready' and day between ? and ?`)
+  const loadTimes = await all<{ ms: number }>(`select ${sql.jsonNumber(d, 'props', 'ms')} ms from events where type = 'world_ready' and day between ? and ? order by 1`)
   const median = loadTimes.length ? Number(loadTimes[Math.floor(loadTimes.length / 2)].ms) : null
-  const errors = all<{ message: string; n: number }>("select coalesce(json_extract(props, '$.message'), 'unknown') message, count(*) n from events where type = 'world_error' and day between ? and ? group by message order by n desc limit 10")
-  const activities = all<{ name: string; action: string; n: number }>("select json_extract(props, '$.name') name, json_extract(props, '$.action') action, count(*) n from events where type = 'world_activity' and day between ? and ? group by name, action order by name, action")
-  const maps = Number(one("select count(*) n from events where type = 'map_open' and day between ? and ?").n ?? 0)
-  return { from, to, total, daily, pages, referrers, devices, projects, projectPages, journey, journeyBase: { home: homeViews, projects: projectsViews }, homeViews, world: { entries, ready: Number(ready.n ?? 0), medianMs: median, errors, maps }, activities }
+  const errors = (await all<{ message: string; n: number }>(`select coalesce(${j('message')}, 'unknown') message, count(*) n from events where type = 'world_error' and day between ? and ? group by 1 order by n desc limit 10`)).map((r) => ({ ...r, n: num(r.n) }))
+  const activities = (await all<{ name: string; action: string; n: number }>(`select ${j('name')} name, ${j('action')} action, count(*) n from events where type = 'world_activity' and day between ? and ? group by 1, 2 order by 1, 2`)).map((r) => ({ ...r, n: num(r.n) }))
+  const maps = num((await one("select count(*) n from events where type = 'map_open' and day between ? and ?")).n)
+  return { from, to, total, daily, pages, referrers, devices, projects, projectPages, journey, journeyBase: { home: homeViews, projects: projectsViews }, homeViews, world: { entries, ready: num(ready.n), medianMs: median, errors, maps }, activities }
 }
