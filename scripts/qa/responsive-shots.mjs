@@ -55,6 +55,123 @@ fs.mkdirSync(OUT, { recursive: true })
 const engines = { chromium, firefox, webkit }
 const launchArgs = ENGINE === 'chromium' ? { args: ['--use-angle=metal', '--enable-gpu', '--ignore-gpu-blocklist'] } : {}
 const browser = await engines[ENGINE].launch({ headless: true, ...launchArgs })
+/* What a capture checks, run in the page: horizontal overflow, clipped text,
+   text cut by its box (CUT) and text run into other text (OVERLAP). */
+const INSPECT = ([CUT, OVERLAP]) => {
+  const vw = document.documentElement.clientWidth
+  const overflow = document.documentElement.scrollWidth > vw + 1
+  const offenders = []
+  if (overflow) {
+    for (const el of document.querySelectorAll('body *')) {
+      const r = el.getBoundingClientRect()
+      if (r.right > vw + 1 && getComputedStyle(el).position !== 'fixed') offenders.push(`${el.tagName.toLowerCase()}.${String(el.className).slice(0, 40)} → ${Math.round(r.right)}`)
+      if (offenders.length > 6) break
+    }
+  }
+  const clipped = []
+  const cut = []
+  const walker = document.createTreeWalker(document.querySelector('main') ?? document.body, NodeFilter.SHOW_TEXT)
+  const range = document.createRange()
+  let n
+  while ((n = walker.nextNode())) {
+    if (!n.textContent.trim()) continue
+    const el = n.parentElement
+    if (!el || el.closest('[aria-hidden="true"], .sr-only')) continue
+    const cs = getComputedStyle(el)
+    if (cs.visibility === 'hidden') continue
+    // Seen at all? Text under a faded-out box (a label waiting its turn, a closed sheet) is not on screen.
+    let seen = true
+    for (let a = el; a && a !== document.body; a = a.parentElement) if (Number(getComputedStyle(a).opacity) < 0.05) { seen = false; break }
+    if (!seen) continue
+    // A row that scrolls sideways on purpose (the filter chips on a phone) is not clipping.
+    let scroller = el.parentElement
+    while (scroller && !['auto', 'scroll'].includes(getComputedStyle(scroller).overflowX)) scroller = scroller.parentElement
+    if (scroller && scroller !== document.documentElement && scroller !== document.body) continue
+    range.selectNodeContents(n)
+    for (const r of range.getClientRects()) {
+      if (r.width === 0 || r.bottom < 0 || r.top > innerHeight) continue
+      if (r.left < -1 || r.right > vw + 1) clipped.push(`${n.textContent.trim().slice(0, 30)} [${Math.round(r.left)}..${Math.round(r.right)}]`)
+      // A stage whose words travel through the window (stageFit.ts) is read
+      // like a scrolled page: its ends are checked at the ends of its travel.
+      if (CUT && cut.length < 6 && !el.closest('[data-stage-travel]')) {
+        for (let a = el.parentElement; a && a !== document.body; a = a.parentElement) {
+          const s = getComputedStyle(a)
+          if (![s.overflowX, s.overflowY].some((o) => o === 'hidden' || o === 'clip')) continue
+          const b = a.getBoundingClientRect()
+          // The ink, not the line box: a line box carries air above and below its glyphs.
+          const top = r.top + r.height * 0.18, bottom = r.bottom - r.height * 0.18
+          const partly = (top < b.top - 1 && bottom > b.top + 1) || (bottom > b.bottom + 1 && top < b.bottom - 1) || (r.left < b.left - 1 && r.right > b.left + 1) || (r.right > b.right + 1 && r.left < b.right - 1)
+          if (partly) { cut.push(`${n.textContent.trim().slice(0, 30)} [${Math.round(r.top)}..${Math.round(r.bottom)} in ${a.tagName.toLowerCase()}.${String(a.className).slice(0, 30)} ${Math.round(b.top)}..${Math.round(b.bottom)}]`); break }
+        }
+      }
+    }
+    if (clipped.length > 5) break
+  }
+  // Text running into other text: every visible line of the page and
+  // the HUD, compared pairwise (different elements, neither inside
+  // the other). Words travelling under the HUD are veiled, not crossed.
+  const overlaps = []
+  if (OVERLAP) {
+    const lines = []
+    const visible = (el) => {
+      if (el.closest('.sr-only')) return false
+      for (let a = el; a && a !== document.body; a = a.parentElement) {
+        const s = getComputedStyle(a)
+        if (s.visibility === 'hidden' || s.display === 'none' || Number(s.opacity) < 0.05) return false
+      }
+      return true
+    }
+    // What of a line is really painted: cut by every box that clips it
+    // (an ellipsis, a visually hidden label), and only its ink band —
+    // a line box of display type carries air above and below the glyphs.
+    const clipBoxes = new Map()
+    const clipsOf = (el) => {
+      if (clipBoxes.has(el)) return clipBoxes.get(el)
+      const out = []
+      for (let a = el; a && a !== document.documentElement; a = a.parentElement) {
+        const s = getComputedStyle(a)
+        if ([s.overflowX, s.overflowY].some((o) => o !== 'visible') || s.clipPath !== 'none') out.push(a.getBoundingClientRect())
+      }
+      clipBoxes.set(el, out)
+      return out
+    }
+    const BLOCK = 'h1, h2, h3, h4, h5, h6, p, li, dt, dd, a, button, label, figcaption, blockquote'
+    for (const root of [document.querySelector('main') ?? document.body, document.querySelector('[data-hud]')]) {
+      if (!root) continue
+      const w = document.createTreeWalker(root, NodeFilter.SHOW_TEXT)
+      let t
+      while ((t = w.nextNode())) {
+        if (!t.textContent.trim() || !t.parentElement || !visible(t.parentElement)) continue
+        // Marked as drawn over the copy on purpose (collaborators' cursors over code).
+        if (t.parentElement.closest('[data-over-copy]')) continue
+        // A rotating line on its way out (the prelude's roles crossfade) is not standing copy.
+        if (t.parentElement.closest('[data-on="false"]')) continue
+        range.selectNodeContents(t)
+        for (const r of range.getClientRects()) {
+          let l = r.left, rt = r.right, tp = r.top + r.height * 0.18, bt = r.bottom - r.height * 0.18
+          for (const c of clipsOf(t.parentElement)) { l = Math.max(l, c.left); rt = Math.min(rt, c.right); tp = Math.max(tp, c.top); bt = Math.min(bt, c.bottom) }
+          if (rt - l > 1 && bt - tp > 1 && bt > 0 && tp < innerHeight) lines.push({ l, r: rt, t: tp, b: bt, el: t.parentElement, block: t.parentElement.closest(BLOCK), text: t.textContent.trim().slice(0, 24), hud: !!t.parentElement.closest('[data-hud]'), travels: !!t.parentElement.closest('[data-stage-travel]') })
+        }
+      }
+    }
+    for (let i = 0; i < lines.length && overlaps.length < 6; i++) {
+      for (let j = i + 1; j < lines.length && overlaps.length < 6; j++) {
+        const a = lines[i], b = lines[j]
+        if (a.el === b.el || a.el.contains(b.el) || b.el.contains(a.el)) continue
+        // The lines of one heading or paragraph are one block of text.
+        if (a.block && a.block === b.block) continue
+        if ((a.hud && b.travels) || (b.hud && a.travels)) continue
+        const x = Math.min(a.r, b.r) - Math.max(a.l, b.l)
+        const y = Math.min(a.b, b.b) - Math.max(a.t, b.t)
+        if (x <= 0 || y <= 0) continue
+        // A real crossing: a few px along the line and a good part of the lower line's ink.
+        if (x > 3 && y > 0.4 * Math.min(a.b - a.t, b.b - b.t)) overlaps.push(`'${a.text}' × '${b.text}'`)
+      }
+    }
+  }
+  return { overflow, offenders, clipped, cut, overlaps }
+}
+
 let problems = 0
 
 for (const w of WIDTHS) {
@@ -74,116 +191,7 @@ for (const w of WIDTHS) {
     await page.waitForTimeout(1400)
     const file = path.join(OUT, `${PAGE.replace(/\W+/g, '_') || 'home'}-${ENGINE}-${w}x${h}-${c.id}.png`)
     await page.screenshot({ path: file })
-    const report = await page.evaluate(([CUT, OVERLAP]) => {
-      const vw = document.documentElement.clientWidth
-      const overflow = document.documentElement.scrollWidth > vw + 1
-      const offenders = []
-      if (overflow) {
-        for (const el of document.querySelectorAll('body *')) {
-          const r = el.getBoundingClientRect()
-          if (r.right > vw + 1 && getComputedStyle(el).position !== 'fixed') offenders.push(`${el.tagName.toLowerCase()}.${String(el.className).slice(0, 40)} → ${Math.round(r.right)}`)
-          if (offenders.length > 6) break
-        }
-      }
-      const clipped = []
-      const cut = []
-      const walker = document.createTreeWalker(document.querySelector('main') ?? document.body, NodeFilter.SHOW_TEXT)
-      const range = document.createRange()
-      let n
-      while ((n = walker.nextNode())) {
-        if (!n.textContent.trim()) continue
-        const el = n.parentElement
-        if (!el || el.closest('[aria-hidden="true"], .sr-only')) continue
-        const cs = getComputedStyle(el)
-        if (cs.visibility === 'hidden') continue
-        // Seen at all? Text under a faded-out box (a label waiting its turn, a closed sheet) is not on screen.
-        let seen = true
-        for (let a = el; a && a !== document.body; a = a.parentElement) if (Number(getComputedStyle(a).opacity) < 0.05) { seen = false; break }
-        if (!seen) continue
-        // A row that scrolls sideways on purpose (the filter chips on a phone) is not clipping.
-        let scroller = el.parentElement
-        while (scroller && !['auto', 'scroll'].includes(getComputedStyle(scroller).overflowX)) scroller = scroller.parentElement
-        if (scroller && scroller !== document.documentElement && scroller !== document.body) continue
-        range.selectNodeContents(n)
-        for (const r of range.getClientRects()) {
-          if (r.width === 0 || r.bottom < 0 || r.top > innerHeight) continue
-          if (r.left < -1 || r.right > vw + 1) clipped.push(`${n.textContent.trim().slice(0, 30)} [${Math.round(r.left)}..${Math.round(r.right)}]`)
-          // A stage whose words travel through the window (stageFit.ts) is read
-          // like a scrolled page: its ends are checked at the ends of its travel.
-          if (CUT && cut.length < 6 && !el.closest('[data-stage-travel]')) {
-            for (let a = el.parentElement; a && a !== document.body; a = a.parentElement) {
-              const s = getComputedStyle(a)
-              if (![s.overflowX, s.overflowY].some((o) => o === 'hidden' || o === 'clip')) continue
-              const b = a.getBoundingClientRect()
-              const partly = (r.top < b.top - 1 && r.bottom > b.top + 1) || (r.bottom > b.bottom + 1 && r.top < b.bottom - 1) || (r.left < b.left - 1 && r.right > b.left + 1) || (r.right > b.right + 1 && r.left < b.right - 1)
-              if (partly) { cut.push(`${n.textContent.trim().slice(0, 30)} [${Math.round(r.top)}..${Math.round(r.bottom)} in ${a.tagName.toLowerCase()}.${String(a.className).slice(0, 30)} ${Math.round(b.top)}..${Math.round(b.bottom)}]`); break }
-            }
-          }
-        }
-        if (clipped.length > 5) break
-      }
-      // Text running into other text: every visible line of the page and
-      // the HUD, compared pairwise (different elements, neither inside
-      // the other). Words travelling under the HUD are veiled, not crossed.
-      const overlaps = []
-      if (OVERLAP) {
-        const lines = []
-        const visible = (el) => {
-          if (el.closest('.sr-only')) return false
-          for (let a = el; a && a !== document.body; a = a.parentElement) {
-            const s = getComputedStyle(a)
-            if (s.visibility === 'hidden' || s.display === 'none' || Number(s.opacity) < 0.05) return false
-          }
-          return true
-        }
-        // What of a line is really painted: cut by every box that clips it
-        // (an ellipsis, a visually hidden label), and only its ink band —
-        // a line box of display type carries air above and below the glyphs.
-        const clipBoxes = new Map()
-        const clipsOf = (el) => {
-          if (clipBoxes.has(el)) return clipBoxes.get(el)
-          const out = []
-          for (let a = el; a && a !== document.documentElement; a = a.parentElement) {
-            const s = getComputedStyle(a)
-            if ([s.overflowX, s.overflowY].some((o) => o !== 'visible') || s.clipPath !== 'none') out.push(a.getBoundingClientRect())
-          }
-          clipBoxes.set(el, out)
-          return out
-        }
-        const BLOCK = 'h1, h2, h3, h4, h5, h6, p, li, dt, dd, a, button, label, figcaption, blockquote'
-        for (const root of [document.querySelector('main') ?? document.body, document.querySelector('[data-hud]')]) {
-          if (!root) continue
-          const w = document.createTreeWalker(root, NodeFilter.SHOW_TEXT)
-          let t
-          while ((t = w.nextNode())) {
-            if (!t.textContent.trim() || !t.parentElement || !visible(t.parentElement)) continue
-            // Marked as drawn over the copy on purpose (collaborators' cursors over code).
-            if (t.parentElement.closest('[data-over-copy]')) continue
-            range.selectNodeContents(t)
-            for (const r of range.getClientRects()) {
-              let l = r.left, rt = r.right, tp = r.top + r.height * 0.18, bt = r.bottom - r.height * 0.18
-              for (const c of clipsOf(t.parentElement)) { l = Math.max(l, c.left); rt = Math.min(rt, c.right); tp = Math.max(tp, c.top); bt = Math.min(bt, c.bottom) }
-              if (rt - l > 1 && bt - tp > 1 && bt > 0 && tp < innerHeight) lines.push({ l, r: rt, t: tp, b: bt, el: t.parentElement, block: t.parentElement.closest(BLOCK), text: t.textContent.trim().slice(0, 24), hud: !!t.parentElement.closest('[data-hud]'), travels: !!t.parentElement.closest('[data-stage-travel]') })
-            }
-          }
-        }
-        for (let i = 0; i < lines.length && overlaps.length < 6; i++) {
-          for (let j = i + 1; j < lines.length && overlaps.length < 6; j++) {
-            const a = lines[i], b = lines[j]
-            if (a.el === b.el || a.el.contains(b.el) || b.el.contains(a.el)) continue
-            // The lines of one heading or paragraph are one block of text.
-            if (a.block && a.block === b.block) continue
-            if ((a.hud && b.travels) || (b.hud && a.travels)) continue
-            const x = Math.min(a.r, b.r) - Math.max(a.l, b.l)
-            const y = Math.min(a.b, b.b) - Math.max(a.t, b.t)
-            if (x <= 0 || y <= 0) continue
-            const small = Math.min((a.r - a.l) * (a.b - a.t), (b.r - b.l) * (b.b - b.t))
-            if (x * y > Math.max(16, small * 0.1)) overlaps.push(`'${a.text}' × '${b.text}'`)
-          }
-        }
-      }
-      return { overflow, offenders, clipped, cut, overlaps }
-    }, [CUT, OVERLAP])
+    const report = await page.evaluate(INSPECT, [CUT, OVERLAP])
     // Words taller than the screen travel through it: the first line must
     // stand clear of the HUD's header when the stage pins, the last clear
     // of its footer when it lets go.
@@ -221,6 +229,8 @@ for (const w of WIDTHS) {
             : (foot && hi > foot.top + 1 ? `last line at ${Math.round(hi)} under the footer (${Math.round(foot.top)})` : null)
         }, [c.id, edge])
         if (e) ends.push(e)
+        const there = await page.evaluate(INSPECT, [false, OVERLAP])
+        for (const o of there.overlaps) ends.push(`${edge}: ${o}`)
       }
     }
     const bad = report.overflow || report.clipped.length || report.cut.length || report.overlaps.length || ends.length
