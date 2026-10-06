@@ -64,6 +64,7 @@ type Global = typeof globalThis & { __cmsSqlite?: DatabaseSync; __cmsPg?: postgr
 async function sqlite(): Promise<Db> {
   const g = globalThis as Global
   if (!g.__cmsSqlite) {
+    if (await cloudflare()) throw new Error('The database is not configured: set DATABASE_URL (or a HYPERDRIVE binding) on the Worker.')
     const { DatabaseSync } = await import(/* webpackIgnore: true */ 'node:sqlite')
     fs.mkdirSync(config.dataDir, { recursive: true })
     const database = new DatabaseSync(dataPath('cms.sqlite'))

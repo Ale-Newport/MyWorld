@@ -42,31 +42,32 @@ Sign in at `/admin/login`.
 
 ## Configuration
 
-Copy `.env.example` to `.env.local` (development) or set the variables in the host's environment (production).
+Copy `.env.example` to `.env.local` (development) or set the variables on the Cloudflare Worker as Secrets (production).
 
 | Variable | Required | Meaning |
 | --- | --- | --- |
-| `CMS_DATA_DIR` | In production | Where the SQLite database, revision files and uploads live. Default: `.data/cms` (git-ignored). In production, point this at a **persistent volume**. |
+| `DATABASE_URL` | In production | Supabase Postgres connection string (the transaction pooler, port 6543). A `HYPERDRIVE` binding, when configured, is used instead. Unset: the local SQLite file. |
+| `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` | In production | The private storage bucket for world documents and uploads (`SUPABASE_STORAGE_BUCKET`, default `cms`). The key is secret and server-only. Unset: files on disk. |
 | `CMS_SECRET` | In production | 32 or more random characters. Used to salt the daily audience visitor key. Without it in production nothing is recorded, and the server logs why. Generate one with `openssl rand -base64 48`. |
-
-The data directory holds:
-
-- `cms.sqlite` — documents, revisions, users, sessions, audit log, media index, audience events
-- `blobs/` — world documents and their asset definitions, stored by SHA-256
-- `media/` — uploaded files
-
-To back up, copy the whole directory while the server is stopped, or use `sqlite3 cms.sqlite ".backup …"` together with a copy of `blobs/` and `media/`.
+| `CMS_DATA_DIR` | No | Development only: where the local SQLite database and files live. Default: `.data/cms` (git-ignored). |
 
 ### Hosting
 
-The admin writes to local disk, so the site needs a Node server with a persistent directory: `next start` on a VM, or the Docker image from the README with a volume mounted at `CMS_DATA_DIR`.
+Production runs on **Cloudflare Workers** (OpenNext: `wrangler.jsonc`, `open-next.config.ts`) with **Supabase** for everything the admin writes:
 
-**Serverless platforms such as Vercel do not keep files between requests.** The public site still works there, serving the content and world that ship in the repository. Admin edits, however, would not persist. That is a limitation of the hosting, and the admin does not hide it.
+- Postgres holds documents, revisions, users, sessions, the audit log, the media index and audience events. The schema is `supabase/migrations/`. Row Level Security is on for every table with no policies, so Supabase's public API exposes nothing; only the site's server connects.
+- A private Storage bucket (`cms`) holds world documents (`blobs/<sha256>`) and uploads (`media/<id>.<ext>`). Visitors reach them only through the site's routes.
+
+Create the first administrator against Supabase from your machine: `DATABASE_URL=… npm run admin:create`. Back up with Supabase's own database backups plus a copy of the bucket.
+
+Development needs none of this: without those variables the site uses the SQLite file and files in `CMS_DATA_DIR`.
+
+A world document is about 118 MB once unzipped, more than a Worker can parse. On Cloudflare the server therefore checks only that a world's files exist and that its asset definitions are sound. The studio's own **Validate World**, which runs in your browser, checks the rest before you save.
 
 Before anything has been saved, the site serves the content that ships in the repository:
 
 - the page and project content migrated from `src/content`
-- the world seed in `content/seed/world/archipelago`
+- the world seed in `public/archipelago/seed` (hashes in `src/server/world-seed.json`)
 
 The first save in the admin imports these as revision 1, and nothing is lost.
 

@@ -39,7 +39,15 @@ function check(key: string) {
 }
 
 /** On disk a blob keeps the layout earlier stores used: blobs/<first two hex>/<sha>. */
+/** Cloudflare Workers have no file system: there, the store must be Supabase. */
+function requireDisk() {
+  if ((globalThis as { navigator?: { userAgent?: string } }).navigator?.userAgent?.includes('Cloudflare-Workers')) {
+    throw new Error('File storage is not configured: set SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY on the Worker.')
+  }
+}
+
 const local = (key: string) => {
+  requireDisk()
   const [folder, name] = key.split('/')
   return folder === 'blobs' ? dataPath('blobs', name.slice(0, 2), name) : dataPath(folder, name)
 }
@@ -93,6 +101,7 @@ export async function listObjects(folder: 'blobs' | 'media', search = ''): Promi
       if (page.length < 1000) return out
     }
   }
+  requireDisk()
   const root = dataPath(folder)
   if (!fs.existsSync(root)) return []
   const dirs = folder === 'blobs' ? fs.readdirSync(root).map((d) => path.join(root, d)).filter((d) => fs.statSync(d).isDirectory()) : [root]
