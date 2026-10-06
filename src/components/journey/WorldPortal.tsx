@@ -561,6 +561,8 @@ export function WorldPortal() {
     <div
       className={styles.host}
       ref={hostRef}
+      // Its readout stands at the stage's foot: where the words finish, if they travel (journey/stageFit.ts).
+      data-stage-foot=""
       data-phase={committed ? 'entering' : 'idle'}
       data-plain={reducedMotion ? 'true' : undefined}
     >
