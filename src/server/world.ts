@@ -58,9 +58,14 @@ export interface WorldRefs {
 const seedRefs = (): WorldRefs => ({ world: { sha: SEED.world.sha, size: SEED.world.size }, assets: { sha: SEED.assets.sha, size: SEED.assets.size } })
 
 export async function publishedWorld(): Promise<{ refs: WorldRefs; revision: RevisionMeta | null }> {
-  const { published } = await head('world')
-  const rev = published && (await readRevision(published.id))
-  if (rev?.blobs?.world && rev.blobs.assets) return { refs: { world: rev.blobs.world, assets: rev.blobs.assets }, revision: published }
+  try {
+    const { published } = await head('world')
+    const rev = published && (await readRevision(published.id))
+    if (rev?.blobs?.world && rev.blobs.assets) return { refs: { world: rev.blobs.world, assets: rev.blobs.assets }, revision: published }
+  } catch (error) {
+    // A broken store must not take /world down: serve the shipped world.
+    console.error('[world] could not read the published world; serving the seed', error)
+  }
   return { refs: seedRefs(), revision: null }
 }
 
