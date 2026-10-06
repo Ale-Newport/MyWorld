@@ -6,6 +6,8 @@
 
      node scripts/qa/long-text.mjs [--paths /,/projects]
        [--widths 320,390,768,1024,1440,1920,3440] [--landscape 667,844,932]
+       [--exec "<command>"]   (runs one command with the long draft live
+                               instead; QA_STORAGE names the signed-in state)
 
    Needs the QA administrator (.data/qa-admin.json) on QA_BASE (default
    :3210). The draft is put back at the end, and published back only if
@@ -25,6 +27,8 @@ const opt = (name, fallback) => {
 const PATHS = opt('paths', '/,/projects').split(',')
 const WIDTHS = opt('widths', '320,390,768,1024,1440,1920,3440')
 const LANDSCAPE = opt('landscape', '667,844,932')
+/** Instead of the responsive runs: one command run while the long draft is live (QA_STORAGE names the session). */
+const EXEC = opt('exec', null)
 const OUT = path.resolve(process.env.QA_OUT ?? '.qa/long-text')
 fs.mkdirSync(OUT, { recursive: true })
 
@@ -101,7 +105,11 @@ try {
   if (!shown) throw new Error('the page does not show the long draft (Draft Mode not applied)')
   console.log('the long draft is on the page')
 
-  for (const p of PATHS) {
+  if (EXEC) {
+    const r = spawnSync(EXEC, { shell: true, stdio: 'inherit', env: { ...process.env, QA_STORAGE: state, QA_OUT: OUT } })
+    if (r.status !== 0) failed++
+  }
+  for (const p of EXEC ? [] : PATHS) {
     for (const [label, extra] of [['portrait', ['--widths', WIDTHS]], ['landscape', ['--widths', LANDSCAPE, '--landscape']]]) {
       console.log(`\n== ${p} ${label}`)
       const r = spawnSync(process.execPath, ['scripts/qa/responsive-shots.mjs', '--base', BASE, '--path', p, '--storage', state, '--cut', '--overlap', ...extra], { stdio: 'inherit', env: { ...process.env, QA_OUT: OUT } })
