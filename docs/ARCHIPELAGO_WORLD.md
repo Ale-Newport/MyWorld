@@ -7,7 +7,7 @@
   - physics, driving, terrain, car and plane modes
   - the World2 activities
 - **The world document** (the editor's save, about 17 MB gzipped) and **the asset definitions** are stored as revisions in the content store and served by `/api/world/release` and `/api/world/blob/<sha>`.
-- **Before the first save,** the site serves the seed in `content/seed/world/archipelago`.
+- **Before the first save,** the site serves the seed in `public/archipelago/seed` (static assets; hashes in `src/server/world-seed.json`).
 
 Nothing depends on HelloWorld's development server, on a path on this Mac or on a symbolic link. HelloWorld remains the upstream of the editor and the player; it is not modified by anything here.
 
