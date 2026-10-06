@@ -1,4 +1,5 @@
 import path from 'node:path'
+import { env } from './env.ts'
 
 /* ============================================================
    SERVER CONFIGURATION
@@ -38,7 +39,7 @@ export const config = {
 }
 
 export function cmsSecret(): string {
-  const value = process.env.CMS_SECRET
+  const value = env('CMS_SECRET')
   if (value && value.length >= 32) return value
   if (config.production) throw new Error('CMS_SECRET must be set (32+ characters) in production. See .env.example.')
   // Development only: a fixed, clearly non-production value so local runs work out of the box.
