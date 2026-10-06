@@ -47,6 +47,8 @@ interface Ring {
   /** Whether this orbit's bodies are named at all (a very small box names only the headline work). */
   named: boolean
   labelMax: number
+  /** Lines a name may take before it is cut: what hangs below a body at the front must clear the next orbit and the box. */
+  lines: number
   /** How far a name leans inward at the ends of the orbit (1: wholly inside, 0: centred). */
   lean: number
   /** How far scrolling the whole chapter turns this orbit, in radians. */
@@ -98,10 +100,22 @@ function layout(projects: SiteProject[], w: number, h: number, intensity: number
   const ryOuter = rxMax * tilt >= ryMax ? ryMax : rxMax * tilt + (ryMax - rxMax * tilt) * 0.72
   const depth = 0.35 + 0.65 * intensity
 
+  // A name hangs below its body; at the front of an orbit, where the
+  // perspective draws it largest, it must stop short of the names
+  // hanging from the next orbit (which begin just below that orbit's
+  // bodies) and of the box. Two lines where they fit, one where they do
+  // not; the headline work keeps at least one, the rest none (the
+  // readout still names them) where not even one fits.
+  const frontScale = 1 + depth * 0.17
   const rings: Ring[] = present.map((tier, k) => {
     const f = fractions[k]
     const rx = rxMax * f
     const ry = ryOuter * f
+    const hang = NODE[tier] / 2 + (tier === 0 ? 9 : 6) + (tier === 0 && !compact ? 3 + 9 * 1.2 : 0)
+    const fit = (room: number) => Math.floor((room / frontScale - hang) / (type[tier] * 1.12))
+    const toNext = k < present.length - 1 ? fit(ryOuter * fractions[k + 1] - ry + NODE[present[k + 1]] / 2 + 4) : 2
+    const toBox = fit(h - (cy + ry) - 2)
+    const lines = Math.max(0, Math.min(2, toBox, Math.max(tier === 0 ? 1 : 0, toNext)))
     const count = tiers[tier].length
     const step = (Math.PI * 2) / Math.max(1, count)
     const front = rx * step // spacing of neighbours passing in front
@@ -117,7 +131,8 @@ function layout(projects: SiteProject[], w: number, h: number, intensity: number
       phase: 0.55 + k * 1.1,
       step,
       all,
-      named: tier === 0 || h >= 240,
+      named: (tier === 0 || h >= 240) && lines > 0,
+      lines,
       // Leaning inward at the ends, a name must stop short of the centre;
       // a name read at the front only has the width of the box to mind.
       labelMax: Math.max(56, Math.min(240, all ? Math.min(front - 14, (rx - 14) / (0.5 + 0.5 * lean)) : w * 0.62)),
@@ -132,7 +147,8 @@ function layout(projects: SiteProject[], w: number, h: number, intensity: number
   rings.forEach((r, k) => {
     const list = tiers[r.tier]
     list.forEach((p, i) => {
-      const text = fitTitle(p, r.labelMax * 1.8, type[r.tier], r.tier === 2, r.tier === 2 ? 0.14 : 0)
+      // As much title as the orbit's lines hold; past that the short title, or the name before its subtitle.
+      const text = fitTitle(p, r.labelMax * (r.lines >= 2 ? 1.8 : 0.95), type[r.tier], r.tier === 2, r.tier === 2 ? 0.14 : 0)
       bodies.push({ p, ring: k, theta: r.phase + (i / list.length) * Math.PI * 2, text })
     })
   })
@@ -378,7 +394,7 @@ function Orbits({ projects, visible, progress, active, reducedMotion, intensity,
                 aria-label={labelOf(b.p, b.text)}
                 data-cursor="view"
                 onClick={() => onOpen(b.p.slug)}
-                style={{ '--tone': toneOf(b.p), '--d': `${NODE[tier]}px`, '--lw': `${model.rings[b.ring].labelMax}px` } as CSSProperties}
+                style={{ '--tone': toneOf(b.p), '--d': `${NODE[tier]}px`, '--lw': `${model.rings[b.ring].labelMax}px`, '--lines': Math.max(1, model.rings[b.ring].lines) } as CSSProperties}
                 {...bind(b.p.slug)}
               >
                 <span className={styles.inner}>

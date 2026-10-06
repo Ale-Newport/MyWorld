@@ -144,11 +144,12 @@
 }
 .body[data-tier='0'] .label { top: calc(var(--d) * 0.5 + 9px); }
 
-/* Up to two balanced lines before a name is cut. */
+/* Up to two balanced lines before a name is cut — one where the orbit
+   below leaves no room for two (--lines, from the layout). */
 .name {
   display: -webkit-box;
   -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
+  -webkit-line-clamp: var(--lines, 2);
   max-width: 100%;
   overflow: hidden;
   text-align: center;
