@@ -13,7 +13,10 @@
      left, then the links, then the colophon. The bottom padding is
      the portal's band (its readout and rule, absolutely placed by
      WorldPortal at the foot) so nothing in the rows reaches it. */
-  --stage-rows: minmax(0, 1fr) auto auto;
+  /* The words' row is never shorter than the words: when the band is too
+     short for all three, the stage's words travel (journey/stageFit.ts)
+     rather than the links running over the closing line. */
+  --stage-rows: minmax(min-content, 1fr) auto auto;
   --stage-align: stretch;
   --stage-row-gap: clamp(0.75rem, 2.2vh, 1.75rem);
   --stage-top: clamp(6.5rem, 14vh, 9rem);

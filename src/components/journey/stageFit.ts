@@ -58,11 +58,28 @@ function cornersOf(el: HTMLElement): HTMLElement[] {
   })
 }
 
-/** The ink of the lines of text in the stage's flow, relative to the stage's box (transforms on the lines themselves
-    aside). A line box of display type carries air above and below its glyphs, so only its middle counts. */
+/** What stands at the stage's foot apart from its flow (`data-stage-foot`), such as the world portal's readout. */
+function feetOf(el: HTMLElement): HTMLElement[] {
+  return (Array.from(el.children) as HTMLElement[]).filter((c) => c.hasAttribute('data-stage-foot'))
+}
+
+/** The ink of the lines of text in the stage's flow where they are read: relative to the stage's box, with every
+    transform between a line and the stage taken out — an entrance still to play or an exit under way puts a line
+    where it will not be read. A line box of display type carries air above and below its glyphs, so only its
+    middle counts. */
 function flowLines(el: HTMLElement): DOMRect[] {
   const base = el.getBoundingClientRect()
   const range = document.createRange()
+  const shifts = new Map<Element, number>()
+  const shiftOf = (node: Element): number => {
+    const hit = shifts.get(node)
+    if (hit !== undefined) return hit
+    const cs = getComputedStyle(node)
+    const own = cs.transform && cs.transform !== 'none' ? new DOMMatrixReadOnly(cs.transform).m42 : 0
+    const y = own + (node.parentElement && node.parentElement !== el ? shiftOf(node.parentElement) : 0)
+    shifts.set(node, y)
+    return y
+  }
   const out: DOMRect[] = []
   for (const child of Array.from(el.children)) {
     const cs = getComputedStyle(child)
@@ -70,10 +87,13 @@ function flowLines(el: HTMLElement): DOMRect[] {
     const walker = document.createTreeWalker(child, NodeFilter.SHOW_TEXT)
     let n: Node | null
     while ((n = walker.nextNode())) {
-      if (!n.textContent?.trim() || n.parentElement?.closest('.sr-only')) continue
+      const parent = n.parentElement
+      if (!n.textContent?.trim() || !parent || parent.closest('.sr-only')) continue
+      const dy = shiftOf(parent)
       range.selectNodeContents(n)
       for (const r of Array.from(range.getClientRects())) {
-        if (r.width > 2 && r.height > 2) out.push(new DOMRect(r.left - base.left, r.top - base.top + r.height * 0.18, r.width, r.height * 0.64))
+        if (r.width < 2 || r.height < 2) continue
+        out.push(new DOMRect(r.left - base.left, r.top - base.top - dy + r.height * 0.18, r.width, r.height * 0.64))
       }
     }
   }
@@ -158,7 +178,7 @@ export function useStageFit(id: ChapterId, section: RefObject<HTMLElement | null
       el.style.removeProperty('--stage-clear-top')
       el.style.removeProperty('--stage-clear-bottom')
       const corners = cornersOf(el)
-      for (const c of corners) c.style.translate = ''
+      for (const c of [...corners, ...feetOf(el)]) c.style.translate = ''
       const height = el.clientHeight
       // A corner note that has grown into the words beside it moves the band's edge past itself.
       const lines = corners.length ? flowLines(el) : []
@@ -206,9 +226,10 @@ export function useStageFit(id: ChapterId, section: RefObject<HTMLElement | null
         to = height - padBottom - hi
       }
       // The corners keep their designed places while the words move: the top
-      // ones where the words start, the bottom ones where they finish.
+      // ones where the words start, the bottom ones (and anything standing at
+      // the stage's foot, `data-stage-foot`) where they finish.
       for (const c of tops) c.style.translate = from ? `0 ${(-from).toFixed(1)}px` : ''
-      for (const c of bottoms) c.style.translate = to ? `0 ${(-to).toFixed(1)}px` : ''
+      for (const c of [...bottoms, ...feetOf(el)]) c.style.translate = to ? `0 ${(-to).toFixed(1)}px` : ''
       start = host.getBoundingClientRect().top + window.scrollY
       length = Math.max(1, host.offsetHeight - pin.offsetHeight)
       declare(el, Math.abs(to - from))
@@ -243,7 +264,7 @@ export function useStageFit(id: ChapterId, section: RefObject<HTMLElement | null
         node.style.translate = ''
         node.style.removeProperty('--stage-clear-top')
         node.style.removeProperty('--stage-clear-bottom')
-        for (const c of cornersOf(node)) c.style.translate = ''
+        for (const c of [...cornersOf(node), ...feetOf(node)]) c.style.translate = ''
         delete node.dataset.stageTravel
       }
       writeStageShift(id, 0)
