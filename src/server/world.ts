@@ -71,7 +71,8 @@ export async function publishedWorld(): Promise<{ refs: WorldRefs; revision: Rev
 
 /** Bytes of a blob, from the store or (for the seed) from the static assets. */
 export async function worldBlob(sha: string): Promise<Buffer | null> {
-  return (await readBlob(sha)) ?? (await seedBytes(sha))
+  // The seed's two files are known by hash: served from the static assets, never the store.
+  return (await seedBytes(sha)) ?? (await readBlob(sha))
 }
 
 /** The public may read exactly the blobs of the published world, nothing else (drafts stay private). */
