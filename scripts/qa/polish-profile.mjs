@@ -1,0 +1,22 @@
+import {launch,BASE,out} from './lib.mjs';
+import fs from 'node:fs';
+const tag=process.argv[2]??'before';
+const browser=await launch();
+const page=await browser.newPage({viewport:{width:1440,height:900}});
+const errors=[];page.on('pageerror',e=>errors.push(String(e)));
+await page.addInitScript(()=>{window.__measure={tasks:[],shifts:[],frames:[],room:[]};new PerformanceObserver(l=>{for(const e of l.getEntries())window.__measure.tasks.push([e.startTime,e.duration])}).observe({type:'longtask',buffered:true});new PerformanceObserver(l=>{for(const e of l.getEntries())if(!e.hadRecentInput)window.__measure.shifts.push(e.value)}).observe({type:'layout-shift',buffered:true});let prev=0;function tick(t){if(prev)window.__measure.frames.push(t-prev);prev=t;requestAnimationFrame(tick)}requestAnimationFrame(tick);});
+await page.goto(BASE,{waitUntil:'load'});
+for(let i=0;i<60;i++){if(i>4&&i<30)await page.mouse.wheel(0,22);await page.waitForTimeout(100);await page.evaluate(()=>window.__measure.room.push({t:performance.now(),y:scrollY,...window.__room?.()}));}
+await page.screenshot({path:out(`polish-${tag}-home.png`)});
+const home=await page.evaluate(()=>({...window.__measure,resources:performance.getEntriesByType('resource').map(r=>({url:r.name,bytes:r.transferSize,duration:r.duration})),canopy:window.__canopy?.()}));
+await page.goto(BASE+'/world',{waitUntil:'domcontentloaded'});
+await page.waitForSelector('[data-world-shell][data-ready]',{timeout:240000});
+const frame=page.frames().find(f=>f.url().includes('/archipelago/preview/'));
+await frame.waitForTimeout(5000);
+const world=await frame.evaluate(()=>{const a=window.__archipelago,r=a.renderer;let meshes=0,materials=new Set(),textures=new Map();a.scene.traverse(o=>{if(!o.isMesh)return;meshes++;for(const m of [o.material].flat()){materials.add(m.uuid);for(const t of Object.values(m))if(t?.isTexture)textures.set(t.uuid,{w:t.image?.width,h:t.image?.height,name:t.name})}});return{measure:window.__measure,ready:performance.now(),gpu:r.info,meshes,materials:materials.size,textures:[...textures.values()],resources:performance.getEntriesByType('resource').map(r=>({url:r.name,bytes:r.transferSize,duration:r.duration})),camera:a.camera.position.toArray()}});
+await page.screenshot({path:out(`polish-${tag}-world.png`)});
+await frame.locator('#player-map').click();await page.waitForTimeout(1000);await page.screenshot({path:out(`polish-${tag}-map.png`)});
+fs.writeFileSync(out(`polish-${tag}.json`),JSON.stringify({home,world,errors},null,2));
+const stats=f=>{const s=f.slice().sort((a,b)=>a-b);return{median:s[Math.floor(s.length*.5)],p95:s[Math.floor(s.length*.95)],slow:f.filter(x=>x>34).length,n:f.length}};
+console.log(JSON.stringify({home:{frames:stats(home.frames),tasks:home.tasks,cls:home.shifts.reduce((a,b)=>a+b,0),room:home.room.filter((v,i,a)=>i===0||v.fovY!==a[i-1].fovY||v.leaves!==a[i-1].leaves).map(({t,y,fovY,leaves,quality})=>({t,y,fovY,leaves,quality}))},world:{ready:world.ready,frames:stats(world.measure.frames),render:world.gpu.render,memory:world.gpu.memory,meshes:world.meshes,materials:world.materials,largest:world.resources.sort((a,b)=>b.bytes-a.bytes).slice(0,8)},errors},null,2));
+await browser.close();

@@ -44,6 +44,7 @@ class World2Save extends Save {
 }
 
 export class World2Game {
+  worldBoards?: unknown
   readonly bin = new Bin()
   readonly ticker = new Ticker()
   readonly abort = new AbortController()

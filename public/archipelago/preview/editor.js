@@ -1,7 +1,7 @@
 import {refreshCoastalWater} from './coastal-water.js';
 import {restoreMeadowGrass} from './meadow-grass.js';
 import * as THREE from 'three';
-import {worldFiles,loadWorldDocument,PLAYER_MODE} from './world-storage.js';
+import {worldFiles,loadWorldDocument,loadAssetDefinitions,PLAYER_MODE} from './world-storage.js';
 import {saveWorldToPortfolio,setBaseRevision,ConflictError,download} from './cms-storage.js';
 import {terrainHeightAt as queryTerrainHeight,invalidateTerrainQuery} from './terrain-query.js';
 import {serializeWorldInstances,restoreWorldInstances} from './world-instances.js';
@@ -119,6 +119,9 @@ export class WorldEditor {
   for(const [label,category,re] of specs){let found;this.root.traverse(o=>{if(!found&&re.test(o.name.replaceAll('_',' ')))found=o;});if(found)this.assetTemplates.push({label,category,node:found});}
   const road=new THREE.Mesh(new THREE.PlaneGeometry(12,6),new THREE.MeshStandardMaterial({color:0x384548,side:THREE.DoubleSide}));road.geometry.rotateX(-Math.PI/2);road.userData={road_points:JSON.stringify([[-6,.07,0],[0,.07,0],[6,.07,0]]),road_width:6,road_closed:false,road:true,ground_surface:true,collision:true,surface_type:'road'};this.assetTemplates.push({label:'Editable road',category:'Roads',node:road});
   for(const entry of this.catalog.entries){const node=this.catalog.template(entry);if(entry.feature){node.clear();node.add(authoringPreview(this.catalog,entry));}this.assetTemplates.push({id:'world2:'+entry.id,label:entry.label,category:entry.category,node});}
+  // The public player needs definitions to restore the island, but never the
+  // studio's thumbnail renderer or its synchronous mesh screenshots.
+  if(PLAYER_MODE)return;
   const categories=['World2 · actividades','All','World2 · conjuntos','World2 · objetos','World2 · naturaleza','Nature','Trees','Plants','Rocks','Roads','Buildings','Vehicles','Characters','Props','Racing','Ice','Fairground','Technology','Decoration','Imported'];$('#category').innerHTML=categories.map(c=>`<option>${c}</option>`).join('');
   // Thumbnail renderer uses the actual mesh, not category icons.
   this.thumbRenderer=new THREE.WebGLRenderer({antialias:true,alpha:true});this.thumbRenderer.setSize(128,128);this.thumbRenderer.setPixelRatio(1);this.thumbScene=new THREE.Scene();this.thumbScene.add(new THREE.HemisphereLight(0xffffff,0x748b77,3));const l=new THREE.DirectionalLight(0xffffff,3);l.position.set(-3,6,5);this.thumbScene.add(l);this.thumbCamera=new THREE.PerspectiveCamera(38,1,.01,1000);this.filterAssets();
@@ -135,8 +138,10 @@ export class WorldEditor {
   this.assetDefinitions=new AssetDefinitions();this.assetBuilders=new Map();const templates=this.assetTemplates;this.assetTemplates=[];
   for(const t of templates){const d=this.assetDefinitions.add(t);if(t.rebuild)this.assetBuilders.set(d.id,t.rebuild);if(t.node.parent){t.node.userData.assetDefinitionId=d.id;t.node.userData.assetDefinitionVersion=d.version;t.node.userData.editable_root=true;tagAssetParts(t.node);}}
   this.root.traverse(n=>{if(n.userData.world2Asset&&!n.userData.assetDefinitionId){const id='world2:'+n.userData.world2Asset;if(this.assetDefinitions.get(id)){n.userData.assetDefinitionId=id;n.userData.assetDefinitionVersion=1;tagAssetParts(n);}}});
-  try{const r=await fetch(worldFiles().assets);if(r.ok)await this.assetDefinitions.restore(await r.json());}catch(error){console.warn('Asset definitions:',error);this.notify('No se pudieron cargar las definiciones de assets: '+error.message);}
-  this.assetStudio=new AssetStudio(this);this.refreshDefinitionInstances();this.syncAssetBrowser();
+  try{await this.assetDefinitions.restore(await loadAssetDefinitions());}catch(error){console.warn('Asset definitions:',error);this.notify('No se pudieron cargar las definiciones de assets: '+error.message);}
+  this.refreshDefinitionInstances();
+  if(PLAYER_MODE)return this.assetDefinitions;
+  this.assetStudio=new AssetStudio(this);this.syncAssetBrowser();
   const actions=document.createElement('div');actions.id='asset-edit-actions';for(const [label,instance] of [['Edit Instance',true],['Edit Source Asset',false]]){const b=document.createElement('button');b.textContent=label;b.onclick=()=>this.editSelectedAsset(instance);actions.append(b);}$('#object-properties').prepend(actions);
   const conform=document.createElement('label');conform.innerHTML='<input id="road-conform" type="checkbox"> Conform to terrain';$('#road-properties').append(conform);$('#road-conform').onchange=e=>this.mutate(()=>{const o=this.selected[0];if(!o)return;o.userData.road_conform=e.target.checked;this.rebuildRoad(o);});const smooth=document.createElement('button');smooth.textContent='Auto Smooth';smooth.id='road-smooth';smooth.onclick=()=>this.mutate(()=>{const o=this.selected[0];if(o){smoothRoad(o);this.rebuildRoad(o);this.select([o]);}});$('#road-properties').append(smooth);const diagnostics=document.createElement('p');diagnostics.id='road-diagnostics';diagnostics.className='muted';$('#road-properties').append(diagnostics);
   const pointFields=document.createElement('div');pointFields.className='road-point-fields';pointFields.innerHTML='<label>Road control point<select id="road-point-select" aria-label="Road control point"></select></label><div class="vector">'+['x','y','z'].map(axis=>'<label>'+axis.toUpperCase()+'<input id="road-point-'+axis+'" type="number" step="0.1" aria-label="Road point '+axis+'"></label>').join('')+'</div>';$('#road-properties').append(pointFields);

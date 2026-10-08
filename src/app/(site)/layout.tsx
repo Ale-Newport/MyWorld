@@ -3,6 +3,7 @@ import { loadSite } from '@/server/site'
 import { SiteContentProvider } from '@/cms/context'
 import { GardenCover } from '@/components/home/botanical/GardenCover'
 import { Analytics } from '@/components/analytics/Analytics'
+import { publicSiteUrl } from '@/lib/site-url'
 
 /* ============================================================
    THE PUBLIC SITE
@@ -20,16 +21,18 @@ export async function generateMetadata(): Promise<Metadata> {
   const { doc } = await loadSite()
   const s = doc.settings
   const p = doc.profile
+  const url = publicSiteUrl(s.siteUrl)
+  const images = s.ogImage ? [{ url: s.ogImage }] : [{ url: '/og-image.png', width: 1200, height: 630, alt: `${p.name} — Software & AI Engineer` }]
   return {
-    metadataBase: new URL(s.siteUrl),
+    metadataBase: new URL(url),
     title: { default: s.title, template: `%s — ${p.name}` },
     description: s.description,
     keywords: s.keywords,
-    authors: [{ name: p.name, url: s.siteUrl }],
+    authors: [{ name: p.name, url }],
     creator: p.name,
-    icons: s.favicon ? { icon: s.favicon } : undefined,
-    openGraph: { type: 'profile', locale: 'en_GB', url: s.siteUrl, title: s.title, description: s.description, siteName: `${p.name} — Portfolio ${p.year}`, ...(s.ogImage ? { images: [s.ogImage] } : {}) },
-    twitter: { card: 'summary_large_image', title: s.title, description: s.description, ...(s.ogImage ? { images: [s.ogImage] } : {}) },
+    icons: { icon: s.favicon ?? [{ url: '/favicon.ico' }, { url: '/favicon.svg', type: 'image/svg+xml' }], apple: '/apple-touch-icon.png' },
+    openGraph: { type: 'profile', locale: 'en_GB', url, title: s.title, description: s.description, siteName: `${p.name} — Portfolio ${p.year}`, images },
+    twitter: { card: 'summary_large_image', title: s.title, description: s.description, images },
     robots: { index: true, follow: true },
     alternates: { canonical: '/' },
   }
@@ -44,13 +47,14 @@ export async function generateViewport(): Promise<Viewport> {
 
 export default async function SiteLayout({ children }: { children: React.ReactNode }) {
   const { doc, preview } = await loadSite()
+  const url = publicSiteUrl(doc.settings.siteUrl)
   const personJsonLd = {
     '@context': 'https://schema.org',
     '@type': 'Person',
     name: doc.profile.name,
     jobTitle: ['Software Engineer', 'AI Engineer', 'Machine Learning Engineer', 'Product Engineer'],
     description: doc.profile.summary,
-    url: doc.settings.siteUrl,
+    url,
     address: { '@type': 'PostalAddress', addressLocality: 'London', addressCountry: 'GB' },
     alumniOf: doc.education.map((e) => ({ '@type': 'CollegeOrUniversity', name: e.institution, department: e.degree })),
     knowsAbout: [

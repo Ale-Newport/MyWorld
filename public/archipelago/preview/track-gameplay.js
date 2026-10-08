@@ -54,6 +54,9 @@ export class TrackGameplay{
   this.restoreFurniture=()=>{if(lights){lights.material=saved.lightsMaterial;lights.position.copy(saved.lightsPosition);}if(board)board.material=saved.boardMaterial;};
   const game={...driving,physics,tweens,publishGameplay:()=>driving.publishGameplay?.(),audio:driving.audio??{play(){}},interactions:{prompts:this.prompts,achievements:achievements??{unlock(){}},resetProps:onReset}};
   this.circuit=new NativeCircuit(game,this.references,this.bin);this.circuit.group.name='Catalunya · race gameplay';scene.add(this.circuit.group);
+  // Native PlaneGeometry has +Y-up UVs; the imported Blender board does not.
+  // Paint the intended front face without changing the furniture transform.
+  if(board){const t=this.circuit.board.texture;t.flipY=true;t.repeat.x=1;t.offset.x=0;t.needsUpdate=true;}
   if(!board)this.circuit.board.group.visible=false;const promptPosition=this.references.position('refInteractivePoint.003');if(promptPosition)this.circuit.attachPrompt(this.prompts.create({label:'Start Catalunya race',position:promptPosition,align:'right',onInteract:()=>this.circuit.restart()}));
   const resetPoint=furniture.board.localToWorld(new THREE.Vector3(-2,0,0));if(board)this.prompts.create({label:'Clear Catalunya best laps',position:resetPoint,align:'left',onInteract:()=>this.circuit.clearRecords()});
  }

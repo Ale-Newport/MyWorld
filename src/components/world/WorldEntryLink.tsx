@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import type { ComponentProps, MouseEvent } from 'react'
+import { prepareWorld } from './prepare'
 import { worldTransition } from './transition'
 import { garden } from '@/components/home/botanical/garden'
 import { useJourney } from '@/state/journey'
@@ -15,22 +16,14 @@ export function transitionAllowed(editing: boolean): boolean {
   return new URLSearchParams(window.location.search).get('cms-test') === 'transition'
 }
 
-/**
- * Every way into /world goes through the same sequence (transition.ts):
- * cover the screen, confirm it is covered, only then load the world.
- * Never prefetched — the world's route is world-exclusive. A modified
- * click (new tab, new window) is left to the browser: that tab enters
- * directly and shows the world's own loading screen.
- *
- * Pointing at the link (or focusing it) prepares the LEAVES, though:
- * the cover mounts at no charge, invisible, and plans its plants, so a
- * click finds it ready. Nothing of the world is touched by that.
- */
+/** Intent warms bytes and the leaves; only navigation starts the world. */
 export function WorldEntryLink({ href = '/world', source, onClick, onPointerEnter, onFocus, children, ...rest }: Omit<ComponentProps<typeof Link>, 'href' | 'prefetch'> & { href?: string; source: string }) {
   const router = useRouter()
   const editing = useEditing()
   const prepareLeaves = () => {
-    if (!transitionAllowed(editing) || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
+    if (!transitionAllowed(editing)) return
+    if (href === '/world') { prepareWorld(true); router.prefetch(href) }
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
     garden.show({ initial: 0, budget: useJourney.getState().performanceTier === 'low' ? 0.6 : 1 })
   }
   return (
@@ -49,6 +42,7 @@ export function WorldEntryLink({ href = '/world', source, onClick, onPointerEnte
           window.parent.postMessage({ type: 'cms:transition-blocked' }, window.location.origin)
           return
         }
+        if (href === '/world') prepareWorld(true)
         const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
         if (worldTransition.begin({ source, push: (h) => router.push(h), reduced, href })) track('world_entry_start', { source })
       }}

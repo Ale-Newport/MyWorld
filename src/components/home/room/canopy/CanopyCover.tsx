@@ -52,8 +52,6 @@ interface Props {
   handleRef?: Ref<CoverHandle>
 }
 
-/** The parting's length; the CSS transitions fit inside it. */
-const OPEN_MS = 1500
 /** From this charge on the canopy stands over the page: it takes the
     clicks too, so nothing hidden under the leaves can be followed. */
 const BLOCK_AT = 0.35
@@ -76,7 +74,7 @@ export function CanopyCover({ initial = 0, budget = 1, reduced = false, partScal
   const rootRef = useRef<HTMLDivElement>(null)
   const deepRef = useRef<HTMLSpanElement>(null)
   const layersRef = useRef<HTMLDivElement>(null)
-  const cover = useRef({ charge: initial, renderer: null as CanopyRenderer | null, sealed: initial >= 1 || reduced, opened: false })
+  const cover = useRef({ charge: initial, renderer: null as CanopyRenderer | null, sealed: reduced, fallback: false, opened: false })
 
   /* The dark of the leaves behind the last ones — from late in the
      charge no gap between leaves can show the page — and, once the
@@ -93,14 +91,13 @@ export function CanopyCover({ initial = 0, budget = 1, reduced = false, partScal
     const s = cover.current
     if (s.sealed) return
     s.sealed = true
+    if (rootRef.current) rootRef.current.dataset.sealed = 'true'
     const r = s.renderer
     s.renderer = null
     const host = layersRef.current
     if (r && host && !r.lost) {
-      // Ready or not: whatever is left of the build is done now, and
-      // the full charge applied without drawing it (the frozen frame
-      // is drawn band by band).
-      r.finishNow()
+      // Only a prepared renderer is sealed; no synchronous build lands
+      // on the gesture that completes the cover.
       r.applyCharge(1)
       const shots = r.snapshot()
       for (const { canvas, band, side } of shots) {
@@ -154,6 +151,9 @@ export function CanopyCover({ initial = 0, budget = 1, reduced = false, partScal
         })
       } catch {
         // No WebGL2: the dark of the canopy alone covers the page.
+        s.sealed = true
+        s.fallback = true
+        deepen(s.charge)
         return
       }
       const { w, h } = size()
@@ -162,7 +162,9 @@ export function CanopyCover({ initial = 0, budget = 1, reduced = false, partScal
       layersRef.current?.appendChild(r.canvas)
       s.renderer = r
       r.applyCharge(s.charge)
-      void r.setView(view(), pause)
+      void r.setView(view(), pause).then(() => {
+        if (!disposed && s.charge >= 1 && !s.sealed) seal()
+      })
       // Read-only probe for the QA scripts: when the canopy was made and when it could first draw.
       const madeAt = performance.now()
       ;(window as unknown as { __canopy?: () => unknown }).__canopy = () => ({ madeAt, ready: r.ready, readyAt: r.readyAt, lost: r.lost })
@@ -220,10 +222,14 @@ export function CanopyCover({ initial = 0, budget = 1, reduced = false, partScal
     set(c: number) {
       const s = cover.current
       const q = clamp01(c)
-      if (s.sealed || s.opened) return
+      if (s.opened) return
+      if (s.sealed) {
+        if (s.fallback) { s.charge = q; deepen(q) }
+        return
+      }
       s.charge = q
       deepen(q)
-      if (q >= 1) seal()
+      if (q >= 1 && s.renderer?.ready) seal()
       else s.renderer?.setCharge(q)
     },
     whenCovered() {
@@ -232,7 +238,8 @@ export function CanopyCover({ initial = 0, budget = 1, reduced = false, partScal
         const check = () => {
           const root = rootRef.current
           const deep = deepRef.current
-          if (root && deep && root.isConnected) {
+          if (!root?.isConnected) return
+          if (deep && cover.current.sealed) {
             const r = deep.getBoundingClientRect()
             const vw = document.documentElement.clientWidth || window.innerWidth
             const vh = window.innerHeight
@@ -242,7 +249,13 @@ export function CanopyCover({ initial = 0, budget = 1, reduced = false, partScal
               const cs = getComputedStyle(el)
               if (cs.display === 'none' || cs.visibility === 'hidden' || Number(cs.opacity) < 0.999) opaque = false
             }
-            stable = spans && opaque ? stable + 1 : 0
+            // A menu above an opaque cover would still hide the vegetation.
+            // WebKit's visual viewport can exclude a scrollbar from innerWidth.
+            const visibleW = Math.min(vw, window.visualViewport?.width ?? vw)
+            const visibleH = Math.min(vh, window.visualViewport?.height ?? vh)
+            const onTop = [[1, 1], [visibleW - 2, 1], [1, visibleH - 2], [visibleW - 2, visibleH - 2], [visibleW / 2, visibleH / 2]]
+              .every(([x, y]) => root.contains(document.elementFromPoint(x, y)))
+            stable = spans && opaque && onTop ? stable + 1 : 0
             // Two in a row: the covered frame has been presented, not merely laid out.
             if (stable >= 2) {
               root.dataset.covered = 'true'
@@ -273,9 +286,15 @@ export function CanopyCover({ initial = 0, budget = 1, reduced = false, partScal
         // rule (and its transition) take it from here.
         if (deepRef.current) deepRef.current.style.opacity = ''
       })
-      window.setTimeout(() => onOpened?.(), OPEN_MS * partScale)
+      requestAnimationFrame(() => requestAnimationFrame(() => {
+        const root = rootRef.current
+        if (!root) return
+        void Promise.allSettled(root.getAnimations({ subtree: true }).filter(a => a.effect?.getTiming().iterations !== Infinity).map(a => a.finished)).then(() => {
+          if (root.isConnected && cover.current.opened) onOpened?.()
+        })
+      }))
     },
-  }), [onOpened, deepen, seal, partScale])
+  }), [onOpened, deepen, seal])
 
   return (
     <div ref={rootRef} className={styles.root} aria-hidden="true" data-reduced={reduced || undefined} style={{ ['--part' as string]: partScale }}>

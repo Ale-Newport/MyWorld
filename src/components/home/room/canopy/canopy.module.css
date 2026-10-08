@@ -1,14 +1,14 @@
-/* Above the HUD (60) and below the overlays and the cursor, so the
-   last thing the canopy closes over is the chrome itself. Sized as the
+/* Above both the HUD and index, below the cursor and recovery controls.
+   The canopy closes over the current page, including its chrome. Sized as the
    room is — to the large viewport — so a mobile toolbar sliding in or
    out never re-plans it, and it is planned through the room's lens. */
 .root {
   position: fixed;
   top: 0;
   left: 0;
-  width: 100%;
+  width: 100vw;
   height: 100vh;
-  z-index: 70;
+  z-index: 90;
   pointer-events: none;
   overflow: hidden;
   contain: strict;
@@ -97,4 +97,14 @@
 .root[data-reduced='true'][data-open='true'] .deep { transition: opacity 0.4s linear; }
 @media (prefers-reduced-motion: reduce) {
   .root[data-open='true'] .layer { transform: none !important; transition: opacity 0.4s linear !important; }
+}
+
+/* Compositor-only breathing while the covered world initializes. */
+.root[data-sealed='true']:not([data-open='true']) .layers {
+  animation: canopy-breathe 4s ease-in-out infinite alternate;
+  transform-origin: 50% 100%;
+}
+@keyframes canopy-breathe { to { transform: scale(1.012); } }
+@media (prefers-reduced-motion: reduce) {
+  .root[data-sealed='true'] .layers { animation: none; }
 }

@@ -42,3 +42,4 @@ export const BOARD_PROJECTS = [
 export const BOARD_FEATURED_COUNT = projects.filter(p => p.importance === 'hero' || p.importance === 'featured').length;
 /** The labels the authored wooden signs carry, in board order. */
 export const BOARD_SHORT_TITLES = BOARD_PROJECTS.map(project => project.short);
+export const BOARD_EXPERIMENTS = projects.filter(p => p.category === 'experiment' || p.source === 'university').map(toBoard);

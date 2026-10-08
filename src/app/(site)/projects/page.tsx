@@ -3,6 +3,7 @@ import { Journey } from '@/components/journey/Journey'
 import { StaticProjects } from '@/components/journey/StaticProjects'
 import { loadSite } from '@/server/site'
 import { deriveSite } from '@/cms/derive'
+import { publicSiteUrl } from '@/lib/site-url'
 
 /* The seven chapters of this journey, said once, in prose: client
    work, teaching, the two products, the two intelligence pieces
@@ -26,12 +27,13 @@ export async function generateMetadata(): Promise<Metadata> {
     openGraph: {
       type: 'website',
       locale: 'en_GB',
-      url: `${doc.settings.siteUrl}/projects`,
+      url: `${publicSiteUrl(doc.settings.siteUrl)}/projects`,
       title: `Projects — ${name}`,
       description,
       siteName: `${name} — Portfolio ${year}`,
+      images: [doc.settings.ogImage ?? '/og-image.png'],
     },
-    twitter: { card: 'summary_large_image', title: `Projects — ${name}`, description },
+    twitter: { card: 'summary_large_image', title: `Projects — ${name}`, description, images: [doc.settings.ogImage ?? '/og-image.png'] },
     robots: { index: true, follow: true },
   }
 }

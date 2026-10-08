@@ -15,6 +15,7 @@ import { useEditing, useSite } from '@/cms/context'
 import { track } from '@/components/analytics/track'
 import { CustomSection } from '@/cms/sections'
 import { Chapter } from './Chapter'
+import { RoomLoading } from '@/components/home/room/RoomStill'
 
 /* The WebGL layer is client-only and never blocks first paint:
    the entire story is readable before a single shader compiles. */
@@ -31,7 +32,7 @@ const GlobalCanvas = dynamic(
    once its light has converged. */
 const HomeRoom = dynamic(
   () => import('@/components/home/room/HomeRoom').then((m) => m.HomeRoom),
-  { ssr: false },
+  { ssr: false, loading: RoomLoading },
 )
 
 /* The projects journey's sprig sheet: its own chunk, so the homepage —
@@ -102,14 +103,32 @@ export function Journey({ journey }: { journey: JourneyId }) {
   useSound()
   useEasterEggs()
 
-  /* Defer WebGL until the browser is idle — the opening seconds
-     stay interactive on any device. */
+  /* P1: the second canvas is only useful near a scene. The room already
+     renders the hero; loading R3F and allocating an empty canvas there
+     competes with it for both parsing time and GPU memory. */
   useEffect(() => {
-    const w = window as Window & { requestIdleCallback?: (cb: () => void, o?: { timeout: number }) => number }
-    const start = () => setCanvasReady(true)
-    if (w.requestIdleCallback) w.requestIdleCallback(start, { timeout: 1200 })
-    else window.setTimeout(start, 400)
-  }, [])
+    let scheduled = false
+    let cancel = () => {}
+    const prepare = () => {
+      if (scheduled) return
+      const s = useJourney.getState()
+      const owner = s.chapters.findIndex(c => c.id === 'toolbox')
+      const active = s.chapters.findIndex(c => c.id === s.chapter)
+      if (journey === 'home' && (owner < 0 || active < owner - 1)) return
+      scheduled = true
+      const start = () => setCanvasReady(true)
+      if (typeof window.requestIdleCallback === 'function') {
+        const id = window.requestIdleCallback(start, { timeout: 500 })
+        cancel = () => window.cancelIdleCallback(id)
+      } else {
+        const id = window.setTimeout(start, 0)
+        cancel = () => window.clearTimeout(id)
+      }
+    }
+    prepare()
+    const unsubscribe = useJourney.subscribe(prepare)
+    return () => { unsubscribe(); cancel() }
+  }, [journey])
 
   /* Audience statistics: how far into this journey a visit gets (each mark once per visit to the page). */
   useEffect(() => {

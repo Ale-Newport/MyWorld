@@ -7,6 +7,8 @@ import type { Prompts } from './Prompts'
 import { Screen } from './Screen'
 import { orientForMesh } from './bindCanvas'
 import { projects } from '@/content/projects'
+import { resolveBoard, paintExperiment } from '../content/boards'
+import type { BoardProject } from '../content/projects'
 import { profile } from '@/content/profile'
 
 /* ============================================================
@@ -52,12 +54,15 @@ export class Places {
   private blower: { node: THREE.Object3D; base: number } | null = null
   private sceneBoard: { screen: Screen; shown: boolean; home: THREE.Vector3 } | null = null
   private labBoard: { screen: Screen; index: number } | null = null
-  private labProjects = projects.filter(p => p.category === 'experiment' || p.source === 'university')
+  private labProjects: BoardProject[]
+  private disposed = false
   private movedProps = new Set<Physical>()
   /** The 103-body sweep below is worth doing four times a second, not sixty. */
   private sweptAt = -1
 
   constructor(private game: World2Game, private references: References, private prompts: Prompts, bin: Bin) {
+    this.labProjects = resolveBoard(game.worldBoards, 'experiments')
+    bin.add(() => { this.disposed = true })
     this.group.name = 'World2 / places'
     this.load()
     this.setLanding()
@@ -443,25 +448,9 @@ export class Places {
   private paintLab(): void {
     if (!this.labBoard) return
     const project = this.labProjects[this.labBoard.index]
-    this.labBoard.screen.draw(context => {
-      context.fillStyle = '#12141b'
-      context.fillRect(0, 0, 1024, 512)
-      context.fillStyle = '#5390ff'
-      context.font = '700 30px ui-sans-serif, system-ui, sans-serif'
-      context.fillText(`EXPERIMENT ${this.labBoard!.index + 1} / ${this.labProjects.length}`, 44, 74)
-      context.fillStyle = '#f4f1e8'
-      context.font = '700 62px ui-sans-serif, system-ui, sans-serif'
-      context.fillText(project.title, 44, 154)
-      context.fillStyle = '#8f8aa0'
-      context.font = '500 30px ui-sans-serif, system-ui, sans-serif'
-      let y = 214
-      for (const line of this.labBoard!.screen.wrap(project.shortDescription, 940)) { context.fillText(line, 44, y); y += 42 }
-      context.fillStyle = '#32ffc1'
-      context.font = '600 28px ui-monospace, SFMono-Regular, monospace'
-      context.fillText(project.technologies.slice(0, 5).join(' · '), 44, 400)
-      context.fillStyle = '#8f8aa0'
-      context.fillText(project.year, 44, 452)
-    })
+    this.labBoard.screen.draw(context => paintExperiment(context, project, this.labBoard!.index, this.labProjects.length, () => {
+      if (!this.disposed) this.paintLab()
+    }))
   }
 
   /* --------------------------------------------------- achievements -- */
