@@ -90,7 +90,7 @@ export const contact: ContactLink[] = [
 ]
 
 export const siteConfig = {
-  url: 'https://alejandronewport.com',
+  url: 'https://alejandro-newport-portfolio.anewportd.workers.dev',
   title: 'Alejandro Newport — Software & AI Engineer',
   description:
     'Computer scientist and engineer building intelligent products across software, AI, data and interactive systems. King’s College London → UCL. Portfolio 2026.',
@@ -106,6 +106,6 @@ export const siteConfig = {
     'King’s College London',
     'UCL',
   ],
-  /** Placeholder until a real domain is configured. */
-  dataStatus: 'placeholder' as DataStatus,
+  /** The Worker URL remains canonical until a custom domain is configured in the CMS. */
+  dataStatus: 'verified' as DataStatus,
 }

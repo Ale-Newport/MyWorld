@@ -41,13 +41,13 @@ export function AdminShell({ user, csrf, children }: { user: { name: string; ema
   return (
     <div className="a-shell" data-compact={compact}>
       <nav className="a-nav" aria-label="Admin">
-        <Link href="/admin/pages" className="a-brand" title="Portfolio admin">
+        <Link href="/admin/pages" prefetch={false} className="a-brand" title="Portfolio admin">
           <span className="a-mark" aria-hidden="true">AN</span>
           <span className="a-brand-text"><b>Portfolio admin</b><small>{user.name}</small></span>
         </Link>
         <div className="a-nav-items">
           {NAV.map((item) => (
-            <Link key={item.href} href={item.href} className="a-item" aria-current={item.match.test(pathname) ? 'page' : undefined} title={item.label}>
+            <Link key={item.href} href={item.href} prefetch={false} className="a-item" aria-current={item.match.test(pathname) ? 'page' : undefined} title={item.label}>
               <Icon name={item.icon} />
               <span className="a-text">{item.label}</span>
             </Link>

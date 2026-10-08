@@ -1,10 +1,10 @@
 /* The leaf transition's edge cases:
-     a fast fling down the page does not enter the world (intent needs a page at rest);
+     the first continuing input at the actual page end starts charging immediately;
      scrolling back up releases a partial charge;
      while covered: one cover only, it spans the viewport after a resize, and the page
        beneath cannot be clicked;
      Back from the world returns to the homepage usable (no cover, nothing inert);
-     Forward is a direct arrival with the world's own loading screen;
+     Forward is a direct arrival with the persistent foliage mask;
      a failed load shows the error with Try again, and Try again recovers.
    node scripts/qa/transition-edges.mjs */
 import { BASE, launch, sleep, assert, finish, out } from './lib.mjs'
@@ -17,19 +17,21 @@ await page.addInitScript(() => { window.__phases = []; window.addEventListener('
 const phase = () => page.evaluate(() => document.documentElement.dataset.worldPhase ?? 'HOME')
 const wheel = async (n, dy, gap = 25) => { for (let i = 0; i < n; i++) { await page.mouse.wheel(0, dy); await sleep(gap) } }
 
-/* 1 — a fling to the bottom is not intent */
-await page.goto(`${BASE}/`, { waitUntil: 'networkidle' })
-await sleep(2500)
+/* 1 — no mandatory rest/dwell before the first continuing input */
+await page.goto(`${BASE}/`, { waitUntil: 'domcontentloaded' })
+await page.waitForFunction(() => window.__room?.().milestones.ready)
 await page.mouse.move(720, 450)
-await wheel(90, 1600, 8)
-await sleep(300)
-await wheel(14, 120, 20)
-await sleep(400)
-assert((await phase()) === 'HOME', `a fast fling that runs out of page does not start the transition (${await phase()})`, results)
+await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight))
+await page.waitForFunction(() => document.documentElement.scrollHeight - innerHeight - scrollY < 3)
+const fill = () => page.evaluate(() => { const el = document.querySelector('[class*="ruleFill"]'); const m = /scaleX\(([-\d.e]+)\)/.exec(el?.style.transform ?? ''); return m ? Number(m[1]) : 0 })
+await wheel(1, 160)
+const answered = await page.waitForFunction(() => {
+  const el = document.querySelector('[class*="ruleFill"]')
+  return Number(/scaleX\(([-\d.e]+)\)/.exec(el?.style.transform ?? '')?.[1] ?? 0) > 0
+}, null, { timeout: 250 }).then(() => true, () => false)
+assert(answered, 'first continuing input at the page end starts charging within a presented frame', results)
 
 /* 2 — scrolling back up releases a partial charge (read from the portal's own fill line) */
-const fill = () => page.evaluate(() => { const el = [...document.querySelectorAll('[class*="WorldPortal-module"]')].find((n) => /fill/i.test(n.className)); const m = /scaleX\(([-\d.e]+)\)/.exec(el?.style.transform ?? ''); return m ? Number(m[1]) : 0 })
-await sleep(2600)
 await wheel(8, 120, 25)
 await sleep(120)
 const mid = await fill()
@@ -68,10 +70,10 @@ assert(clickable, 'the homepage controls respond again', results)
 
 /* 5 — Forward is a direct arrival */
 await page.goForward({ waitUntil: 'domcontentloaded' })
-const loader = await page.locator('[data-world-shell] [role="status"]').first().waitFor({ timeout: 20000 }).then(() => true, () => false)
+const loader = await page.locator('[data-covered]').first().waitFor({ timeout: 20000 }).then(() => true, () => false)
 await page.waitForSelector('[data-world-shell][data-ready]', { timeout: 240000 })
 const loaderGone = await page.locator('[data-world-shell] h1', { hasText: 'Building the island' }).count()
-assert(loader && loaderGone === 0, 'Forward enters /world directly with its own loading screen, gone once ready', results)
+assert(loader && loaderGone === 0, 'Forward enters /world behind foliage with no blue loading screen', results)
 
 /* 6 — a failed load offers Try again, which recovers */
 const fresh = await browser.newPage({ viewport: { width: 1280, height: 800 } })

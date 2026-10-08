@@ -1,8 +1,9 @@
 'use client'
 
-import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react'
+import { createPortal } from 'react-dom'
+import { garden } from '@/components/home/botanical/garden'
 import { worldTransition } from './transition'
 import { track } from '@/components/analytics/track'
 import styles from './archipelago.module.css'
@@ -19,11 +20,9 @@ import styles from './archipelago.module.css'
    visitor coming through the leaves, is after the cover was
    verified on screen — and the runtime posts its progress and,
    when its first fully prepared frame has been drawn, `ready`.
-   Coming through the leaves, `ready` parts them. Arriving directly
-   (a typed URL, a reload, a new tab) there are no leaves: this
-   route shows its own loading screen and takes it away on the
-   same signal. A failure keeps the screen covered and offers a
-   retry or the way home; nothing is ever revealed half built.
+   Both in-app entry and direct URLs use the persistent foliage cover.
+   Errors keep it closed and offer recovery; ready parts it only after
+   the runtime has presented a complete frame.
    ============================================================ */
 
 const RUNTIME = '/archipelago/preview/index.html'
@@ -52,6 +51,8 @@ export function WorldRoute() {
   useEffect(() => {
     const el = host.current
     if (!el) return
+    worldTransition.arrive(window.matchMedia('(prefers-reduced-motion: reduce)').matches)
+    let cancelled = false
     let helloTimer = 0
     let quietTimer = 0
     let hello = false
@@ -87,8 +88,9 @@ export function WorldRoute() {
         setQuiet(false)
         track('world_ready', { ms: Math.round(performance.now() - started.current), arrival, attempt })
         const focus = () => { frame.current?.focus(); frame.current?.contentWindow?.focus() }
-        if (worldTransition.get().phase === 'LOADING_WORLD') worldTransition.ready(focus)
-        else window.setTimeout(focus, 0)
+        void garden.whenCovered().then(() => {
+          if (!cancelled && worldTransition.get().phase === 'LOADING_WORLD') worldTransition.ready(focus)
+        })
       }
     }
     window.addEventListener('message', onMessage)
@@ -110,6 +112,7 @@ export function WorldRoute() {
       resetQuiet()
     }, 0)
     return () => {
+      cancelled = true
       window.clearTimeout(create)
       window.clearTimeout(helloTimer)
       window.clearTimeout(quietTimer)
@@ -132,6 +135,7 @@ export function WorldRoute() {
   }, [phase])
 
   const retry = useCallback(() => {
+    if (worldTransition.get().phase !== 'ERROR') return
     setError(null)
     setReady(false)
     setProgress({ stage: 'Opening the island', value: 0 })
@@ -144,24 +148,16 @@ export function WorldRoute() {
     router.push('/')
   }, [router])
 
-  const covered = arrival && phase !== 'IN_WORLD' && phase !== 'HOME'
-  const showLoader = !arrival && !ready
+  const covered = phase !== 'IN_WORLD' && phase !== 'HOME'
   return (
     <div className={styles.route} data-world-shell="" data-ready={ready || undefined}>
       <div ref={host} className={styles.stage} aria-busy={!ready} />
-      {showLoader && !error && (
-        <div className={styles.loader} role="status" aria-live="polite">
-          <p className={styles.eyebrow}>Archipiélago</p>
-          <h1 className={styles.title}>Building the island…</h1>
-          <div className={styles.bar} aria-hidden="true"><span style={{ transform: `scaleX(${progress.value})` }} /></div>
-          <p className={styles.stageText}>{progress.stage || 'Opening the island'}{quiet ? ' — this is taking longer than usual, still working' : ''}</p>
-          <Link href="/" className={styles.back}>← Back to the portfolio</Link>
-        </div>
+      {covered && !ready && !error && createPortal(
+        <p className={quiet ? styles.coverNote : 'sr-only'} role="status">
+          {quiet ? 'The island is still loading…' : `${progress.stage || 'Opening the island'} · ${Math.round(progress.value * 100)}%`}
+        </p>, document.body,
       )}
-      {covered && quiet && !error && (
-        <p className={styles.coverNote} role="status">Still building the island — thanks for waiting.</p>
-      )}
-      {error && (
+      {error && createPortal(
         <div className={styles.error} role="alert">
           <p className={styles.eyebrow}>Archipiélago</p>
           <h1 className={styles.title}>The island did not load.</h1>
@@ -170,7 +166,7 @@ export function WorldRoute() {
             <button type="button" onClick={retry} className={styles.primary}>Try again</button>
             <button type="button" onClick={home} className={styles.secondary}>Return to the portfolio</button>
           </div>
-        </div>
+        </div>, document.body,
       )}
     </div>
   )

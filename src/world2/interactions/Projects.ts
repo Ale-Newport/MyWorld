@@ -3,7 +3,8 @@ import type { Bin } from '@/world/core/Disposal'
 import type { World2Game } from '../World2Game'
 import type { References } from './references'
 import type { PromptHandle } from './Prompts'
-import { BOARD_FEATURED_COUNT, BOARD_PROJECTS, type BoardProject } from '../content/projects'
+import { BOARD_FEATURED_COUNT, type BoardProject } from '../content/projects'
+import { resolveBoard } from '../content/boards'
 import { paintProjectScreen } from './screenMotion'
 import { orientForMesh } from './bindCanvas'
 
@@ -49,6 +50,7 @@ interface Flip {
 }
 
 export class Projects {
+  private items: BoardProject[]
   state: ProjectsState = 'closed'
   index = 0
   readonly group = new THREE.Group()
@@ -64,6 +66,7 @@ export class Projects {
   private paintedAt = -1
 
   constructor(private game: World2Game, private references: References, bin: Bin) {
+    this.items = resolveBoard(game.worldBoards, 'projects')
     this.group.name = 'World2 / projects'
     this.buildScreen()
     this.buildFlips()
@@ -84,9 +87,9 @@ export class Projects {
     bin.object3D(this.group)
   }
 
-  get current(): BoardProject { return BOARD_PROJECTS[this.index] }
-  get previous(): BoardProject { return BOARD_PROJECTS[(this.index - 1 + BOARD_PROJECTS.length) % BOARD_PROJECTS.length] }
-  get next(): BoardProject { return BOARD_PROJECTS[(this.index + 1) % BOARD_PROJECTS.length] }
+  get current(): BoardProject { return this.items[this.index] }
+  get previous(): BoardProject { return this.items[(this.index - 1 + this.items.length) % this.items.length] }
+  get next(): BoardProject { return this.items[(this.index + 1) % this.items.length] }
 
   attachPrompt(prompt: PromptHandle): void { this.prompt = prompt }
 
@@ -242,7 +245,7 @@ export class Projects {
   }
 
   select(index: number, silent = false): void {
-    const count = BOARD_PROJECTS.length
+    const count = this.items.length
     this.index = ((index % count) + count) % count
     this.attract = 0
     for (const flip of this.flips) { flip.progress = 0; flip.swapped = false; flip.pending = this.current }
@@ -281,7 +284,7 @@ export class Projects {
 
   private paintPagination(): void {
     this.pagination.forEach((token, i) => {
-      const total = Math.min(this.pagination.length, BOARD_PROJECTS.length)
+      const total = Math.min(this.pagination.length, this.items.length)
       const window = Math.floor(this.index / total) * total
       const active = this.index - window === i
       token.visible = i < total
@@ -389,7 +392,7 @@ export class Projects {
     return {
       activity: 'projects',
       headline: null,
-      lines: [`${this.index + 1} / ${BOARD_PROJECTS.length}`, this.current.title, this.current.link ? 'Open to visit' : 'Private source'],
+      lines: [`${this.index + 1} / ${this.items.length}`, this.current.title, this.current.link ? 'Open to visit' : 'Private source'],
     }
   }
 }

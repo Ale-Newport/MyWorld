@@ -1,7 +1,7 @@
 import fs from 'node:fs'
 import { AsyncLocalStorage } from 'node:async_hooks'
 import type { DatabaseSync } from 'node:sqlite'
-import postgres from 'postgres'
+import { Client, types } from 'pg'
 import { config, dataPath } from './config.ts'
 import { env } from './env.ts'
 
@@ -60,7 +60,7 @@ const SQLITE_SCHEMA = `
   create table if not exists login_attempts (key text primary key, failures integer not null, first_at integer not null, locked_until integer);
 `
 
-type Global = typeof globalThis & { __cmsSqlite?: DatabaseSync; __cmsPg?: postgres.Sql }
+type Global = typeof globalThis & { __cmsSqlite?: DatabaseSync; __cmsPg?: Promise<Client> }
 
 async function sqlite(): Promise<Db> {
   const g = globalThis as Global
@@ -85,14 +85,18 @@ async function sqlite(): Promise<Db> {
 /* ---- Postgres (production) -------------------------------------- */
 
 /** The Cloudflare request context, when running on Workers (OpenNext). */
-async function cloudflare(): Promise<{ env: Record<string, unknown>; ctx: object; request: object } | null> {
-  if (!(globalThis as { navigator?: { userAgent?: string } }).navigator?.userAgent?.includes('Cloudflare-Workers')) return null
+async function cloudflare(): Promise<{ env: Record<string, unknown>; request: object } | null> {
   try {
     const { getCloudflareContext } = await import('@opennextjs/cloudflare')
     const c = getCloudflareContext()
-    // `cf` is the request's own object: the one key that is never shared between requests.
-    return { env: c.env as unknown as Record<string, unknown>, ctx: c.ctx, request: (c.cf as object | undefined) ?? c.ctx }
-  } catch {
+    // The execution context belongs to this invocation. `cf` is request metadata,
+    // so it is not a safe key for a client that owns a Worker TCP socket.
+    return { env: c.env as unknown as Record<string, unknown>, request: c.ctx }
+  } catch (error) {
+    // Never fall back to a global Postgres client on Workers: its socket cannot
+    // be used by a later request, even when the context lookup failed.
+    const runtime = globalThis as { Cloudflare?: unknown; navigator?: { userAgent?: string } }
+    if (runtime.Cloudflare || runtime.navigator?.userAgent?.includes('Cloudflare-Workers')) throw error
     return null
   }
 }
@@ -103,27 +107,37 @@ export async function connectionString(): Promise<string | null> {
   return hyperdrive?.connectionString ?? env('DATABASE_URL') ?? null
 }
 
-const asNumber = { to: 20, from: [20, 1700], serialize: (x: unknown) => String(x), parse: (x: string) => Number(x) }
+types.setTypeParser(20, Number)
+types.setTypeParser(1700, Number)
 
-function connect(url: string, max: number) {
-  return postgres(url, { prepare: false, max, idle_timeout: 20, connect_timeout: 10, fetch_types: false, types: { number: asNumber } as never, onnotice: () => {} })
-}
+/* A Worker socket belongs to one invocation. Cache the connection promise so
+   concurrent db() calls in that invocation cannot open duplicate clients. */
+const perRequest = new WeakMap<object, Promise<Client>>()
 
-/* On Workers a socket belongs to the request that opened it, so each request gets its own client. */
-const perRequest = new WeakMap<object, postgres.Sql>()
-
-async function pgClient(url: string): Promise<postgres.Sql> {
+async function pgClient(url: string): Promise<Client> {
   const cf = await cloudflare()
   if (cf) {
     let client = perRequest.get(cf.request)
     if (!client) {
-      client = connect(url, 1)
+      const pg = new Client({ connectionString: url, connectionTimeoutMillis: 10_000 })
+      pg.on('error', () => { perRequest.delete(cf.request) })
+      pg.on('end', () => {
+        perRequest.delete(cf.request)
+      })
+      client = pg.connect().then(() => pg)
+      client.catch(() => { perRequest.delete(cf.request) })
       perRequest.set(cf.request, client)
     }
     return client
   }
   const g = globalThis as Global
-  g.__cmsPg ??= connect(url, 5)
+  if (!g.__cmsPg) {
+    const pg = new Client({ connectionString: url, connectionTimeoutMillis: 10_000 })
+    pg.on('error', () => { delete g.__cmsPg })
+    pg.on('end', () => { delete g.__cmsPg })
+    g.__cmsPg = pg.connect().then(() => pg)
+    g.__cmsPg.catch(() => { delete g.__cmsPg })
+  }
   return g.__cmsPg
 }
 
@@ -133,12 +147,20 @@ const numbered = (text: string) => {
   return text.replace(/\?/g, () => `$${++n}`)
 }
 
-function pgDb(sql: postgres.Sql | postgres.TransactionSql): Db {
-  const q = (text: string, params: Value[] = []) => sql.unsafe(numbered(text), params as never[])
+function pgDb(client: Client): Db {
+  const q = async <T>(text: string, params: Value[] = []) => {
+    try {
+      return (await client.query(numbered(text), params)).rows as T[]
+    } catch (error) {
+      // SQL parameters can contain private content; log only the operation.
+      console.error('[db query]', text.trim().split(/\s+/).slice(0, 4).join(' '), error)
+      throw error
+    }
+  }
   return {
     dialect: 'postgres',
-    all: async <T>(text: string, params?: Value[]) => [...(await q(text, params))] as T[],
-    get: async <T>(text: string, params?: Value[]) => (await q(text, params))[0] as T | undefined,
+    all: <T>(text: string, params?: Value[]) => q<T>(text, params),
+    get: async <T>(text: string, params?: Value[]) => (await q<T>(text, params))[0],
     run: async (text: string, params?: Value[]) => { await q(text, params) },
   }
 }
@@ -148,15 +170,27 @@ function pgDb(sql: postgres.Sql | postgres.TransactionSql): Db {
 const current = new AsyncLocalStorage<Db>()
 
 /** The database, or the transaction this call is running inside. */
-/** A socket the runtime closed under us (a request's I/O cannot outlive it on Workers). */
+/** A socket the runtime or database closed under us. */
 const closed = (error: unknown) => {
   const e = error as { code?: string; message?: string }
-  return e?.code === 'CONNECTION_CLOSED' || e?.code === 'CONNECTION_ENDED' || e?.code === 'CONNECTION_DESTROYED' || /different request|connection.*closed/i.test(e?.message ?? '')
+  return e?.code === 'ECONNRESET' || e?.code === 'EPIPE' || /different request|connection.*closed|connection terminated|not queryable/i.test(e?.message ?? '')
+}
+
+/** The pooler can drop a newly opened TCP socket before PostgreSQL is ready. */
+async function connected(url: string): Promise<Client> {
+  for (let attempt = 0; ; attempt++) {
+    try {
+      return await pgClient(url)
+    } catch (error) {
+      if (attempt >= 2 || !closed(error)) throw error
+      await new Promise((resolve) => setTimeout(resolve, 100 * (attempt + 1)))
+    }
+  }
 }
 
 /** Outside a transaction, a query that meets a closed connection is retried once on a fresh one. */
 async function resilient(url: string): Promise<Db> {
-  const first = pgDb(await pgClient(url))
+  const first = pgDb(await connected(url))
   const again = async <T>(fn: (d: Db) => Promise<T>): Promise<T> => {
     try {
       return await fn(first)
@@ -165,7 +199,7 @@ async function resilient(url: string): Promise<Db> {
       const cf = await cloudflare()
       if (cf) perRequest.delete(cf.request)
       else delete (globalThis as Global).__cmsPg
-      return fn(pgDb(await pgClient(url)))
+      return fn(pgDb(await connected(url)))
     }
   }
   return {
@@ -189,11 +223,30 @@ export async function tx<T>(fn: () => Promise<T>): Promise<T> {
   if (outer) return fn()
   const url = await connectionString()
   if (url) {
-    const run = async () => (await (await pgClient(url)).begin((t) => current.run(pgDb(t), fn))) as T
+    let begun = false
+    const run = async (): Promise<T> => {
+      const client = await connected(url)
+      let stage = 'BEGIN'
+      try {
+        await client.query('BEGIN')
+        begun = true
+        stage = 'callback'
+        const result = await current.run(pgDb(client), fn)
+        stage = 'COMMIT'
+        await client.query('COMMIT')
+        return result
+      } catch (error) {
+        console.error('[db transaction]', stage, error)
+        if (begun) await client.query('ROLLBACK').catch(() => {})
+        throw error
+      }
+    }
     try {
       return await run()
     } catch (error) {
-      if (!closed(error)) throw error
+      // A failed BEGIN is safe to retry; after it succeeds, COMMIT may already
+      // have reached the server, so replaying the callback could duplicate writes.
+      if (begun || !closed(error)) throw error
       const cf = await cloudflare()
       if (cf) perRequest.delete(cf.request)
       else delete (globalThis as Global).__cmsPg

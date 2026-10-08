@@ -177,7 +177,8 @@ export class Circuit {
         const leaderboard = references.node('refLeaderboard');
         this.board = new Screen({ width: 512, height: 512, worldWidth: 1, emissive: 0.5 });
         if (leaderboard instanceof THREE.Mesh) {
-            orientForMesh(this.board.texture, leaderboard, game.player.position);
+            const reader = references.position('refLeaderboardReset') ?? references.position('refInteractivePoint.003') ?? game.player.position;
+            orientForMesh(this.board.texture, leaderboard, reader);
             leaderboard.material = this.board.mesh.material;
         }
         else {

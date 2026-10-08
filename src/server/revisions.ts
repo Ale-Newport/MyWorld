@@ -124,13 +124,32 @@ async function insert(docId: DocId, parentId: string | null, input: Omit<WriteIn
   const id = randomUUID()
   const body = input.content ?? JSON.stringify(input.blobs ?? {})
   const at = now()
-  await (await db()).run(`insert into revisions (id, doc_id, parent_id, created_at, author_id, author_name, message, schema_version, content, blobs, hash, size, published_at)
+  const d = await db()
+  // The Cloudflare TCP socket closes when a single Postgres parameter reaches
+  // roughly 64 KiB. Write large documents in smaller pieces in this transaction.
+  // Slice on UTF-16 boundaries without splitting a surrogate pair.
+  const chunks: string[] = []
+  if (input.content && d.dialect === 'postgres') {
+    for (let start = 0; start < input.content.length;) {
+      let end = Math.min(start + 8192, input.content.length)
+      if (end < input.content.length && end > start) {
+        const last = input.content.charCodeAt(end - 1)
+        if (last >= 0xd800 && last <= 0xdbff) end--
+      }
+      chunks.push(input.content.slice(start, end))
+      start = end
+    }
+  }
+  await d.run(`insert into revisions (id, doc_id, parent_id, created_at, author_id, author_name, message, schema_version, content, blobs, hash, size, published_at)
     values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, [
     id, docId, parentId, at, input.actor.id, input.actor.name, input.message ?? null, input.schemaVersion,
-    input.content ?? null, input.blobs ? JSON.stringify(input.blobs) : null, sha256(body),
+    chunks.length ? chunks[0] : input.content ?? null, input.blobs ? JSON.stringify(input.blobs) : null, sha256(body),
     input.content ? Buffer.byteLength(input.content) : Object.values(input.blobs ?? {}).reduce((n, b) => n + b.size, 0),
     publishedAt,
   ])
+  for (const chunk of chunks.slice(1)) {
+    await d.run('update revisions set content = content || ? where id = ?', [chunk, id])
+  }
   return (await revisionMeta(id))!
 }
 

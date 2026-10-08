@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import {plainCircuitFabric} from './world2-catalog.js';
 import {Bin} from './portfolio/world/core/Disposal.js';
 import {Events} from './runtime/Events.js';
 import {Tweens} from './portfolio/world/core/Tween.js';
@@ -44,7 +45,7 @@ export class World2Instance {
   const player=new Proxy(drive.player,{get(p,k){if(k==='position')return physics.local(p.position);if(k==='position2'){const v=physics.local(p.position);return new THREE.Vector2(v.x,v.z);}const v=p[k];return typeof v==='function'?v.bind(p):v;}});
   const vehicle=new Proxy(drive.vehicle,{get(v,k){if(k==='position')return physics.local(v.position);if(k==='chassis')return {...v.chassis,physical:physics.wrap(v.chassis.physical)};if(k==='moveTo')return (p,angle)=>{const direction=physics.vector({x:Math.cos(angle),y:0,z:-Math.sin(angle)});v.moveTo(physics.point(p),Math.atan2(-direction.z,direction.x));};return v[k];}});
   const view=new Proxy(drive.view,{get(v,k){if(k==='startCinematic')return (p,target,...rest)=>v.startCinematic(physics.point(p),physics.point(target),...rest);if(k==='focusPoint')return {...v.focusPoint,position:physics.local(v.focusPoint.position??drive.player.position)};const value=v[k];return typeof value==='function'?value.bind(v):value;}});
-  const game={...drive,bin:this.bin,ticker:drive.ticker,tweens:drive.tweens,inputs:drive.inputs,physics,environment,player,vehicle,view,renderer:{scene:frame},status:manager.status,audio:drive.audio??quietAudio,lighting:{phase:.4},publishGameplay:()=>{},toggleMap:()=>manager.ui.map?.(),toggleHelp:()=>manager.ui.help?.(),toggleAchievements:()=>manager.ui.achievements?.()};this.game=game;
+  const game={...drive,worldBoards:manager.root?.userData.worldBoards,bin:this.bin,ticker:drive.ticker,tweens:drive.tweens,inputs:drive.inputs,physics,environment,player,vehicle,view,renderer:{scene:frame},status:manager.status,audio:drive.audio??quietAudio,lighting:{phase:.4},publishGameplay:()=>{},toggleMap:()=>manager.ui.map?.(),toggleHelp:()=>manager.ui.help?.(),toggleAchievements:()=>manager.ui.achievements?.()};this.game=game;
   const feature=entry.feature;
   if(feature)for(const name of reservedNames(environment.nodes))environment.reserved.add(name);
   environment.addPhysics(physics,drive.ticker);environment.addVegetationPhysics();manager.physics.refreshQueries();
@@ -92,6 +93,8 @@ export class World2Instance {
   // frame after rendering applies the user-authored prefab placement.
   refs.position=name=>{const n=refs.node(name);return n?physics.local(n.getWorldPosition(new THREE.Vector3())):null;};
   refs.transform=name=>{const n=refs.node(name);if(!n)return null;n.updateWorldMatrix(true,false);const p=new THREE.Vector3(),q=new THREE.Quaternion(),s=new THREE.Vector3();physics.inverse.clone().multiply(n.matrixWorld).decompose(p,q,s);return {position:p,quaternion:q,scale:s};};
+  plainCircuitFabric(frame);
+  environment.batchScenery(refs.touched);
   matrix.decompose(frame.position,frame.quaternion,frame.scale);asset.visible=false;manager.scene.add(frame);frame.updateMatrixWorld(true);
  }
  get busy(){return (this.parts.circuit&&this.parts.circuit.state!=='pending')||(this.parts.projects&&this.parts.projects.state!=='closed');}

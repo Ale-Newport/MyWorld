@@ -76,10 +76,27 @@ export function footerShifts(): number[] {
 export function settledRects(node: Text, range = document.createRange()): DOMRect[] {
   range.selectNodeContents(node)
   const rects = Array.from(range.getClientRects())
-  const wrap = node.parentElement?.closest<HTMLElement>('[class*="unitWrap"]')
-  if (!wrap) return rects
-  const w = wrap.getBoundingClientRect()
-  return rects.map((r) => new DOMRect(r.left, w.top, r.width, w.height))
+  const section = node.parentElement?.closest('#journey section[data-chapter]')
+  const stage = section?.firstElementChild
+  // Remove every entrance/exit translation below the pinned stage. Reading
+  // a live animated rectangle made the lens and plant pruning depend on
+  // which animation frame a late chunk/font happened to finish on.
+  let dx = 0, dy = 0
+  for (let el = node.parentElement; el && el !== stage; el = el.parentElement) {
+    const cs = getComputedStyle(el)
+    if (cs.transform !== 'none') {
+      const matrix = new DOMMatrixReadOnly(cs.transform)
+      dx += matrix.m41
+      dy += matrix.m42
+    }
+    if (cs.translate && cs.translate !== 'none') {
+      const [x = '0', y = '0'] = cs.translate.split(' ')
+      dx += parseFloat(x) * (x.endsWith('%') ? el.offsetWidth / 100 : 1) || 0
+      dy += parseFloat(y) * (y.endsWith('%') ? el.offsetHeight / 100 : 1) || 0
+    }
+    if (!stage && el.hasAttribute('data-hud')) break
+  }
+  return rects.map(r => new DOMRect(r.left - dx, r.top - dy, r.width, r.height))
 }
 
 /** All text the home journey can show, in viewport px when pinned. */

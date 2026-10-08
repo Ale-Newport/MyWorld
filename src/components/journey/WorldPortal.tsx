@@ -8,6 +8,7 @@ import { portal } from '@/state/portal'
 import { clamp, damp } from '@/lib/math'
 import { subscribe } from '@/lib/ticker'
 import { garden } from '@/components/home/botanical/garden'
+import { prepareWorld } from '@/components/world/prepare'
 import { inTransition, worldTransition } from '@/components/world/transition'
 import { WorldEntryLink, transitionAllowed } from '@/components/world/WorldEntryLink'
 import { track } from '@/components/analytics/track'
@@ -34,15 +35,9 @@ import styles from './WorldPortal.module.css'
    rather than a bar being filled. And a phone TICKS under the
    finger at milestones that crowd together as the end approaches.
 
-   NOTHING OF THE WORLD BEFORE THE LEAVES HAVE CLOSED
-   The world is not prefetched, downloaded or evaluated on the
-   approach. When the charge is spent the cover is completed and
-   verified on screen, and only then does the URL become /world
-   and the world start loading — under the very same leaves, which
-   live in the public layout (see `garden.ts`), and which part only
-   when the world has drawn its first prepared frame. The sequence
-   is a state machine shared by every way in: components/world/
-   transition.ts.
+   Prepare the canopy and cache world bytes on approach. The world itself
+   starts only under verified foliage, and reports a prepared frame before
+   that same persistent cover parts.
 
    THE PAGE IS FINISHED UNTIL IT IS PUSHED
    Nothing grows over the copy on the approach: at the foot, unspent,
@@ -61,7 +56,7 @@ import styles from './WorldPortal.module.css'
 export { portal }
 
 /** Wheel pixels for a full charge before resistance is applied. */
-const CHARGE_PX = 1250
+const CHARGE_PX = 1000
 /** The admin's "leaf growth" setting scales the push a full charge takes.
     It changes how quickly the leaves grow, never how far: coverage is
     still completed and verified by the cover itself. */
@@ -74,21 +69,11 @@ const LINE_PX = 16
     and how much of Lenis's easing tail is forgiven on the way there. */
 const ARM_PX = 2
 const SETTLE_PX = 90
-/**
- * AND THE PAGE HAS TO HAVE STOPPED. Reaching the foot at speed is one
- * gesture running out of document, not a reader asking for a door —
- * measured, an uninterrupted ride used to enter the world during the
- * descent. So intent counts only once the page has come to rest at
- * the limit with no wheel or touch for this long: longer than any
- * pause inside one continuous scroll, far shorter than the beat a
- * reader spends deciding to push.
- */
-const REST_MS = 180
 /** One gesture arrives in bursts; the gaps inside it are not a pause. */
-const IDLE_GRACE = 0.12
+const IDLE_GRACE = 0.45
 /** Seconds for an abandoned charge to bleed away, and for one let go
     of by scrolling back up the page. */
-const DECAY_S = 0.9
+const DECAY_S = 1.2
 const RELEASE_S = 0.35
 /** Viewport heights of document over which the approach arrives,
     measured from the foot so `?quick` and a phone's address bar give
@@ -162,8 +147,6 @@ const UNLOCKED_KEY = 'world2Unlocked'
  * cannot charge a door the visitor is not touching.
  */
 const RETURN_TO = 0.93
-/** And a lock-out on top of that, for the fling that arrives anyway. */
-const DISARM_MS = 500
 
 /** Read once and held: Strict Mode mounts effects twice in development. */
 let consumed: { at: number; value: string | null } | null = null
@@ -257,33 +240,33 @@ export function WorldPortal() {
   const leafCharge = settings.options.leafCharge
   const editing = useEditing()
 
-  /* The HOMEPAGE's own transition — never anything of the world — is
-     made ready once the page has settled: its code fetched, and, on
-     any device not judged slow, the canopy itself prepared (mounted at
-     no charge: invisible, letting every click through) in idle
-     moments. A visitor who flings straight to the foot then finds the
-     leaves ready to answer the first push; one who never gets there
-     has spent a few idle milliseconds and one more context. On a slow
-     device the canopy waits for the last chapter (PREPARE_VH). */
+  // P2: warm the transition code once the initial room is presented.
   useEffect(() => {
-    if (reducedMotion || !settings.options.worldEntrance) return
-    if (!transitionAllowed(editing)) return
-    const w = window as Window & { requestIdleCallback?: (cb: () => void, o?: { timeout: number }) => number }
-    const later = (fn: () => void, timeout: number) => (w.requestIdleCallback ? w.requestIdleCallback(fn, { timeout }) : window.setTimeout(fn, 0))
-    let cancelled = false
-    const timer = window.setTimeout(() => {
-      later(() => {
-        void import('@/components/home/room/canopy/CanopyCover').then(() => {
-          if (cancelled || (forcedTier() ?? useJourney.getState().performanceTier) === 'low') return
-          later(() => { if (!cancelled && !inTransition()) garden.show({ initial: 0, budget: 1 }) }, 3000)
-        }).catch(() => {})
-      }, 4000)
-    }, 2500)
-    return () => {
-      cancelled = true
-      window.clearTimeout(timer)
+    if (!settings.options.worldEntrance || !transitionAllowed(editing)) return
+    let cancel = () => {}
+    const prepare = () => {
+      const run = () => { void import('@/components/home/room/canopy/CanopyCover').catch(() => {}) }
+      if (typeof window.requestIdleCallback === 'function') {
+        const id = window.requestIdleCallback(run, { timeout: 1500 })
+        cancel = () => window.cancelIdleCallback(id)
+      } else {
+        const id = window.setTimeout(run, 0)
+        cancel = () => window.clearTimeout(id)
+      }
     }
-  }, [reducedMotion, settings.options.worldEntrance, editing])
+    let prefetched = false
+    const approach = () => {
+      if (!prefetched && useJourney.getState().progress > 0.55 && worldHref === '/world') {
+        prefetched = true
+        prepareWorld()
+      }
+    }
+    const unsubscribe = useJourney.subscribe(approach)
+    approach()
+    window.addEventListener('room:ready', prepare, { once: true })
+    if (document.querySelector('[data-room-host][data-ready="true"]')) prepare()
+    return () => { cancel(); unsubscribe(); window.removeEventListener('room:ready', prepare) }
+  }, [settings.options.worldEntrance, editing, worldHref])
 
   useEffect(() => {
     if (reducedMotion || !settings.options.worldEntrance) return
@@ -300,8 +283,6 @@ export function WorldPortal() {
     let lastReveal = -1
     let idle = 0
     let armed = false
-    let rested = false
-    let lastInput = performance.now()
     let milestone = 0
     let touchY = 0
     let touchId: number | null = null
@@ -314,8 +295,6 @@ export function WorldPortal() {
     let burstLast = 0
     let burstFall = 0
     let lastEvent = 0
-
-    const mounted = performance.now()
 
     const announce = (message: string) => {
       const live = liveRef.current
@@ -339,7 +318,6 @@ export function WorldPortal() {
 
     const atFoot = () => {
       if (overlaid() || inTransition()) return false
-      if (performance.now() - mounted < DISARM_MS) return false
       const lenis = getLenis()
       if (!lenis) return remaining() <= ARM_PX
       return lenis.limit - lenis.targetScroll <= ARM_PX && lenis.limit - lenis.scroll <= SETTLE_PX
@@ -390,13 +368,13 @@ export function WorldPortal() {
     }
 
     const charge = (delta: number) => {
-      lastInput = performance.now()
-      if (sealed.current) return
+      if (sealed.current || inTransition()) return
       if (delta <= 0) {
         // Pushing back up lets go of the charge faster than it was gathered.
         pull = clamp(pull + (delta / chargePx) * 1.5)
         return
       }
+      armed = atFoot()
       if (!armed) return
       const spent = intent(delta, performance.now())
       // Resistance grows with the charge: the last stretch is the one paid for.
@@ -447,7 +425,7 @@ export function WorldPortal() {
     }
 
     unsubscribe = subscribe((dt) => {
-      if (sealed.current) {
+      if (sealed.current || inTransition()) {
         // The charge is over; let the held-back page relax under the leaves.
         if (portal.drag !== 0) {
           drag = damp(drag, 0, DRAG_RELAX, dt)
@@ -455,12 +433,7 @@ export function WorldPortal() {
         }
         return
       }
-      const foot = atFoot()
-      if (!foot) rested = false
-      else if (!rested && remaining() <= ARM_PX && performance.now() - lastInput >= REST_MS) {
-        rested = true
-      }
-      armed = foot && rested
+      armed = atFoot()
 
       if (!armed) pull = clamp(pull - dt / RELEASE_S)
       else {
@@ -477,11 +450,9 @@ export function WorldPortal() {
 
       /* ---- the approach ------------------------------------ */
       const reveal = overlaid() ? 0 : clamp(1 - remaining() / (vh * REVEAL_VH))
-      /* The canopy only exists in the last chapter: a WebGL context is
-         not something to carry through the whole journey. It is
-         prepared well before the foot, so it is ready before anyone
-         pushes (see PREPARE_VH). */
-      const prepare = !overlaid() && remaining() < vh * PREPARE_VH
+      /* Prepare invisibly after the opening chapter, before the foot.
+         It draws only on demand; constrained devices can park it again. */
+      const prepare = !overlaid() && (frame.progress > 0.12 || remaining() < vh * PREPARE_VH)
       // The tier is read now, not subscribed to: a demotion in the
       // middle of a push must not re-run (and reset) this gesture.
       const low = (forcedTier() ?? useJourney.getState().performanceTier) === 'low'

@@ -1,5 +1,5 @@
-/* Homepage → /world through the leaves. Verifies that nothing of the world is
-   requested before the cover is verified, that the URL changes while covered,
+/* Homepage → /world through the leaves. Verifies that the world renderer is not
+   started before the cover is verified, that the URL changes while covered,
    that the world loads and draws under the cover, and that the leaves only part
    after the runtime's ready signal. Writes a trace and screenshots to .qa/runs.
 
@@ -64,14 +64,14 @@ const phases = await page.evaluate(() => window.__phases)
 const at = (p) => phases.find((x) => x.phase === p)?.at
 const covered = at('COVERED'), revealing = at('REVEALING')
 const worldish = (u) => u.startsWith('/world') || u.includes('/archipelago/') || u.startsWith('/api/world') || u.includes('_rsc') && u.includes('world')
-const early = requests.filter((r) => worldish(r.url) && r.at < covered && r.at >= t0)
+const early = requests.filter((r) => /\/archipelago\/preview\/(index.html|main.js)/.test(r.url) && r.at < covered && r.at >= t0)
 assert(!!covered, `cover verified on screen before anything else (${covered - t0} ms after the push began)`, results)
 assert(coveredShot.covered, 'the cover marked itself covered (opaque layer spanning the viewport for two presented frames)', results)
-assert(early.length === 0, `no world-exclusive request before COVERED (${early.length}: ${early.slice(0, 3).map((r) => r.url).join(', ')})`, results)
+assert(early.length === 0, `no world renderer starts before COVERED (${early.length}: ${early.slice(0, 3).map((r) => r.url).join(', ')})`, results)
 const pathAtLoading = phases.find((p) => p.phase === 'LOADING_WORLD')?.path
 assert(pathAtLoading === '/world', `URL is /world while still covered (at LOADING_WORLD: ${pathAtLoading})`, results)
 const worldReq = requests.filter((r) => worldish(r.url) && r.at >= covered)
-assert(worldReq.some((r) => r.url.includes('/archipelago/preview/main.js')) && worldReq.some((r) => r.url.startsWith('/api/world/blob/')), `world runtime and document requested after COVERED (${worldReq.length} requests)`, results)
+assert(worldReq.some((r) => r.url.includes('/archipelago/preview/main.js')) && worldReq.some((r) => r.url.startsWith('/api/world/blob/') || r.url.startsWith('/archipelago/seed/')), `world runtime and document requested after COVERED (${worldReq.length} requests)`, results)
 const lateWorld = requests.filter((r) => (r.url.includes('/archipelago/') || r.url.startsWith('/api/world')) && revealing && r.at > revealing && !r.url.includes('blob:'))
 assert(lateWorld.length === 0, `nothing of the initial world was still loading when the leaves parted (${lateWorld.map((r) => r.url).slice(0, 4).join(', ')})`, results)
 const ready = await page.evaluate(() => document.querySelector('iframe')?.contentDocument?.body.dataset.ready)

@@ -1,0 +1,16 @@
+#board-editor { width: min(780px, calc(100vw - 28px)); max-height: calc(100dvh - 32px); padding: 24px; border: 1px solid #b6bcb2; border-radius: 14px; background: #f5f6f1; color: #24332b; box-sizing: border-box; overflow: auto; }
+#board-editor::backdrop { background: #13251bcc; }
+#board-editor h2 { margin: 0 0 8px; }
+#board-editor p { line-height: 1.5; font-size: 13px; }
+#board-editor canvas { width: 100%; height: auto; display: block; margin: 18px 0; border-radius: 8px; }
+#board-editor .board-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px; }
+#board-editor label { display: flex; flex-direction: column; gap: 6px; font-size: 12px; font-weight: 600; min-width: 0; }
+#board-editor label[hidden] { display: none; }
+#board-editor input, #board-editor select, #board-editor textarea { width: 100%; box-sizing: border-box; padding: 9px; border: 1px solid #acb7ae; border-radius: 5px; background: #fff; color: #23372b; font: inherit; }
+#board-editor textarea { min-height: 82px; resize: vertical; }
+#board-editor button { padding: 10px 14px; border: 1px solid #829287; border-radius: 6px; background: #fff; color: #23372b; cursor: pointer; }
+#board-editor .board-actions, #board-editor footer { display: flex; gap: 10px; flex-wrap: wrap; }
+#board-editor footer { justify-content: flex-end; position: sticky; bottom: -24px; background: #f5f6f1; padding: 14px 0; }
+#board-editor button[type=submit] { background: #294e38; color: white; }
+#board-editor button:disabled { opacity: .5; cursor: wait; }
+@media (max-width: 560px) { #board-editor .board-fields { grid-template-columns: 1fr; } #board-editor { padding: 16px; } }

@@ -1,0 +1,71 @@
+import fs from 'node:fs';
+import sharp from 'sharp';
+import { launch, BASE, out, assert, finish } from './lib.mjs';
+const browser = await launch(), results = [];
+try {
+ const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
+ const errors = []; page.on('pageerror', e => errors.push(e.message));
+ // Serve the real studio template against public read endpoints; no admin data is written.
+ const source = fs.readFileSync('src/server/world-studio/studio-template.ts', 'utf8');
+ const html = source.slice(source.indexOf('String.raw`') + 11, source.lastIndexOf('`')).replace('<!--CONFIG-->', '<script>window.ARCHIPELAGO_CONFIG={release:"/api/world/release",studio:true}</script>');
+ await page.route('**/admin/world-studio', route => route.fulfill({ contentType: 'text/html', body: html }));
+ await page.goto(`${BASE}/admin/world-studio`);
+ await page.waitForFunction(() => document.body.dataset.ready === 'true', null, { timeout: 180000 });
+ await page.locator('#edit-boards').click();
+ const panel = page.locator('#board-editor');
+ await panel.locator('[name=title]').fill('QA Projects board');
+ await panel.locator('[name=description]').fill('Custom board description');
+ await panel.locator('[name=metric]').fill('');
+ await panel.locator('[name=link]').fill('');
+ const image = await sharp({ create: { width: 480, height: 320, channels: 4, background: '#ff3060' } }).png().toBuffer();
+ await panel.locator('[name=upload]').setInputFiles({ name: 'illustration.png', mimeType: 'image/png', buffer: image });
+ await page.waitForFunction(() => document.querySelector('#board-editor [role=status]').textContent.includes('Imagen lista'));
+ await panel.locator('[name=kind]').selectOption('experiments');
+ await panel.locator('[name=title]').fill('QA Next experience');
+ await panel.locator('[name=description]').fill('An editable experiment');
+ await panel.locator('[name=upload]').setInputFiles({ name: 'illustration.png', mimeType: 'image/png', buffer: image });
+ await page.waitForFunction(() => document.querySelector('#board-editor [role=status]').textContent.includes('Imagen lista'));
+ await page.screenshot({ path: out('world-board-editor.png') });
+ await panel.locator('[type=submit]').click();
+ const saved = await page.evaluate(() => {
+   const a = window.__archipelago, states = a.editor.capture();
+   return { boards: states[a.root.userData.aw_id].data.worldBoards, dirty: a.editor.dirty };
+ });
+ assert(saved.dirty && Object.values(saved.boards.projects)[0].title === 'QA Projects board', 'Projects text enters the undoable world draft', results);
+ assert(Object.values(saved.boards.experiments)[0].image.startsWith('data:image/webp;'), 'Uploaded experiment illustration is compressed and saved with the world', results);
+ await page.evaluate(() => window.__archipelago.editor.undo());
+ assert(await page.evaluate(() => !window.__archipelago.root.userData.worldBoards), 'Undo restores the original board data', results);
+ await page.evaluate(() => window.__archipelago.editor.redo());
+ await page.locator('#drive').click();
+ await page.waitForFunction(() => window.__archipelago.gameplay?.instances.some(i => i.parts.projects), null, { timeout: 120000 });
+ const actual = await page.evaluate(() => {
+   const instances = window.__archipelago.gameplay.instances;
+   return { project: instances.find(i => i.parts.projects).parts.projects.current, lab: instances.find(i => i.parts.places?.labBoard).parts.places.labProjects[0] };
+ });
+ assert(actual.project.title === 'QA Projects board' && actual.project.metric === null && actual.project.link === null, 'Drive uses edited Projects text, including cleared optional fields', results);
+ assert(actual.lab.title === 'QA Next experience' && actual.lab.image === Object.values(saved.boards.experiments)[0].image, 'Drive uses the edited experiment text and image', results);
+ // A fresh visitor reads the edited metadata from a mocked release document.
+ const release = await (await page.request.get(`${BASE}/api/world/release`)).json();
+ const response = await page.request.get(new URL(release.world.url, BASE).href);
+ const bytes = await response.body();
+ const { gunzipSync, gzipSync } = await import('node:zlib');
+ const world = JSON.parse(bytes[0] === 31 ? gunzipSync(bytes).toString() : bytes.toString());
+ const root = Object.values(world.states).find(s => s.data?.worldVariant);
+ root.data.worldBoards = saved.boards;
+ const releasedBytes = gzipSync(JSON.stringify(world));
+ await page.close();
+ const visitor = await browser.newPage({ viewport: { width: 1280, height: 800 } });
+ visitor.on('pageerror', e => errors.push(e.message));
+ await visitor.route(new URL(release.world.url, BASE).href, r => r.fulfill({ contentType: 'application/gzip', body: releasedBytes }));
+ await visitor.goto(`${BASE}/archipelago/preview/index.html`);
+ await visitor.waitForFunction(() => document.body.dataset.ready === 'true', null, { timeout: 180000 });
+ assert(await visitor.evaluate(() => window.__archipelago.gameplay.instances.find(i => i.parts.projects).parts.projects.current.title === 'QA Projects board'), 'Fresh public player restores board metadata from the released document', results);
+ const visibleHud = () => [...document.querySelector('#drive-hud').children].filter(e => getComputedStyle(e).display !== 'none').map(e => e.id || e.textContent.trim());
+ assert(JSON.stringify(await visitor.evaluate(visibleHud)) === JSON.stringify(['speed','KM/H']), 'Desktop lower-left HUD contains only speed and KM/H', results);
+ await visitor.setViewportSize({ width: 390, height: 844 });
+ await visitor.evaluate(() => document.body.dataset.input = 'touch');
+ assert(JSON.stringify(await visitor.evaluate(visibleHud)) === JSON.stringify(['speed','KM/H']), 'Mobile lower-left HUD contains only speed and KM/H', results);
+ assert(errors.length === 0, `No browser exceptions (${errors.join('; ')})`, results);
+ await visitor.screenshot({ path: out('world-speed-only-mobile.png') });
+ await visitor.close();
+} finally { await browser.close(); finish(results); }

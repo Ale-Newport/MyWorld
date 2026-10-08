@@ -33,5 +33,5 @@ export function GardenCover() {
     document.documentElement.style.background = ''
   }, [pathname])
   if (!state.active) return null
-  return <CanopyCover initial={state.initial} budget={state.budget} reduced={state.reduced} partScale={PARTING[parting] ?? 1} handleRef={attach} onOpened={opened} />
+  return <CanopyCover key={state.generation} initial={state.initial} budget={state.budget} reduced={state.reduced} partScale={PARTING[parting] ?? 1} handleRef={attach} onOpened={opened} />
 }

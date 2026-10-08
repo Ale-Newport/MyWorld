@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import {sourceGroundPatch} from './prefab-terrain.js';
 import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';
+import {loadCompressedGLB} from './compressed-gltf.js';
 
 const AREAS=[
  ['bowling','Bolos · pista completa','Bowling'],['circuit','Carreras · circuito World2','Racing'],
@@ -12,6 +13,17 @@ const AREAS=[
  ['timeMachine','Máquina del tiempo','Places'],['controls','Controles · mandos','Places'],['bonfire','Hoguera · restaurar objetos','Places'],
 ];
 const nameOf=o=>o.userData.w2Source??o.name;
+// The circuit's fabric displays used imported technology/brand artwork.
+// Keep their geometry and cloth material, but give those five surfaces a
+// a muted racing palette. The podium has separate branded materials.
+const CIRCUIT_FABRIC=new Set(['Cylinder.022','Cylinder.037','Cylinder.039','refBanners','refBanners.001']);
+const FABRIC_COLORS=['#bf6844','#558e88','#c2a263','#558e88','#bf6844'];
+const CIRCUIT_ARTWORK=new Set(['circuitWebgl','circuitWebgpu','circuitBrand']);
+export function plainCircuitFabric(world){world.traverse(node=>{
+ if(!node.isMesh||!CIRCUIT_FABRIC.has(nameOf(node)))return;
+ const plain=material=>{if(!CIRCUIT_ARTWORK.has(material.name))return material;const fabric=material.clone();fabric.map=null;fabric.color.set(FABRIC_COLORS[[...CIRCUIT_FABRIC].indexOf(nameOf(node))]);fabric.roughness=.9;fabric.needsUpdate=true;return fabric;};
+ node.material=Array.isArray(node.material)?node.material.map(plain):plain(node.material);
+});}
 export function privateClone(root){const materials=new Map(),textures=new Map();const material=m=>{if(materials.has(m))return materials.get(m);const out=m.clone();for(const [key,value] of Object.entries(m))if(value?.isTexture){if(!textures.has(value))textures.set(value,value.clone());out[key]=textures.get(value);}materials.set(m,out);return out;};const o=root.clone(true);o.traverse(n=>{if(n.isMesh){n.geometry=n.geometry.clone();n.material=Array.isArray(n.material)?n.material.map(material):material(n.material);}});return o;}
 export class World2Catalog {
  constructor(world,vegetation,data,manifest){
@@ -53,4 +65,4 @@ export class World2Catalog {
   const content=this.canonical(entry);content.position.fromArray(entry.anchor).negate();node.add(content);return node;
  }
 }
-export async function loadWorld2Catalog(){const loader=new GLTFLoader(),base='../assets/environment/portfolio/';const [a,b,data,manifest]=await Promise.all([loader.loadAsync(base+'models/world.glb'),loader.loadAsync(base+'models/vegetation.glb'),fetch(base+'interactions.json').then(r=>r.json()),fetch(base+'world-manifest.json').then(r=>r.json())]);return new World2Catalog(a.scene,b.scene,data,manifest);}
+export async function loadWorld2Catalog(){const loader=new GLTFLoader(),base='../assets/environment/portfolio/';const [a,b,data,manifest]=await Promise.all([loadCompressedGLB(loader,base+'models/world.glb.gz'),loadCompressedGLB(loader,base+'models/vegetation.glb.gz'),fetch(base+'interactions.json').then(r=>r.json()),fetch(base+'world-manifest.json').then(r=>r.json())]);plainCircuitFabric(a.scene);return new World2Catalog(a.scene,b.scene,data,manifest);}
