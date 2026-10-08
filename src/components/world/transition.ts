@@ -1,3 +1,4 @@
+import { prepareWorld } from './prepare'
 import { garden } from '@/components/home/botanical/garden'
 
 /* ============================================================
@@ -9,8 +10,8 @@ import { garden } from '@/components/home/botanical/garden'
           ─(leaves part)→ REVEALING ─(parted)→ IN_WORLD
 
    and from LOADING_WORLD, ERROR (the leaves stay closed; retry or
-   go home). Nothing about the world is requested before COVERED:
-   not its route, not its runtime, not its document. COVERED is not
+   go home). World bytes may be cached on approach, but no world runtime
+   is evaluated and no world renderer runs before COVERED. COVERED is not
    "the charge reached 1" or "a timer ran out" — the cover itself
    checks, after a frame has actually been presented, that its
    opaque layer is fully opaque and spans the whole viewport (see
@@ -61,12 +62,13 @@ function lockPage(locked: boolean) {
   }
 }
 
-/** Charge 0 → 1 with an ease-in-out, for a cover nobody pushed (a link). */
+/** Charge 0 → 1 with an immediate ease-out, for a cover nobody pushed (a link). */
 function grow(ms: number) {
   const start = performance.now()
   const step = (now: number) => {
     const t = Math.min(1, (now - start) / ms)
-    garden.set(t < 0.5 ? 4 * t * t * t : 1 - (-2 * t + 2) ** 3 / 2)
+    if (state.phase !== 'COVERING') return
+    garden.set(1 - (1 - t) ** 2)
     if (t < 1 && state.phase === 'COVERING') requestAnimationFrame(step)
   }
   requestAnimationFrame(step)
@@ -86,6 +88,7 @@ export const worldTransition = {
    */
   begin({ source, push, reduced = false, href = '/world' }: { source: string; push: (href: string) => void; reduced?: boolean; href?: string }): boolean {
     if (state.phase !== 'HOME') return false
+    if (href === '/world') prepareWorld(true)
     navigate = push
     set({ phase: 'COVERING', source, error: null, reduced, attempt: 0, marks: {} })
     document.documentElement.style.background = SEAM
@@ -102,7 +105,7 @@ export const worldTransition = {
     } else {
       // A link (the index, the portal link): grow it in, from wherever it stands.
       garden.show({ initial: 0 })
-      grow(1100)
+      grow(900)
     }
     void garden.whenCovered().then(() => {
       if (state.phase !== 'COVERING') return
@@ -113,6 +116,16 @@ export const worldTransition = {
       navigate?.(href)
     })
     return true
+  },
+
+  /** A reload/new tab uses the same foliage mask, without a homepage to cover. */
+  arrive(reduced = false) {
+    if (state.phase !== 'HOME') return
+    garden.show({ initial: 1, reduced })
+    // History navigation can reuse a canopy prepared invisibly on the home
+    // page. show() preserves that instance; explicitly complete its charge.
+    garden.set(1)
+    set({ phase: 'COVERED', source: 'direct', reduced, marks: {} })
   },
 
   /** /world has mounted under a verified cover and is creating the world. */
@@ -150,6 +163,9 @@ export const worldTransition = {
   /** Leave the sequence (Back, "Return to the portfolio", an error): uncover whatever page is now showing. */
   abort() {
     if (state.phase === 'HOME' || state.phase === 'IN_WORLD') {
+      garden.hide()
+      lockPage(false)
+      document.documentElement.style.background = ''
       set({ phase: 'HOME', source: null })
       return
     }

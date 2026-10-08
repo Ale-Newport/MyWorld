@@ -85,7 +85,7 @@ const yieldTask = () =>
       return
     }
     const ch = new MessageChannel()
-    ch.port1.onmessage = () => resolve()
+    ch.port1.onmessage = () => { ch.port1.close(); ch.port2.close(); resolve() }
     ch.port2.postMessage(0)
   })
 

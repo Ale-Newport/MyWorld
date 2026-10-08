@@ -1,6 +1,7 @@
 import type { MetadataRoute } from 'next'
 import { publishedSite } from '@/server/site'
 import { deriveSite } from '@/cms/derive'
+import { publicSiteUrl } from '@/lib/site-url'
 
 /* The two journeys and one page per published project, all read from
    the published site document — a project unpublished in the admin
@@ -10,7 +11,7 @@ export const dynamic = 'force-dynamic'
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const { doc } = await publishedSite()
   const { allProjects } = deriveSite(doc)
-  const url = doc.settings.siteUrl
+  const url = publicSiteUrl(doc.settings.siteUrl)
   const now = new Date()
   return [
     { url, lastModified: now, changeFrequency: 'monthly', priority: 1 },

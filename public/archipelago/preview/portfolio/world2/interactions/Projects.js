@@ -1,5 +1,6 @@
 import * as THREE from 'three';
-import { BOARD_FEATURED_COUNT, BOARD_PROJECTS } from '../content/projects.js';
+import { BOARD_FEATURED_COUNT } from '../content/projects.js';
+import { resolveBoard } from '../content/boards.js';
 import { paintProjectScreen } from './screenMotion.js';
 import { orientForMesh } from './bindCanvas.js';
 /** Upstream's camera offsets from the interactive point, unchanged. */
@@ -9,24 +10,24 @@ const TARGET_OFFSET = new THREE.Vector3(-3, 1.6, -4.6);
 const ATTRACT_HOLD = 7;
 const FLIP = 0.5;
 export class Projects {
-    game;
-    references;
-    state = 'closed';
-    index = 0;
-    group = new THREE.Group();
-    screen = null;
-    flips = [];
-    pagination = [];
-    attributes = [];
-    prompt = null;
-    attract = 0;
-    transition = 0;
-    seen = new Set();
-    /** Real seconds of the last screen repaint. The canvas upload is not free. */
-    paintedAt = -1;
     constructor(game, references, bin) {
         this.game = game;
         this.references = references;
+        this.state = 'closed';
+        this.index = 0;
+        this.group = new THREE.Group();
+        this.screen = null;
+        this.flips = [];
+        this.pagination = [];
+        this.attributes = [];
+        this.prompt = null;
+        this.attract = 0;
+        this.transition = 0;
+        this.seen = new Set();
+        /** Real seconds of the last screen repaint. The canvas upload is not free. */
+        this.paintedAt = -1;
+        this.signs = [];
+        this.items = resolveBoard(game.worldBoards, 'projects');
         this.group.name = 'World2 / projects';
         this.buildScreen();
         this.buildFlips();
@@ -47,9 +48,9 @@ export class Projects {
         });
         bin.object3D(this.group);
     }
-    get current() { return BOARD_PROJECTS[this.index]; }
-    get previous() { return BOARD_PROJECTS[(this.index - 1 + BOARD_PROJECTS.length) % BOARD_PROJECTS.length]; }
-    get next() { return BOARD_PROJECTS[(this.index + 1) % BOARD_PROJECTS.length]; }
+    get current() { return this.items[this.index]; }
+    get previous() { return this.items[(this.index - 1 + this.items.length) % this.items.length]; }
+    get next() { return this.items[(this.index + 1) % this.items.length]; }
     attachPrompt(prompt) { this.prompt = prompt; }
     /** Where the player stands to read this board. Drives the UV orientation. */
     get reader() {
@@ -160,7 +161,6 @@ export class Projects {
             }
         }
     }
-    signs = [];
     wrap(context, text, maxWidth) {
         const words = text.split(' ');
         const lines = [];
@@ -211,7 +211,7 @@ export class Projects {
         }
     }
     select(index, silent = false) {
-        const count = BOARD_PROJECTS.length;
+        const count = this.items.length;
         this.index = ((index % count) + count) % count;
         this.attract = 0;
         for (const flip of this.flips) {
@@ -255,7 +255,7 @@ export class Projects {
     }
     paintPagination() {
         this.pagination.forEach((token, i) => {
-            const total = Math.min(this.pagination.length, BOARD_PROJECTS.length);
+            const total = Math.min(this.pagination.length, this.items.length);
             const window = Math.floor(this.index / total) * total;
             const active = this.index - window === i;
             token.visible = i < total;
@@ -367,7 +367,7 @@ export class Projects {
         return {
             activity: 'projects',
             headline: null,
-            lines: [`${this.index + 1} / ${BOARD_PROJECTS.length}`, this.current.title, this.current.link ? 'Open to visit' : 'Private source'],
+            lines: [`${this.index + 1} / ${this.items.length}`, this.current.title, this.current.link ? 'Open to visit' : 'Private source'],
         };
     }
 }

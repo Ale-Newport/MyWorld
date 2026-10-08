@@ -27,10 +27,15 @@ export interface StoredObject {
 }
 
 function supabase() {
-  const url = env('SUPABASE_URL')?.replace(/\/+$/, '')
+  const rawUrl = env('SUPABASE_URL')
   const key = env('SUPABASE_SERVICE_ROLE_KEY')
-  if (!url || !key) return null
-  return { url: `${url}/storage/v1`, bucket: env('SUPABASE_STORAGE_BUCKET') || 'cms', headers: { apikey: key, authorization: `Bearer ${key}` } }
+  if (!rawUrl || !key) return null
+  // Supabase's dashboard also displays the Data API URL ending in /rest/v1.
+  // Accept that value without accidentally sending Storage calls to PostgREST.
+  const endpoint = new URL(rawUrl)
+  const path = endpoint.pathname.replace(/\/+$/, '').replace(/\/(?:rest|storage)\/v1$/, '')
+  if (path) throw new Error('SUPABASE_URL must be the project URL or its /rest/v1 URL.')
+  return { url: `${endpoint.origin}/storage/v1`, bucket: env('SUPABASE_STORAGE_BUCKET') || 'cms', headers: { apikey: key, authorization: `Bearer ${key}` } }
 }
 
 const KEY = /^(blobs|media)\/[a-z0-9._-]+$/

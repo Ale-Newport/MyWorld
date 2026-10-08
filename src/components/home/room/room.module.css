@@ -47,15 +47,16 @@
 
 .host[data-ready='true'] .canvas { opacity: 1; }
 
-/* A still rendered from this same scene stands in when WebGL
-   cannot start or its context is lost for good. */
+/* A matching first frame is visible before the client module mounts and
+   stays under the canvas while the finished frame fades in. */
 .still {
   object-fit: cover;
   object-position: 50% 100%;
-  opacity: 0;
-  transition: opacity 500ms ease;
+  opacity: 1;
+  transition: opacity 700ms var(--ease-out-expo);
 }
 
+.host[data-ready='true'] .still { opacity: 0; }
 .host[data-fallback='true'] .still { opacity: 1; }
 .host[data-fallback='true'] .canvas { opacity: 0; }
 

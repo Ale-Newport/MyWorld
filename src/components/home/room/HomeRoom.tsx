@@ -8,6 +8,7 @@ import { portal } from '@/state/portal'
 import { ROOM_CONFIG } from './config'
 import { RoomEngine } from './engine'
 import { growthFor } from './growth'
+import { RoomStill } from './RoomStill'
 import { buildReadingField, footerShifts, measureReadingBoxes, settledRects } from './layout/readingField'
 import styles from './room.module.css'
 
@@ -19,9 +20,6 @@ import styles from './room.module.css'
    the copy's layout, following the scroll, pausing, tearing down;
    the engine draws.
    ============================================================ */
-
-/** Jumps larger than this land at once instead of animating. */
-const SNAP = 0.12
 
 export function HomeRoom() {
   const hostRef = useRef<HTMLDivElement>(null)
@@ -44,7 +42,7 @@ export function HomeRoom() {
     try {
       engine = new RoomEngine(canvas, {
         quality: detectDevice().tier,
-        onReady: () => setReady(true),
+        onReady: () => { setReady(true); window.dispatchEvent(new Event('room:ready')) },
         onContextLost: () => setFallback(true),
         onContextRestored: () => {
           setFallback(false)
@@ -186,8 +184,8 @@ export function HomeRoom() {
     const pinned = pinnedRaw !== null && Number.isFinite(pinnedRaw) ? pinnedRaw : null
     let readTimer = 0
     const read = () => {
-      window.clearTimeout(readTimer)
-      readTimer = window.setTimeout(() => {
+      cancelAnimationFrame(readTimer)
+      readTimer = requestAnimationFrame(() => {
         if (!engine) return
         const s = useJourney.getState()
         const ranges = s.ranges
@@ -208,10 +206,10 @@ export function HomeRoom() {
         const ends = ranges.map((r) => (held ? 1 : growthFor(Math.min(1, r.end * stretch), ranges)))
         placeEntablature()
         engine.setReadingField(buildReadingField(measureReadingBoxes(), width, height, order, ends))
-      }, 120)
+      })
     }
-    read()
-    void document.fonts?.ready.then(read)
+    // The first visible frame uses the final font metrics.
+    void document.fonts.ready.then(() => { if (engine) read() })
     let observed = false
     const ro = new ResizeObserver(() => {
       // The first callback is the observer's initial report.
@@ -222,13 +220,15 @@ export function HomeRoom() {
       settle()
     })
     ro.observe(host)
-    // Chapters arrive as separate chunks; watch the story's markup
-    // settle after load, then stop — hover states and reveals must
-    // never re-plan the plants.
+    // Chapters arrive as separate chunks; watch structural additions.
+    // Hover states, reveal transforms and counters never re-plan the plants.
     const journey = document.getElementById('journey')
-    const mo = new MutationObserver(read)
+    const mo = new MutationObserver((records) => {
+      // Rotating labels and animation counters replace text nodes while
+      // scrolling. They do not change the chapter layout or the room lens.
+      if (records.some(r => [...r.addedNodes, ...r.removedNodes].some(n => n.nodeType === Node.ELEMENT_NODE))) read()
+    })
     if (journey) mo.observe(journey, { childList: true, subtree: true })
-    const stopWatching = window.setTimeout(() => mo.disconnect(), 6000)
     // The copy itself changed (the admin's live preview, a section's
     // text): measure again, whenever it happens.
     window.addEventListener('cms:content', read)
@@ -268,7 +268,9 @@ export function HomeRoom() {
     const unsub = subscribe((dt, now) => {
       if (!engine) return
       const t = target()
-      if (current < 0 || Math.abs(t - current) > SNAP || useJourney.getState().reducedMotion) current = t
+      // Only the first frame or reduced-motion mode lands immediately.
+      // Snapping a large live scroll delta made the vegetation jump.
+      if (current < 0 || useJourney.getState().reducedMotion) current = t
       else current += (t - current) * (1 - Math.exp(-ROOM_CONFIG.growth.follow * dt))
       if (Math.abs(t - current) < 1e-4) current = t
       engine.setGrowth(current)
@@ -311,10 +313,9 @@ export function HomeRoom() {
       unsubStore()
       ro.disconnect()
       mo.disconnect()
-      window.clearTimeout(stopWatching)
       window.removeEventListener('cms:content', read)
       window.removeEventListener('journey:layout', read)
-      window.clearTimeout(readTimer)
+      cancelAnimationFrame(readTimer)
       window.clearTimeout(resizeTimer)
       dprQuery?.removeEventListener('change', onDpr)
       window.removeEventListener('journey:leaving', onLeaving)
@@ -328,20 +329,14 @@ export function HomeRoom() {
   return (
     <div
       ref={hostRef}
+      data-room-host=""
       className={styles.host}
       aria-hidden="true"
       data-ready={ready ? 'true' : 'false'}
       data-fallback={fallback ? 'true' : 'false'}
     >
-      {/* Only when the room cannot be drawn live: a still rendered
-          from this same scene (scripts/home-room-stills.mjs). Not
-          requested at all otherwise. */}
-      {fallback && (
-        <picture>
-          <source media="(max-aspect-ratio: 4/5)" srcSet="/home-room/still-portrait.webp" />
-          <img className={styles.still} src="/home-room/still-landscape.webp" alt="" decoding="async" />
-        </picture>
-      )}
+      {/* The first frame stays under the canvas through its fade-in. */}
+      <RoomStill start={!fallback} />
     </div>
   )
 }

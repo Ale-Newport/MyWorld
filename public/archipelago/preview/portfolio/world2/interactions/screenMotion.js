@@ -1,3 +1,4 @@
+import { drawBoardImage } from '../content/boards.js';
 /* ============================================================
    WHAT THE BIG SCREEN SHOWS
 
@@ -345,9 +346,11 @@ const PAINTERS = {
 export function paintProjectScreen(context, width, height, project, time) {
     context.fillStyle = '#14111c';
     context.fillRect(0, 0, width, height);
-    grid(context, width, height, time);
-    const painter = PAINTERS[project.motion] ?? generic;
-    painter(context, width, height, time);
+    if (!drawBoardImage(context, project.image, 0, 0, width, height)) {
+        grid(context, width, height, time);
+        const painter = PAINTERS[project.motion] ?? generic;
+        painter(context, width, height, time);
+    }
     // The caption band. Kept to one line of each so the art stays the subject.
     const band = height * 0.24;
     context.fillStyle = 'rgba(14,11,20,0.86)';
@@ -355,7 +358,7 @@ export function paintProjectScreen(context, width, height, project, time) {
     context.textAlign = 'left';
     context.fillStyle = INK;
     context.font = `700 ${Math.round(band * 0.34)}px ui-sans-serif, system-ui, sans-serif`;
-    context.fillText(project.title, 34, height - band + band * 0.42);
+    context.fillText(project.title, 34, height - band + band * 0.42, width - 68);
     context.fillStyle = DIM;
     context.font = `600 ${Math.round(band * 0.2)}px ui-sans-serif, system-ui, sans-serif`;
     context.fillText(`${project.category} · ${project.year}`, 34, height - band + band * 0.68);

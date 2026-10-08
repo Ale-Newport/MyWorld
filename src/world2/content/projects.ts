@@ -23,6 +23,7 @@ export interface BoardProject {
   link: string | null
   linkLabel: string | null
   /** Which screen animation this project gets. */
+  image?: string
   motion: string
 }
 
@@ -73,3 +74,5 @@ export const BOARD_FEATURED_COUNT = projects.filter(p => p.importance === 'hero'
 
 /** The labels the authored wooden signs carry, in board order. */
 export const BOARD_SHORT_TITLES = BOARD_PROJECTS.map(project => project.short)
+
+export const BOARD_EXPERIMENTS: BoardProject[] = projects.filter(p => p.category === 'experiment' || p.source === 'university').map(toBoard)

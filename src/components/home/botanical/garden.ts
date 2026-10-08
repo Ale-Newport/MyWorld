@@ -18,6 +18,8 @@ import type { CoverHandle } from '@/components/home/room/canopy/CanopyCover'
 
 export interface GardenState {
   active: boolean
+  /** A new cover identity, including a hide/show batched in one React commit. */
+  generation: number
   /** Starting charge when it mounts: 1 for an arrival nobody watched grow. */
   initial: number
   budget: number
@@ -25,9 +27,9 @@ export interface GardenState {
   reduced: boolean
 }
 
-let state: GardenState = { active: false, initial: 0, budget: 1, reduced: false }
+let state: GardenState = { active: false, generation: 0, initial: 0, budget: 1, reduced: false }
 /** The server never has leaves standing; one object, so React sees a stable snapshot. */
-const SERVER: GardenState = { active: false, initial: 0, budget: 1, reduced: false }
+const SERVER: GardenState = { active: false, generation: 0, initial: 0, budget: 1, reduced: false }
 let coveredWaiters: Array<() => void> = []
 const listeners = new Set<() => void>()
 let handle: CoverHandle | null = null
@@ -47,9 +49,9 @@ export const garden = {
   /** How far the leaves have grown, 0..1 (0 when no cover is up). */
   charge: () => (state.active ? (charge ?? state.initial) : 0),
 
-  show(opts: Partial<Omit<GardenState, 'active'>> = {}) {
+  show(opts: Partial<Omit<GardenState, 'active' | 'generation'>> = {}) {
     if (state.active) return
-    state = { ...state, reduced: false, ...opts, active: true }
+    state = { ...state, reduced: false, ...opts, active: true, generation: state.generation + 1 }
     emit()
   },
   /**

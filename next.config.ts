@@ -12,6 +12,10 @@ const nextConfig: NextConfig = {
   images: {
     formats: ['image/avif', 'image/webp'],
   },
+  // Next's file tracer otherwise omits the Worker-specific pg socket files.
+  outputFileTracingIncludes: {
+    '**/*': ['./node_modules/pg-cloudflare/dist/**', './node_modules/pg-cloudflare/esm/**'],
+  },
   experimental: {
     optimizePackageImports: ['@react-three/drei'],
   },

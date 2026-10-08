@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation'
 import { loadSite } from '@/server/site'
 import { deriveSite } from '@/cms/derive'
 import { ProjectPage } from '@/components/projects/ProjectPage'
+import { publicSiteUrl } from '@/lib/site-url'
 
 /* One page per published project, rendered from the same entity the
    homepage cards, the universe, the toolbox evidence and the case-study
@@ -15,13 +16,13 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   if (!p) return { title: 'Project not found' }
   const title = p.seo.title || p.title
   const description = p.seo.description || p.shortDescription
-  const image = p.seo.image || p.assets.screenshots[0]
+  const image = p.seo.image || p.assets.screenshots[0] || doc.settings.ogImage || '/og-image.png'
   return {
     title,
     description,
     alternates: { canonical: `/projects/${p.slug}` },
-    openGraph: { type: 'article', url: `${doc.settings.siteUrl}/projects/${p.slug}`, title: `${title} — ${doc.profile.name}`, description, ...(image ? { images: [image] } : {}) },
-    twitter: { card: 'summary_large_image', title, description },
+    openGraph: { type: 'article', url: `${publicSiteUrl(doc.settings.siteUrl)}/projects/${p.slug}`, title: `${title} — ${doc.profile.name}`, description, images: [image] },
+    twitter: { card: 'summary_large_image', title, description, images: [image] },
     robots: { index: !p.hidden, follow: true },
   }
 }

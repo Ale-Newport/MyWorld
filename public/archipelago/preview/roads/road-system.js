@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import {roadSampler} from './nearest-road.js';
 import {bufferPolyline,planarBoolean,rectangle,pointInPolygon} from './planar.js';
 const EPS=1e-6,cache=new WeakMap();
 const curbTexture=new THREE.DataTexture(new Uint8Array([213,70,57,255,243,241,221,255]),2,1);curbTexture.wrapS=THREE.RepeatWrapping;curbTexture.wrapT=THREE.RepeatWrapping;curbTexture.magFilter=THREE.NearestFilter;curbTexture.minFilter=THREE.NearestFilter;curbTexture.colorSpace=THREE.SRGBColorSpace;curbTexture.needsUpdate=true;
@@ -13,7 +14,9 @@ export function sampleRoad(def,matrix=new THREE.Matrix4()){
  const result=samples.map((p,i)=>{if(i)distance+=p.distanceTo(samples[i-1]);const before=samples[i===0?(def.closed?samples.length-2:0):i-1],after=samples[i===samples.length-1?(def.closed?1:i):i+1],t=after.clone().sub(before);t.y=0;if(t.lengthSq()<EPS)t.set(1,0,0);t.normalize();return {p,s:distance,t,n:new THREE.Vector3(-t.z,0,t.x)};});
  return {curve,samples:result,length:distance};
 }
-function nearest(samples,x,z){let best={distance:Infinity,s:0,y:0,lateral:0,t:new THREE.Vector3(1,0,0)};for(let i=1;i<samples.length;i++){const a=samples[i-1],b=samples[i],dx=b.p.x-a.p.x,dz=b.p.z-a.p.z,l2=dx*dx+dz*dz,t=THREE.MathUtils.clamp(((x-a.p.x)*dx+(z-a.p.z)*dz)/(l2||1),0,1),px=a.p.x+dx*t,pz=a.p.z+dz*t,d=Math.hypot(x-px,z-pz);if(d<best.distance){const length=Math.sqrt(l2)||1;best={distance:d,s:a.s+(b.s-a.s)*t,y:THREE.MathUtils.lerp(a.p.y,b.p.y,t),lateral:((x-px)*-dz+(z-pz)*dx)/length,t:new THREE.Vector3(dx/length,0,dz/length)};}}return best;}
+const samplers=new WeakMap();
+function nearest(samples,x,z){let query=samplers.get(samples);if(!query){query=roadSampler(samples);samplers.set(samples,query);}const hit=query(x,z);return {...hit,t:new THREE.Vector3(hit.tx,0,hit.tz)};}
+
 function sampleAt(samples,distance){let lo=0,hi=samples.length-1;while(hi-lo>1){const m=(lo+hi)>>1;if(samples[m].s<distance)lo=m;else hi=m;}const a=samples[lo],b=samples[hi],t=THREE.MathUtils.clamp((distance-a.s)/(b.s-a.s||1),0,1);return {p:a.p.clone().lerp(b.p,t),n:a.n.clone().lerp(b.n,t).normalize(),s:distance};}
 function strips(data,offset,width,{dash=Infinity,gap=0}={}){const out=[],total=data.length;for(let start=0;start<total-EPS;start+=dash+gap){const end=Math.min(total,start+dash),n=Math.max(1,Math.ceil((end-start)/.9));for(let i=0;i<n;i++){const a=sampleAt(data.samples,start+(end-start)*i/n),b=sampleAt(data.samples,start+(end-start)*(i+1)/n);out.push([[a.p.x+a.n.x*(offset-width/2),a.p.z+a.n.z*(offset-width/2)],[b.p.x+b.n.x*(offset-width/2),b.p.z+b.n.z*(offset-width/2)],[b.p.x+b.n.x*(offset+width/2),b.p.z+b.n.z*(offset+width/2)],[a.p.x+a.n.x*(offset+width/2),a.p.z+a.n.z*(offset+width/2)]]);}if(!Number.isFinite(dash))break;}return out;}
 function bounds(polys){const b={minX:Infinity,maxX:-Infinity,minZ:Infinity,maxZ:-Infinity};for(const p of polys)for(const [x,z] of p){b.minX=Math.min(b.minX,x);b.maxX=Math.max(b.maxX,x);b.minZ=Math.min(b.minZ,z);b.maxZ=Math.max(b.maxZ,z);}return b;}
