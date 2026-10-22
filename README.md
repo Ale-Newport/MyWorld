@@ -1,683 +1,93 @@
-# Alejandro Newport — Portfolio
+# MyWorld
 
-A scroll-driven, single-world portfolio. One object — internally called **the Core** —
-travels through fifteen chapters and transforms into whatever the chapter is about: a
-timeline traveller, a rover, a browser, a phone, a skeleton, a data node, a chessboard
-lattice, a trade stream, a star, and finally back into the capsule it started as.
+### A portfolio you can read, explore and drive through.
 
-The site is built so that a recruiter with ninety seconds and a visitor with ten minutes
-both get what they came for. Every fact on it is traceable to a source (see
-[CONTENT_STATUS.md](./CONTENT_STATUS.md)).
+Alejandro Newport's interactive portfolio combines a scroll-led story, a searchable project archive and an explorable 3D island. It brings software, AI and creative engineering work into one connected experience, backed by an administration workspace for editing and publishing content.
 
----
+**Next.js · React · TypeScript · Three.js · React Three Fiber · Rapier**
 
-## 1. Overview
+[Visit the live portfolio](https://alejandro-newport-portfolio.anewportd.workers.dev) · [Explore the island](https://alejandro-newport-portfolio.anewportd.workers.dev/world) · [Run locally](#run-locally)
 
-| | |
-| --- | --- |
-| **Structure** | 15 chapters, one continuous document scroll, no route changes |
-| **3D** | A single persistent WebGL canvas behind the DOM — never one per section |
-| **Content** | Fully data-driven from `src/content/`; no copy is hardcoded in components |
-| **Projects** | 41 entries — 4 hero, 15 featured, 22 archive |
-| **Accessibility** | Full server-rendered profile in the DOM; reduced-motion path; keyboard navigation throughout |
-| **Modes** | Full experience (default) and Quick View (≈90 s), switchable from the index |
+![The deployed portfolio introduction](docs/images/portfolio.jpg)
 
-### The critical questions, and where they are answered
+*The public portfolio, captured in October 2026. Published content can evolve independently of the source defaults.*
 
-| Question | Answered by |
-| --- | --- |
-| Who is Alejandro? | Prelude + About (chapters 01–02), and `StaticProfile` in the DOM |
-| What does he do? | Rotating roles → the thesis line, then every chapter |
-| Where did he study? | KCL (03), UCL (14) |
-| Where has he worked? | Pansofia (05), Teaching (06), Metaview (09) |
-| Strongest projects? | Focus (07), Gym (08), Chess (10), Cinquillo 2.0, Stock (11) |
-| What does he actually use? | Tech Toolbox (13) — every technology wired to real project evidence |
-| How do I contact him? | Persistent index overlay, and the finale (15) |
+## Two ways to explore
 
-None of those depend on WebGL, animation or scrolling: they all exist as plain,
-crawlable, screen-reader-reachable DOM.
+**Follow the story.** Move through the portfolio's chapters, discover the technologies behind the work, and open project case studies. Quick View, an index and a readable HTML profile give visitors different ways through the same material.
 
----
+**Enter the world.** Drive or fly around Archipiélago: discover project areas, career and education content, activities and achievements. The world includes its own map and travel controls.
 
-## 2. Architecture
+![The Archipiélago world running locally from this repository](docs/images/world.jpg)
 
-```
-src/
-  app/                        Next.js App Router — layout, page, 404, sitemap, robots
-  content/                    THE SOURCE OF TRUTH
-      profile.ts              identity, roles, contact links, site config
-      chapters.ts             the journey spine: order, scroll length, theme, Core state
-      education.ts            KCL, UCL, credentials
-      experience.ts           roles, dates, verified facts, metrics
-      skills.ts               technologies ↔ project evidence graph
-      projects/
-          personal.ts         public GitHub + hero projects
-          client.ts           Pansofia / Grupo Newport websites
-          index.ts            aggregation, filters, content-health report
-      types.ts                the whole data model
-  state/journey.ts            zustand store + a separate frame-rate object
-  hooks/                      scroll driver, chapter progress, canvas harness, sound, easter eggs
-  lib/                        math, device tiering
-  components/
-      journey/                provider, chapter shell, the 15 chapter components
-      navigation/             HUD, index overlay
-      typography/             reveal modes, count-up
-      project-visuals/        19 procedural motion graphics, one per project family
-      ui/                     cursor, project overlay
-  experience/
-      canvas/GlobalCanvas     the single R3F canvas
-      core/                   the Core mesh + its per-chapter morph targets
-      scenes/                 8 lazily-mounted 3D scenes
-      camera/                 one camera, one shot pair per chapter
-      shaders/                GLSL for the Core and the field
-```
+## Run locally
 
-### How the scroll journey works
-
-There is **no scroll-jacking**. The page is an ordinary document.
-
-1. `src/content/chapters.ts` declares each chapter's length in viewport heights
-   (`vh`, and `quickVh` for Quick View). That array is the single source of pacing truth.
-2. `Chapter.tsx` renders each chapter as a `<section>` of exactly that height, containing
-   one `position: sticky` full-viewport stage. Native scrolling moves the document; the
-   stage stays pinned while its section passes.
-3. `useLenisScroll` runs **one** rAF loop for the whole site. It smooths the scroll with
-   Lenis, computes normalised progress, and writes it to two places:
-   - the mutable `frame` object (every frame, zero React renders),
-   - the zustand store (only when progress moves ≳0.04%, and only chapter-level fields).
-4. Anything animating per-frame — the camera, the Core, particle systems, HUD progress,
-   chapter parallax — reads `frame` directly inside `useFrame`/rAF. React re-renders only
-   when the *chapter* changes.
-5. Every animation is a pure function of progress, so scrubbing backwards is exact and
-   nothing has to be "reset".
-
-Adjusting pacing means editing one number in `chapters.ts`. Nothing else changes.
-
-### The Core
-
-`src/experience/core/Core.tsx` mounts once and never unmounts. `coreStates.ts` holds one
-target transform per `CoreState`; the Core damps toward the active chapter's target, so
-every transformation is continuous and reversible. Adding a chapter means adding a
-`CoreState` and one entry in that record.
-
-### Scene mounting
-
-`SceneManager` keeps a scene alive only while the active chapter is within one step of a
-chapter that owns it — so the next scene is warm on arrival and old GPU memory is released.
-Each scene is a separate lazy chunk.
-
----
-
-## 3. Tech stack
-
-| Layer | Choice | Why |
-| --- | --- | --- |
-| Framework | Next.js 16 (App Router), React 19, TypeScript strict | SSR for the crawlable profile, RSC for the static layer |
-| 3D | Three.js + React Three Fiber + custom GLSL | One canvas, instanced everything |
-| Scroll | Lenis | Smoothing only — native scroll semantics are preserved |
-| State | Zustand + a plain mutable frame object | Chapter-level reactivity; per-frame values never touch React |
-| Motion graphics | Canvas 2D, hand-written | 19 components, no charting or animation library |
-| Styling | CSS Modules + design tokens | No UI kit, no utility framework, no card component |
-| Fonts | Geist Sans + Geist Mono (self-hosted) | No network font request |
-| Sound | Web Audio, synthesised | Zero audio bytes shipped |
-| Capture | Playwright + sharp | Client screenshots → AVIF/WebP |
-
-**Two deliberate omissions from the brief's suggested stack.**
-
-GSAP/ScrollTrigger is not here. Its job on this site — mapping scroll position to a
-normalised progress value per section — is about forty lines in
-`useLenisScroll` + `useChapterProgress`, and doing it directly is what makes the
-zero-React-render-per-frame architecture possible. A dependency that only wraps
-those forty lines would have earned nothing.
-
-Rapier is not here either. The one chapter with physics is the playground, and it
-needs a car model: acceleration, drag, and steering authority that scales with
-speed. That is about twenty lines in `PlaygroundScene`. A WASM physics engine for
-one drivable object would have added a few hundred kilobytes to a chapter Quick
-View skips entirely.
-
----
-
-## 4. Install, run, build
+Use **Node.js 24+** and npm. The local content store uses Node's built-in SQLite; no Supabase account or Cloudflare setup is needed to explore the project.
 
 ```bash
-npm install
-npm run dev        # http://localhost:3000
-npm run build      # production build
-npm start          # serve the production build
-npm run lint
-npm run typecheck
-npm test           # unit tests for the content store, auth, media, schema, audience
-npm run admin:create -- --email you@example.com --name "You"   # first administrator
-```
-
-The site has an admin at `/admin` for pages, projects, animations, the world, media, audience and settings. See **[docs/ADMIN.md](docs/ADMIN.md)**.
-
-Useful URLs:
-
-- `/?quick` — open directly in Quick View
-- `/#project/chess-assistant` — deep-link any case study
-- Press <kbd>I</kbd> anywhere for the index
-
-### Content scripts
-
-```bash
-npm run content:status     # regenerate CONTENT_STATUS.md from the data model
-npm run capture:clients    # re-capture the client website screenshots
-```
-
----
-
-## 5. Deployment
-
-The public pages are statically generated and regenerated when something is published from the admin. The admin writes to a content store on local disk (SQLite plus files), so the host needs a **persistent directory**. Set `CMS_DATA_DIR` to it and `CMS_SECRET` to 32+ random characters (see `.env.example` and [docs/ADMIN.md](docs/ADMIN.md#configuration)).
-
-**Serverless hosts (Vercel)**
-
-The public site works with the content and world that ship in the repository. Admin edits would not persist there, because serverless functions do not keep files.
-
-```bash
-npx vercel --prod
-```
-
-**Any Node host (recommended for the admin)**
-
-```bash
+git clone https://github.com/Ale-Newport/MyWorld.git
+cd MyWorld
 npm ci
-npm run build
-npm start           # binds PORT, defaults to 3000
+npm run dev
 ```
 
-**Docker**
+Open **[localhost:3000](http://localhost:3000)**. The repository includes default content and a world seed, so the public experience works before you create an administrator. Stop the server with `Ctrl+C`.
 
-```dockerfile
-FROM node:22-alpine AS build
-WORKDIR /app
-COPY package*.json ./
-RUN npm ci
-COPY . .
-RUN npm run build
-
-FROM node:22-alpine
-WORKDIR /app
-ENV NODE_ENV=production
-ENV CMS_DATA_DIR=/data
-COPY --from=build /app ./
-VOLUME /data
-EXPOSE 3000
-CMD ["npm", "start"]
-```
-
-Run it with a volume, for example `docker run -v portfolio-data:/data -e CMS_SECRET=… -p 3000:3000 portfolio`. Then create the first administrator inside the container with `npm run admin:create`.
-
-**Before the first deploy**, set the real domain. Use the admin (Settings → Site URL), or edit `siteConfig.url` in `src/content/profile.ts` before the first save. Then replace the three links flagged `needsVerification: true` in the same file, or under the profile's contact links.
-
----
-
-## 6. Content data model
-
-Everything the site says is one versioned **site document**, edited in the admin and validated by the schema in `src/cms/schema.ts`. Until the first save, the document is migrated from `src/content/`, which remains the seed; after that, the published revision is the source. The shape that matters most is `Project`; the admin adds `status`, `hidden`, `order`, `links`, `seo` and page `sections` to it:
-
-```ts
-{
-  id, slug, title, shortTitle?, year, dates?,
-  source: 'personal' | 'university' | 'client' | 'professional',
-  organisation?, category, subcategory?,
-  importance: 'hero' | 'featured' | 'archive',   // drives layout weight and Universe size
-  shortDescription,                              // ≤110 chars, used on hover
-  description, contribution?,
-  verifiedFacts: string[],                       // ONLY things read from a primary source
-  metrics: Metric[],                             // ONLY numbers found in that source
-  technologies: string[],
-  repository?, liveUrl?, chapter?, timelinePosition,
-  presentation: { type, motionComponent, concept, interaction, duration },
-  assets: { screenshots, videos, models, textures, audio },
-  assetStatus: 'real' | 'generated' | 'placeholder' | 'none-required',
-  dataStatus: 'verified' | 'partially-verified' | 'placeholder' | 'needs-review',
-  privateSource: boolean,
-  needsReplacement?: boolean,
-  featured: boolean,
-  accent?: string
-}
-```
-
-`dataStatus` and `assetStatus` are the honesty mechanism. They are surfaced in
-`CONTENT_STATUS.md` and never shown to visitors — the site does not print the word
-"placeholder", it just doesn't claim things it cannot support.
-
----
-
-## 7. Adding a new project
-
-In the admin: **Projects → + New project**. Fill it in, preview the project page, listing and home page, save, and publish. The steps below are for adding one to the shipped seed in code.
-
-1. Add an entry to `src/content/projects/personal.ts` (or `client.ts`).
-   Set `dataStatus: 'placeholder'` until you have read the source.
-2. Pick a `presentation.motionComponent`. If nothing fits, use
-   `'GenericProjectMotion'` — it is data-driven and works for any project.
-3. If the project deserves its own graphic, create
-   `src/components/project-visuals/MyMotion.tsx` following the contract in
-   `project-visuals/types.ts`, and register it in `ProjectVisual.tsx`.
-4. If it should appear in the drivable playground, add it to `INSTALLATIONS` in
-   `src/experience/scenes/PlaygroundScene.tsx`.
-5. Wire its technologies in `src/content/skills.ts` — the `evidence` array is validated
-   against real project ids in development and warns on a typo.
-6. `npm run content:status`.
-
-It will appear automatically in the Project Universe, the archive list, the JSON-LD, the
-sitemap and the static profile. Nothing else needs touching.
-
----
-
-## 8. Replacing project assets
-
-### Placeholder → real
-
-Find the project in `src/content/projects/`. Then:
-
-```ts
-assets: {
-  screenshots: ['/assets/projects/<slug>/hero.webp'],
-  videos: [], models: [], textures: [], audio: [],
-},
-assetStatus: 'real',        // was 'placeholder' or 'generated'
-dataStatus: 'verified',     // once the facts are confirmed
-needsReplacement: false,    // or delete the key
-```
-
-Drop the files under `public/assets/projects/<slug>/`. `ProjectOverlay` shows a real image
-whenever `assets.screenshots` is non-empty, and falls back to the procedural graphic
-otherwise — no component change needed.
-
-### Client website screenshots
-
-```bash
-npm run capture:clients
-```
-
-Re-visits the fifteen public sites, captures desktop (1440×2200) and mobile (390×1400),
-encodes AVIF + WebP into `public/assets/client-work/`, and writes a `manifest.json`
-recording what succeeded. To add a site, add it to the `SITES` array in
-`scripts/capture-clients.mjs` **and** to `seeds` in `src/content/projects/client.ts`.
-
-### 3D models
-
-Put `.glb` files in `public/assets/models/`. Draco/meshopt-compress them first:
-
-```bash
-npx gltf-transform optimize in.glb public/assets/models/out.glb --compress meshopt
-```
-
-The Gym chapter is the first place a real model should land — see
-`src/components/project-visuals/GymMotion.tsx` and item 1 in `CONTENT_STATUS.md`.
-
-### Sound
-
-There are no audio files: `src/hooks/useSound.ts` synthesises every cue with the Web Audio
-API. To use samples instead, drop them in `public/assets/audio/` and swap the `play()`
-implementation — the call sites (`'chapter' | 'click' | 'open' | 'close' | 'pulse'`) stay
-the same.
-
----
-
-## 9. Performance tiers
-
-`src/lib/perf.ts` probes cores, device memory, pointer type, viewport and the WebGL
-renderer string once, and returns a profile:
-
-| Tier | Trigger | Effect |
-| --- | --- | --- |
-| `high` | Desktop, ≥8 cores, ≥8 GB, real GPU | DPR ≤ 2, full particle counts, shadows, all post-processing |
-| `medium` | Mobile, ≤4 cores, ≤4 GB, or small texture limit | DPR ≤ 1.5, 55% density, no shadows |
-| `low` | ≤2 cores, ≤2 GB, or a software renderer | DPR 1, 28% density, no shadows, physics disabled |
-
-Every particle and instance count is written as `Math.round(N * device.density)`, so one
-number governs the whole site's load.
-
-A runtime watchdog (`createFpsWatchdog`) samples FPS every two seconds; two consecutive
-readings under 32 fps drop the tier to `low` and clamp the pixel ratio, live.
-
-Other measures: one WebGL context for the entire site; scenes lazily mounted in a window
-around the active chapter; every project graphic in its own chunk, fetched only when shown;
-`IntersectionObserver` pausing every Canvas2D loop that is off screen; instanced geometry
-for the Universe, Toolbox and finale; no per-frame React state anywhere; WebGL deferred to
-`requestIdleCallback` so the opening is interactive immediately.
-
----
-
-## 10. Mobile
-
-Mobile tells the same story with a lighter budget — nothing interesting is hidden.
-
-- Density drops to ~28–55%; shadows and heavy post-processing are off.
-- The playground swaps WASD for an on-screen joystick (`playground:touch` event).
-- Every hover interaction has a tap equivalent: Universe nodes tap to open, Toolbox chips
-  tap to pin, the client gallery scrolls natively.
-- Chapter grids collapse from twelve columns to one; corner labels shrink or drop.
-- The Metaview beats stack vertically instead of cross-fading in place.
-- `overflow-x: clip` on `html, body` plus `overflow: clip` on every pinned stage, so no
-  transform can produce a horizontal scrollbar.
-
----
-
-## 11. Accessibility
-
-- `StaticProfile` renders the complete profile — experience, education, all 41 projects with
-  metrics, the full technology list and contact details — server-side, in the DOM, in the tab
-  order. It is visually hidden but reveals itself on focus.
-- `prefers-reduced-motion` removes camera sweeps, parallax and per-frame transforms. Every
-  project graphic renders a meaningful static end-state instead of animating, and the reveal
-  components render plain text.
-- Focus is trapped in the index and project overlays, `Escape` closes both, and focus returns
-  to the trigger.
-- The progress timeline is a real `role="slider"` with arrow-key chapter navigation.
-- The custom cursor is disabled entirely on touch devices and under reduced motion, and never
-  covers native controls.
-- Semantic headings throughout; skip-to-content link; visible focus rings on everything.
-
----
-
-## 12. Privacy and sources
-
-The `Grupo-Newport` repositories are private and **were never accessed**. Client entries
-were built exclusively from the live public websites. No source code, infrastructure detail,
-credential, environment value, internal URL or client-sensitive information from any private
-repository appears anywhere in this project.
-
-Every claim about a public repository in `verifiedFacts` was read out of that repository.
-Where a number comes only from the CV, the data says so and the note is shown next to it.
-
----
-
-## 13. The interactive world (`/world`)
-
-> The world is now stored in the content store and edited in the admin's world studio. The runtime in `public/archipelago` is extended by the portfolio: jump, plane, ice props, M map and activities. Current details are in [docs/ARCHIPELAGO_WORLD.md](docs/ARCHIPELAGO_WORLD.md) and [docs/ADMIN.md](docs/ADMIN.md#world-editor); parts of this section describe the world as it was first built.
-
-A second, optional way through the same material: a drivable 3D world built from
-the same `src/content/` data as the scroll journey. Nothing in it is exclusive —
-every project it contains links back to its case study, and the whole thing is
-written out as plain DOM for anyone not driving.
-
-**It is a derivative of Bruno Simon's MIT-licensed
-[folio-2025](https://github.com/brunosimon/folio-2025).** The engine under it —
-game loop, physics, ray-cast vehicle, camera, input system — is ported from that
-project. See [THIRD_PARTY_NOTICES.md](./THIRD_PARTY_NOTICES.md) for the licence,
-what was ported, what was adapted, and what is original. Every ported file
-carries a `PORTED FROM` header.
-
-### Architecture
-
-```
-src/world/                     the engine — imperative TypeScript, no React
-    Game.ts                    one instance per mount; owns everything
-    core/                      Events, Ticker, Viewport, Quality, Tween, Disposal, palette
-    physics/                   Physics (Rapier), PhysicsVehicle  ← the game feel
-    input/                     Inputs action-map, Keyboard, Pointer, Wheel, Gamepad, Nipple
-    player/Player.ts           input → driver intent, hydraulics, respawn
-    view/View.ts               the follow camera
-    render/Renderer.ts         WebGL renderer + one composite pass
-    world/                     terrain, materials, geometry, landmarks, props, the car
-    minigames/                 Minigame base + one file per game
-    systems/                   achievements, audio, save, zones, weather, secrets, interaction
-    state/store.ts             the narrow bridge to React
-src/content/world.ts           WHERE EVERYTHING STANDS — districts, landmarks, roads, ramps
-src/content/achievements.ts    what can be unlocked
-src/components/world/          the React shell: loader, HUD, overlays, map
-src/app/world/page.tsx         the route
-```
-
-React renders the loader, the HUD and the overlays. It does not render a single
-frame of the world and does not re-render while you drive.
-
-### Physics
-
-Rapier (`@dimforge/rapier3d-compat`, pinned to 0.17.3 to match upstream) with its
-`DynamicRayCastVehicleController`. `PhysicsVehicle.ts` keeps every upstream
-tuning constant — engine force, top speeds, brake amplitudes, the three
-suspension heights and stiffnesses, wheel friction and suspension settings, the
-flip impulse. Those numbers are the difference between a car that moves and a car
-that is fun, and they are not recoverable by guessing.
-
-One deliberate change: the simulation runs on a **fixed-timestep accumulator**
-rather than upstream's variable step. At 60 Hz it produces upstream's exact
-numbers (`world.timestep = 1/30`, `controller.updateVehicle(1/60)`, including the
-deliberate 2:1 asymmetry between them); everywhere else it holds them, so the car
-handles the same on a 144 Hz desktop and a 40 Hz laptop.
-
-The tick order is upstream's, split across three channels:
-
-| Channel | Order | What runs |
-| --- | --- | --- |
-| `frame` (once per rendered frame) | 0 | sample inputs and devices |
-| `fixed` (0–5 substeps) | 1 | player pre-physics |
-| | 2 | vehicle pre-physics |
-| | 3 | **physics step** |
-| | 5 | vehicle post-physics |
-| | 6 | player post-physics |
-| | 7–8 | zones, interaction targets |
-| `tick` (once per rendered frame) | 7 | camera |
-| | 8–15 | visual vehicle, lighting, tracks, weather, mini-games, secrets |
-| | 998 | render |
-
-### Controls
-
-| | Keyboard | Gamepad | Touch |
-| --- | --- | --- | --- |
-| Drive | WASD / arrows | left stick, R2 / L2 | drag anywhere |
-| Boost | Shift | ○ | — |
-| Brake | B or Ctrl | □ | — |
-| Jump | Space | △ | tap near the car |
-| Hydraulics | number keys / numpad | L1, R1 | — |
-| Interact | Enter or E | ✕ | tap the prompt |
-| Camera | drag to orbit, middle-drag to pan, wheel to zoom | right stick, R3 | two fingers |
-| Horn | H | L3 | — |
-| Respawn | R | Select | menu |
-| Map | M | Start | menu |
-| Achievements | K | | menu |
-| Mute | L | | options |
-| Pause | Escape | | ESC button |
-
-Every binding is data in `ACTION_DEFINITIONS` (`src/world/input/Inputs.ts`) and
-can be overridden at runtime through `inputs.rebind()`; overrides persist in the
-save file.
-
-### The world is data
-
-**The island is a hand-drawn map, compiled.** The plan lives in
-`scripts/mapcal/plan.json` as normalized 0..1 drawing coordinates, verified
-against the photograph by `scripts/mapcal/overlay.mjs`, and
-`scripts/mapcal/emit-ts.mjs` turns it into `src/content/world-map.ts` — the
-coastline, the racing line, the water, the zone table, the vegetation masses and
-the path network, in metres. Re-run the emitter after editing the plan; nothing
-downstream reads the JSON.
-
-From there it is three files, in order:
-
-* `src/content/world-map.ts` — the drawing (generated, do not hand-edit)
-* `src/content/world-environment.ts` — the natural geography derived from it:
-  coast, circuit, lakes, river, bridge, venues, vegetation
-* `src/content/world.ts` — the built environment: districts, landmarks, paths,
-  ramps, respawns, timeline plates, dev notes
-
-`src/world/world/World.ts` is the machine that turns those into geometry and
-colliders, and `src/content/world-layout.ts` is the one occupancy registry that
-says whether a piece of ground is free.
-
-In development, **SHIFT+M** puts the camera where the plan was drawn from and
-lays the plan itself over the world so the two can be compared feature by
-feature; **SHIFT+L** draws every footprint the registry knows about and prints
-its conflict report.
-
-**To add a landmark**, add an entry to `landmarks`:
-
-```ts
-{
-  id: 'kcl-compilers', district: 'kcl', label: 'COMPILERS',
-  x: -140, z: 22, visual: 'moduleStack', interaction: 'panel', radius: 10,
-  panel: { title: 'COMPILERS', lines: ['Lexing, parsing, lowering.'] },
-}
-```
-
-`visual` picks a builder from `src/world/world/Landmarks.ts`; adding a new kind
-means adding a `Builder` there and a name to `LandmarkVisual`. Setting `ref`
-instead of `panel` pulls the copy from `projects`, `experience` or `education` —
-which is how the world and the scroll journey stay in agreement.
-
-**Projects place themselves.** The island has ONE projects area: a terminal you
-press ENTER on, which opens the whole archive as an overlay, and eight plinths
-around it carrying the featured work. `PROJECT_GROUPS` in `world.ts` derives the
-overlay's collections from the inventory, and a development-time check warns if
-any project ends up in none of them — so adding a project to
-`src/content/projects/personal.ts` puts it in both experiences with no other
-change, and no project can quietly fall off the map.
-
-**To add a mini-game**, extend `Minigame` (`src/world/minigames/Minigame.ts`),
-implement `build()`, `tick()` and `reset()`, register it in `Game.init()`, and
-point a landmark at it with `interaction: 'minigame'` and a `minigame` id. The
-base class owns cancellation — Escape, R, respawn, opening the map and straying
-too far all end a run — so a new game cannot strand anyone even if it forgets to
-handle any of that.
-
-### Assets
-
-There are none. Every mesh is generated in code, every texture is drawn to a
-canvas, the display typography is swept from stroke outlines in
-`src/world/world/alphabet.ts`, and every sound is synthesised with the Web Audio
-API. The route downloads JavaScript and Rapier's WebAssembly, and nothing else.
-
-That is a licensing position as much as a performance one: nothing here needed
-its provenance checked because nothing here came from anywhere.
-
-### Save state
-
-One versioned key, `alejandro-world-save-v1`, holding settings, achievements,
-discovered districts, opened landmarks, found notes and secrets, best times and
-distance driven. A corrupt, foreign or newer blob is discarded and replaced with
-defaults — a visitor should never see the world fail to load because of something
-in their own browser. Writes are debounced; `Save.ts` is the only thing that
-touches `localStorage`.
-
-There is no backend and no leaderboard. The interfaces would take one, but
-shipping an unauthenticated score endpoint to make a portfolio look busier is not
-a trade worth making.
-
-### Quality
-
-`AUTO` probes cores, memory, WebGL limits and the GPU string, then watches the
-frame rate and steps down after two bad two-second windows (and back up once, if
-the machine recovers). `LOW` / `MEDIUM` / `HIGH` are also selectable in the
-options menu.
-
-**Quality changes what the world looks like, never what it collides with.**
-Physics props, colliders, terrain shape and every trigger radius are identical at
-every setting. A phone and a desktop are playing the same game.
-
-### Testing
-
-```bash
-npm run world:qa        # drives the car and asserts on it
-npm run world:tour      # drives the whole island in one go, watching for teleports
-npm run world:layout    # the occupancy registry: is anything inside anything else?
-npm run world:decor     # the decoration manifest: placed, refused, and why
-npm run world:clearance # is anything standing in a road?
-npm run world:minigames # every mini-game: start, play, leave, replay
-npm run world:water     # drive into every body of water, and out again
-npm run world:shore     # is the beach drivable on every bearing?
-npm run world:browsers  # boots and drives it in Chromium, Firefox and WebKit
-```
-
-`scripts/world-qa.mjs` is not a screenshot test. It presses keys, waits, and
-reads telemetry back out of the running engine through `window.__world` (exposed
-in development only). What it asserts:
-
-| | |
+| Route | Explore |
 | --- | --- |
-| **Physics** | Settles on four wheels at 1.10 m. 72 km/h cruising, 315 km/h boosted. Steering turns it. Braking sheds speed. Jumping leaves the ground by 1.8 m and lands upright. It never falls through the world. |
-| **Recovery** | Respawn puts it on solid ground. Flipped on its roof, it rights itself with no input. After a heavy boost run it is still upright and still driveable. |
-| **Mini-games** | All four start, run, and give the controls back on Escape — no HUD left behind, no camera left in cinematic mode, no collider left disabled, no input filter left set. |
-| **World** | Every district can be entered and driven. Every one of the 12 respawn points can be driven away from — the bowling one used to face a kerb and manage 3.5 m. Every landmark stands on ground the car can reach. The big ramp launches the car 6.7 m above the ground and it survives the landing. |
-| **Touch** | A phone gets a reduced quality tier, touch input mode, on-screen buttons, and one-finger driving. No horizontal overflow. |
-| **Teardown** | Four round trips through the route, then the fifth world still renders. Browsers cap live WebGL contexts and drop the oldest silently, so a leak does not throw — it just stops rendering after a few visits, and this is the only way to see it. |
+| `/` | The portfolio journey |
+| `/projects` | Project archive and case studies |
+| `/world` | The interactive island; use a modern browser with WebGL enabled |
+| `/admin/login` | Sign-in for the optional content workspace |
 
-Several of those checks exist because they failed first. The stunt ramp was
-rebuilt three times before it reached the island; the hidden island's far half
-was being shaved off by the world-edge falloff; a barrier weighed more than the
-car and beached it with no recovery; the particle pool filled within a second of
-the car resting against a wall. None of that is visible in a screenshot.
-
-`scripts/world-tour.mjs` photographs every district from its own respawn point at
-a fixed framing, so the whole world can be reviewed at once.
-
----
-
-## 14. Notes for whoever works on this next
-
-A few things that are load-bearing and not obvious:
-
-**R3F clones the `uniforms` prop.** Passing a memoised uniforms object to
-`<shaderMaterial uniforms={u}>` and then mutating `u.uTime.value` in `useFrame`
-silently animates nothing — the material holds a clone. Every shader scene here
-keeps a `ref` on the material and writes through `mat.current.uniforms`. If a
-shader stops animating, check this first.
-
-**One rAF loop, not nineteen.** `src/lib/ticker.ts` is the only
-`requestAnimationFrame` outside R3F. Chapters, the HUD, the cursor and the theme
-lerp all subscribe to it. Adding a new per-frame effect means calling
-`subscribe()`, not opening another loop.
-
-**Two state objects, deliberately.** `useJourney` (zustand) holds things that
-should re-render React — the active chapter, the theme, whether an overlay is
-open. `frame` (a plain mutable object in the same file) holds things that change
-sixty times a second. Putting scroll progress in the store would re-render
-fifteen chapters per frame; putting the active chapter in `frame` would mean
-nothing ever updates. Keep the line where it is.
-
-**No tone mapping.** The WebGL clear colour has to match the DOM's `--paper`
-token exactly or a seam appears at the edge of every pinned stage. ACES would
-pull it off by ~30%.
-
-**CSS Modules reject bare element selectors.** `kbd { … }` fails the build;
-`.keys kbd { … }` is fine.
-
-**The React Compiler lint rules are scoped off in two directories** — see the
-comment in `eslint.config.mjs` for why, and what to do if the compiler is ever
-switched on.
-
----
-
-## 15. Verification
-
-What was actually checked, and how:
-
-| Check | Method | Result |
-| --- | --- | --- |
-| Production build | `npm run build` | Passes. 4 routes, all static. |
-| Types | `tsc --noEmit`, strict | Clean. No `any` in the codebase. |
-| Lint | `eslint src` (flat config, Next 16) | Clean. |
-| Layout, 15 chapters × 5 viewports | `npm run qa` — Playwright walks the journey at 1920/1440/1280/834/390 and screenshots every chapter | No horizontal overflow at any size. |
-| Runtime errors | console + pageerror capture during the same sweep | None. |
-| Index overlay, project deep-links, Quick View | asserted in the sweep | All pass; Quick View correctly drops the playground. |
-| Reduced motion | separate context with `reducedMotion: 'reduce'` | Renders a designed static state. |
-| First load | `node scripts/perf-check.mjs` | FCP ~56 ms, ~611 KB transferred including fonts and the client captures. |
-| Frame rate | same script, scrubbing the entire journey | Holds up under software rendering (headless SwiftShader); real GPUs are far above it. |
-| `/world` — physics, recovery, the ramp, mini-games, world, touch, teardown | `npm run world:qa` — Playwright drives the car and reads engine telemetry | All pass. 26 landmarks, 117 props, 372 bodies, 491 colliders. |
-| `/world` — the whole island, driven | `npm run world:tour` — one continuous drive from the landing to the race start, watching for the engine rescuing the car | 10 of 10 stops reached, **0 teleports**, 932 m driven. |
-| `/world` — nothing inside anything else | `npm run world:layout` | 100 footprints, 0 conflicts, 0 respawn problems. |
-| `/world` — decoration placed, and what was refused | `npm run world:decor` | 809 of 1,204 placed (67%), 21 instanced meshes, 0 failures — with the rejection histogram per theme. |
-| `/world` — nothing standing in a road | `npm run world:clearance` | 0 obstructions; 11 samples excused by design (bridge deck, ramps, the labyrinth arch). |
-| `/world` — the circuit, driven at three paces | `node scripts/world-race-drive.mjs` | All three finish: 75.6 / 65.6 / 47.0 s, 25 gate crossings each, never more than 4.0 m off the racing surface. |
-| `/world` — every mini-game, three times each | `npm run world:minigames` | 4 mini-games, 0 failing — start, play, exit, clean HUD, second run, third run. |
-| `/world` — bowling, five sets | `node scripts/world-bowling-qa.mjs <url> --sets=5` | All checks pass; the screen never showed a pin that was not standing. |
-| `/world` — driving into water and out again | `npm run world:water` | Both lakes, both river fords and the ramp's shallows pass; the open coast past its shelf is recovered by the drowning rule, as designed. |
-| `/world` — the beach, on every bearing | `npm run world:shore` | 0 failing transects. |
-| `/world` — the race under a hostile driver | `node scripts/world-runtime-checks.mjs` | 22 records, 0 failing; 60 fps on all three quality tiers. |
-| `/world` — is it the drawing? | `node scripts/world-topdown.mjs <url>` then `node scripts/mapcal/compare.mjs` | Side by side with the photograph, at the same aspect and grid. |
-| `/world` — leaving and returning | five mounts in one session | Fifth world renders; no WebGL context leak. |
-| `/world` — Chromium, Firefox, WebKit | `npm run world:browsers` | All three boot, settle on four wheels and drive the same distance (33.1 / 33.4 / 33.1 m), which is also the fixed timestep doing its job. Firefox and WebKit auto-select MEDIUM. WebKit here is Playwright's build, not Safari. |
+To create your own local administrator:
 
 ```bash
-npm run qa     # visual + functional sweep (needs a server running)
-npm run perf   # payload and frame-rate measurement
+npm run admin:create -- --email you@example.com --name "Your Name"
 ```
 
-Screenshots land in `.qa/<viewport>/<chapter>.png` with a `report.json` next to them.
+The command prompts for a password. Then open `/admin/login`. Local content, uploads and revisions live under `.data/cms/`. Setup and publishing are described in the [administration guide](docs/ADMIN.md).
+
+## Built around the experience
+
+| Layer | Implementation |
+| --- | --- |
+| Portfolio | Next.js App Router, React and TypeScript |
+| Visuals | Three.js, React Three Fiber, shaders and scroll-driven motion |
+| Island | ES-module runtime, Rapier physics, driving and flying |
+| Content | Project and page documents, drafts, revisions and publication history |
+| Local storage | SQLite and files on disk |
+| Hosted storage | Supabase Postgres and private object storage |
+| Hosting | OpenNext on Cloudflare Workers |
+
+The public page provides readable profile content alongside the visual experience. The world requires WebGL; the project archive remains a useful way to browse the work separately.
+
+## Repository guide
+
+| Path | Purpose |
+| --- | --- |
+| `src/app/` | Public routes, admin routes and API handlers |
+| `src/content/` | Profile, projects and source content |
+| `src/components/` + `src/sections/` | Portfolio interface and chapter composition |
+| `src/experience/` | React Three Fiber scenes and visual systems |
+| `src/server/` | Content store, authentication, revisions and storage |
+| `public/archipelago/` | Island runtime, assets and initial world document |
+| `scripts/` + `tests/` | Authoring tools, browser checks and automated tests |
+
+The [world guide](docs/ARCHIPELAGO_WORLD.md) explains the runtime, controls, seed and editor. The [admin guide](docs/ADMIN.md) covers the content workspace, media, revisions and deployment configuration.
+
+## Useful commands
+
+```bash
+npm run typecheck   # TypeScript checks
+npm run lint        # ESLint
+npm test            # Automated tests
+npm run build       # Next.js production build
+npm start           # Serve that build locally
+```
+
+For a local production preview, set a private `CMS_SECRET` of at least 32 characters; `.env.example` documents the settings. Cloudflare deployment uses `npm run cf:build` and `npm run deploy` after configuring the production services in the admin guide.
+
+## Preview verification
+
+The clean-clone setup was checked on **22 October 2026** with `npm ci` and the development server. The local `/world` route loaded the bundled island, and the public portfolio URL was checked before linking it here. Screenshots show the deployed introduction and the local island; they are actual captures of the project.
