@@ -2,7 +2,12 @@ import * as THREE from 'three';
 import {surfaceMaterial,surfaceUV,materialChoices} from './surface-materials.js';
 import {bufferPolyline,planarBoolean,pointInPolygon,signedArea,cleanPolygon} from './roads/planar.js';
 import {MAIN_HEIGHT} from './world-config.js';
+import {tessellate,refineToGround} from './surface-tessellate.js';
+import {qaSwitches} from './runtime/qa-switches.js';
 export {materialChoices};
+/** A conforming surface follows the ground at this lattice (metres): vertices at its outline's corners and where the outline crosses x or z = k*step. ?surfaces=legacy keeps the old 4-way subdivision for A/B. */
+export const SURFACE_STEP=2,SURFACE_TOLERANCE=.01,SURFACE_ORIGIN=[.173,.119];
+const legacySurfaces=()=>qaSwitches().legacySurfaces;
 const clone=value=>JSON.parse(JSON.stringify(value)),EPS=1e-7,cache=new WeakMap();
 function cross(a,b,c){return (b[0]-a[0])*(c[1]-a[1])-(b[1]-a[1])*(c[0]-a[0]);}
 function onSegment(a,b,p){return Math.abs(cross(a,b,p))<EPS&&p[0]>=Math.min(a[0],b[0])-EPS&&p[0]<=Math.max(a[0],b[0])+EPS&&p[1]>=Math.min(a[1],b[1])-EPS&&p[1]<=Math.max(a[1],b[1])+EPS;}
@@ -35,9 +40,19 @@ function build(node,def,{heightAt}={}){
  if(def.brushCuts?.length){const cuts=def.brushCuts.map(cell=>cell.map(p=>{const v=new THREE.Vector3(p[0],0,p[1]).applyMatrix4(matrix);return [v.x,v.z];}));({cells,area}=planarBoolean([cells,cuts],n=>n[0]>0&&!n[1]));}
  const positions=[],uv=[],indices=[],height=(x,z)=>{const measured=def.conformToTerrain?heightAt?.(x,z):null;return (Number.isFinite(measured)?measured:def.kind==='path'?nearestHeight(samples,x,z):new THREE.Vector3(0,def.height,0).applyMatrix4(matrix).y)+def.offset;};
  const vertex=point=>{const [x,z]=point,p=new THREE.Vector3(x,height(x,z),z).applyMatrix4(inverse);positions.push(...p.toArray());uv.push(...surfaceUV(x,z,def.material));return positions.length/3-1;};
- // A bounded grid subdivision follows terrain between outline points too.
+ // Conforming surfaces: the region is dissolved to a few hundred trapezoids and cut on a lattice (surface-tessellate.js), so the ground is followed
+ // at SURFACE_STEP metres without the thousands of needle triangles that cutting 4-way down to 3 m edges made of a brush stroke's slivers (179,000 triangles for 200 m2).
+ const lattice=def.conformToTerrain&&heightAt&&!legacySurfaces();
+ // Otherwise a bounded grid subdivision follows terrain between outline points too.
  function triangle(a,b,c,depth=0){const edge=Math.max(Math.hypot(a[0]-b[0],a[1]-b[1]),Math.hypot(a[0]-c[0],a[1]-c[1]),Math.hypot(c[0]-b[0],c[1]-b[1]));if(def.conformToTerrain&&heightAt&&edge>3&&depth<8){const ab=a.map((v,i)=>(v+b[i])/2),bc=b.map((v,i)=>(v+c[i])/2),ca=c.map((v,i)=>(v+a[i])/2);triangle(a,ab,ca,depth+1);triangle(ab,b,bc,depth+1);triangle(ca,bc,c,depth+1);triangle(ab,bc,ca,depth+1);}else indices.push(vertex(a),vertex(c),vertex(b));}
- for(const cell of cells)for(let i=1;i<cell.length-1;i++)triangle(cell[0],cell[i],cell[i+1]);
+ if(lattice){
+  // Vertices at the outline's corners and where it crosses the lattice; then every edge whose midpoint is more than 1 cm off the ground is split (the same for both of its triangles).
+  const steady=(x,z)=>{const a=height(x,z),b=height(x+.004,z+.003),c=height(x-.003,z+.004);return a>b?(b>c?b:a>c?c:a):(a>c?a:b>c?c:b);},points=[],welded=new Map(),triangles=[],weld=point=>{const id=Math.round(point[0]*1e4)+','+Math.round(point[1]*1e4);let index=welded.get(id);if(index===undefined){index=points.length;points.push([point[0],point[1],steady(point[0],point[1])]);welded.set(id,index);}return index;};
+  for(const piece of tessellate(cells,{step:SURFACE_STEP,origin:SURFACE_ORIGIN}).pieces){const v=piece.map(weld);for(let i=1;i<v.length-1;i++)if(v[0]!==v[i]&&v[i]!==v[i+1]&&v[0]!==v[i+1])triangles.push(v[0],v[i],v[i+1]);}
+  const refined=refineToGround(points,triangles,steady,{tolerance:SURFACE_TOLERANCE}),ids=new Map();
+  const at=i=>{let index=ids.get(i);if(index===undefined){const [x,z,y]=points[i],p=new THREE.Vector3(x,y,z).applyMatrix4(inverse);positions.push(p.x,p.y,p.z);uv.push(...surfaceUV(x,z,def.material));index=positions.length/3-1;ids.set(i,index);}return index;};
+  for(let i=0;i<refined.length;i+=3)indices.push(at(refined[i]),at(refined[i+2]),at(refined[i+1]));
+ }else for(const cell of cells)for(let i=1;i<cell.length-1;i++)triangle(cell[0],cell[i],cell[i+1]);
  const geometry=new THREE.BufferGeometry();geometry.setAttribute('position',new THREE.Float32BufferAttribute(positions,3));geometry.setAttribute('uv',new THREE.Float32BufferAttribute(uv,2));geometry.setIndex(indices);geometry.computeVertexNormals();geometry.computeBoundingBox();geometry.computeBoundingSphere();geometry.userData={mapSurfaceGenerated:true,worldTiling:true};
  return {geometry,area,length,samples,curve,definition:def};
 }

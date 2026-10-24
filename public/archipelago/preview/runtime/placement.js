@@ -78,6 +78,8 @@ export class Placement{
   Object.assign(this,{physics,root,bounds,seaLevel,exclude,cameraDirection,cameraOffset});this.R=physics.rapier;this.world=physics.world;this.soft=soft??softObstacles(root);
   const F=this.R.QueryFilterFlags;this.flags={fixed:F.EXCLUDE_DYNAMIC|F.EXCLUDE_KINEMATIC|F.EXCLUDE_SENSORS,moving:F.EXCLUDE_FIXED|F.EXCLUDE_SENSORS,solid:F.EXCLUDE_SENSORS};
   this.q=new THREE.Quaternion();this.v=new THREE.Vector3();
+  /** Arrivals that places declare for themselves while they are alive: {name, poses:[{x,z,heading}], dynamicMargin, reach} (see declaredArrival). */
+  this.arrivalPoints=new Set();
  }
  water(x,z){return this.physics.waterAt?.(x,z)??this.seaLevel;}
  inBounds(x,z,pad=0){const b=this.bounds;return !b||(x>=b.minX-pad&&x<=b.maxX+pad&&z>=b.minZ-pad&&z<=b.maxZ+pad);}
@@ -218,12 +220,29 @@ export function plazaSpawn(placement,group,{camera=placement.cameraHeading()??3*
 }
 
 /* ---- travel from the M map -------------------------------------------------------- */
+/** The arrival a place declared for itself (`placement.arrivalPoints`: the Social plaza, whose stations read from the chase camera
+ * only along one line through its dais), for a place or prompt within `reach` metres of its first pose. The first of its poses
+ * that passes the same rules as any arrival wins: drivable level dry ground, clear of fixed colliders by 0.8 m and of anything
+ * that moves by the declared margin, open sky, inside the world, outside the landmark's keep-out, and the chase camera sees the
+ * car. The car faces away from the chase camera as it is NOW (`live`, placement.cameraHeading(): a player who dragged the camera round is still
+ * looking at its back); the heading a place declares is the one for the camera's default angle, and serves when there is no camera
+ * to ask. Null when no pose is valid (or nothing is declared nearby), and the search below runs as it always did. */
+function declaredArrival(placement,live,cx,cz,name,outside=()=>true){
+ for(const d of placement.arrivalPoints??[]){
+  const first=d.poses[0];if(!first||Math.hypot(first.x-cx,first.z-cz)>(d.reach??12))continue;
+  for(const p of d.poses){if(!outside(p.x,p.z))continue;
+   const r=placement.check(p.x,p.z,wrap(Number.isFinite(live)?live:p.heading),{margin:.8,dynamicMargin:d.dynamicMargin??2.5,maxEdge:4});
+   if(r.ok&&placement.cameraClear(r.x,r.y,r.z))return Object.assign(r,{ok:true,name:d.name??name??null,source:'declared'});}
+ }
+ return null;
+}
 /** A safe arrival for the M map. For an experience group: at its entrances (stepped out by its recommended
  * clearance), at the World2 spawns authored inside it, then on rings around its real extent — never inside
  * its landmark, which validation refuses anyway (roofs, walls and floors are not ground). For a marker point:
  * the nearest valid spot within 18 m. For a clicked point: exactly there, nudged at most 4 m when something
  * stands on it; water, void, slopes and the world's edge are refused with their reason. Headings favour
- * facing the place with the chase camera behind; among valid spots the nearest to the place wins. */
+ * facing the place with the chase camera behind; among valid spots the nearest to the place wins. A place that declared its
+ * own arrival (declaredArrival) is put down there, for its group and for the prompts around it, when that is valid. */
 export function arrivalFor(placement,target,{spawns=[],seen=null,maxDistance=42}={}){
  const camera=placement.cameraHeading(),prefer=(x,z,cx,cz)=>{const out=[];if(camera!=null)out.push({heading:camera,weight:.5});const d=new THREE.Vector3(cx-x,0,cz-z);if(d.lengthSq()>4)out.push({heading:headingOf(d.normalize()),weight:.45});return out;};
  const finish=(c,extra)=>{const free=placement.heading(c.x,c.y,c.z,{prefer:prefer(c.x,c.z,extra.cx??c.x,extra.cz??c.z),samples:16,max:20}),again=free?placement.check(c.x,c.z,free.heading,extra.options):null;const pose=again?.ok?again:c;return Object.assign(pose,{ok:true,name:extra.name??null,source:extra.source??c.source??'travel'});};
@@ -237,10 +256,11 @@ export function arrivalFor(placement,target,{spawns=[],seen=null,maxDistance=42}
   return {ok:false,reason:['steep','edge','water'].includes(first.reason)?first.reason:'blocked',x,z};
  }
  const group=target.group??null,options={margin:group?.8:PLACEMENT.margin,dynamicMargin:2.5,maxEdge:4};
- if(!group){const {x,z}=target;if(![x,z].every(Number.isFinite))return {ok:false,reason:'invalid'};const near=placement.near(x,z,{radius:18,step:2,prefer:prefer(x,z,x,z),...options});return near?finish(near,{options,cx:x,cz:z,name:target.name,source:'marker'}):{ok:false,reason:'blocked',x,z};}
+ if(!group){const {x,z}=target;if(![x,z].every(Number.isFinite))return {ok:false,reason:'invalid'};const own=declaredArrival(placement,camera,x,z,target.name);if(own)return own;const near=placement.near(x,z,{radius:18,step:2,prefer:prefer(x,z,x,z),...options});return near?finish(near,{options,cx:x,cz:z,name:target.name,source:'marker'}):{ok:false,reason:'blocked',x,z};}
  const area=areaOf(group),cx=target.x??area.x,cz=target.z??area.z,clear=group.userData.recommendedClearance??3,mark=landmarkBox(group),candidates=[];
  // Never inside the landmark: the car's centre stays its half-diagonal plus the group's clearance outside it.
  const pad=clear+Math.hypot(PLACEMENT.half.x,PLACEMENT.half.z),outside=(x,z)=>!mark||x<mark.min.x-pad||x>mark.max.x+pad||z<mark.min.z-pad||z>mark.max.z+pad;
+ const own=declaredArrival(placement,camera,cx,cz,group.name,outside);if(own)return own;
  for(const e of entrancesOf(group))for(const out of [clear+3,clear+6,clear+10])candidates.push({x:e.x+e.direction.x*out,z:e.z+e.direction.z*out,bonus:6,source:'entrance'});
  for(const s of spawns){if(!Array.isArray(s.position))continue;const [x,,z]=s.position;if(Math.hypot(x-cx,z-cz)<=area.radius+12)candidates.push({x,z,heading:s.rotation,bonus:4,source:'prefab'});}
  const rings=[area.radius*.55,area.radius+clear+2,area.radius+clear+6,area.radius+clear+11];if(mark){const half=Math.hypot(mark.max.x-mark.min.x,mark.max.z-mark.min.z)/2;rings.push(half+pad,half+pad+4);}

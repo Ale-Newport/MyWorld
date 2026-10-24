@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';
+import {loadCompressedGLB} from '../compressed-gltf.js';
 let pending;
 /** Blender calls the propeller "Cube.004"; GLTFLoader strips the dot from node
  * names and keeps the original in userData.name, so match all three spellings. */
@@ -13,8 +14,9 @@ export function preparePlaneModel(scene){
   model.getObjectByName('Fuselage and wings')?.traverse(node=>{if(node.isMesh)node.userData.collision=true;});
   root.add(model);return root;
 }
+/** The gzip copy (190 KB, started by index.html) is what ships: the edge does not compress model/gltf-binary, so the raw GLB is 717 KB. The raw file is the fallback. */
 export function loadPlaneModel(){
- if(!pending)pending=new GLTFLoader().loadAsync(new URL('../../assets/vehicles/plane/corsair.glb',import.meta.url).href).then(gltf=>preparePlaneModel(gltf.scene));return pending;
+ if(!pending){const url=new URL('../../assets/vehicles/plane/corsair.glb',import.meta.url).href;pending=loadCompressedGLB(new GLTFLoader(),url+'.gz').catch(()=>new GLTFLoader().loadAsync(url)).then(gltf=>preparePlaneModel(gltf.scene));}return pending;
 }
 /** The blur a spinning three-blade propeller leaves on the eye: a faint grey disc
  * of blade, the yellow tips smeared into a ring, three soft streaks. */

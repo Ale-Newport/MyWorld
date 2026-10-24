@@ -1,4 +1,6 @@
 import * as THREE from 'three';
+import {PLAYER_MODE,loadWorldDocument} from './world-storage.js';
+import {shortenFloat32Arrays} from './world-instances.js';
 
 export const PHYSICS_PRESETS={
  'Static Decoration':{physics_mode:'STATIC',mass:1,friction:.7,restitution:.02,collision:true,collision_shape:'CONVEX_HULL'},
@@ -34,8 +36,36 @@ export class AssetDefinitions {
  instantiate(id){const d=this.get(id);if(!d)throw Error('Asset definition missing: '+id);const node=cloneAsset(d.node);node.userData.assetDefinitionId=id;node.userData.assetDefinitionVersion=d.version;node.userData.editable_root=true;return node;}
  save(id,node,changes={}){const old=this.get(id);if(!old)throw Error('Asset definition missing: '+id);const next=cleanDefinition(cloneAsset(node,true));next.position.set(0,0,0);tagAssetParts(next);const updated={...old,...changes,node:next,version:old.version+1};Object.assign(updated,{dimensions:assetBounds(next).getSize(new THREE.Vector3()).toArray(),editableChildren:0});next.traverse(()=>updated.editableChildren++);this.definitions.set(id,updated);this.modified.add(id);return updated;}
  saveAs(sourceId,node,name){const original=this.get(sourceId);if(!name?.trim())throw Error('Introduce un nombre para el nuevo asset.');let id='custom:'+slug(name),suffix=2;while(this.definitions.has(id))id='custom:'+slug(name)+'-'+suffix++;const next=cleanDefinition(cloneAsset(node,true));next.position.set(0,0,0);tagAssetParts(next);const d={...original,id,name:name.trim(),node:next,version:1,generatorId:original.generatorId??sourceId,source:'HelloWorld · variant of '+original.name,thumbnail:null,dimensions:assetBounds(next).getSize(new THREE.Vector3()).toArray(),editableChildren:0};next.traverse(()=>d.editableChildren++);this.definitions.set(id,d);this.modified.add(id);return d;}
- document(){return {schema:1,savedAt:new Date().toISOString(),definitions:[...this.modified].map(id=>{const {node,...metadata}=this.get(id);return {...metadata,object:node.toJSON()};})};}
- async restore(document){if(document.schema!==1||!Array.isArray(document.definitions))throw Error('Invalid asset definitions');for(const item of document.definitions){if(!item.id||!item.object?.object)throw Error('Invalid asset entry');const {object,...metadata}=item,node=await new THREE.ObjectLoader().parseAsync(object);tagAssetParts(node);this.definitions.set(item.id,{...metadata,node});this.modified.add(item.id);}}
+ document(){return {schema:1,savedAt:new Date().toISOString(),definitions:[...this.modified].map(id=>{const {node,...metadata}=this.get(id);return {...metadata,object:shortenFloat32Arrays(node.toJSON())};})};}
+ /** `only(item)` skips the entries a caller will not use (each skipped one is not even parsed). The player restores
+  * exactly what its world document can observe (`definitionsToRestore`); the studio restores everything. */
+ async restore(document,{only=null}={}){if(only===null&&PLAYER_MODE&&document.schema===1&&Array.isArray(document.definitions)){const world=await loadWorldDocument();only=definitionsToRestore(world,id=>this.definitions.has(id),document.definitions);}if(document.schema!==1||!Array.isArray(document.definitions))throw Error('Invalid asset definitions');for(const item of document.definitions){if(!item.id||!item.object?.object)throw Error('Invalid asset entry');if(only&&!only(item))continue;const {object,...metadata}=item,node=await new THREE.ObjectLoader().parseAsync(object);tagAssetParts(node);this.definitions.set(item.id,{...metadata,node});this.modified.add(item.id);}}
+}
+
+/** Which saved definitions the player has to parse. The 14 saved definitions weigh 4.3 MB, 3.4 MB of it one the studio keeps for
+ * editing ("Projects District"); the player only ever reads a definition through
+ *  - `prepareRefs` (an instance reference needs its definition to build the instance), and
+ *  - `refreshDefinitionInstances` (a node carrying `assetDefinitionId` is rebuilt from the definition when the versions differ;
+ *    a definition that is not there leaves the node as saved).
+ * So a definition is parsed when an instance reference names it, or when a node of the world names it and skipping would change
+ * that node's fate: the version differs, or a built-in definition of the same id (`exists`) would take its place.
+ * A definition that is parsed brings its own node tree into the scene, and a node of that tree can name another definition
+ * (`userData.assetDefinitionId`): `items` (the file's definitions) lets those names count as the world's own, until nothing more is
+ * pulled in (only definitions that are parsed are read: about 130 KB of JSON today, not the 4 MB).
+ * `world` is the world document, `exists(id)` tells whether a definition of that id is already registered. */
+export function definitionsToRestore(world,exists=()=>false,items=[]){
+ const required=new Set(),seen=new Map();
+ const note=(data,force)=>{const id=data?.assetDefinitionId;if(!id)return;if(force)required.add(id);(seen.get(id)??seen.set(id,new Set()).get(id)).add(data.assetDefinitionVersion);};
+ const walk=(json,force)=>{if(!json)return;note(json.userData,force);for(const child of json.children??[])walk(child,force);};
+ for(const ref of world?.instanceRefs??[]){required.add(ref.definitionId);for(const part of ref.parts??[])note(part.state?.data);}
+ for(const state of Object.values(world?.states??{}))note(state?.data);
+ for(const group of world?.experiences?.groups??[])note(group?.data);
+ for(const json of world?.added??[])walk(json?.object);
+ for(const saved of world?.instanceOverrides??[])walk(saved?.object?.object,true);
+ const wanted=item=>required.has(item.id)||(seen.has(item.id)&&(exists(item.id)||[...seen.get(item.id)].some(version=>version!==item.version)));
+ const read=new Set();
+ for(let grew=true;grew;){grew=false;for(const item of items)if(!read.has(item)&&wanted(item)){read.add(item);walk(item.object?.object);grew=true;}}
+ return wanted;
 }
 
 export function replaceInstanceContent(instance,definition){

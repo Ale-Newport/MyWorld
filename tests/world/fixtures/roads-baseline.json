@@ -1,0 +1,182 @@
+{
+ " / Central Boulevard": {
+  "vertices": 7898,
+  "triangles": 3948,
+  "hash": -348089028,
+  "area": 1677.102018
+ },
+ "Central Boulevard / Lane and edge markings": {
+  "vertices": 81640,
+  "triangles": 40776,
+  "hash": -430996758,
+  "area": 57.001858
+ },
+ " / West Coast Road": {
+  "vertices": 9786,
+  "triangles": 4890,
+  "hash": 808958199,
+  "area": 1718.39064
+ },
+ "West Coast Road / Lane and edge markings": {
+  "vertices": 84072,
+  "triangles": 41990,
+  "hash": -614482964,
+  "area": 63.304577
+ },
+ " / Castle & Ice Road": {
+  "vertices": 14891,
+  "triangles": 7443,
+  "hash": -1306820683,
+  "area": 1749.718066
+ },
+ "Castle & Ice Road / Lane and edge markings": {
+  "vertices": 97414,
+  "triangles": 48652,
+  "hash": -1221713951,
+  "area": 72.66751
+ },
+ " / East Coast Road": {
+  "vertices": 17026,
+  "triangles": 8510,
+  "hash": -953960584,
+  "area": 2314.102235
+ },
+ "East Coast Road / Lane and edge markings": {
+  "vertices": 132905,
+  "triangles": 66387,
+  "hash": 231330712,
+  "area": 78.186071
+ },
+ " / Achievements Coast": {
+  "vertices": 11105,
+  "triangles": 5551,
+  "hash": 372305120,
+  "area": 1200.221268
+ },
+ "Achievements Coast / Lane and edge markings": {
+  "vertices": 66011,
+  "triangles": 32971,
+  "hash": -813827431,
+  "area": 46.859906
+ },
+ " / South Coast Road": {
+  "vertices": 9457,
+  "triangles": 4727,
+  "hash": -405928248,
+  "area": 1390.964007
+ },
+ "South Coast Road / Lane and edge markings": {
+  "vertices": 75383,
+  "triangles": 37653,
+  "hash": 917274942,
+  "area": 54.66457
+ },
+ " / Fairground Approach": {
+  "vertices": 3225,
+  "triangles": 1611,
+  "hash": -1171194303,
+  "area": 562.607931
+ },
+ "Fairground Approach / Lane and edge markings": {
+  "vertices": 21092,
+  "triangles": 10526,
+  "hash": 1000284662,
+  "area": 24.874177
+ },
+ " / Loop Approach": {
+  "vertices": 2881,
+  "triangles": 1439,
+  "hash": -1050938946,
+  "area": 397.466497
+ },
+ "Loop Approach / Lane and edge markings": {
+  "vertices": 22654,
+  "triangles": 11312,
+  "hash": 916090302,
+  "area": 17.722989
+ },
+ " / Catalunya Club": {
+  "vertices": 8902,
+  "triangles": 4450,
+  "hash": 840413073,
+  "area": 1400.85863
+ },
+ "Catalunya Club / Lane and edge markings": {
+  "vertices": 64400,
+  "triangles": 32196,
+  "hash": 1188665620,
+  "area": 47.535323
+ },
+ "Catalunya Club / Curve-bound starting grid": {
+  "vertices": 1158,
+  "triangles": 568,
+  "hash": 1777185313,
+  "area": 1.744696
+ },
+ "Catalunya Club / Distance-pattern race curbs": {
+  "vertices": 47908,
+  "triangles": 23950,
+  "hash": -613816131,
+  "area": 206.983483
+ },
+ "Catalunya Club / Left guardrail 1": {
+  "vertices": 54,
+  "triangles": 80,
+  "hash": -1613932390,
+  "area": 1.292075
+ },
+ "Catalunya Club / Left guardrail 2": {
+  "vertices": 180,
+  "triangles": 290,
+  "hash": 1692515102,
+  "area": 9.657377
+ },
+ "Catalunya Club / Left guardrail 3": {
+  "vertices": 804,
+  "triangles": 1330,
+  "hash": -135039275,
+  "area": 41.86517
+ },
+ "Catalunya Club / Guardrail posts": {
+  "vertices": 34,
+  "triangles": 20,
+  "hash": 530840592,
+  "area": 0.026748
+ },
+ "Catalunya Club / Right guardrail": {
+  "vertices": 1080,
+  "triangles": 1790,
+  "hash": 1708461356,
+  "area": 69.301935
+ },
+ " / Harbor Approach": {
+  "vertices": 264,
+  "triangles": 132,
+  "hash": 1522045825,
+  "area": 108.54868
+ },
+ "Harbor Approach / Lane and edge markings": {
+  "vertices": 64,
+  "triangles": 32,
+  "hash": -252958060,
+  "area": 5.142617
+ },
+ " / Catalunya Pit Lane": {
+  "vertices": 2138,
+  "triangles": 1068,
+  "hash": -1553548761,
+  "area": 117.794154
+ },
+ "Catalunya Pit Lane / Lane and edge markings": {
+  "vertices": 7604,
+  "triangles": 3800,
+  "hash": 1133184516,
+  "area": 9.540993
+ },
+ "Catalunya Pit Lane / Distance-pattern race curbs": {
+  "vertices": 5888,
+  "triangles": 2942,
+  "hash": 1372254850,
+  "area": 41.052856
+ }
+}

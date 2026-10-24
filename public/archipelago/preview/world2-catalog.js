@@ -2,6 +2,9 @@ import * as THREE from 'three';
 import {sourceGroundPatch} from './prefab-terrain.js';
 import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';
 import {loadCompressedGLB} from './compressed-gltf.js';
+import {fetchEarly} from './early-fetch.js';
+import {PLAYER_MODE} from './world-storage.js';
+import {plazaArrival} from './portfolio/world2/interactions/PlazaLayout.js';
 
 const AREAS=[
  ['bowling','Bolos · pista completa','Bowling'],['circuit','Carreras · circuito World2','Racing'],
@@ -28,7 +31,7 @@ export function privateClone(root){const materials=new Map(),textures=new Map();
 export class World2Catalog {
  constructor(world,vegetation,data,manifest){
   Object.assign(this,{world,vegetation,data,manifest});this.entries=[];this.byId=new Map();this.nodes=new Map();
-  world.updateMatrixWorld(true);vegetation.updateMatrixWorld(true);world.traverse(o=>this.nodes.set(nameOf(o),o));
+  world.updateMatrixWorld(true);world.traverse(o=>this.nodes.set(nameOf(o),o));
   for(const [id,label,feature] of AREAS){let objects=this.nodes.has(id)?[this.nodes.get(id)]:[];
    if(id==='controls'||id==='bonfire')objects=this.collection(id);
    if(id==='circuit')objects.push(...this.collection('road.001'));
@@ -45,7 +48,19 @@ export class World2Catalog {
    const key=signature.join('|');if(!key||seen.has(key))return;seen.add(key);
    const source=nameOf(o);if(source.startsWith('refLettersPhysicalDynamic'))return;this.add('object:'+source,source.replace(/Physical(Dynamic|Fixed|Static)/g,'').replace(/^ref/,'')+' · World2','World2 · objetos',[o],['gitHubPhysicalDynamic','linkedInPhysicalDynamic','mailPhysicalDynamic'].includes(source)?'Social':null);
   });
-  const vegetationSeen=new Set();vegetation.traverse(o=>{if(!o.isMesh)return;const key=o.geometry.uuid+':'+(o.material.uuid??'multi');if(vegetationSeen.has(key))return;vegetationSeen.add(key);this.add('nature:'+nameOf(o),nameOf(o)+' · World2','World2 · naturaleza',[o],null);});
+  this.addVegetation(vegetation);
+ }
+ /** The vegetation scene's meshes become the `nature:*` entries (the studio's vegetation library). Returns the entries it added. */
+ addVegetation(vegetation){
+  const first=this.entries.length,seen=new Set();vegetation.updateMatrixWorld(true);
+  vegetation.traverse(o=>{if(!o.isMesh)return;const key=o.geometry.uuid+':'+(o.material.uuid??'multi');if(seen.has(key))return;seen.add(key);this.add('nature:'+nameOf(o),nameOf(o)+' · World2','World2 · naturaleza',[o],null);});
+  return this.entries.slice(first);
+ }
+ /** The player starts without the vegetation GLB (`vegetationSource` is how to fetch it). Once its world document is in, this fetches
+  * and adds the `nature:*` entries only when that document names one of them; resolves to the entries added (none otherwise). */
+ loadVegetationFor(world){
+  if(!this.vegetationSource||!worldNamesVegetation(world))return Promise.resolve([]);
+  return this.vegetationLoad??=this.vegetationSource().then(gltf=>this.addVegetation(gltf.scene),error=>{this.vegetationLoad=null;throw error;});
  }
  hasMesh(o){let yes=false;o.traverse(n=>{if(n.isMesh&&n.userData.w2Role!=='collider')yes=true;});return yes;}
  collection(c){const all=[];this.world.traverse(o=>{if(o.userData.w2Collections?.includes(c))all.push(o);});const chosen=new Set(all);return all.filter(o=>{for(let p=o.parent;p;p=p.parent)if(chosen.has(p))return false;return true;});}
@@ -59,10 +74,27 @@ export class World2Catalog {
   const entry={id,label,category,source,anchor:anchor.toArray(),feature,pit,size:box.getSize(new THREE.Vector3()).toArray()};this.entries.push(entry);this.byId.set(id,entry);
  }
  canonical(entry){return privateClone(entry.source);}
- spawnFor(asset){const entry=this.byId.get(asset.userData.world2Asset);if(!entry)return null;const names={landing:'respawnLanding',behindTheScene:'respawnBehindTheScene',timeMachine:'respawnTimeMachine'};const name=names[entry.id]??'respawn'+entry.id[0].toUpperCase()+entry.id.slice(1);const source=this.manifest.spawns.find(p=>p.name===name);if(!source)return null;asset.updateWorldMatrix(true,false);const matrix=asset.matrixWorld.clone().multiply(new THREE.Matrix4().makeTranslation(...entry.anchor.map(x=>-x)));const p=new THREE.Vector3(...source.position);p.y+=1.2;p.applyMatrix4(matrix);const f=new THREE.Vector3(Math.cos(source.rotation),0,-Math.sin(source.rotation)).transformDirection(matrix);return {name:entry.label,position:p.toArray(),rotation:Math.atan2(-f.z,f.x)};}
+ spawnFor(asset){const entry=this.byId.get(asset.userData.world2Asset);if(!entry)return null;const names={landing:'respawnLanding',behindTheScene:'respawnBehindTheScene',timeMachine:'respawnTimeMachine'};const name=names[entry.id]??'respawn'+entry.id[0].toUpperCase()+entry.id.slice(1);const source=this.manifest.spawns.find(p=>p.name===name);if(!source)return null;asset.updateWorldMatrix(true,false);const matrix=asset.matrixWorld.clone().multiply(new THREE.Matrix4().makeTranslation(...entry.anchor.map(x=>-x)));const seat=entry.id==='achievements'?plazaArrival(entry.anchor,source.position[1]):source;const p=new THREE.Vector3(...seat.position);p.y+=1.2;p.applyMatrix4(matrix);const f=new THREE.Vector3(Math.cos(seat.rotation),0,-Math.sin(seat.rotation)).transformDirection(matrix);return {name:entry.label,position:p.toArray(),rotation:Math.atan2(-f.z,f.x)};}
  template(entry){
   const node=new THREE.Group();node.name=entry.label;node.userData={world2Asset:entry.id,world2Feature:entry.feature,world2Anchor:entry.anchor,editable_root:true,ground_surface:false,world2Pit:entry.pit?{centre:entry.pit.centre.map((v,i)=>v-entry.anchor[i]),radius:entry.pit.radius}:null,category:entry.category};
   const content=this.canonical(entry);content.position.fromArray(entry.anchor).negate();node.add(content);return node;
  }
 }
-export async function loadWorld2Catalog(){const loader=new GLTFLoader(),base='../assets/environment/portfolio/';const [a,b,data,manifest]=await Promise.all([loadCompressedGLB(loader,base+'models/world.glb.gz'),loadCompressedGLB(loader,base+'models/vegetation.glb.gz'),fetch(base+'interactions.json').then(r=>r.json()),fetch(base+'world-manifest.json').then(r=>r.json())]);plainCircuitFabric(a.scene);return new World2Catalog(a.scene,b.scene,data,manifest);}
+/** Does a world document name an entry of the vegetation library (`nature:*`)? Those are the only entries that come from
+ * vegetation.glb.gz. They are named exactly where `definitionsToRestore` (asset-definitions.js) looks for definitions: an instance
+ * reference (`definitionId`, and the saved parts' own data), a saved node state, an experience group, an added object or an
+ * instance override (`userData.world2Asset` is the entry, `userData.assetDefinitionId` its definition `world2:<entry>`). */
+export function worldNamesVegetation(world){
+ const nature=data=>typeof data?.world2Asset==='string'&&data.world2Asset.startsWith('nature:')||typeof data?.assetDefinitionId==='string'&&data.assetDefinitionId.startsWith('world2:nature:');
+ const tree=json=>{if(!json)return false;if(nature(json.userData))return true;for(const child of json.children??[])if(tree(child))return true;return false;};
+ for(const ref of world?.instanceRefs??[]){if(typeof ref?.definitionId==='string'&&ref.definitionId.startsWith('world2:nature:'))return true;for(const part of ref?.parts??[])if(nature(part?.state?.data))return true;}
+ for(const state of Object.values(world?.states??{}))if(nature(state?.data))return true;
+ for(const group of world?.experiences?.groups??[])if(nature(group?.data))return true;
+ for(const json of world?.added??[])if(tree(json?.object))return true;
+ for(const saved of world?.instanceOverrides??[])if(tree(saved?.object?.object))return true;
+ return false;
+}
+/** The vegetation GLB (7.4 MB to inflate and parse, 1.2 MB on the wire) only fills the `nature:*` library entries, which the studio
+ * offers and a published world may have placed. The player does not fetch it up front: `loadVegetationFor` (above) gets it once the
+ * world document, which the editor waits for anyway, names one of those entries. None of today's data does. */
+export async function loadWorld2Catalog(onProgress){const loader=new GLTFLoader(),base='../assets/environment/portfolio/',vegetation=()=>loadCompressedGLB(loader,base+'models/vegetation.glb.gz');const [a,b,data,manifest]=await Promise.all([loadCompressedGLB(loader,base+'models/world.glb.gz',onProgress),PLAYER_MODE?{scene:new THREE.Group()}:vegetation(),fetchEarly(base+'interactions.json').then(r=>r.json()),fetchEarly(base+'world-manifest.json').then(r=>r.json())]);plainCircuitFabric(a.scene);const catalog=new World2Catalog(a.scene,b.scene,data,manifest);if(PLAYER_MODE)catalog.vegetationSource=vegetation;return catalog;}

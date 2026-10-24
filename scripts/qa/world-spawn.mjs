@@ -11,9 +11,13 @@ const results = []
 const browser = await launch()
 const LEGACY = { x: -118.55, z: -31.36 }
 
+/** The world document: the published revision (/api/world/blob/<sha>, from the database) or, without one, the seed the release names
+ * (/archipelago/seed/editor-world.json.gz). The page asks for it through /api/world/release and its head start, never by a fixed address. */
+const isWorldDocument = (url) => /\/api\/world\/blob\/|\/archipelago\/seed\/editor-world\.json\.gz$/.test(url.pathname)
+
 /** Serves the world document with a pinned spawn ([x, north, height] in map coordinates). */
 async function pinSpawn(page, variant) {
-  await page.route('**/api/world/blob/*', async (route) => {
+  await page.route(isWorldDocument, async (route) => {
     const response = await route.fetch(), body = await response.body()
     let doc
     try { doc = JSON.parse(zlib.gunzipSync(body).toString('utf8')) } catch { return route.fulfill({ response, body }) }

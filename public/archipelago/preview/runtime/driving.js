@@ -17,6 +17,7 @@ import {CarJump} from './jump.js';
 import {Placement,PLACEMENT,START_VIEW,centralPlaza,plazaSpawn,arrivalFor,framed,headingOf} from './placement.js';
 import {Recovery} from './recovery.js';
 import {TouchJoystick} from './touch-joystick.js';
+import {Billboards} from '../portfolio/world2/interactions/Billboards.js';
 const vec=p=>new THREE.Vector3(p[0],p[2],-p[1]);
 /** World2 car tuning plus isolated parking, water, vehicle-mode, placement and recovery extensions.
  * Every way the car is put somewhere — the first spawn, travel from the M map, R, and recovery from the
@@ -34,10 +35,10 @@ export class Driving {
  constructor(physics,scene,camera,navigation,keys,canvas=document.querySelector('#world'),{root=null}={}){
   Object.assign(this,{physics,camera,nav:navigation,keys,root});this.cameraMode=2;this.wet=0;this.bin=new Bin();this.events=new Events();this.hopHeld=false;this.orbitSent=false;
   this.ticker={events:new Events(),elapsed:0,elapsedScaled:0,deltaScaled:1/30,scale:2,delta:1/60,alpha:1};physics.ticker=this.ticker;
-  this.inputs=new Inputs(canvas);this.inputs.add(ACTION_DEFINITIONS.filter(a=>a.name!=='jump').map(a=>({...a,keys:a.keys.filter(k=>k!=='Keyboard.Space')})));this.inputs.add([{name:'hop',label:'Jump',categories:['driving'],keys:['Keyboard.Numpad5','Gamepad.triangle','Touch.jump']}]);this.inputs.add([{name:'boardPrevious',label:'Previous project',categories:['minigame'],keys:['Keyboard.ArrowLeft','Keyboard.KeyA','Gamepad.left']},{name:'boardNext',label:'Next project',categories:['minigame'],keys:['Keyboard.ArrowRight','Keyboard.KeyD','Gamepad.right']}]);this.inputs.setFilters(['driving','camera']);this.bin.add(()=>this.inputs.destroy());
+  this.inputs=new Inputs(canvas);this.inputs.add(ACTION_DEFINITIONS.filter(a=>a.name!=='jump').map(a=>({...a,keys:a.keys.filter(k=>k!=='Keyboard.Space')})));this.inputs.add([{name:'hop',label:'Jump',categories:['driving'],keys:['Keyboard.Numpad5','Gamepad.triangle','Touch.jump']}]);this.inputs.add([{name:'boardPrevious',label:'Previous project',categories:['minigame'],keys:['Keyboard.ArrowLeft','Keyboard.KeyA','Gamepad.left']},{name:'boardNext',label:'Next project',categories:['minigame'],keys:['Keyboard.ArrowRight','Keyboard.KeyD','Gamepad.right']},{name:'boardExit',label:'Back',categories:['minigame'],keys:['Keyboard.Backspace','Gamepad.circle','Touch.exit']}]);this.inputs.setFilters(['driving','camera']);this.bin.add(()=>this.inputs.destroy());
   this.tweens=new Tweens(this.ticker,this.bin);
   this.viewport={width:canvas.clientWidth,height:canvas.clientHeight,ratio:canvas.clientWidth/canvas.clientHeight,events:new Events()};
-  this.view=new View(this.ticker,this.viewport,this.inputs,physics,this.bin,false);camera.copy(this.view.camera);this.view.camera=camera;
+  this.view=new View(this.ticker,this.viewport,this.inputs,physics,this.bin,false);camera.copy(this.view.camera);this.view.camera=camera;Billboards.for(this.ticker).useCamera(()=>camera);
   this.vehicle=new PhysicsVehicle(physics,this.ticker,this.bin,vec(navigation.spawn));tuneVehicle(this.vehicle);
   this.vehicle.parking.enabled=true;
   this.nipple=new TouchJoystick(this.tweens,this.vehicle);scene.add(this.nipple.group);this.bin.add(()=>this.nipple.destroy());
@@ -77,7 +78,7 @@ export class Driving {
   this.bin.listen(window,'blur',()=>this.releaseTouch());
   // A finger lifted while the tab was hidden never reports it: let go of it now rather than drive on with it later.
   this.bin.listen(document,'visibilitychange',()=>{if(!document.hidden)return;this.releaseTouch();if(this.inputs.pointer.mode==='touch')this.inputs.pointer.onBlur();});
-  this.save={data:{settings:{muted:true,volume:.5}},schedule(){}};this.audio=new Audio(this.ticker,this.player,this.vehicle,this.save,this.bin);this.audio.resume();
+  this.save={data:{settings:{muted:true,volume:.5}},schedule(){}};this.audio=new Audio(this.ticker,this.player,this.vehicle,this.save,this.bin);
   this.vehicle.events.on('land',air=>{if(air>.35)this.view.kick(Math.min(1,air*.9));});this.vehicle.events.on('collision',force=>{if(force>24)this.view.kick(Math.min(1,force/140));});
   this.water=new VehicleWater(physics,this.vehicle,{seaLevel:navigation.seaLevel??physics.waterElevation,onRecover:()=>this.recover('water')});
   this.wake=new THREE.Mesh(new THREE.RingGeometry(.9,1.13,32),new THREE.MeshBasicMaterial({color:'#d9f8ec',transparent:true,opacity:0,depthWrite:false,side:THREE.DoubleSide}));this.wake.name='Vehicle water wake';this.wake.rotation.x=-Math.PI/2;scene.add(this.wake);this.bin.add(()=>{this.wake.removeFromParent();this.wake.geometry.dispose();this.wake.material.dispose();});
@@ -172,7 +173,9 @@ export class Driving {
   const incident=this.recovery.step(1/60);if(incident){this.recover(incident);return;}
   this.water.update(1/60,this.modes.isPlane);this.wet=this.water.deepTime;
  }
- render(dt,alpha){this.ticker.delta=dt;this.ticker.alpha=alpha;const canvas=this.inputs.pointer.element??document.querySelector('#world');const w=canvas.clientWidth,h=canvas.clientHeight;if(w!==this.viewport.width||h!==this.viewport.height){Object.assign(this.viewport,{width:w,height:h,ratio:w/h});this.viewport.events.trigger('change');}this.ticker.events.trigger('tick');this.plane.update(dt,alpha,this.modes.isPlane,this.modes.enginePower);const water=this.water.wetness;this.wake.visible=!this.modes.isPlane&&water>.04&&this.vehicle.xzSpeed>.25;this.wake.material.opacity=Math.min(.45,water*.55);this.wake.position.set(this.vehicle.position.x,(this.nav.seaLevel??this.physics.waterElevation)+.025,this.vehicle.position.z);this.wake.scale.set(1.6+Math.sin(this.ticker.elapsed*7)*.1,1+this.vehicle.xzSpeed*.03,1);}
+ /** The canvas may have changed size: the view and the joystick follow. main.js calls it from the ResizeObserver on the viewport (once per change), so no frame reads the layout for it. */
+ measure(){const canvas=this.inputs.pointer.element??document.querySelector('#world'),w=canvas.clientWidth,h=canvas.clientHeight;if(w===this.viewport.width&&h===this.viewport.height)return;Object.assign(this.viewport,{width:w,height:h,ratio:w/h});this.viewport.events.trigger('change');}
+ render(dt,alpha){this.ticker.delta=dt;this.ticker.alpha=alpha;this.ticker.events.trigger('tick');this.plane.update(dt,alpha,this.modes.isPlane,this.modes.enginePower);const water=this.water.wetness;this.wake.visible=!this.modes.isPlane&&water>.04&&this.vehicle.xzSpeed>.25;this.wake.material.opacity=Math.min(.45,water*.55);this.wake.position.set(this.vehicle.position.x,(this.nav.seaLevel??this.physics.waterElevation)+.025,this.vehicle.position.z);this.wake.scale.set(1.6+Math.sin(this.ticker.elapsed*7)*.1,1+this.vehicle.xzSpeed*.03,1);}
  dispose(){this.visual.group.removeFromParent();this.bin.dispose();this.ticker.events.clear();this.events.clear();}
 }
 export function surfaceGrip(c){return c?.userData?.surface_type==='ice'?.025:c?.userData?.ground_surface&&c?.userData?.surface_type!=='terrain'?4:1.9;}

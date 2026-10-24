@@ -9,6 +9,7 @@ body.player {
  --font-display:var(--font-geist-sans,'Helvetica Neue'),Arial,sans-serif;
  --font-mono:var(--font-geist-mono,ui-monospace),Menlo,monospace;
  color:var(--text-primary);background:#0f1804;font-family:var(--font-display);
+ -webkit-tap-highlight-color:transparent;
 }
 /* Theme variables on html, when hosted, override the standalone defaults. */
 html:has(body.player){font-family:var(--font-geist-sans,'Helvetica Neue'),Arial,sans-serif}
@@ -16,14 +17,24 @@ body.player button,body.player #player-nav a,body.player #player-nav button,body
  color:var(--text-primary);background:var(--panel);border:1px solid var(--border-strong);
  border-radius:999px;font:500 11px/1.4 var(--font-mono);letter-spacing:.08em;
  text-transform:uppercase;min-height:40px;padding:9px 15px;box-shadow:var(--panel-shadow);
- transition:background .18s ease,color .18s ease,border-color .18s ease;
+ touch-action:manipulation;
+ transition:transform .07s ease-out,background-color .1s ease,border-color .1s ease,color .1s ease;
 }
-body.player button:hover,body.player #player-nav a:hover,body.player #player-nav button:hover,body.player #touch-controls button:hover {background:var(--bg-secondary);border-color:var(--accent);color:var(--accent-deep)}
+/* The drive's touch buttons scale at once (player.css): their transition leaves the transform out. They also keep player.css's
+   touch-action:none, which the rule above would turn into manipulation: a thumb that drifts while it holds JUMP must not be taken
+   over by the browser (pointercancel ends the hold), and a pinch must not zoom the page from a control. */
+body.player #touch-controls button {transition:background-color .1s ease,border-color .1s ease,color .1s ease;touch-action:none}
+/* Hover is for pointers that hover: after a tap on a phone nothing stays lit. */
+@media (hover:hover) {
+ body.player button:hover,body.player #player-nav a:hover,body.player #player-nav button:hover,body.player #touch-controls button:hover {background:var(--bg-secondary);border-color:var(--accent);color:var(--accent-deep)}
+}
+/* Pressed: on the frame of the press (player.js sets [data-press] on pointerdown, :active follows) — a small, quick shrink. */
+body.player :is(#player-nav a,#player-nav button,#interact-action,dialog button,.atlas button:not(.atlas-pin)):is(:active,[data-press]):not([aria-disabled=true]) {transform:scale(.97);background:var(--bg-tertiary)}
 body.player :is(button,a,.atlas-stage):focus-visible,body.player #touch-controls button:focus-visible {outline:2px solid var(--accent);outline-offset:3px}
 body.player :is(button.active,.primary,#interact-action,#touch-jump){background:var(--accent)!important;color:#fff7ef;border-color:var(--accent)!important}
 body.player kbd,body.player #player-nav kbd,body.player .atlas-close kbd {color:var(--text-muted);border-color:var(--border-strong);font-family:var(--font-mono)}
 body.player #player-nav {gap:8px;inset:20px 24px auto auto}
-body.player :is(dialog,#notice,#gameplay-hud,#map-panel) {background:var(--panel);color:var(--text-primary);border:1px solid var(--panel-edge);border-radius:var(--radius-card);box-shadow:var(--panel-shadow);font-family:var(--font-display)}
+body.player :is(dialog,#notice,#gameplay-hud) {background:var(--panel);color:var(--text-primary);border:1px solid var(--panel-edge);border-radius:var(--radius-card);box-shadow:var(--panel-shadow);font-family:var(--font-display)}
 body.player dialog {width:min(580px,calc(100vw - 32px));max-height:calc(100dvh - 48px);padding:clamp(20px,4vw,36px);overflow:auto;overscroll-behavior:contain}
 body.player dialog::backdrop {background:rgba(26,23,18,.36)}
 body.player dialog h2 {font:500 clamp(24px,4vw,34px)/1.1 var(--font-display);letter-spacing:-.04em;margin:0 0 24px}
@@ -39,6 +50,8 @@ body.player #drive-hud div {font-family:var(--font-mono)}
 body.player #vehicle-paint {pointer-events:auto;background:var(--panel);text-shadow:none;padding:3px 6px;border-radius:6px;border:1px solid var(--panel-edge)}
 body.player #car-color {background:transparent;border-color:var(--border)}
 body.player #gameplay-hud {font-size:13px;top:76px;max-width:min(390px,calc(100vw - 44px))}
+/* Their text changes up to sixty times a second: a change stays inside the box (no paint containment, the glow of the speed would be clipped), and the digits are all one width. */
+body.player :is(#gameplay-hud,#drive-hud) {contain:layout style;font-variant-numeric:tabular-nums}
 body.player #notice {font:12px/1.6 var(--font-mono)}
 body.player #touch-controls button {padding:6px 4px;min-height:48px;border-radius:10px;font-size:9px}
 body.player #touch-controls button:active,body.player #touch-controls button[data-pressed] {background:var(--bg-tertiary);color:var(--accent)}
@@ -48,14 +61,18 @@ body.player #touch-controls #touch-jump {border-radius:50%;font-size:12px}
 /* The full-screen loading UI belongs to the studio. Public entry is masked by foliage. */
 body.player #loading {background:#0f1804}
 body.player #loading>* {visibility:hidden}
+body.player .spinner {animation:none}
 body.player .atlas {
  inset:50% auto auto 50%;transform:translate(-50%,-50%);
  width:min(1120px,calc(100vw - 64px));height:min(800px,calc(100dvh - 64px));
  grid-template-columns:minmax(0,1fr) 174px;gap:20px;padding:24px;
  background:var(--panel);color:var(--text-primary);border:1px solid var(--panel-edge);
  border-radius:var(--radius-card);font:12px var(--font-display);
- box-shadow:0 0 0 100vmax rgba(26,23,18,.36),var(--panel-shadow);
+ box-shadow:var(--panel-shadow);
 }
+/* The dim behind the map: one fixed layer (atlas.js adds it before the dialog), not a viewport-sized shadow repainted with the dialog.
+   Like the box-shadow it replaces it only paints: clicks fall through to the HUD buttons and the world beneath, as before. */
+body.player .atlas-scrim:not([hidden]) {display:block;position:fixed;inset:0;z-index:39;pointer-events:none;background:rgba(26,23,18,.36);animation:atlas-scrim .12s ease-out}
 body.player .atlas-head {height:auto;padding:0;border:0;background:none;align-items:center}
 body.player .atlas-head h2 {font:500 32px/1.05 var(--font-display);letter-spacing:-.04em}
 body.player .atlas-eyebrow {font:10px/1.5 var(--font-mono);letter-spacing:.12em;color:var(--text-muted)}
@@ -64,10 +81,15 @@ body.player .atlas-side {background:none}
 body.player :is(.atlas-north,.atlas-scale,.atlas-status) {color:var(--text-muted);font-family:var(--font-mono)}
 body.player .atlas-scale i {border-color:var(--text-muted)}
 body.player .atlas-zoom button {width:42px;padding:6px;min-height:42px;font-size:18px}
-body.player button.atlas-pin {border:0;box-shadow:none;background:none;padding:0;min-height:0;font:inherit;text-transform:none;letter-spacing:normal}
+/* atlas.js places a pin with style.transform on every frame of a pan or zoom: a transform transition would make each pin trail the photo (atlas.css animates the pin's inner <i>). */
+body.player button.atlas-pin {border:0;box-shadow:none;background:none;padding:0;min-height:0;font:inherit;text-transform:none;letter-spacing:normal;transition:none}
 body.player .atlas-pin span {font-family:var(--font-display);color:var(--text-primary);background:var(--bg-primary)}
-body.player .atlas button.atlas-pin:hover span,body.player .atlas button.atlas-pin:focus-visible span {box-shadow:0 0 0 2px var(--accent)}
-body.player .atlas button.atlas-pin:hover i,body.player .atlas button.atlas-pin:focus-visible i {box-shadow:0 0 0 3px var(--accent),0 2px 6px #0008}
+body.player .atlas button.atlas-pin:focus-visible span {box-shadow:0 0 0 2px var(--accent)}
+body.player .atlas button.atlas-pin:focus-visible i {box-shadow:0 0 0 3px var(--accent),0 2px 6px #0008}
+@media (hover:hover) {
+ body.player .atlas button.atlas-pin:hover span {box-shadow:0 0 0 2px var(--accent)}
+ body.player .atlas button.atlas-pin:hover i {box-shadow:0 0 0 3px var(--accent),0 2px 6px #0008}
+}
 body.player .atlas-feedback {background:var(--bg-primary);border-color:var(--accent);color:var(--accent-deep);font-family:var(--font-display)}
 body.player .atlas-feedback::after {background:var(--bg-primary);border-color:var(--accent)}
 body.player :is(.atlas-player,.atlas-key-player) {border-bottom-color:var(--accent)}
