@@ -22,6 +22,9 @@ export class Pointer {
         distance: 0,
         distanceDelta: 0,
     };
+    /** Where the element is on the page, read once and kept: an event handler never reads the layout. */
+    rect = { left: 0, top: 0 };
+    rectKnown = false;
     constructor(element) {
         this.element = element;
         element.addEventListener('mousemove', this.onMouseMove);
@@ -33,10 +36,23 @@ export class Pointer {
         element.addEventListener('touchcancel', this.onTouchEnd);
         element.addEventListener('contextmenu', this.onContextMenu);
         window.addEventListener('blur', this.onBlur);
+        // Where the element is changes with its size, the window's size and a scroll; a press reads it afresh.
+        this.observer = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(this.forgetRect);
+        this.observer?.observe(element);
+        window.addEventListener('resize', this.forgetRect);
+        window.addEventListener('scroll', this.forgetRect, { capture: true, passive: true });
     }
+    forgetRect = () => {
+        this.rectKnown = false;
+    };
     rectOffset() {
-        const rect = this.element.getBoundingClientRect();
-        return { left: rect.left, top: rect.top };
+        if (!this.rectKnown) {
+            const rect = this.element.getBoundingClientRect();
+            this.rect.left = rect.left;
+            this.rect.top = rect.top;
+            this.rectKnown = true;
+        }
+        return this.rect;
     }
     onMouseMove = (event) => {
         this.mode = 'mouse';
@@ -46,6 +62,7 @@ export class Pointer {
     };
     onMouseDown = (event) => {
         event.preventDefault();
+        this.rectKnown = false;
         this.mode = 'mouse';
         this.button = event.button;
         this.upcomingDown = true;
@@ -89,6 +106,7 @@ export class Pointer {
         this.upcoming.y = avg.y;
     };
     onTouchStart = (event) => {
+        this.rectKnown = false;
         this.mode = 'touch';
         this.upcomingDown = true;
         this.dragDistance = 0;
@@ -172,6 +190,9 @@ export class Pointer {
         this.element.removeEventListener('touchcancel', this.onTouchEnd);
         this.element.removeEventListener('contextmenu', this.onContextMenu);
         window.removeEventListener('blur', this.onBlur);
+        this.observer?.disconnect();
+        window.removeEventListener('resize', this.forgetRect);
+        window.removeEventListener('scroll', this.forgetRect, { capture: true });
         this.events.clear();
     }
 }

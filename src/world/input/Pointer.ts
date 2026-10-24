@@ -54,6 +54,11 @@ export class Pointer {
     distanceDelta: 0,
   }
 
+  /** Where the element is on the page, read once and kept: an event handler never reads the layout. */
+  private readonly rect = { left: 0, top: 0 }
+  private rectKnown = false
+  private observer: ResizeObserver | null = null
+
   constructor(private element: HTMLElement) {
     element.addEventListener('mousemove', this.onMouseMove)
     element.addEventListener('mousedown', this.onMouseDown)
@@ -64,11 +69,25 @@ export class Pointer {
     element.addEventListener('touchcancel', this.onTouchEnd)
     element.addEventListener('contextmenu', this.onContextMenu)
     window.addEventListener('blur', this.onBlur)
+    // Where the element is changes with its size, the window's size and a scroll; a press reads it afresh.
+    this.observer = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(this.forgetRect)
+    this.observer?.observe(element)
+    window.addEventListener('resize', this.forgetRect)
+    window.addEventListener('scroll', this.forgetRect, { capture: true, passive: true })
+  }
+
+  private forgetRect = () => {
+    this.rectKnown = false
   }
 
   private rectOffset(): { left: number; top: number } {
-    const rect = this.element.getBoundingClientRect()
-    return { left: rect.left, top: rect.top }
+    if (!this.rectKnown) {
+      const rect = this.element.getBoundingClientRect()
+      this.rect.left = rect.left
+      this.rect.top = rect.top
+      this.rectKnown = true
+    }
+    return this.rect
   }
 
   private onMouseMove = (event: MouseEvent) => {
@@ -80,6 +99,7 @@ export class Pointer {
 
   private onMouseDown = (event: MouseEvent) => {
     event.preventDefault()
+    this.rectKnown = false
     this.mode = 'mouse'
     this.button = event.button
     this.upcomingDown = true
@@ -127,6 +147,7 @@ export class Pointer {
   }
 
   private onTouchStart = (event: TouchEvent) => {
+    this.rectKnown = false
     this.mode = 'touch'
     this.upcomingDown = true
     this.dragDistance = 0
@@ -218,6 +239,9 @@ export class Pointer {
     this.element.removeEventListener('touchcancel', this.onTouchEnd)
     this.element.removeEventListener('contextmenu', this.onContextMenu)
     window.removeEventListener('blur', this.onBlur)
+    this.observer?.disconnect()
+    window.removeEventListener('resize', this.forgetRect)
+    window.removeEventListener('scroll', this.forgetRect, { capture: true })
     this.events.clear()
   }
 }

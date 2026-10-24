@@ -203,13 +203,14 @@ export class View {
         this.roll.speed = strength * this.roll.kickStrength * (Math.random() < 0.5 ? -1 : 1);
     }
     /* ---- cinematic ----------------------------------------- */
-    startCinematic(position, target) {
+    startCinematic(position, target, options = {}) {
         this.cinematic.active = true;
         this.cinematic.position.copy(position);
         this.cinematic.target.copy(target);
         // On a narrow window, pull the cinematic camera back so the
-        // subject still fits.
-        if (this.ratioOverflow > 0) {
+        // subject still fits. A caller that has already framed the
+        // subject for this window passes `pullBack: false`.
+        if (this.ratioOverflow > 0 && options.pullBack !== false) {
             this.scratch
                 .copy(this.cinematic.position)
                 .sub(this.cinematic.target)

@@ -99,6 +99,15 @@ void main() {
 `;
 const SMOKE_PUFFS = 320;
 const DEBRIS_PER_BLAST = 14;
+/**
+ * The blast's flash is a point light, and three keys every lit shader by how many point lights are VISIBLE in the scene: the first blast of a session (0 lights to 1), then
+ * a chain of crates (1 to 2, to 3, ...) each re-linked every program of the world on the frame it happened (350 ms measured for the first one). The flash is therefore a
+ * pair of lights shared by every Explosions in the page, visible only while burning: at most two are ever visible, so the world only ever has the 0-, 1- and 2-light variants
+ * of its shaders, all compiled when the world was ready (main.js warmFlash). A third blast while both burn takes over the older one.
+ */
+const FLASH_LIFE = 0.22;
+const MAX_FLASHES = 2;
+const flashes = [];
 export class Explosions {
     physics;
     ticker;
@@ -115,8 +124,6 @@ export class Explosions {
     smokeCursor = 0;
     /** Live smoke puffs. The per-slot walk below is skipped when this is 0. */
     smokeAlive = 0;
-    flash;
-    flashLife = 0;
     sphere = new THREE.SphereGeometry(0.5, 12, 8);
     shard = new THREE.BoxGeometry(0.16, 0.16, 0.16);
     shardMaterial;
@@ -150,9 +157,9 @@ export class Explosions {
         this.smoke.visible = false;
         this.group.add(this.smoke);
         this.shardMaterial = new THREE.MeshStandardMaterial({ color: '#7a5230', roughness: 0.9, metalness: 0 });
-        this.flash = new THREE.PointLight('#ffb066', 0, 18, 2);
-        this.flash.visible = false;
-        this.group.add(this.flash);
+        // The first blast's fireball and shards exist from the start (hidden): their shaders are compiled with the rest of the world, not on the frame of the first explosion.
+        this.createFireball();
+        this.createDebris();
         const tick = () => this.update();
         ticker.events.on('tick', tick, 12);
         bin.add(() => {
@@ -162,6 +169,12 @@ export class Explosions {
             this.shardMaterial.dispose();
             geometry.dispose();
             this.smoke.material.dispose();
+            for (const slot of flashes) {
+                if (slot.owner === this) {
+                    this.putOutFlash(slot);
+                    slot.light.removeFromParent();
+                }
+            }
             for (const item of this.fireballs)
                 item.mesh.material.dispose();
             for (const item of this.debris)
@@ -202,24 +215,49 @@ export class Explosions {
         this.spawnFireball(at, radius);
         this.spawnSmoke(at, radius);
         this.spawnDebris(at);
-        this.flash.position.copy(at).y += 0.6;
-        this.flash.intensity = 26;
-        this.flash.visible = true;
-        this.flashLife = 0.22;
+        this.takeFlash(at);
         return vehicleHit;
     }
-    spawnFireball(at, radius) {
-        let item = this.fireballs.find(f => f.life <= 0);
-        if (!item) {
-            const mesh = new THREE.Mesh(this.sphere, new THREE.ShaderMaterial({
-                uniforms: { progress: { value: 0 }, colorA: { value: new THREE.Color('#ff2d0e') }, colorB: { value: new THREE.Color('#ff9d2f') } },
-                vertexShader: FIREBALL_VERTEX, fragmentShader: FIREBALL_FRAGMENT,
-            }));
-            mesh.frustumCulled = false;
-            item = { mesh, life: 0, radius };
-            this.fireballs.push(item);
-            this.group.add(mesh);
+    createFireball(radius = 5) {
+        const mesh = new THREE.Mesh(this.sphere, new THREE.ShaderMaterial({
+            uniforms: { progress: { value: 0 }, colorA: { value: new THREE.Color('#ff2d0e') }, colorB: { value: new THREE.Color('#ff9d2f') } },
+            vertexShader: FIREBALL_VERTEX, fragmentShader: FIREBALL_FRAGMENT,
+        }));
+        mesh.frustumCulled = false;
+        mesh.visible = false;
+        const item = { mesh, life: 0, radius };
+        this.fireballs.push(item);
+        this.group.add(mesh);
+        return item;
+    }
+    /** One of the two shared flash lights, lit at `at` (this instance's own space). */
+    takeFlash(at) {
+        let slot = flashes.find(f => f.life <= 0);
+        if (!slot && flashes.length < MAX_FLASHES) {
+            const light = new THREE.PointLight('#ffb066', 0, 18, 2);
+            light.visible = false;
+            slot = { light, owner: null, life: 0 };
+            flashes.push(slot);
         }
+        slot ??= flashes.reduce((a, b) => (a.life <= b.life ? a : b));
+        slot.owner = this;
+        slot.life = FLASH_LIFE;
+        this.group.add(slot.light);
+        slot.light.position.copy(at).y += 0.6;
+        slot.light.intensity = 26;
+        slot.light.visible = true;
+    }
+    putOutFlash(slot) {
+        slot.life = 0;
+        slot.owner = null;
+        slot.light.visible = false;
+        slot.light.intensity = 0;
+    }
+    flashing() {
+        return flashes.some(f => f.owner === this && f.life > 0);
+    }
+    spawnFireball(at, radius) {
+        const item = this.fireballs.find(f => f.life <= 0) ?? this.createFireball(radius);
         item.radius = radius;
         item.life = 2.25;
         item.mesh.visible = true;
@@ -252,22 +290,24 @@ export class Explosions {
         sizes.needsUpdate = true;
         alphas.needsUpdate = true;
     }
+    createDebris() {
+        const mesh = new THREE.InstancedMesh(this.shard, this.shardMaterial, DEBRIS_PER_BLAST);
+        mesh.frustumCulled = false;
+        mesh.castShadow = true;
+        mesh.visible = false;
+        const item = {
+            mesh, life: 0,
+            velocities: Array.from({ length: DEBRIS_PER_BLAST }, () => new THREE.Vector3()),
+            positions: Array.from({ length: DEBRIS_PER_BLAST }, () => new THREE.Vector3()),
+            spins: Array.from({ length: DEBRIS_PER_BLAST }, () => new THREE.Vector3()),
+            ground: 0,
+        };
+        this.debris.push(item);
+        this.group.add(mesh);
+        return item;
+    }
     spawnDebris(at) {
-        let item = this.debris.find(d => d.life <= 0);
-        if (!item) {
-            const mesh = new THREE.InstancedMesh(this.shard, this.shardMaterial, DEBRIS_PER_BLAST);
-            mesh.frustumCulled = false;
-            mesh.castShadow = true;
-            item = {
-                mesh, life: 0,
-                velocities: Array.from({ length: DEBRIS_PER_BLAST }, () => new THREE.Vector3()),
-                positions: Array.from({ length: DEBRIS_PER_BLAST }, () => new THREE.Vector3()),
-                spins: Array.from({ length: DEBRIS_PER_BLAST }, () => new THREE.Vector3()),
-                ground: 0,
-            };
-            this.debris.push(item);
-            this.group.add(mesh);
-        }
+        const item = this.debris.find(d => d.life <= 0) ?? this.createDebris();
         item.life = 2;
         item.ground = at.y;
         item.mesh.visible = true;
@@ -285,7 +325,7 @@ export class Explosions {
             return;
         // Nothing burning, nothing to do. This ran 320 smoke slots and every
         // debris pool on a quiet frame, which is most of them.
-        if (!this.smokeAlive && this.flashLife <= 0
+        if (!this.smokeAlive && !this.flashing()
             && !this.fireballs.some(item => item.life > 0)
             && !this.debris.some(item => item.life > 0))
             return;
@@ -350,13 +390,13 @@ export class Explosions {
             if (item.life <= 0)
                 item.mesh.visible = false;
         }
-        if (this.flashLife > 0) {
-            this.flashLife -= delta;
-            this.flash.intensity = Math.max(0, this.flashLife / 0.22) * 26;
-            if (this.flashLife <= 0) {
-                this.flash.visible = false;
-                this.flash.intensity = 0;
-            }
+        for (const slot of flashes) {
+            if (slot.owner !== this || slot.life <= 0)
+                continue;
+            slot.life -= delta;
+            slot.light.intensity = Math.max(0, slot.life / FLASH_LIFE) * 26;
+            if (slot.life <= 0)
+                this.putOutFlash(slot);
         }
     }
     /** Drops every live effect — used on world reset so nothing lingers. */
@@ -376,8 +416,9 @@ export class Explosions {
         for (let i = 0; i < SMOKE_PUFFS; i++)
             alphas.setX(i, 0);
         alphas.needsUpdate = true;
-        this.flashLife = 0;
-        this.flash.visible = false;
-        this.flash.intensity = 0;
+        for (const slot of flashes) {
+            if (slot.owner === this)
+                this.putOutFlash(slot);
+        }
     }
 }

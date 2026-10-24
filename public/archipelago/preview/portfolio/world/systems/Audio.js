@@ -163,6 +163,11 @@ export class Audio {
         this.muted = muted;
         this.save.data.settings.muted = muted;
         this.save.schedule();
+        // The player starts muted and builds nothing: the context and its graph
+        // (~100 ms) come into being at the first unmute, inside that key press,
+        // where a browser lets them run at once.
+        if (!muted)
+            this.resume();
         this.applyMaster();
     }
     setVolume(volume) {

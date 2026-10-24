@@ -2,7 +2,11 @@ import { BOARD_PROJECTS, BOARD_EXPERIMENTS, type BoardProject } from './projects
 
 export type BoardKind = 'projects' | 'experiments'
 export const BOARD_DEFAULTS = { projects: BOARD_PROJECTS, experiments: BOARD_EXPERIMENTS }
-export const BOARD_MOTIONS = ['ChessMotion', 'StockMotion', 'ThreeBodyMotion', 'GymMotion', 'FocusMotion', 'VpnMotion', 'KeyframesMotion', 'LabyrinthMotion', 'PrimesMotion']
+/** The small pictures a board can carry: every motion component a project can name. The first nine are the original CMS list; stored overrides refer to them by name only. */
+export const BOARD_MOTIONS = [
+  'ChessMotion', 'StockMotion', 'ThreeBodyMotion', 'GymMotion', 'FocusMotion', 'VpnMotion', 'KeyframesMotion', 'LabyrinthMotion', 'PrimesMotion',
+  'WebsiteMotion', 'CardsMotion', 'JobBoardMotion', 'VoxelMotion', 'LibraryMotion', 'DotsBoxesMotion', 'VideoPlayerMotion', 'TrainingMotion', 'CatanMotion', 'GenericProjectMotion',
+]
 const record = (value: unknown): Record<string, unknown> => value && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : {}
 export const boardImageSource = (value: unknown): string | undefined => typeof value === 'string' && value.length <= 1_500_000 && /^data:image\/(png|jpeg|webp);base64,[A-Za-z0-9+/=]+$/.test(value) ? value : undefined
 
@@ -41,28 +45,4 @@ export function drawBoardImage(context: CanvasRenderingContext2D, source: string
   const w = image.naturalWidth * scale, h = image.naturalHeight * scale
   context.drawImage(image, x + (width - w) / 2, y + (height - h) / 2, w, h)
   return true
-}
-
-export function paintExperiment(context: CanvasRenderingContext2D, project: BoardProject, index: number, total: number, ready?: () => void): void {
-  context.fillStyle = '#12141b'; context.fillRect(0, 0, 1024, 512)
-  context.textAlign = 'left'
-  const textWidth = project.image ? 540 : 936
-  if (project.image) drawBoardImage(context, project.image, 622, 100, 360, 340, ready)
-  context.fillStyle = '#5390ff'; context.font = '700 30px system-ui'
-  context.fillText(`EXPERIMENT ${index + 1} / ${total}`, 44, 74)
-  context.fillStyle = '#f4f1e8'; context.font = '700 54px system-ui'
-  context.fillText(project.title, 44, 150, textWidth)
-  context.fillStyle = '#8f8aa0'; context.font = '500 28px system-ui'
-  const words = project.description.split(/\s+/); let line = '', y = 210
-  for (const word of words) {
-    if (line && context.measureText(`${line} ${word}`).width > textWidth) {
-      context.fillText(line, 44, y, textWidth); y += 38; line = ''
-      if (y > 324) { line = '…'; break }
-    }
-    line += `${line ? ' ' : ''}${word}`
-  }
-  context.fillText(line, 44, y, textWidth)
-  context.fillStyle = '#32ffc1'; context.font = '600 26px monospace'
-  context.fillText(project.technologies.slice(0, 5).join(' · '), 44, 400, textWidth)
-  context.fillStyle = '#8f8aa0'; context.fillText(project.year, 44, 452, textWidth)
 }

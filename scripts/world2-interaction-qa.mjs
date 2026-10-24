@@ -409,7 +409,7 @@ try {
         // Every stone must stand on its own track's lane, to the millimetre.
         onLane: c.lines.every(l => Math.abs(l.stone.position.x - c.lanes[l.track.id]) < 0.001),
         // The reference look: a headline about a third of a metre tall.
-        labelHeights: [...new Set(c.lines.map(l => +l.label.geometry.parameters.height.toFixed(2)))],
+        labelHeights: [+c.plaqueHeight.toFixed(2)],
         digits: c.year,
       }
     })
@@ -474,13 +474,43 @@ try {
       const shown = c.lines.filter(l => l.reveal > 0.5)
       const perTrack = {}
       for (const l of shown) perTrack[l.track.id] = (perTrack[l.track.id] ?? 0) + 1
-      const ys = shown.map(l => +l.label.position.y.toFixed(2)).sort((a, b) => a - b)
+      const ys = shown.map(l => +l.pivot.position.y.toFixed(2)).sort((a, b) => a - b)
       const gaps = ys.slice(1).map((y, i) => +(y - ys[i]).toFixed(2))
-      return { shown: shown.map(l => l.stop.headline), perTrack, ys, gaps, height: shown[0]?.label.geometry.parameters.height ?? 0 }
+      return { shown: shown.map(l => l.stop.headline), perTrack, ys, gaps, height: c.plaqueHeight }
     })
-    check('one label per lane, never two on top of each other',
-      Object.values(speaking.perTrack).every(n => n === 1) && speaking.gaps.every(g => g >= speaking.height),
+    // The plaques are one lane apart in WORLD height by a small step only: what keeps them from touching is the layout on the screen
+    // (scripts/qa/world-career-labels.mjs, orbit section), which /world2, with no gameplay camera, does not run.
+    check('one label per lane, each at its own height',
+      Object.values(speaking.perTrack).every(n => n === 1) && speaking.gaps.every(g => g > 0.1),
       speaking)
+    // What keeps them apart here is the route's own camera, so it is the screen that is asserted: no two of the three plaques overlap
+    // there, and none is cut by the edge of the picture.
+    const onScreen = await state(() => {
+      const game = window.__world2, c = game.interactions.career, camera = game.view.camera
+      const canvas = document.querySelector('canvas').getBoundingClientRect()
+      camera.updateMatrixWorld(true)
+      const corner = camera.position.clone()
+      const boxes = c.lines.filter(l => l.reveal > 0.5 && l.label).map(l => {
+        l.label.updateWorldMatrix(true, false)
+        if (!l.label.geometry.boundingBox) l.label.geometry.computeBoundingBox()
+        const bb = l.label.geometry.boundingBox
+        let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity
+        for (const x of [bb.min.x, bb.max.x]) for (const y of [bb.min.y, bb.max.y]) for (const z of [bb.min.z, bb.max.z]) {
+          corner.set(x, y, z).applyMatrix4(l.label.matrixWorld).project(camera)
+          const sx = (corner.x * 0.5 + 0.5) * canvas.width, sy = (-corner.y * 0.5 + 0.5) * canvas.height
+          x0 = Math.min(x0, sx); x1 = Math.max(x1, sx); y0 = Math.min(y0, sy); y1 = Math.max(y1, sy)
+        }
+        return { id: l.stop.id, x0: +x0.toFixed(1), y0: +y0.toFixed(1), x1: +x1.toFixed(1), y1: +y1.toFixed(1) }
+      })
+      let overlaps = 0
+      for (let i = 0; i < boxes.length; i++) for (let j = i + 1; j < boxes.length; j++) {
+        const a = boxes[i], b = boxes[j]
+        if (Math.min(a.x1, b.x1) - Math.max(a.x0, b.x0) > 2 && Math.min(a.y1, b.y1) - Math.max(a.y0, b.y0) > 2) overlaps++
+      }
+      const cut = boxes.filter(b => b.x0 < 0 || b.y0 < 0 || b.x1 > canvas.width || b.y1 > canvas.height).map(b => b.id)
+      return { boxes, overlaps, cut, viewport: [canvas.width, canvas.height] }
+    })
+    check('on the route\'s screen the three plaques are apart and whole', onScreen.boxes.length === 3 && onScreen.overlaps === 0 && onScreen.cut.length === 0, onScreen)
   }
 
   /* ----------------------------------------------------- PROJECTS ---- */

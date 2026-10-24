@@ -21,6 +21,11 @@ function isBrowserShortcut(event: KeyboardEvent): boolean {
   return event.metaKey || event.ctrlKey || event.altKey
 }
 
+/** Enter belongs to a focused button or link: it presses it, and it is not also the car's interact key. */
+function pressesControl(event: KeyboardEvent): boolean {
+  return event.key === 'Enter' && !!(event.target as HTMLElement | null)?.closest?.('button, a[href], summary, [role="button"]')
+}
+
 /** Keys whose default we suppress while driving (page scroll, quick-find). */
 const PREVENT_DEFAULT = new Set([
   'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight',
@@ -37,7 +42,7 @@ export class Keyboard {
   private onKeyDown = (event: KeyboardEvent) => {
     const target = event.target as HTMLElement | null
     if (target?.matches?.('input, textarea, select, [contenteditable]') && event.code !== 'Escape') return
-    if (isBrowserShortcut(event)) return
+    if (isBrowserShortcut(event) || pressesControl(event)) return
 
     if (this.capture && PREVENT_DEFAULT.has(event.code)) event.preventDefault()
 

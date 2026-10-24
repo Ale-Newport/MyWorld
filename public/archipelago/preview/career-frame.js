@@ -31,7 +31,8 @@ export class FramedCareer extends Career{
  constructor(game,references,basis,bin){
   const source=references.node('career'),saved=source?{p:source.position.clone(),q:source.quaternion.clone(),s:source.scale.clone()}:null,frame={inverse:new THREE.Matrix4(),basis,source};
   if(source&&basis){source.parent?.updateWorldMatrix(true,false);const local=source.parent?source.parent.matrixWorld.clone().invert().multiply(basis):basis;local.decompose(source.position,source.quaternion,source.scale);source.updateWorldMatrix(false,true);}
-  const player=new Proxy(game.player,{get(target,key){if(key==='position')return target.position.clone().applyMatrix4(frame.inverse);const value=target[key];return typeof value==='function'?value.bind(target):value;}});
+  const here=new THREE.Vector3();/* one vector for the life of the controller: update() reads it once a tick and keeps nothing */
+  const player=new Proxy(game.player,{get(target,key){if(key==='position')return here.copy(target.position).applyMatrix4(frame.inverse);const value=target[key];return typeof value==='function'?value.bind(target):value;}});
   try{super({...game,player},references,bin);}finally{if(saved){source.position.copy(saved.p);source.quaternion.copy(saved.q);source.scale.copy(saved.s);source.updateWorldMatrix(false,true);}}
   this.sourceFrame=frame;
  }

@@ -11,7 +11,7 @@ import { Projects } from './Projects.js';
 import { Social } from './Social.js';
 import { Places } from './Places.js';
 import { Blackboards } from './Blackboards.js';
-import { RETIRED } from './Social.js';
+import { RETIRED, REPLACED, REPLACED_FLAG } from './Social.js';
 /* ============================================================
    THE INTERACTION LAYER
 
@@ -58,6 +58,10 @@ export function reservedNames(nodes) {
     // pass fitting a trimesh collider around a mesh nobody will ever see.
     for (const name of RETIRED)
         if (nodes.has(name))
+            reserved.push(name);
+    // What the Social plaza recomposition took over (see Social.arrange): reserved only once it flagged them.
+    for (const name of REPLACED)
+        if (nodes.get(name)?.userData[REPLACED_FLAG])
             reserved.push(name);
     return reserved;
 }

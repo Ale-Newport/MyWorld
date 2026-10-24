@@ -27,16 +27,24 @@ export interface ScreenOptions {
    * upside down.
    */
   flipY?: boolean
+  /**
+   * The material is for a mesh the model already has (a CRT's glass, a leaderboard's face), so the plane this screen would
+   * otherwise hang in the world is never built. `mesh` still works for a caller that asks: it builds the plane then.
+   */
+  authored?: boolean
 }
 
 export class Screen {
   readonly group = new THREE.Group()
-  readonly mesh: THREE.Mesh<THREE.PlaneGeometry, THREE.MeshStandardMaterial>
+  readonly material: THREE.MeshStandardMaterial
   readonly canvas: HTMLCanvasElement
   readonly context: CanvasRenderingContext2D
   readonly texture: THREE.CanvasTexture
   readonly width: number
   readonly height: number
+  private plane: THREE.Mesh<THREE.PlaneGeometry, THREE.MeshStandardMaterial> | null = null
+  private readonly worldWidth: number
+  private readonly worldHeight: number
 
   constructor(options: ScreenOptions) {
     this.width = options.width
@@ -55,22 +63,29 @@ export class Screen {
     this.texture.minFilter = THREE.LinearMipmapLinearFilter
     this.texture.magFilter = THREE.LinearFilter
 
-    const worldHeight = options.worldWidth * (options.height / options.width)
-    this.mesh = new THREE.Mesh(
-      new THREE.PlaneGeometry(options.worldWidth, worldHeight),
-      new THREE.MeshStandardMaterial({
-        map: this.texture,
-        emissiveMap: this.texture,
-        emissive: new THREE.Color(0xffffff),
-        emissiveIntensity: options.emissive ?? 0.55,
-        roughness: 0.85,
-        metalness: 0,
-        transparent: options.transparent ?? false,
-        side: THREE.DoubleSide,
-        toneMapped: true,
-      }),
-    )
-    this.group.add(this.mesh)
+    this.worldWidth = options.worldWidth
+    this.worldHeight = options.worldWidth * (options.height / options.width)
+    this.material = new THREE.MeshStandardMaterial({
+      map: this.texture,
+      emissiveMap: this.texture,
+      emissive: new THREE.Color(0xffffff),
+      emissiveIntensity: options.emissive ?? 0.55,
+      roughness: 0.85,
+      metalness: 0,
+      transparent: options.transparent ?? false,
+      side: THREE.DoubleSide,
+      toneMapped: true,
+    })
+    if (!options.authored) void this.mesh
+  }
+
+  /** The plane this screen hangs in the world. An `authored` screen has none until somebody asks for one. */
+  get mesh(): THREE.Mesh<THREE.PlaneGeometry, THREE.MeshStandardMaterial> {
+    if (!this.plane) {
+      this.plane = new THREE.Mesh(new THREE.PlaneGeometry(this.worldWidth, this.worldHeight), this.material)
+      this.group.add(this.plane)
+    }
+    return this.plane
   }
 
   draw(paint: (context: CanvasRenderingContext2D) => void): void {
@@ -97,8 +112,8 @@ export class Screen {
   }
 
   destroy(): void {
-    this.mesh.geometry.dispose()
-    this.mesh.material.dispose()
+    this.plane?.geometry.dispose()
+    this.material.dispose()
     this.texture.dispose()
     this.group.removeFromParent()
   }

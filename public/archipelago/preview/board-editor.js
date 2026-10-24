@@ -1,5 +1,7 @@
-import { BOARD_DEFAULTS, BOARD_MOTIONS, resolveBoard, paintExperiment } from './portfolio/world2/content/boards.js';
-import { paintProjectScreen } from './portfolio/world2/interactions/screenMotion.js';
+import { BOARD_DEFAULTS, BOARD_MOTIONS, resolveBoard } from './portfolio/world2/content/boards.js';
+import { BOARD_H, FACE_H, paintProjectBoard } from './portfolio/world2/interactions/screenMotion.js';
+// The Lab's face is painted by the world's own painter, so what the editor shows is what the island shows.
+import { paintLabFace } from './portfolio/world2/interactions/Places.js';
 
 /** Admin-only editor. Images are resized before entering the existing world draft. */
 export function installBoardEditor(editor) {
@@ -9,7 +11,7 @@ export function installBoardEditor(editor) {
   const dialog = document.createElement('dialog'); dialog.id = 'board-editor';
   dialog.innerHTML = `<form><h2>Carteles del mundo</h2><p>Edita las fichas de Projects y Next experience (Next experiment). Después, guarda el borrador y publícalo desde Admin World.</p>
     <div class="board-fields"><label>Cartel<select name="kind"><option value="projects">Projects</option><option value="experiments">Next experience / Experiments</option></select></label><label>Ficha<select name="entry"></select></label></div>
-    <canvas width="1024" height="512" aria-label="Vista previa del cartel"></canvas><div class="board-fields" data-fields></div>
+    <canvas width="1024" height="730" aria-label="Vista previa del cartel"></canvas><div class="board-fields" data-fields></div>
     <label>Imagen o ilustración propia<input name="upload" type="file" accept="image/png,image/jpeg,image/webp"></label><p class="board-image-help">PNG, JPG o WebP · máximo 10 MB. Se optimiza automáticamente.</p>
     <div class="board-actions"><button type="button" data-remove>Quitar imagen</button><button type="button" data-reset>Restablecer ficha</button></div>
     <p role="status" aria-live="polite"></p><footer><button type="button" data-cancel>Cancelar</button><button type="submit">Aplicar cambios</button></footer></form>`;
@@ -24,10 +26,13 @@ export function installBoardEditor(editor) {
   const preview = () => {
     if (!dialog.open) return;
     const item = current(), context = canvas.getContext('2d'); if (!item) return;
-    if (kind.value === 'projects') paintProjectScreen(context, 1024, 512, item, 2);
-    else paintExperiment(context, item, entry.selectedIndex, entry.options.length, preview);
+    // Projects shows the whole board as the world does (title plate and link above the sheet); an experiment is the Lab's sheet (1024 x 576, as in the world).
+    const height = kind.value === 'projects' ? BOARD_H : FACE_H;
+    if (canvas.height !== height) canvas.height = height;
+    if (kind.value === 'projects') paintProjectBoard(context, 1024, BOARD_H, item, 2, preview, { index: entry.selectedIndex, total: entry.options.length });
+    else paintLabFace(context, item, entry.selectedIndex, entry.options.length, preview);
     // Project images load asynchronously; paint once again when decoded.
-    if (item.image && kind.value === 'projects') { const im = new Image(); im.onload = () => { if (dialog.open && current()?.image === item.image) paintProjectScreen(context, 1024, 512, current(), 2); }; im.src = item.image; }
+    if (item.image && kind.value === 'projects') { const im = new Image(); im.onload = () => { if (dialog.open && current()?.image === item.image) paintProjectBoard(context, 1024, BOARD_H, current(), 2, preview, { index: entry.selectedIndex, total: entry.options.length }); }; im.src = item.image; }
   };
   for (const [key, title, max] of definitions) {
     const label = document.createElement('label'); label.textContent = title;
@@ -38,8 +43,8 @@ export function installBoardEditor(editor) {
   }
   const motionLabel = document.createElement('label'); motionLabel.textContent = 'Ilustración animada';
   const motion = document.createElement('select'); motion.name = 'motion';
-  const names = ['Ajedrez','Mercado','Órbitas','Entrenamiento','Pipeline','Túnel','Timeline','Laberinto','Anillos'];
-  BOARD_MOTIONS.forEach((value, i) => motion.add(new Option(names[i], value))); motionLabel.append(motion); fields.append(motionLabel);
+  const names = { ChessMotion: 'Ajedrez', StockMotion: 'Mercado', ThreeBodyMotion: 'Órbitas', GymMotion: 'Entrenamiento', FocusMotion: 'Pipeline', VpnMotion: 'Túnel', KeyframesMotion: 'Timeline', LabyrinthMotion: 'Laberinto', PrimesMotion: 'Anillos', WebsiteMotion: 'Página web', CardsMotion: 'Cartas', JobBoardMotion: 'Tablón de ofertas', VoxelMotion: 'Voxels', LibraryMotion: 'Biblioteca', DotsBoxesMotion: 'Puntos y cajas', VideoPlayerMotion: 'Vídeo (pipeline)', TrainingMotion: 'Entrenamiento de modelo', CatanMotion: 'Laberinto de tablero', GenericProjectMotion: 'Anillos (genérico)' };
+  BOARD_MOTIONS.forEach(value => motion.add(new Option(names[value] ?? value, value))); motionLabel.append(motion); fields.append(motionLabel);
   motion.onchange = () => { override().motion = motion.value; override().image = ''; preview(); };
   const fill = () => {
     const item = current();

@@ -1,0 +1,14 @@
+[
+  "world2/content/projects",
+  "world2/content/boards",
+  "world2/interactions/Projects",
+  "world2/interactions/Places",
+  "world2/interactions/screenMotion",
+  "world2/interactions/Career",
+  "world2/interactions/Billboards",
+  "world2/interactions/Prompts",
+  "world2/interactions/Social",
+  "world2/interactions/socialLayout",
+  "world2/content/social",
+  "world2/signs/*"
+]
