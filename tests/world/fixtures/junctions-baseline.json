@@ -1,0 +1,168 @@
+{
+ "T Junction": {
+  "T Junction / T Junction 0": {
+   "vertices": 156,
+   "triangles": 78,
+   "hash": 724826896,
+   "area": 336
+  },
+  "T Junction 0 / Lane and edge markings": {
+   "vertices": 1192,
+   "triangles": 596,
+   "hash": -1171111224,
+   "area": 12.340012
+  },
+  "T Junction / T Junction 1": {
+   "vertices": 28,
+   "triangles": 14,
+   "hash": -509749360,
+   "area": 143.5
+  },
+  "T Junction 1 / Lane and edge markings": {
+   "vertices": 24,
+   "triangles": 12,
+   "hash": -383528168,
+   "area": 5.710005
+  }
+ },
+ "Crossroad": {
+  "Crossroad / Crossroad 0": {
+   "vertices": 156,
+   "triangles": 78,
+   "hash": 724826896,
+   "area": 336
+  },
+  "Crossroad 0 / Lane and edge markings": {
+   "vertices": 1088,
+   "triangles": 544,
+   "hash": 1281451072,
+   "area": 11.420011
+  },
+  "Crossroad / Crossroad 1": {
+   "vertices": 56,
+   "triangles": 28,
+   "hash": 444724856,
+   "area": 287
+  },
+  "Crossroad 1 / Lane and edge markings": {
+   "vertices": 48,
+   "triangles": 24,
+   "hash": -1576567664,
+   "area": 11.420011
+  }
+ },
+ "Roundabout": {
+  "Roundabout / Roundabout 0": {
+   "vertices": 1228,
+   "triangles": 614,
+   "hash": -851095788,
+   "area": 526.973293
+  },
+  "Roundabout 0 / Lane and edge markings": {
+   "vertices": 12616,
+   "triangles": 6292,
+   "hash": -1453168147,
+   "area": 17.510767
+  },
+  "Roundabout / Roundabout 1": {
+   "vertices": 102,
+   "triangles": 50,
+   "hash": 2114021681,
+   "area": 144.572875
+  },
+  "Roundabout 1 / Lane and edge markings": {
+   "vertices": 598,
+   "triangles": 298,
+   "hash": -355240517,
+   "area": 5.79337
+  },
+  "Roundabout / Roundabout 2": {
+   "vertices": 110,
+   "triangles": 54,
+   "hash": -902378349,
+   "area": 144.566929
+  },
+  "Roundabout 2 / Lane and edge markings": {
+   "vertices": 594,
+   "triangles": 296,
+   "hash": -1489987121,
+   "area": 5.730969
+  },
+  "Roundabout / Roundabout 3": {
+   "vertices": 284,
+   "triangles": 142,
+   "hash": 531738237,
+   "area": 144.570021
+  },
+  "Roundabout 3 / Lane and edge markings": {
+   "vertices": 52,
+   "triangles": 26,
+   "hash": -1556947825,
+   "area": 5.792333
+  },
+  "Roundabout / Roundabout 4": {
+   "vertices": 284,
+   "triangles": 142,
+   "hash": -1980699107,
+   "area": 144.570021
+  },
+  "Roundabout 4 / Lane and edge markings": {
+   "vertices": 52,
+   "triangles": 26,
+   "hash": -1923190417,
+   "area": 5.732333
+  }
+ },
+ "Merge": {
+  "Merge / Merge 0": {
+   "vertices": 156,
+   "triangles": 78,
+   "hash": 724826896,
+   "area": 336
+  },
+  "Merge 0 / Lane and edge markings": {
+   "vertices": 2015,
+   "triangles": 1005,
+   "hash": -1091082343,
+   "area": 8.417923
+  },
+  "Merge / Merge 1": {
+   "vertices": 994,
+   "triangles": 496,
+   "hash": -1186157103,
+   "area": 130.377519
+  },
+  "Merge 1 / Lane and edge markings": {
+   "vertices": 3736,
+   "triangles": 1862,
+   "hash": -1415044429,
+   "area": 5.451687
+  }
+ },
+ "Split": {
+  "Split / Split 0": {
+   "vertices": 156,
+   "triangles": 78,
+   "hash": 724826896,
+   "area": 336
+  },
+  "Split 0 / Lane and edge markings": {
+   "vertices": 2015,
+   "triangles": 1005,
+   "hash": -1091082343,
+   "area": 8.417923
+  },
+  "Split / Split 1": {
+   "vertices": 994,
+   "triangles": 496,
+   "hash": -1186157103,
+   "area": 130.377519
+  },
+  "Split 1 / Lane and edge markings": {
+   "vertices": 3736,
+   "triangles": 1862,
+   "hash": -1415044429,
+   "area": 5.451687
+  }
+ }
+}

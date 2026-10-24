@@ -17,6 +17,23 @@ export function authoredWorldBounds(root,base=WORLD_BOUNDS){
  });return bounds;
 }
 
+/** The terrain the player can see, exactly: every vertex that rises above the flat sea floor (land, beaches and the shelf that
+ * shades the water around them), with no legacy minimum world and no inflation, so the map can frame the island itself.
+ * `minY` picks another floor. null when the world has no terrain. */
+export function landFootprint(root,{minY}={}){
+ const b={minX:Infinity,maxX:-Infinity,minZ:Infinity,maxZ:-Infinity},nodes=[];root?.updateMatrixWorld(true);
+ root?.traverse(node=>{if(node.userData.terrain&&visibleInWorld(node)&&node.geometry?.attributes.position)nodes.push(node);});
+ // Straight over the vertex arrays (86 000 of them in the island's terrain): no vector per vertex.
+ const scan=(node,visit)=>{const a=node.geometry.attributes.position,e=node.matrixWorld.elements,raw=a.array&&!a.isInterleavedBufferAttribute&&a.itemSize>=3?a.array:null,step=raw?a.itemSize:3;
+  for(let i=0;i<a.count;i++){const x=raw?raw[i*step]:a.getX(i),y=raw?raw[i*step+1]:a.getY(i),z=raw?raw[i*step+2]:a.getZ(i);visit(e[0]*x+e[4]*y+e[8]*z+e[12],e[1]*x+e[5]*y+e[9]*z+e[13],e[2]*x+e[6]*y+e[10]*z+e[14]);}};
+ if(minY===undefined){minY=Infinity;for(const node of nodes)scan(node,(x,y)=>{if(y<minY)minY=y;});minY+=.002;}
+ for(const node of nodes)scan(node,(x,y,z)=>{
+  if(y<minY)return;
+  if(x<b.minX)b.minX=x;if(x>b.maxX)b.maxX=x;if(z<b.minZ)b.minZ=z;if(z>b.maxZ)b.maxZ=z;
+ });
+ return Number.isFinite(b.minX)?b:null;
+}
+
 /** Shoreline loops, including holes, rather than tens of thousands of filled
  * triangles. Weld by map coordinate so neighbouring terrain tiles share edges. */
 export function mapTerrain(root){

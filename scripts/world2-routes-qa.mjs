@@ -23,7 +23,7 @@ const check = (name, pass, detail) => {
 const IGNORE = /preloaded using link preload|Download the React DevTools/
 
 try {
-  for (const [route, ready] of [['/', null], ['/world', () => !!window.__world], ['/world2', () => !!window.__world2]]) {
+  for (const [route, ready] of [['/', null], ['/world', () => [...document.querySelectorAll('iframe')].some((f) => { try { return f.contentDocument?.body?.dataset.ready === 'true' } catch { return false } })], ['/world2', () => !!window.__world2]]) {
     const page = await (await browser.newContext({ viewport: { width: 1280, height: 800 } })).newPage()
     const errors = []
     page.on('pageerror', e => errors.push(String(e)))

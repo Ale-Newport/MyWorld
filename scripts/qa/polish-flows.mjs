@@ -42,15 +42,18 @@ const after=await frame.evaluate(()=>window.__archipelago.driving.vehicle.positi
 assert(Math.hypot(after[0]-before[0],after[2]-before[2])>.5,'vehicle responds to driving controls',results);
 for(const [w,h] of [[1440,900],[2560,1080],[768,1024],[390,844]]){
  await page.setViewportSize({width:w,height:h});await frame.locator('#player-map').click();
- await frame.locator('.atlas').waitFor({state:'visible'});await page.waitForTimeout(300);
+ await frame.locator('.atlas').waitFor({state:'visible'});await frame.waitForFunction(()=>window.__archipelago.atlas.photo?.state==='sharp',null,{timeout:30000});await page.waitForTimeout(300);
  const box=await frame.locator('.atlas').boundingBox();
  assert(box.x>=9&&box.y>=9&&box.width<=Math.min(1121,w-18)&&Math.abs(box.x+box.width/2-w/2)<2,`${w}×${h}: map centered with bounded size and margins`,results);
+ // The island itself (land and its shallows) sits centred in the map stage, a hair above the middle: see world-map-framing.mjs for the full check.
+ const centre=await frame.evaluate(async()=>{const A=window.__archipelago,f=(await import('/archipelago/preview/world-bounds.js')).landFootprint(A.root),a=A.atlas,[x0,y0]=a.toScreen(f.minX,f.minZ),[x1,y1]=a.toScreen(f.maxX,f.maxZ);return {dx:((x0+x1)/2-a.sw/2)/a.sw*100,dy:((y0+y1)/2-a.sh/2)/a.sh*100};});
+ assert(Math.abs(centre.dx)<=1&&centre.dy<=-.5&&centre.dy>=-2.5,`${w}×${h}: island centred in the map (${centre.dx.toFixed(2)} %, ${centre.dy.toFixed(2)} % of the stage)`,results);
  await page.screenshot({path:out(`polish-map-${w}.png`)});
  await frame.locator('.atlas-close').click();
 }
 await page.setViewportSize({width:1440,height:900});
-const mem=[];for(let i=0;i<3;i++){await frame.locator('#player-map').click();await frame.locator('.atlas-close').click();mem.push(await frame.evaluate(()=>window.__archipelago.renderer.info.memory));}
-assert(mem[2].textures<=mem[0].textures&&mem[2].geometries<=mem[0].geometries,'reopening Map does not accumulate GPU resources',results);
+const mem=[];for(let i=0;i<3;i++){await frame.locator('#player-map').click();await frame.waitForFunction(()=>window.__archipelago.atlas.photo?.state==='sharp',null,{timeout:30000});await frame.locator('.atlas-close').click();mem.push(await frame.evaluate(()=>({...window.__archipelago.renderer.info.memory,programs:window.__archipelago.renderer.info.programs.length})));}
+assert(mem[2].textures<=mem[0].textures&&mem[2].geometries<=mem[0].geometries&&mem[2].programs<=mem[0].programs,'reopening Map does not accumulate GPU resources or compile again',results);
 for(const [button,dialog,close] of [['#player-help','#help-dialog','#close-help'],['#player-awards','#awards-dialog','#close-awards']]){await frame.locator(button).click();assert(await frame.locator(dialog).isVisible(),`${button} opens`,results);await page.screenshot({path:out(`polish-${button.slice(1)}.png`)});await frame.locator(close).click();}
 // Inspect the real in-world board with live records, no geometry mirroring.
 const board=await frame.evaluate(()=>{const A=window.__archipelago,i=A.gameplay.instances.find(i=>i.parts.circuit),c=i.parts.circuit,n=i.references.node('refLeaderboard');c.records=[{time:63.271,at:Date.now()},{time:72.482,at:Date.now()}];c.drawBoard();const p=n.getWorldPosition(new A.THREE.Vector3()),normal=new A.THREE.Vector3(1,0,0).transformDirection(n.matrixWorld);A.atlas.isOpen=true;A.camera.position.copy(p).addScaledVector(normal,10);A.camera.lookAt(p);A.camera.updateMatrixWorld();A.renderer.render(A.scene,A.camera);const fabric=[];i.frame.traverse(o=>{if(o.isMesh&&['Cylinder.022','Cylinder.037','Cylinder.039','refBanners','refBanners.001'].includes(o.userData.w2Source??o.name))for(const m of [o.material].flat())if(['circuitBrand','circuitWebgl','circuitWebgpu'].includes(m.name))fabric.push({color:m.color.getHexString(),map:!!m.map})});return {repeat:c.board.texture.repeat.x,scale:n.scale.toArray(),fabric}});

@@ -176,7 +176,8 @@ try {
   check('World2 releases its dev handle on navigation',await page.evaluate(()=>!window.__world2))
   check('home route remains usable',await page.locator('body').innerText().then(t=>t.length>100))
   await page.screenshot({path:'.qa/world2/home-regression.png'})
-  await page.goto(base+'/world');await page.waitForFunction(()=>window.__world?.vehicle,{timeout:120000});check('original /world still initialises',await page.evaluate(()=>!!window.__world.vehicle&&!window.__world2))
+  // /world is the Archipelago player in an iframe now (the debug handle of the in-React engine it replaced is gone): ready is the player's own flag, and World2's handle is not there.
+  await page.goto(base+'/world');await page.waitForFunction(()=>[...document.querySelectorAll('iframe')].some(f=>{try{return f.contentDocument?.body?.dataset.ready==='true'}catch{return false}}),{timeout:180000,polling:500});check('/world still initialises: its player is ready',await page.evaluate(()=>!window.__world2))
   await page.screenshot({path:'.qa/world2/world-regression.png'})
   await page.goto(base+'/world2');await page.waitForFunction(()=>window.__world2?.status.ready,{timeout:120000});check('World2 remounts with one canvas',await page.locator('main canvas').count()===1)
   check('no browser errors',report.errors.length===0,report.errors)

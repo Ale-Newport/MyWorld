@@ -1,7 +1,7 @@
 /* /world on a touch screen: Chromium with touch and mobile emulation, as a
    phone held upright (390×844) and on its side (844×390), fingers put down
    through CDP Input.dispatchTouchEvent. On each:
-   - a phone starts in touch mode: the buttons and the touch hints, no key hints;
+   - a phone starts in touch mode: the buttons and a notice that teaches them; no written hints, touch or key (the visitor's HUD is just the speed);
    - the joystick on the ground: a one-finger drag drives the car several
      metres, a drag to one side turns it, lifting the finger lets go;
    - a tap on the car jumps; JUMP held keeps the wheels raised, released lets
@@ -83,7 +83,8 @@ async function suite(width, height) {
   const tag = `${width}×${height}`, { context, page, errors, cdp } = await phone(width, height), f = fingers(cdp)
   await page.evaluate(() => { window.__recoveries = []; globalThis.__archipelago.driving.events.on('recovered', (reason, pose) => window.__recoveries.push({ reason, source: pose.source })) })
   const shown = await page.evaluate(() => { const show = (s) => getComputedStyle(document.querySelector(s)).display; return { input: document.body.dataset.input, buttons: show('#touch-controls'), hints: show('#touch-hints'), keys: show('#key-hints'), notice: document.querySelector('#notice').textContent } })
-  assert(shown.input === 'touch' && shown.buttons === 'flex' && shown.hints === 'block' && shown.keys === 'none', `${tag}: a phone starts in touch mode — buttons and touch hints shown, key hints hidden (${JSON.stringify(shown)})`, results)
+  // The visitor's HUD is just the speed (portfolio-theme.css): the written hints, touch or key, are off the glass; the notice teaches the controls.
+  assert(shown.input === 'touch' && shown.buttons === 'flex' && shown.hints === 'none' && shown.keys === 'none' && /^Drag to drive/.test(shown.notice), `${tag}: a phone starts in touch mode — the buttons shown, the notice teaching the touch controls, no written hints on the glass (the HUD is just the speed) (${JSON.stringify(shown)})`, results)
   await page.screenshot({ path: out(`touch-${width}x${height}.png`) })
 
   /* ---- the joystick: a one-finger drag drives ---- */
@@ -280,7 +281,7 @@ async function suite(width, height) {
   const padded = await hud()
   await twoFingers()
   const again = await hud()
-  assert(keyed.input === 'keyboard' && keyed.buttons === 'none' && keyed.keys === 'block' && back.input === 'touch' && back.buttons === 'flex' && back.keys === 'none', `${tag}: a key hides the touch HUD and brings the key hints back; a finger on the world brings the touch HUD back (${JSON.stringify([keyed, back])})`, results)
+  assert(keyed.input === 'keyboard' && keyed.buttons === 'none' && keyed.keys === 'none' && back.input === 'touch' && back.buttons === 'flex' && back.keys === 'none', `${tag}: a key hides the touch HUD (the key hints stay off the glass: the HUD is just the speed); a finger on the world brings the touch HUD back (${JSON.stringify([keyed, back])})`, results)
   assert(padded.input === 'gamepad' && padded.buttons === 'none' && again.buttons === 'flex', `${tag}: so does a pad (${JSON.stringify([padded, again])})`, results)
 
   assert(errors.length === 0, `${tag}: no runtime errors (${errors.slice(0, 2).join(' | ')})`, results)
@@ -304,7 +305,7 @@ await suite(844, 390)
       $('#notice').textContent = 'Drag to drive · tap the car to jump'; $('#notice').classList.add('show')
       $('#gameplay-hud').textContent = 'Penguin round-up · 0:42 · 3 / 6 penguins in the pen · Push them into the ring on the ice'
       $('#interact-action').hidden = false; $('#interact-action').textContent = 'Start the penguin round-up'
-      const box = (s) => { const r = $(s).getBoundingClientRect(); return { left: r.left, top: r.top, right: r.right, bottom: r.bottom, width: r.width, height: r.height, display: getComputedStyle($(s)).display } }
+      const box = (s) => { const r = $(s).getBoundingClientRect(), radius = getComputedStyle($(s)).borderTopLeftRadius; return { left: r.left, top: r.top, right: r.right, bottom: r.bottom, width: r.width, height: r.height, display: getComputedStyle($(s)).display, round: /%/.test(radius) && parseFloat(radius) >= 50 } }
       const hud = ['#vehicle-mode', '#speed', '#surface', '#altitude', '#touch-hints', '#vehicle-paint', '#drive-hud > span'].map(box).filter((b) => b.width && b.height)
       // A finger put down on a readout is a finger on the world.
       const through = ['#speed', '#touch-hints', '#gameplay-hud'].every((s) => { const r = $(s).getBoundingClientRect(); return document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2) === $('#world') })
@@ -312,13 +313,19 @@ await suite(844, 390)
     })
     await page.screenshot({ path: out(`touch-layout-${width}x${height}.png`) })
     const meets = (a, b) => a.left < b.right - 0.5 && b.left < a.right - 0.5 && a.top < b.bottom - 0.5 && b.top < a.bottom - 0.5
+    // JUMP is a circle: its corner of the bounding box is empty. A round button meets a box when the box is nearer to its centre than its radius.
+    const meetsShape = (a, b) => {
+      if (!a.round) return meets(a, b)
+      const cx = (a.left + a.right) / 2, cy = (a.top + a.bottom) / 2, dx = cx - Math.max(b.left, Math.min(cx, b.right)), dy = cy - Math.max(b.top, Math.min(cy, b.bottom))
+      return dx * dx + dy * dy < (Math.min(a.width, a.height) / 2 - 0.5) ** 2
+    }
     const others = { 'player nav': [layout.nav], 'speed readout': layout.hud, 'activity HUD': [layout.gameplay], notice: [layout.notice], 'interact button': [layout.interact] }
     const hits = []
-    for (const b of layout.buttons) for (const [name, list] of Object.entries(others)) if (list.some((o) => meets(b, o))) hits.push(name)
+    for (const b of layout.buttons) for (const [name, list] of Object.entries(others)) if (list.some((o) => meetsShape(b, o))) hits.push(name)
     const small = layout.buttons.filter((b) => b.width < 44 || b.height < 44), outside = layout.buttons.filter((b) => b.left < 0 || b.top < 0 || b.right > layout.viewport.width || b.bottom > layout.viewport.height)
     assert(layout.input === 'touch' && layout.column.display === 'flex' && layout.gameplay.display === 'block' && layout.notice.width > 0 && layout.interact.width > 0, `${width}×${height}: touch UI, activity HUD, notice and interact prompt all on screen`, results)
     assert(!small.length && !outside.length, `${width}×${height}: every button at least 44 px and on screen (${layout.buttons.map((b) => `${Math.round(b.width)}×${Math.round(b.height)}`).join(', ')})`, results)
-    assert(!hits.length, `${width}×${height}: no button overlaps the player nav, the speed readout, the activity HUD, a notice or the interact button${hits.length ? ` (overlaps: ${[...new Set(hits)].join(', ')})` : ''}`, results)
+    assert(!hits.length, `${width}×${height}: no button overlaps the player nav, the speed readout, the activity HUD, a notice or the interact button (the round JUMP as the circle it is)${hits.length ? ` (overlaps: ${[...new Set(hits)].join(', ')})` : ''}`, results)
     assert(!meets(layout.hints, layout.column) && ![layout.notice, layout.gameplay, layout.nav, ...layout.hud].some((o) => meets(layout.interact, o)), `${width}×${height}: the touch hints stay clear of the buttons; the interact prompt of the notice, the activity HUD, the player nav and the speed readout`, results)
     assert(layout.through, `${width}×${height}: a finger on the speed readout, the hints or the activity HUD lands on the world`, results)
   }
@@ -340,7 +347,7 @@ await suite(844, 390)
   await page.keyboard.press('KeyW')
   await sleep(300)
   const desk = await page.evaluate(() => { const show = (s) => getComputedStyle(document.querySelector(s)).display, d = globalThis.__archipelago.driving; return { coarse: matchMedia('(pointer: coarse)').matches, input: document.body.dataset.input, mode: d.inputs.mode, buttons: show('#touch-controls'), hints: show('#touch-hints'), keys: show('#key-hints'), help: show('#help-touch'), ring: d.nipple.active || d.nipple.group.visible, notice: document.querySelector('#notice').textContent } })
-  assert(!desk.coarse && desk.input === 'keyboard' && desk.mode === 'keyboard' && desk.buttons === 'none' && desk.hints === 'none' && desk.help === 'none' && desk.keys === 'block' && !desk.ring, `1440×900 with a mouse: no touch buttons, hints or joystick; the key hints as before (${JSON.stringify(desk)})`, results)
+  assert(!desk.coarse && desk.input === 'keyboard' && desk.mode === 'keyboard' && desk.buttons === 'none' && desk.hints === 'none' && desk.help === 'none' && desk.keys === 'none' && !desk.ring, `1440×900 with a mouse: no touch buttons, hints or joystick, and no written key hints on the glass (the HUD is just the speed; the notice below teaches the keys) (${JSON.stringify(desk)})`, results)
   assert(/^WASD drive/.test(desk.notice), `and the keyboard notice (“${desk.notice}”)`, results)
   await page.screenshot({ path: out('touch-mouse-1440x900.png') })
   assert(errors.length === 0, `mouse: no runtime errors (${errors.slice(0, 2).join(' | ')})`, results)

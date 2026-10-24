@@ -32,6 +32,8 @@ import { chamferedBox, strutGeometry, wheelGeometry } from './geometry.js';
    ============================================================ */
 const WHEEL_RADIUS = 0.4;
 const WHEEL_WIDTH = 0.3;
+/** Scratch for the per-wheel steering and spin (no allocation per wheel per frame). */
+const STEER=new THREE.Quaternion(),SPIN=new THREE.Quaternion(),UP=new THREE.Vector3(0,1,0),AXLE=new THREE.Vector3(0,0,1);
 export class VisualVehicle {
     vehicle;
     player;
@@ -326,7 +328,7 @@ export class VisualVehicle {
             const physical = vehicle.wheels.items[i];
             // Front wheels steer; rear wheels do not.
             if (i < 2) {
-                if(visual.authoredRotation)visual.container.quaternion.copy(visual.authoredRotation).premultiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0,1,0),this.steeringVisual));
+                if(visual.authoredRotation)visual.container.quaternion.copy(visual.authoredRotation).premultiply(STEER.setFromAxisAngle(UP,this.steeringVisual));
                 else visual.container.rotation.y = this.steeringVisual;
             }
             // The hub sits at the far end of the suspension travel. The
@@ -337,7 +339,7 @@ export class VisualVehicle {
             visual.strut.scale.y = (visual.authoredStrutScale??1)*Math.max(0.001, Math.abs(visual.container.position.y-(visual.authoredYOffset??0)) - 0.5);
             if (wheelsTurn) {
                 visual.spin += (vehicle.forwardSpeed / WHEEL_RADIUS) * scaled;
-                if(visual.authoredSpinnerRotation)visual.spinner.quaternion.copy(visual.authoredSpinnerRotation).multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0,0,1),visual.spin));
+                if(visual.authoredSpinnerRotation)visual.spinner.quaternion.copy(visual.authoredSpinnerRotation).multiply(SPIN.setFromAxisAngle(AXLE,visual.spin));
                 else visual.spinner.rotation.z = visual.spin;
             }
         }

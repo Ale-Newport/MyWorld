@@ -30,7 +30,7 @@ const arrivalCheck = (name) => page.evaluate(async (name) => {
 /** Pixel distance between the map's arrow and the car's true map position (as world-map.mjs measures it). */
 const arrowError = () => page.evaluate(async () => {
   const A = globalThis.__archipelago, a = document.querySelector('.atlas-player').getBoundingClientRect(), plane = document.querySelector('.atlas-base').getBoundingClientRect(), v = A.driving.vehicle.position
-  const m = await import('/archipelago/preview/world-bounds.js'), raw = m.authoredWorldBounds(A.root), b = { minX: raw.minX - 6, maxX: raw.maxX + 6, minZ: raw.minZ - 6, maxZ: raw.maxZ + 6 }
+  const b = A.atlas.photo.bounds   // the photograph's own bounds (the atlas frames the island's footprint)
   const ex = plane.left + (v.x - b.minX) / (b.maxX - b.minX) * plane.width, ey = plane.top + (v.z - b.minZ) / (b.maxZ - b.minZ) * plane.height
   return Math.hypot(ex - (a.left + a.width / 2), ey - (a.top + a.height / 2))
 })

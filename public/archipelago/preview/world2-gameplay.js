@@ -11,10 +11,11 @@ import {Achievements} from './portfolio/world2/interactions/Achievements.js';
 import {Bowling} from './portfolio/world2/interactions/Bowling.js';
 import {Circuit} from './portfolio/world2/interactions/Circuit.js';
 import {Projects} from './portfolio/world2/interactions/Projects.js';
+import {createFocusUi} from './focus-ui.js';
 import {paintProjectsPreview} from './projects-preview.js';
 import {FramedCareer,careerSourceBasis} from './career-frame.js';
 import {Title} from './portfolio/world2/interactions/Title.js';
-import {Social} from './portfolio/world2/interactions/Social.js';
+import {Social,arrange as arrangeSocial} from './portfolio/world2/interactions/Social.js';
 import {Places} from './portfolio/world2/interactions/Places.js';
 import {Blackboards} from './portfolio/world2/interactions/Blackboards.js';
 import {Explosions} from './portfolio/world2/interactions/Explosions.js';
@@ -44,15 +45,18 @@ export class World2Instance {
   const physics=new LocalPhysics(manager.physics,matrix,environment.nodes);this.physics=physics;
   const player=new Proxy(drive.player,{get(p,k){if(k==='position')return physics.local(p.position);if(k==='position2'){const v=physics.local(p.position);return new THREE.Vector2(v.x,v.z);}const v=p[k];return typeof v==='function'?v.bind(p):v;}});
   const vehicle=new Proxy(drive.vehicle,{get(v,k){if(k==='position')return physics.local(v.position);if(k==='chassis')return {...v.chassis,physical:physics.wrap(v.chassis.physical)};if(k==='moveTo')return (p,angle)=>{const direction=physics.vector({x:Math.cos(angle),y:0,z:-Math.sin(angle)});v.moveTo(physics.point(p),Math.atan2(-direction.z,direction.x));};return v[k];}});
-  const view=new Proxy(drive.view,{get(v,k){if(k==='startCinematic')return (p,target,...rest)=>v.startCinematic(physics.point(p),physics.point(target),...rest);if(k==='focusPoint')return {...v.focusPoint,position:physics.local(v.focusPoint.position??drive.player.position)};const value=v[k];return typeof value==='function'?value.bind(v):value;}});
-  const game={...drive,worldBoards:manager.root?.userData.worldBoards,bin:this.bin,ticker:drive.ticker,tweens:drive.tweens,inputs:drive.inputs,physics,environment,player,vehicle,view,renderer:{scene:frame},status:manager.status,audio:drive.audio??quietAudio,lighting:{phase:.4},publishGameplay:()=>{},toggleMap:()=>manager.ui.map?.(),toggleHelp:()=>manager.ui.help?.(),toggleAchievements:()=>manager.ui.achievements?.()};this.game=game;
+  const view=new Proxy(drive.view,{get(v,k){if(k==='startCinematic')return (p,target,...rest)=>v.startCinematic(physics.point(p),physics.point(target),...rest);if(k==='focusPoint'){const f=v.focusPoint;return {...f,position:physics.local(f.position??drive.player.position),get isTracking(){return f.isTracking;},set isTracking(on){f.isTracking=on;}};}const value=v[k];return typeof value==='function'?value.bind(v):value;}});
+  const game={...drive,worldBoards:manager.root?.userData.worldBoards,bin:this.bin,ticker:drive.ticker,tweens:drive.tweens,inputs:drive.inputs,physics,environment,player,vehicle,view,renderer:{scene:frame},status:manager.status,audio:drive.audio??quietAudio,lighting:{phase:.4},publishGameplay:()=>{},toggleMap:()=>manager.ui.map?.(),toggleHelp:()=>manager.ui.help?.(),toggleAchievements:()=>manager.ui.achievements?.(),focus:manager.focus,plaza:true};this.game=game;
   const feature=entry.feature;
+  // The Social plaza is re-seated for the fixed gameplay camera BEFORE any body exists (and before the names it replaces are reserved): theta is the View's azimuth, rotation this instance's world rotation.
+  if(feature==='Social')arrangeSocial(environment,{rotation:physics.rotation,theta:drive.view?.spherical?.baseTheta??Math.PI/4});
   if(feature)for(const name of reservedNames(environment.nodes))environment.reserved.add(name);
   environment.addPhysics(physics,drive.ticker);environment.addVegetationPhysics();manager.physics.refreshQueries();
   const data={...manager.catalog.data,checkpoints:feature==='Racing'?manager.catalog.data.checkpoints:[],careerText:feature==='Career'?manager.catalog.data.careerText:[]};
   const refs=new References(environment,data);this.references=refs;
   const prompts=new Prompts(drive.ticker,drive.tweens,drive.inputs,this.bin,()=>player.position);this.prompts=prompts;frame.add(environment.group,prompts.group);
-  const explosions=new Explosions(physics,drive.ticker,view,this.bin,physics.wrap(drive.vehicle.chassis.physical),(at,strength)=>game.audio.environment('explosion',Math.min(1,strength/8)));frame.add(explosions.group);
+  // Only what can blow up (a feature area, or crates) needs the effects, their pools and the flash light: a bench does not.
+  const explosions=feature||environment.collection('explosiveCrates').length?new Explosions(physics,drive.ticker,view,this.bin,physics.wrap(drive.vehicle.chassis.physical),(at,strength)=>game.audio.environment('explosion',Math.min(1,strength/8))):null;if(explosions)frame.add(explosions.group);
   const facade={prompts,achievements:manager.achievements,explosions,resetProps:()=>manager.reset()};game.interactions=facade;
   const own=(name,Controller,...args)=>{const component=new Controller(game,refs,...args,this.bin);this.parts[name]=component;facade[name]=component;if(component.group){component.group.name='runtime:'+name;let index=0;component.group.traverse(n=>{if(!n.name)n.name='runtime:'+name+':'+n.type+':'+index++;});frame.add(component.group);}return component;};
   if(feature==='Bowling'){
@@ -71,11 +75,11 @@ export class World2Instance {
   if(feature==='Title'){const title=own('title',Title);title.group.userData.assetDisplayName='Alejandro Newport · letters';title.letters.forEach((letter,i)=>{letter.mesh.userData.assetDisplayName='Letter '+letter.char+' · '+String(i+1).padStart(2,'0');});}
   if(feature==='Social')own('social',Social,prompts);
   if(feature==='Achievements'){
-   const a=own('achievements',Achievements);a.groups=manager.achievements.groups;
+   const a=own('achievements',Achievements);a.groups=manager.achievements.groups;a.follow(manager.achievements);
   }
   if(feature==='Crates'||environment.collection('explosiveCrates').length){const crates=new ExplosiveCrates(refs,physics,drive.ticker,drive.tweens,explosions,this.bin,{onFuse:()=>game.audio.play('blip',1.9),onExplode:()=>manager.achievements.unlock('tnt'),onChain:(count,total)=>{manager.achievements.set('tntChain',count);for(let i=0;i<total;i++)manager.achievements.mark('tntAll','crate-'+i);}});this.parts.crates=crates;}
   if(feature)own('places',Places,prompts);
-  if(feature)new Blackboards(refs,drive.inputs,this.bin);
+  if(feature&&(refs.collection('blackBoard.001').length||refs.collection('blackBoard.002').length))new Blackboards(refs,drive.inputs,this.bin);
   const bonfire=refs.position('refBonfireInteractivePoint');if(bonfire)prompts.create({label:'Reset the island',position:bonfire,align:'right',onInteract:()=>manager.reset()});
   tagAssetParts(frame);
   const changed=applyRuntimeEdits(frame,edits,entry.anchor);this.parts.career?.syncSourceFrame(frame);const generatedRemoved=[];frame.traverse(n=>{if(removed.some(e=>e.key===n.userData.assetRuntimeKey))generatedRemoved.push(n);});
@@ -99,18 +103,20 @@ export class World2Instance {
  }
  get busy(){return (this.parts.circuit&&this.parts.circuit.state!=='pending')||(this.parts.projects&&this.parts.projects.state!=='closed');}
  exit(){if(this.parts.projects?.state!=='closed'&&this.parts.projects)this.parts.projects.close();else this.parts.circuit?.exit(true);}
- reset(){this.parts.title?.reset();this.parts.bowling?.reset();this.parts.crates?.reset();this.game.interactions.explosions.clear();for(const {physical} of this.environment.dynamic)this.physics.reset(physical);}
+ reset(){this.parts.title?.reset();this.parts.bowling?.reset();this.parts.crates?.reset();this.game.interactions.explosions?.clear();for(const {physical} of this.environment.dynamic)this.physics.reset(physical);}
  dispose(){this.frame.removeFromParent();this.asset.visible=true;this.bin.dispose();}
 }
 
 export class World2Gameplay {
  constructor(catalog,scene,root,physics,driving,ui={}){
-  Object.assign(this,{catalog,scene,root,physics,driving,ui});this.status={area:'island',achievementsOpen:false};this.bin=new Bin();
+  Object.assign(this,{catalog,scene,root,physics,driving,ui});this.status={area:'island',achievementsOpen:false};this.bin=new Bin();this.focus=ui.focus??createFocusUi();this.bin.add(()=>this.focus.dispose?.());
   const game={...driving,status:this.status,publishGameplay(){}};this.achievements=new Achievements(game,emptyReferences,this.bin);scene.add(this.achievements.group);
   this.instances=[];const assets=[];root.traverse(o=>{if(!o.userData.world2Asset)return;for(let parent=o;parent;parent=parent.parent)if(!parent.visible||parent.userData.deleted)return;assets.push(o);});
   for(const asset of assets)this.instances.push(new World2Instance(this,asset));
-  const on=(action,fn)=>{const listener=a=>{if(a.active)fn();};driving.inputs.events.on(action,listener);this.bin.add(()=>driving.inputs.events.off(action,listener));};
-  on('interact',()=>this.interact());on('boardPrevious',()=>this.active()?.parts.projects?.step(-1));on('boardNext',()=>this.active()?.parts.projects?.step(1));
+  // The document's own props around the Achievement plaza are re-seated for the fixed camera (player only; see AchievementsPlaza.adjustWorld).
+  for(const instance of this.instances)instance.parts.achievements?.plaza?.adjustWorld(root,physics,driving);
+  const on=(action,fn)=>{const listener=a=>{if(a.active&&a.trigger!=='change')fn();};driving.inputs.events.on(action,listener);this.bin.add(()=>driving.inputs.events.off(action,listener));};
+  on('interact',()=>this.interact());on('boardPrevious',()=>this.active()?.parts.projects?.step(-1));on('boardNext',()=>this.active()?.parts.projects?.step(1));on('boardExit',()=>{const active=this.active();if(active?.parts.projects&&active.parts.projects.state!=='closed')active.exit();});
   game.interactions={achievements:this.achievements};if(!driving.simulationOnly)Interactions.prototype.watchDriving.call({game,achievements:this.achievements});
   driving.player.onRespawnRequest=()=>this.active()?.parts.circuit?.respawn()??false;
  }

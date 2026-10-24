@@ -137,9 +137,7 @@ html body.studio-admin #notice { border-radius: 9px; background: var(--s-ink); c
 html body.studio-admin #loading { background: var(--s-bg); color: var(--s-ink); }
 html body.studio-admin #loading span { color: var(--s-muted); }
 html body.studio-admin .spinner { width: 18px; height: 18px; border: 2px solid var(--s-line-strong); border-top-color: var(--s-ink); }
-html body.studio-admin #map-panel,
 html body.studio-admin #reference-panel { border: 1px solid var(--s-line-strong); background: var(--s-panel); color: var(--s-ink); }
-html body.studio-admin #map-legend { color: var(--s-muted); }
 
 /* ---- the map editor's panels ---------------------------------------- */
 html body.studio-admin.map-editing #map-library,
