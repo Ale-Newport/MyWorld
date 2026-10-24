@@ -1,8 +1,9 @@
 import path from 'node:path'
 import { gunzipSync } from 'node:zlib'
 import { config } from './config.ts'
-import { putBlob, readBlob } from './blobs.ts'
-import { exists, head, publish, readRevision, saveDraft, seed, type BlobRef, type RevisionMeta } from './revisions.ts'
+import { putBlob, readBlob, readBlobStream } from './blobs.ts'
+import { announcedSize, type ObjectStream } from './storage.ts'
+import { exists, head, publish, publishedRevision, readRevision, saveDraft, seed, type BlobRef, type RevisionMeta } from './revisions.ts'
 import { SYSTEM, type Actor } from './audit.ts'
 import { ValidationError } from './auth/guard.ts'
 import { driveSpawnProblems } from './world-spawn.ts'
@@ -28,17 +29,27 @@ import { driveSpawnProblems } from './world-spawn.ts'
 import SEED from './world-seed.json' with { type: 'json' }
 
 /** The seed's two files are static assets (public/archipelago/seed); their hashes are in world-seed.json. */
+const seedFile = (sha: string) => (sha === SEED.world.sha ? SEED.world.path : sha === SEED.assets.sha ? SEED.assets.path : null)
+
 async function seedBytes(sha: string): Promise<Buffer | null> {
-  const file = sha === SEED.world.sha ? SEED.world.path : sha === SEED.assets.sha ? SEED.assets.path : null
+  const seed = await seedStream(sha)
+  return seed ? Buffer.from(await new Response(seed.body).arrayBuffer()) : null
+}
+
+/** A seed file as a stream, read from the static assets (on Workers) or from public/ (Node). The public blob route sends it on unbuffered. */
+async function seedStream(sha: string): Promise<ObjectStream | null> {
+  const file = seedFile(sha)
   if (!file) return null
   const cf = await cloudflareAssets()
   if (cf) {
     const res = await cf.fetch(new Request(new URL(file, 'https://assets.local')))
-    return res.ok ? Buffer.from(await res.arrayBuffer()) : null
+    return res.ok && res.body ? { body: res.body, size: announcedSize(res) } : null
   }
   const fs = await import('node:fs')
   const local = path.join(/* turbopackIgnore: true */ process.cwd(), 'public', file)
-  return fs.existsSync(local) ? fs.readFileSync(local) : null
+  if (!fs.existsSync(local)) return null
+  const { Readable } = await import('node:stream')
+  return { body: Readable.toWeb(fs.createReadStream(local)) as ReadableStream<Uint8Array>, size: fs.statSync(local).size }
 }
 
 /** On Cloudflare, the Worker's static-assets binding. */
@@ -57,11 +68,14 @@ export interface WorldRefs {
 
 const seedRefs = (): WorldRefs => ({ world: { sha: SEED.world.sha, size: SEED.world.size }, assets: { sha: SEED.assets.sha, size: SEED.assets.size } })
 
+/** The published world's files: ONE query (it used to be head()'s three plus readRevision's fourth). */
 export async function publishedWorld(): Promise<{ refs: WorldRefs; revision: RevisionMeta | null }> {
   try {
-    const { published } = await head('world')
-    const rev = published && (await readRevision(published.id))
-    if (rev?.blobs?.world && rev.blobs.assets) return { refs: { world: rev.blobs.world, assets: rev.blobs.assets }, revision: published }
+    const found = await publishedRevision('world', { blobs: true })
+    if (found?.blobs?.world && found.blobs.assets) {
+      const { blobs, ...revision } = found
+      return { refs: { world: blobs.world, assets: blobs.assets }, revision }
+    }
   } catch (error) {
     // A broken store must not take /world down: serve the shipped world.
     console.error('[world] could not read the published world; serving the seed', error)
@@ -73,6 +87,11 @@ export async function publishedWorld(): Promise<{ refs: WorldRefs; revision: Rev
 export async function worldBlob(sha: string): Promise<Buffer | null> {
   // The seed's two files are known by hash: served from the static assets, never the store.
   return (await seedBytes(sha)) ?? (await readBlob(sha))
+}
+
+/** A blob of the world as a stream: from the store (Supabase's response is passed on as it arrives) or, for the seed, from the static assets. */
+export async function worldBlobStream(sha: string): Promise<ObjectStream | null> {
+  return (await seedStream(sha)) ?? (await readBlobStream(sha))
 }
 
 /** The public may read exactly the blobs of the published world, nothing else (drafts stay private). */
@@ -180,12 +199,14 @@ export function validateWorld(world: Json, assets: Json): WorldProblem[] {
   return problems
 }
 
-/* A world document is ~118 MB once unzipped: more than a Cloudflare Worker's 128 MB
-   can parse. Past this size, on Workers, the server checks only what it can — the
-   files exist, the world is a gzip of a sane size, the asset definitions are sound —
-   and the structural checks are the studio's own (its Validate World runs in the
-   editor's browser before every save). Everywhere else everything is checked. */
-const FULL_CHECK_MAX = 48 * 1024 * 1024
+/* A world document is ~33 MB once unzipped (the studio saves it compact; it used to be ~118 MB).
+   Parsing one holds the gunzipped bytes, their text and the parsed tree at once, about 140 MB:
+   more than a Cloudflare Worker's 128 MB can spare. Past this size, on Workers, the server checks
+   only what it can — the files exist, the world is a gzip of a sane size, the asset definitions
+   are sound — and the structural checks are the studio's own (its Validate World runs in the
+   editor's browser before every save). Everywhere else everything is checked.
+   Keep this well below the shipped seed's size: tests/world/document-worker-limit.test.mjs. */
+const FULL_CHECK_MAX = 16 * 1024 * 1024
 
 /** Uncompressed size from a gzip's trailer (ISIZE, mod 2^32). */
 const gunzippedSize = (b: Buffer) => (b.length >= 4 && b[0] === 0x1f && b[1] === 0x8b ? b.readUInt32LE(b.length - 4) : b.length)

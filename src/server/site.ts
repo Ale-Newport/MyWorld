@@ -1,10 +1,11 @@
+import { cache } from 'react'
 import { revalidatePath } from 'next/cache'
 import { draftMode } from 'next/headers'
 import { buildSeedDocument } from '@/cms/seed'
 import { siteDocument, SCHEMA_VERSION, type SiteDocument } from '@/cms/schema'
 import { migrateSiteDocument } from '@/cms/migrate'
 import { validateSiteReferences } from '@/cms/references'
-import { exists, head, publish, readRevision, saveDraft, seed, type Head, type RevisionMeta } from './revisions.ts'
+import { exists, head, publish, publishedRevision, readRevision, saveDraft, seed, type Head, type PublishedRevision, type RevisionMeta } from './revisions.ts'
 import { SYSTEM, type Actor } from './audit.ts'
 import { currentSession } from './auth/guard.ts'
 import { ValidationError } from './auth/guard.ts'
@@ -18,34 +19,54 @@ import { ValidationError } from './auth/guard.ts'
    the bypass cookie), the DRAFT. Before anything has been saved
    the published document is the seed migrated from src/content,
    built in memory: a public request never writes to the store.
+
+   One request reads the document ONCE: layout.generateMetadata,
+   generateViewport, the layout and the page all call loadSite(),
+   and /world adds publishedSite() — React's cache() makes the
+   later calls share the first one's result (it lives exactly as
+   long as the request, so a publish is never hidden by it). The
+   published pointer is one query (revisions.publishedRevision),
+   and on an isolate that has not parsed any document yet it
+   brings the content along, so a cold start needs no second one.
    ============================================================ */
 
 const parsed = new Map<string, SiteDocument>()
 
-async function documentOf(revisionId: string): Promise<SiteDocument> {
-  const hit = parsed.get(revisionId)
-  if (hit) return hit
-  const rev = await readRevision(revisionId)
-  if (!rev?.content) throw new Error(`Site revision ${revisionId} has no content`)
-  const doc = migrateSiteDocument<SiteDocument>(JSON.parse(rev.content))
+function parse(revisionId: string, content: string | null | undefined): SiteDocument {
+  if (!content) throw new Error(`Site revision ${revisionId} has no content`)
+  const doc = migrateSiteDocument<SiteDocument>(JSON.parse(content))
   if (parsed.size > 20) parsed.delete(parsed.keys().next().value!)
   parsed.set(revisionId, doc)
   return doc
 }
 
+async function documentOf(revisionId: string, content?: string | null): Promise<SiteDocument> {
+  const hit = parsed.get(revisionId)
+  if (hit) return hit
+  // `content` is undefined when it was not read along with the pointer.
+  return parse(revisionId, content !== undefined ? content : (await readRevision(revisionId))?.content)
+}
+
 let seedCache: SiteDocument | null = null
 const seedDoc = () => (seedCache ??= buildSeedDocument())
 
-export async function publishedSite(): Promise<{ doc: SiteDocument; revision: RevisionMeta | null }> {
+/** The published revision, one query. An isolate that has parsed nothing yet reads the content in the same query. */
+async function readPublishedSite(): Promise<{ doc: SiteDocument; revision: RevisionMeta | null }> {
+  const found: PublishedRevision | null = await publishedRevision('site', { content: parsed.size === 0 })
+  if (!found) return { doc: seedDoc(), revision: null }
+  const { content, ...revision } = found
+  return { doc: await documentOf(revision.id, content), revision }
+}
+
+export const publishedSite = cache(async (): Promise<{ doc: SiteDocument; revision: RevisionMeta | null }> => {
   try {
-    const { published } = await head('site')
-    return published ? { doc: await documentOf(published.id), revision: published } : { doc: seedDoc(), revision: null }
+    return await readPublishedSite()
   } catch (error) {
     // A broken store must not take the public site down: fall back to the migrated seed.
     console.error('[site] could not read the published document; serving the seed', error)
     return { doc: seedDoc(), revision: null }
   }
-}
+})
 
 /** The editor's starting point. Seeds the store on first use (an authenticated action). */
 export async function draftSite(actor: Actor = SYSTEM): Promise<{ doc: SiteDocument; head: Head }> {
@@ -57,7 +78,7 @@ export async function draftSite(actor: Actor = SYSTEM): Promise<{ doc: SiteDocum
 }
 
 /** For public pages: published, or the draft for a signed-in administrator in Draft Mode. */
-export async function loadSite(): Promise<{ doc: SiteDocument; preview: boolean }> {
+export const loadSite = cache(async (): Promise<{ doc: SiteDocument; preview: boolean }> => {
   let preview = false
   try {
     preview = (await draftMode()).isEnabled
@@ -66,7 +87,7 @@ export async function loadSite(): Promise<{ doc: SiteDocument; preview: boolean 
   }
   if (preview && (await currentSession())) return { doc: (await draftSite()).doc, preview: true }
   return { doc: (await publishedSite()).doc, preview: false }
-}
+})
 
 export function validateSite(input: unknown): SiteDocument {
   const result = siteDocument.safeParse(migrateSiteDocument(input))

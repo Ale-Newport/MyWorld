@@ -1,0 +1,39 @@
+# Cache headers for the static files Cloudflare serves straight from Workers Static Assets
+# (everything under public/ plus /_next/static). Without this file every one of them answers
+# `public, max-age=0, must-revalidate`, so a returning visitor pays a round trip per file.
+#
+# Rules are matched by path and the headers of every matching rule are COMBINED, so the paths
+# below never overlap. Responses produced by the Worker (pages, /api/*) are not affected.
+#
+# What may get a long lifetime is decided by one question: does the URL change when the
+# content does?
+
+# Next.js names these after their content (the hash is in the file name): safe forever.
+/_next/static/*
+  Cache-Control: public, max-age=31536000, immutable
+
+# The player bundle a later stage emits into public/archipelago/dist is hashed the same way.
+/archipelago/dist/*
+  Cache-Control: public, max-age=31536000, immutable
+
+# Images and fonts that keep their name when they are replaced, and that nothing else has to
+# match version for version: serving one a day stale (and refreshing it in the background for
+# up to a week) is harmless.
+/home-room/*
+  Cache-Control: public, max-age=86400, stale-while-revalidate=604800
+/assets/*
+  Cache-Control: public, max-age=86400, stale-while-revalidate=604800
+/archipelago/assets/fonts/*
+  Cache-Control: public, max-age=86400, stale-while-revalidate=604800
+
+# DELIBERATELY NOT LISTED (they stay on Cloudflare's default, revalidate on every use):
+#   /archipelago/preview/*  the world runtime: ES modules (main.js, vendored three and rapier, ...)
+#                           that import each other by plain path. A long lifetime could keep an old
+#                           module next to a new one and mix versions.
+#   /archipelago/assets/*   models, textures and surfaces, unversioned and paired with that runtime
+#                           (the fonts above are the exception).
+#   /archipelago/seed/*, /archipelago/exports/*
+#                           the shipped world document and models, fetched by a fixed path whose
+#                           content is tied to the runtime and to world-seed.json.
+#   /world2/*               the same kind of unversioned models and textures for /world2.
+# Give them a long lifetime only after their URLs carry a content hash (see /archipelago/dist/*).

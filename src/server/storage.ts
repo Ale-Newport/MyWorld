@@ -77,6 +77,45 @@ export async function putObject(key: string, bytes: Uint8Array, contentType = 'a
   fs.renameSync(temp, target)
 }
 
+/** An object as a stream, so a large one can be sent on before it has all arrived. */
+export interface ObjectStream {
+  body: ReadableStream<Uint8Array>
+  /** The exact length of `body`, when the store announced it (otherwise the length is unknown). */
+  size?: number
+}
+
+/** The announced length of a response's body, only when it describes the bytes we will forward (not an encoded transfer). */
+export function announcedSize(res: Pick<Response, 'headers'>): number | undefined {
+  if (res.headers.get('content-encoding')) return undefined
+  const length = res.headers.get('content-length')
+  return length !== null && /^\d+$/.test(length) ? Number(length) : undefined
+}
+
+/**
+ * The same object as getObject(), without buffering it: the Supabase response
+ * body (or the file) is handed on as it arrives. A 17 MB world document used to
+ * be held in memory twice before its first byte was sent.
+ */
+export async function getObjectStream(key: string): Promise<ObjectStream | null> {
+  check(key)
+  const s = supabase()
+  if (s) {
+    // `identity`: the bytes exactly as stored, so the announced length is the length of what we forward.
+    const res = await fetch(`${s.url}/object/authenticated/${s.bucket}/${key}`, { headers: { ...s.headers, 'accept-encoding': 'identity' } })
+    if (res.status === 404 || res.status === 400) {
+      await res.body?.cancel().catch(() => {})
+      return null
+    }
+    if (!res.ok) await fail(res, 'download')
+    if (!res.body) return null
+    return { body: res.body, size: announcedSize(res) }
+  }
+  const file = local(key)
+  if (!fs.existsSync(file)) return null
+  const { Readable } = await import('node:stream')
+  return { body: Readable.toWeb(fs.createReadStream(file)) as ReadableStream<Uint8Array>, size: fs.statSync(file).size }
+}
+
 export async function getObject(key: string): Promise<Buffer | null> {
   check(key)
   const s = supabase()
