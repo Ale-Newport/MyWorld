@@ -57,6 +57,8 @@ export class Achievements {
   private glyphs: THREE.InstancedMesh | null = null
   private readonly glyphColour = { on: new THREE.Color('#ffd45e'), off: new THREE.Color('#3a3444') }
   private hydrating = false
+  /** Who wants to hear that an award flipped (its id) or the progress was reset (null). Same API as the /world controller. */
+  private readonly listeners = new Set<(id: string | null) => void>()
   /**
    * Distance-driven progress moves every frame, and every move used to write
    * localStorage. Writes are coalesced instead: an unlock flushes at once,
@@ -120,6 +122,7 @@ export class Achievements {
     group.unlocked = true
     this.refreshGlyphs()
     if (this.hydrating) return
+    this.emit(group.definition.id)
     this.dirty = true
     this.persist()
     this.queue.push(group.definition)
@@ -182,6 +185,19 @@ export class Achievements {
     for (const group of this.groups.values()) { group.progress = 0; group.ids?.clear(); group.unlocked = false }
     this.persist()
     this.refreshGlyphs()
+    this.emit(null)
+  }
+
+  /** `listener(id)` runs when an award flips to unlocked and, with `null`, when the progress is reset. Returns the stop function. */
+  onChange(listener: (id: string | null) => void): () => void {
+    this.listeners.add(listener)
+    return () => { this.listeners.delete(listener) }
+  }
+
+  private emit(id: string | null): void {
+    for (const listener of [...this.listeners]) {
+      try { listener(id) } catch (error) { console.error('achievements listener', error) }
+    }
   }
 
   /** Upstream's orbiting glyph ring, one tile per award, on the authored pillar. */

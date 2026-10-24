@@ -1,12 +1,15 @@
 import * as THREE from 'three';
 export class Screen {
     group = new THREE.Group();
-    mesh;
+    material;
     canvas;
     context;
     texture;
     width;
     height;
+    plane = null;
+    worldWidth;
+    worldHeight;
     constructor(options) {
         this.width = options.width;
         this.height = options.height;
@@ -23,8 +26,9 @@ export class Screen {
         this.texture.anisotropy = 8;
         this.texture.minFilter = THREE.LinearMipmapLinearFilter;
         this.texture.magFilter = THREE.LinearFilter;
-        const worldHeight = options.worldWidth * (options.height / options.width);
-        this.mesh = new THREE.Mesh(new THREE.PlaneGeometry(options.worldWidth, worldHeight), new THREE.MeshStandardMaterial({
+        this.worldWidth = options.worldWidth;
+        this.worldHeight = options.worldWidth * (options.height / options.width);
+        this.material = new THREE.MeshStandardMaterial({
             map: this.texture,
             emissiveMap: this.texture,
             emissive: new THREE.Color(0xffffff),
@@ -34,8 +38,17 @@ export class Screen {
             transparent: options.transparent ?? false,
             side: THREE.DoubleSide,
             toneMapped: true,
-        }));
-        this.group.add(this.mesh);
+        });
+        if (!options.authored)
+            void this.mesh;
+    }
+    /** The plane this screen hangs in the world. An `authored` screen has none until somebody asks for one. */
+    get mesh() {
+        if (!this.plane) {
+            this.plane = new THREE.Mesh(new THREE.PlaneGeometry(this.worldWidth, this.worldHeight), this.material);
+            this.group.add(this.plane);
+        }
+        return this.plane;
     }
     draw(paint) {
         this.context.save();
@@ -64,8 +77,8 @@ export class Screen {
         return lines;
     }
     destroy() {
-        this.mesh.geometry.dispose();
-        this.mesh.material.dispose();
+        this.plane?.geometry.dispose();
+        this.material.dispose();
         this.texture.dispose();
         this.group.removeFromParent();
     }

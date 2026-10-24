@@ -26,20 +26,11 @@ function toBoard(project) {
         motion: project.presentation.motionComponent,
     };
 }
-/**
- * The board's running order: the strongest work first, then the rest of the
- * inventory, so the attract cycle opens on something worth stopping for.
- */
 export const BOARD_PROJECTS = [
     ...projects.filter(p => p.importance === 'hero'),
     ...projects.filter(p => p.importance === 'featured'),
     ...projects.filter(p => p.importance === 'archive'),
 ].map(toBoard);
-/**
- * How many of the run are strong enough to put up unattended. The attract
- * cycle stays inside this prefix; stepping by hand reaches everything.
- */
 export const BOARD_FEATURED_COUNT = projects.filter(p => p.importance === 'hero' || p.importance === 'featured').length;
-/** The labels the authored wooden signs carry, in board order. */
 export const BOARD_SHORT_TITLES = BOARD_PROJECTS.map(project => project.short);
 export const BOARD_EXPERIMENTS = projects.filter(p => p.category === 'experiment' || p.source === 'university').map(toBoard);

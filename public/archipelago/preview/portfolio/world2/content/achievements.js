@@ -12,6 +12,7 @@
    driving in and out.
    ============================================================ */
 import { CAREER } from './career.js';
+import { interactiveContacts } from './social.js';
 export const WORLD2_ACHIEVEMENTS = [
     { id: 'firstDrive', title: 'First drive', description: 'Cover your first hundred metres.', target: 100, group: 'driving' },
     { id: 'longHaul', title: 'Long haul', description: 'Drive five kilometres around the island.', target: 5000, group: 'driving' },
@@ -24,7 +25,8 @@ export const WORLD2_ACHIEVEMENTS = [
     // whatever the portfolio's own data adds up to, never a number typed here.
     { id: 'career', title: 'Curriculum', description: 'Read every stage of the career walk.', target: CAREER.length, unique: true, group: 'places' },
     { id: 'projects', title: 'Portfolio', description: 'Bring eight different projects up on the big screen.', target: 8, unique: true, group: 'places' },
-    { id: 'social', title: 'Say hello', description: 'Find every way to get in touch.', target: 3, unique: true, group: 'places' },
+    // One mark per contact that opens something: the CV counts once its file exists (see ./social), never before.
+    { id: 'social', title: 'Say hello', description: 'Find every way to get in touch.', target: interactiveContacts().length, unique: true, group: 'places' },
     { id: 'behindTheScene', title: 'Under the hood', description: 'Read how this world is built.', target: 1, group: 'places' },
     { id: 'lab', title: 'Lab rat', description: 'Visit the lab.', target: 1, group: 'places' },
     { id: 'timeMachine', title: 'Rewind', description: 'Start the time machine.', target: 1, group: 'places' },

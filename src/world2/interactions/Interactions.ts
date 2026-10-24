@@ -14,7 +14,7 @@ import { Projects } from './Projects'
 import { Social } from './Social'
 import { Places } from './Places'
 import { Blackboards } from './Blackboards'
-import { RETIRED } from './Social'
+import { RETIRED, REPLACED, REPLACED_FLAG } from './Social'
 import type { World2Gameplay } from '../types'
 
 /* ============================================================
@@ -58,6 +58,8 @@ export function reservedNames(nodes: Map<string, THREE.Object3D>): string[] {
   // them here — before `addPhysics` — is what stops the environment's fallback
   // pass fitting a trimesh collider around a mesh nobody will ever see.
   for (const name of RETIRED) if (nodes.has(name)) reserved.push(name)
+  // What the Social plaza recomposition took over (see Social.arrange): reserved only once it flagged them.
+  for (const name of REPLACED) if (nodes.get(name)?.userData[REPLACED_FLAG]) reserved.push(name)
   return reserved
 }
 
