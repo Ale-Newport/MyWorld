@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto'
-import { deleteObjects, getObject, listObjects, putObject, statObject } from './storage.ts'
+import { deleteObjects, getObject, getObjectStream, listObjects, putObject, statObject, type ObjectStream } from './storage.ts'
 
 /* ============================================================
    CONTENT-ADDRESSED BLOBS
@@ -34,6 +34,11 @@ export async function hasBlob(sha: string) {
 
 export async function readBlob(sha: string): Promise<Buffer | null> {
   return getObject(key(sha))
+}
+
+/** A blob as a stream (see storage.getObjectStream). */
+export async function readBlobStream(sha: string): Promise<ObjectStream | null> {
+  return getObjectStream(key(sha))
 }
 
 /** Removes every blob whose name is not in `keep` and that is older than `graceMs`. Returns what was freed. */

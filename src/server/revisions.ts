@@ -105,6 +105,38 @@ export async function head(docId: DocId): Promise<Head> {
   }
 }
 
+/** What `publishedRevision` asks for besides the revision's metadata. */
+export interface PublishedWant {
+  /** The document text (the site). */
+  content?: boolean
+  /** The blob references (the world). */
+  blobs?: boolean
+}
+
+/** The metadata of a published revision, plus whichever of its payloads were asked for (`undefined` when not asked). */
+export type PublishedRevision = RevisionMeta & { content?: string | null; blobs?: Record<string, BlobRef> | null }
+
+const META_OF_REVISION = META.split(', ').map((column) => `r.${column}`).join(', ')
+
+/**
+ * The PUBLISHED revision of a document, in ONE query: documents joined to the
+ * revision its published pointer names. The public site and the world release
+ * only ever read the published side, so this replaces head() (three sequential
+ * queries: the document, then the draft revision, then the published one) on
+ * every public request. A document that does not exist, has nothing published
+ * yet, or whose pointer names a revision that is gone has no published
+ * revision: null, exactly what head().published would have been.
+ */
+export async function publishedRevision(docId: DocId, want: PublishedWant = {}): Promise<PublishedRevision | null> {
+  const extra = `${want.content ? ', r.content' : ''}${want.blobs ? ', r.blobs' : ''}`
+  const row = await (await db()).get(`select ${META_OF_REVISION}${extra} from documents d join revisions r on r.id = d.published_rev where d.id = ?`, [docId])
+  if (!row) return null
+  const published: PublishedRevision = meta(row)
+  if (want.content) published.content = (row.content as string) ?? null
+  if (want.blobs) published.blobs = row.blobs ? JSON.parse(row.blobs as string) : null
+  return published
+}
+
 export async function exists(docId: DocId) {
   return !!(await (await db()).get('select 1 as one from documents where id = ?', [docId]))
 }
