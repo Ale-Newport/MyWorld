@@ -91,6 +91,8 @@
     0 0 0 3px var(--bg-primary),
     0 0 0 4.5px var(--accent),
     0 0 16px 3px color-mix(in oklab, var(--tone) 40%, transparent);
+  /* Pointing at a star is answered within --dur-quick; letting go of it takes the slower ease. */
+  transition-duration: var(--dur-quick);
 }
 
 /* A bright star's four fine rays. */
@@ -160,5 +162,6 @@
 .star:focus-visible .name {
   color: var(--ink);
   text-decoration-color: var(--accent);
+  transition-duration: var(--dur-quick), var(--dur-quick), var(--dur-quick);
 }
 .star[data-near]:not([data-hot]) .name { color: var(--ink); }

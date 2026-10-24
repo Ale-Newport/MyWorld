@@ -102,7 +102,7 @@
 }
 .frame:focus-visible { outline: none; }
 .slot[data-hot] .frame,
-.frame:focus-visible { transform: translateZ(46px); }
+.frame:focus-visible { transform: translateZ(46px); transition-duration: var(--dur-fast), 700ms; }
 .root[data-flat] .slot[data-hot] .frame,
 .root[data-flat] .frame:focus-visible { transform: none; }
 .slot[data-dim] .frame { opacity: 0.2; }
@@ -132,6 +132,8 @@
     inset 0 0 0 5px color-mix(in oklab, var(--ink) 12%, transparent),
     0 0 0 2px color-mix(in oklab, var(--accent) 35%, transparent),
     0 30px 44px -24px rgba(58, 40, 18, 0.6);
+  /* Pointing at a frame is answered within a few frames; letting go of it takes the slow ease. */
+  transition-duration: var(--dur-quick), 700ms;
 }
 
 .shot {
@@ -261,6 +263,7 @@
 .frame:focus-visible .captionTitle {
   color: var(--ink);
   text-decoration-color: var(--accent);
+  transition-duration: var(--dur-quick);
 }
 
 /* The still salon wall: small labels, the title alone. */

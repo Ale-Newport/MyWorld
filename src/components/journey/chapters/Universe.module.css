@@ -55,7 +55,10 @@
   white-space: nowrap;
   transition: color var(--dur-fast), border-color var(--dur-fast);
 }
-.filter:hover { color: var(--text-primary); border-color: var(--border-strong); }
+@media (hover: hover) {
+  .filter:hover { color: var(--text-primary); border-color: var(--border-strong); transition-duration: var(--dur-quick); }
+}
+.filter:active, .filter[data-press] { color: var(--text-primary); border-color: var(--border-strong); transition-duration: var(--dur-quick); }
 .filter[data-on='true'] { color: var(--accent); border-color: var(--accent); }
 .filterCount { color: var(--text-faint); font-size: 9px; }
 
@@ -72,12 +75,18 @@
   display: flex; justify-content: space-between; align-items: flex-end; gap: var(--sp-4);
   min-height: 2.75rem;
 }
-.readout { min-width: 0; flex: 1 1 auto; }
+.readout { position: relative; min-width: 0; flex: 1 1 auto; }
 .hint {
   font-family: var(--font-mono); font-size: var(--fs-nano);
   letter-spacing: var(--tracking-label); text-transform: uppercase; color: var(--text-faint);
 }
-.label { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.2rem 0.8rem; max-width: 70ch; }
+/* While a project is read the hint stays where it is, unseen, and keeps the footer the height it always is. */
+.readout[data-reading='true'] .hint { opacity: 0; }
+/* The label stands on the footer's floor and rises over the hint's place (and a little above it when it is taller). */
+.label {
+  position: absolute; left: 0; right: 0; bottom: 0;
+  display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.2rem 0.8rem; max-width: 70ch;
+}
 .labelName { font-size: var(--fs-lead); font-weight: 500; letter-spacing: -0.02em; }
 .labelMeta {
   font-family: var(--font-mono); font-size: var(--fs-nano);
@@ -94,7 +103,10 @@
   white-space: nowrap;
   transition: background var(--dur-fast), color var(--dur-fast);
 }
-.listToggle:hover { background: var(--text-primary); color: var(--bg-primary); }
+@media (hover: hover) {
+  .listToggle:hover { background: var(--text-primary); color: var(--bg-primary); transition-duration: var(--dur-quick); }
+}
+.listToggle:active, .listToggle[data-press] { background: var(--text-primary); color: var(--bg-primary); transition-duration: var(--dur-quick); }
 
 /* The doorway to the projects journey sits beside the list toggle:
    one opens the archive in place, the other leaves for the long
@@ -110,14 +122,16 @@
   white-space: nowrap;
   transition: color var(--dur-fast), border-color var(--dur-fast);
 }
-.cross:hover { color: var(--text-primary); border-color: var(--text-primary); }
+@media (hover: hover) {
+  .cross:hover { color: var(--text-primary); border-color: var(--text-primary); transition-duration: var(--dur-quick); }
+}
+.cross:active, .cross[data-press] { color: var(--text-primary); border-color: var(--text-primary); transition-duration: var(--dur-quick); }
 
 .list {
   position: absolute;
   inset: 0;
+  /* No backdrop blur (see IndexOverlay.module.css): the 94% sheet carries it. */
   background: color-mix(in oklab, var(--bg-primary) 94%, transparent);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
   overflow-y: auto;
   padding: clamp(5rem, 12vh, 8rem) var(--gutter) clamp(6rem, 14vh, 8rem);
   opacity: 0;
@@ -152,7 +166,10 @@
   --row-accent: var(--accent);
   transition: color var(--dur-fast), padding-left var(--dur-mid) var(--ease-out-expo);
 }
-.listItem:hover { color: var(--text-primary); padding-left: 0.6rem; }
+@media (hover: hover) {
+  .listItem:hover { color: var(--text-primary); padding-left: 0.6rem; transition-duration: var(--dur-quick); }
+}
+.listItem:active, .listItem[data-press] { color: var(--text-primary); padding-left: 0.6rem; transition-duration: var(--dur-quick); }
 .listYear { font-family: var(--font-mono); font-size: var(--fs-nano); color: var(--text-faint); }
 .listName { font-size: var(--fs-small); font-weight: 500; letter-spacing: -0.015em; color: var(--text-primary); }
 .listDesc { font-size: var(--fs-tiny); line-height: 1.4; }

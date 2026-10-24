@@ -31,7 +31,9 @@
   border: var(--hair) solid var(--border-strong);
   display: grid;
   place-items: center;
-  transition: border-color var(--dur-fast), background var(--dur-fast), opacity 200ms linear;
+  /* The ring's look follows what it is over within --dur-quick (it grows at once too: see `GROW` in Cursor.tsx);
+     it is its position that trails, by design. */
+  transition: border-color var(--dur-quick), background var(--dur-quick), opacity 200ms linear;
 }
 
 .ring[data-kind='link']    { border-color: var(--text-primary); }
@@ -48,6 +50,6 @@
   color: var(--text-primary);
   white-space: nowrap;
   opacity: 0;
-  transition: opacity 160ms linear;
+  transition: opacity var(--dur-quick) linear;
 }
 .ring[data-has-text='true'] .label { opacity: 1; }

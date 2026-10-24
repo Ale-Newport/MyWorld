@@ -70,6 +70,8 @@
     inset 0 0 0 1.5px var(--accent),
     inset 0 1px 0 rgba(255, 255, 255, 0.6),
     0 30px 44px -24px rgba(58, 40, 18, 0.6);
+  /* Pointing at a card is answered within a few frames (the lift, the light); letting go takes the slower ease. */
+  transition-duration: var(--dur-fast), var(--dur-quick), 700ms, 700ms;
 }
 .card[data-dim] .face {
   opacity: 0.2;
@@ -130,7 +132,7 @@
 }
 .card[data-tier='2'] .title { color: var(--ink-2); }
 .card[data-hot] .title,
-.card:focus-visible .title { text-decoration-color: var(--accent); }
+.card:focus-visible .title { text-decoration-color: var(--accent); transition-duration: var(--dur-quick); }
 
 .desc {
   font-size: clamp(10.5px, calc(var(--cw) * 0.05), 12.5px);

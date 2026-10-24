@@ -1,5 +1,6 @@
 'use client'
 
+import { memo } from 'react'
 import type { ToolboxTech } from '@/cms/derive'
 import { techLogos } from '@/content/tech-logos'
 import styles from './tech-tile.module.css'
@@ -22,17 +23,17 @@ import styles from './tech-tile.module.css'
 interface TechTileProps {
   /** With what it may show resolved: the section's settings and the tool's own override. */
   node: ToolboxTech
-  /** The technology currently previewed or pinned, if any. */
-  active: string | null
+  /** This technology is the one previewed or pinned. A boolean, not the id: pointing at one tile then
+      re-renders two of the wall's sixty-three (the one left and the one reached), not all of them. */
+  on: boolean
   pinned: boolean
   onPreview: (id: string | null) => void
   onToggle: (id: string) => void
 }
 
-export function TechTile({ node, active, pinned, onPreview, onToggle }: TechTileProps) {
+export const TechTile = memo(function TechTile({ node, on, pinned, onPreview, onToggle }: TechTileProps) {
   const logo = techLogos[node.id]
   const count = node.evidence.length
-  const on = active === node.id
 
   /* The name leads, so the wall is navigable by name alone; the
      evidence follows it — when the tool shows its count at all —
@@ -80,7 +81,7 @@ export function TechTile({ node, active, pinned, onPreview, onToggle }: TechTile
       <span className={styles.name}>{node.name}</span>
     </button>
   )
-}
+})
 
 /* ------------------------------------------------------------
    HOUSE GLYPHS

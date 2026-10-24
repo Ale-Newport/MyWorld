@@ -3,8 +3,13 @@
 import { useEffect, useRef } from 'react'
 import { useJourney } from '@/state/journey'
 import { damp } from '@/lib/math'
-import { subscribe } from '@/lib/ticker'
+import { IDLE, subscribe } from '@/lib/ticker'
 import styles from './Cursor.module.css'
+
+/* How quickly the ring grows or shrinks to the size of what it is over, per second (63 % in 1/GROW s). The ring
+   TRAILS the pointer, slowly, by design (see the 13 below); what it is over is the pointer's own answer, so the
+   size follows it within about 80 ms to 90 % rather than the 190 ms the trailing rate gave. */
+const GROW = 30
 
 /**
  * Custom cursor with magnetic snapping and contextual labels.
@@ -32,9 +37,18 @@ export function Cursor() {
     let scale = 1, targetScale = 1
     let magnetX = 0, magnetY = 0
     let current: HTMLElement | null = null
+    d.style.transform = `translate3d(${dx}px, ${dy}px, 0)`
+    // The ring is at rest where it is, so the loop has nothing to write for it until the pointer moves: put it there now.
+    r.style.transform = `translate3d(${rx}px, ${ry}px, 0) scale(1)`
     const onMove = (e: PointerEvent) => {
       tx = e.clientX
       ty = e.clientY
+      /* The dot IS the pointer (the native one is hidden), so it is placed by the event itself:
+         following it a frame behind through a spring made the pointer feel late, and any dropped
+         frame made it stutter. The ring is the part that trails, by design. */
+      dx = tx
+      dy = ty
+      d.style.transform = `translate3d(${dx}px, ${dy}px, 0)`
       const el = (e.target as HTMLElement | null)?.closest<HTMLElement>('[data-cursor]') ?? null
       if (el !== current) {
         current = el
@@ -60,15 +74,20 @@ export function Cursor() {
     const onLeave = () => { d.style.opacity = '0'; r.style.opacity = '0' }
     const onEnter = () => { d.style.opacity = '1'; r.style.opacity = '1' }
 
+    // The ring trails the pointer and settles on it; a ring that has arrived costs nothing until the pointer moves.
     const unsubscribe = subscribe((dt) => {
-      dx = damp(dx, tx, 34, dt)
-      dy = damp(dy, ty, 34, dt)
-      rx = damp(rx, tx + magnetX, 13, dt)
-      ry = damp(ry, ty + magnetY, 13, dt)
-      scale = damp(scale, targetScale, 12, dt)
-      d.style.transform = `translate3d(${dx}px, ${dy}px, 0)`
+      const gx = tx + magnetX
+      const gy = ty + magnetY
+      if (rx === gx && ry === gy && scale === targetScale) return IDLE
+      rx = damp(rx, gx, 13, dt)
+      ry = damp(ry, gy, 13, dt)
+      scale = damp(scale, targetScale, GROW, dt)
+      // The tail of an exponential approach is smaller than anything a screen can draw.
+      if (Math.abs(rx - gx) < 0.02) rx = gx
+      if (Math.abs(ry - gy) < 0.02) ry = gy
+      if (Math.abs(scale - targetScale) < 0.002) scale = targetScale
       r.style.transform = `translate3d(${rx}px, ${ry}px, 0) scale(${scale})`
-    })
+    }, 'cursor')
 
     window.addEventListener('pointermove', onMove, { passive: true })
     window.addEventListener('pointerdown', onDown)

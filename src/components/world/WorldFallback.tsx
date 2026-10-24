@@ -1,12 +1,19 @@
 import Link from 'next/link'
+import type { ReactNode } from 'react'
 import styles from './fallback.module.css'
 
-/** An accessible alternative to the canvas, kept in sync with Archipelago. */
-export function WorldFallback({ name }: { name: string }) {
+/** An accessible alternative to the canvas, kept in sync with Archipelago.
+    `name` is whatever follows "Archipiélago" in the heading (a suspended slot in the layout: the
+    text itself needs nothing from the server, so it is in the first chunk of the document, readable
+    and focusable with scripts off, while the owner's name streams in behind it). */
+export function WorldFallback({ name }: { name?: ReactNode }) {
   return (
-    <div className={styles.fallback}>
+    /* While the leaves are closed the page behind them is `inert` (transition.ts). The
+       world's shell mounts before this text finishes hydrating, so the attribute can
+       be on it already: a known, deliberate difference from the server's HTML. */
+    <div className={styles.fallback} suppressHydrationWarning>
       <header className={styles.head}>
-        <h1>Archipiélago — {name}</h1>
+        <h1>Archipiélago{name}</h1>
         <p>
           Drive and fly around my island. Discover projects and experiments,
           education and career, social links and achievements. Race on the

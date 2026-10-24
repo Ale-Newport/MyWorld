@@ -3,7 +3,7 @@
 import { useEffect, type RefObject } from 'react'
 import type { ChapterId } from '@/content/types'
 import { writeStageShift } from '@/experience/camera/regions'
-import { subscribe } from '@/lib/ticker'
+import { IDLE, subscribe } from '@/lib/ticker'
 import shared from './chapters/chapters.module.css'
 
 /* ============================================================
@@ -140,10 +140,10 @@ export function useStageFit(id: ChapterId, section: RefObject<HTMLElement | null
 
     const place = () => {
       const el = root()
-      if (!el) return
+      if (!el) return IDLE
       const p = Math.min(1, Math.max(0, (window.scrollY - start) / length))
       const y = from + (to - from) * p
-      if (Math.abs(y - applied) < 0.25) return
+      if (Math.abs(y - applied) < 0.25) return IDLE
       applied = y
       const shift = Math.abs(y) < 0.25 ? 0 : Math.round(y * 10) / 10
       el.style.translate = shift ? `0 ${shift}px` : ''
@@ -237,7 +237,7 @@ export function useStageFit(id: ChapterId, section: RefObject<HTMLElement | null
       place()
       const moving = from !== to
       veil(moving)
-      if (moving && !stopTicking) stopTicking = subscribe(place)
+      if (moving && !stopTicking) stopTicking = subscribe(place, `stage:${id}`)
       if (!moving && stopTicking) { stopTicking(); stopTicking = null }
     }
 

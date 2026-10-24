@@ -174,11 +174,11 @@ function Gallery({ projects, visible, progress, active, reducedMotion, intensity
     return list[i0].s + (list[i1].s - list[i0].s) * smooth(0.2, 0.8, at - i0)
   }
 
-  const turn = (dt: number, still: boolean) => {
+  const turn = (dt: number, still: boolean, pace = 1) => {
     if (!model || model.flat) return
     const s = sim.current
     const goal = target()
-    s.t += dt * speed
+    s.t += dt * speed * pace
     s.c = Number.isNaN(s.c) || still ? goal : approach(s.c, goal, 2.6 * speed, dt)
     // The room's slow sway holds still while a frame is pointed at or focused, so nothing drifts from under it.
     s.calm = still ? 0 : approach(s.calm, s.hot ? 0 : 1, s.hot ? 6 : 1.2, dt)
@@ -210,7 +210,7 @@ function Gallery({ projects, visible, progress, active, reducedMotion, intensity
     turn(0, reducedMotion || Number.isNaN(sim.current.c))
   })
 
-  useTicker(active && !reducedMotion && !!model && !model.flat, (dt) => turn(dt, false))
+  useTicker(active && !reducedMotion && !!model && !model.flat, (dt, _now, pace) => turn(dt, false, pace))
 
   /* Arrow keys step the focus through the frames the filter keeps. */
   const onKeyDown = (e: KeyboardEvent) => {

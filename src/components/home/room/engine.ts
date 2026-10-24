@@ -8,7 +8,7 @@ import { createDetailTexture } from './render/textures'
 import { fullscreenVert, outputFrag, roomFrag, roomVert } from './render/shaders'
 import { blitFrag, depthOnlyFrag, depthOnlyVert } from './render/natureShaders'
 import { WallRelief } from './nature/relief'
-import { buildBotany, prune, type Botany, type FieldProbe } from './nature/botany'
+import { buildBotany, PruneJob, type Botany, type FieldProbe } from './nature/botany'
 import { buildLitter, FRAME_ORDER, Vegetation, type VegetationUniforms } from './nature/vegetation'
 import { FieldBaker, fieldsToTextures, type SurfaceFields } from './nature/fieldTextures'
 import { createLeafAtlas, createMossSheet, type LeafAtlas } from './nature/sprites'
@@ -43,6 +43,8 @@ export interface EngineOptions {
   onBuilt?: () => void
   /** The browser has given a lost context back. */
   onContextRestored?: () => void
+  /** Something the next frame has to draw has changed (the shared loop may be asleep). */
+  onInvalidate?: () => void
 }
 
 interface Built {
@@ -131,10 +133,25 @@ export class RoomEngine {
   private lastDpr = 1
   private growth = -1
   private pendingCanvas: { width: number; height: number; ratio: number } | null = null
-  private dirtyRoom = true
-  private dirtyFrame = true
-  private dirtyPlants = true
-  private needsRelight = false
+  /* What the next frame has to do. Setting any of them true tells the owner of the loop, which
+     sleeps when the room is at rest (see `resting`). */
+  private _dirtyRoom = true
+  private _dirtyFrame = true
+  private _dirtyPlants = true
+  private _needsRelight = false
+  private get dirtyRoom() { return this._dirtyRoom }
+  private set dirtyRoom(v: boolean) { this._dirtyRoom = v; if (v) this.options.onInvalidate?.() }
+  private get dirtyFrame() { return this._dirtyFrame }
+  private set dirtyFrame(v: boolean) { this._dirtyFrame = v; if (v) this.options.onInvalidate?.() }
+  private get dirtyPlants() { return this._dirtyPlants }
+  // A plan under way was made against a field, a lens or a tier that has just changed: it starts again.
+  private set dirtyPlants(v: boolean) { this._dirtyPlants = v; if (v) { this.plantJob = null; this.options.onInvalidate?.() } }
+  private get needsRelight() { return this._needsRelight }
+  private set needsRelight(v: boolean) { this._needsRelight = v; if (v) this.options.onInvalidate?.() }
+  /** The plants' pruning, a few milliseconds a frame once the room is up (see `replant`). */
+  private plantJob: PruneJob | null = null
+  private plantSpent = 0
+  private plantSlices = 0
   private readyFired = false
   private disposed = false
   private lost = false
@@ -566,11 +583,17 @@ export class RoomEngine {
     const { gw, gh, slices, ends } = field
     const pick = [0, Math.min(2, slices.length - 1), Math.min(3, slices.length - 1), Math.min(4, slices.length - 1)]
     const px = new Uint8Array(gw * gh * 4)
+    // Math.round(Math.min(1, v) * 255), for the field's 0..1 and without a call a channel (this is 330 KB on a phone).
+    const byte = (v: number) => (v >= 1 ? 255 : (v * 255 + 0.5) | 0)
+    const [s0, s1, s2, s3] = pick.map((i) => slices[i])
     for (let y = 0; y < gh; y++) {
-      for (let x = 0; x < gw; x++) {
-        const src = (gh - 1 - y) * gw + x
-        const k = (y * gw + x) * 4
-        for (let c = 0; c < 4; c++) px[k + c] = Math.round(Math.min(1, slices[pick[c]][src]) * 255)
+      let src = (gh - 1 - y) * gw
+      let k = y * gw * 4
+      for (let x = 0; x < gw; x++, src++, k += 4) {
+        px[k] = byte(s0[src])
+        px[k + 1] = byte(s1[src])
+        px[k + 2] = byte(s2[src])
+        px[k + 3] = byte(s3[src])
       }
     }
     this.readTex.dispose()
@@ -714,6 +737,7 @@ export class RoomEngine {
   private relight() {
     const b = this.built
     if (!b || !this.cache) return
+    this.timings.relights = (this.timings.relights ?? 0) + 1
     const aspect = this.width / this.height
     const lens = fitLens(b.comp, b.arch.levels.soffit, aspect, this.soffitY ?? undefined, this.inset ?? undefined, this.avoid ?? undefined, this.floorBand)
     applyLens(this.camera, lens, aspect)
@@ -754,41 +778,61 @@ export class RoomEngine {
   /**
    * Re-prune the fixed plan of growth against the reading field. The
    * hall's vegetation buffers are built once (for its tier); pruning
-   * only rewrites how far each stem grows and which leaves it keeps.
+   * only rewrites how far each stem is grown and which leaves it keeps.
+   *
+   * Before the first frame it is done in one go. After it, it is done a
+   * few milliseconds a frame (more when the visitor is not scrolling):
+   * the copy can change under a page that is being scrolled, and
+   * planning the plants around it all at once was a dropped frame or
+   * three. The plants stay as they were until the new plan is whole.
    */
   private replant() {
     const b = this.built
     if (!b || !this.atlas) return
     if (!this.vegetation) this.prepareVegetation()
     if (!this.vegetation) return
-    const field = this.reading
-    const cam = this.camera
-    const ty = Math.tan(THREE.MathUtils.degToRad(cam.fov / 2))
-    const v = new THREE.Vector3()
-    const probe: FieldProbe = {
-      at: (p, radius, birth) => {
-        if (!field) return 0
-        const data = sliceFor(field, birth)
-        v.copy(p).project(cam)
-        const u0 = v.x * 0.5 + 0.5
-        const v0 = 0.5 - v.y * 0.5
-        const depth = Math.max(0.5, cam.position.z - p.z)
-        const rv = radius / (2 * depth * ty)
-        const ru = rv / cam.aspect
-        let m = sampleSlice(field, data, u0, v0)
-        for (let k = 0; k < 8; k++) {
-          const a = (k / 8) * Math.PI * 2
-          m = Math.max(m, sampleSlice(field, data, u0 + Math.cos(a) * ru, v0 + Math.sin(a) * rv))
-        }
-        return m
-      },
-    }
     const t1 = performance.now()
-    const limit = ROOM_CONFIG.clearance.leafLimit
-    const pruning = prune(b.plan, probe, limit, b.comp.plan.foliage)
-    const litter = Uint8Array.from(b.litter, (l) => (probe.at(l.position, l.size, l.birth) <= limit ? 1 : 0))
-    this.vegetation.applyPrune(pruning, litter)
-    this.lap('replant', t1)
+    if (!this.plantJob) {
+      const field = this.reading
+      const cam = this.camera
+      const ty = Math.tan(THREE.MathUtils.degToRad(cam.fov / 2))
+      const v = new THREE.Vector3()
+      const probe: FieldProbe = {
+        at: (p, radius, birth) => {
+          if (!field) return 0
+          const data = sliceFor(field, birth)
+          v.copy(p).project(cam)
+          const u0 = v.x * 0.5 + 0.5
+          const v0 = 0.5 - v.y * 0.5
+          const depth = Math.max(0.5, cam.position.z - p.z)
+          const rv = radius / (2 * depth * ty)
+          const ru = rv / cam.aspect
+          let m = sampleSlice(field, data, u0, v0)
+          for (let k = 0; k < 8; k++) {
+            const a = (k / 8) * Math.PI * 2
+            m = Math.max(m, sampleSlice(field, data, u0 + Math.cos(a) * ru, v0 + Math.sin(a) * rv))
+          }
+          return m
+        },
+      }
+      this.plantJob = new PruneJob(b.plan, probe, ROOM_CONFIG.clearance.leafLimit, b.comp.plan.foliage, b.litter)
+    }
+    const scrolling = this.time - this.activeAt < 0.3
+    const finished = this.plantJob.step(!this.readyFired ? Infinity : scrolling ? ROOM_CONFIG.replantBudget.scrolling : ROOM_CONFIG.replantBudget.still)
+    const spent = performance.now() - t1
+    this.plantSpent += spent
+    this.plantSlices++
+    if (this.readyFired && spent > (this.timings.replantLongest ?? 0)) this.timings.replantLongest = Math.round(spent * 10) / 10
+    if (!finished) return
+    const job = this.plantJob
+    this.plantJob = null
+    const t2 = performance.now()
+    this.vegetation.applyPrune(job.pruning, job.litterKept)
+    this.plantSpent += performance.now() - t2
+    this.timings.replant = Math.round(this.plantSpent)
+    this.timings.replantSlices = this.plantSlices
+    this.plantSpent = 0
+    this.plantSlices = 0
     this.dirtyPlants = false
     this.dirtyFrame = true
   }
@@ -798,6 +842,24 @@ export class RoomEngine {
     for (const m of this.vegetation.meshes) this.frameScene.remove(m)
     this.vegetation.dispose()
     this.vegetation = null
+  }
+
+  /** Whether the air is being kept moving: something can sway, and the visitor was last doing something moments ago. */
+  private stirred(): boolean {
+    return this.swayEnabled && ROOM_CONFIG.quality[this.quality].sway && !!this.vegetation?.swaying && this.growth > 0.1 && this.time - this.activeAt < ROOM_CONFIG.swayLinger
+  }
+
+  /**
+   * True when the next frame would draw nothing: the room is finished, its light has converged,
+   * nothing is waiting to be built or drawn and the air has settled. The owner of the loop may
+   * stop asking for frames then, and starts again on `onInvalidate`, or on the next scroll or
+   * resize (which also keeps the air moving for a few seconds, see `swayLinger`).
+   */
+  get resting(): boolean {
+    if (this.disposed || this.lost) return true
+    if (!this.readyFired || !this.cache?.complete || this.busy || this.again || this.compiling) return false
+    if (this._needsRelight || this._dirtyRoom || this._dirtyFrame || this._dirtyPlants) return false
+    return this.air === 0 && !this.stirred()
   }
 
   /** One tick of the shared frame loop. Returns true if it drew. */
@@ -830,9 +892,7 @@ export class RoomEngine {
     // only while the visitor is doing something: it settles a few
     // seconds after the last scroll or resize, so a page left open
     // costs nothing.
-    const q = ROOM_CONFIG.quality[this.quality]
-    const stirred = this.swayEnabled && q.sway && !!this.vegetation?.swaying && this.growth > 0.1 && this.time - this.activeAt < ROOM_CONFIG.swayLinger
-    const want = stirred ? 1 : 0
+    const want = this.stirred() ? 1 : 0
     let sway = false
     if ((want > 0 || this.air > 0) && this.time - this.lastSway >= 1 / ROOM_CONFIG.swayFps) {
       const step = Math.min(0.1, (this.time - this.lastSway) / 2)

@@ -6,9 +6,10 @@ import { getLenis, scrollToProgress } from '@/hooks/useLenisScroll'
 import { frame, useJourney, type PerformanceTier } from '@/state/journey'
 import { portal } from '@/state/portal'
 import { clamp, damp } from '@/lib/math'
-import { subscribe } from '@/lib/ticker'
+import { IDLE, subscribe } from '@/lib/ticker'
 import { garden } from '@/components/home/botanical/garden'
-import { prepareWorld } from '@/components/world/prepare'
+import { dataConstrained, prepareWorld } from '@/components/world/prepare'
+import { RETURN_KEY, markReturn } from '@/components/world/return'
 import { inTransition, worldTransition } from '@/components/world/transition'
 import { WorldEntryLink, transitionAllowed } from '@/components/world/WorldEntryLink'
 import { track } from '@/components/analytics/track'
@@ -133,14 +134,7 @@ function forcedTier(): PerformanceTier | null {
 
 /** A key older builds wrote for the world to read; removed on sight. */
 const ARRIVAL_KEY = 'portal:arrival'
-/**
- * Where the visitor was when they went through, so Back is a return
- * rather than a reset — `history.scrollRestoration` is manual for the
- * whole site, so the browser restores nothing on its own.
- */
-const RETURN_KEY = 'journey:return'
-/** Set the first time anyone goes through; the index reads it. */
-const UNLOCKED_KEY = 'world2Unlocked'
+/* Where the visitor was when they went through, so Back is a return: world/return.ts (every way in writes it). */
 /**
  * Where a returning visitor is put down: the last chapter on screen
  * and the portal NOT armed, so the tail of a fling still in flight
@@ -167,16 +161,6 @@ function consumeReturn(): string | null {
   }
   consumed = { at: now, value }
   return value
-}
-
-function markArrival() {
-  try {
-    window.sessionStorage.setItem(RETURN_KEY, String(frame.progress))
-    window.localStorage.setItem(UNLOCKED_KEY, '1')
-  } catch {
-    // Private mode, or storage denied. The world simply shows its
-    // own gate and the return simply starts at the top.
-  }
 }
 
 /** A browser that ignores vibration must cost exactly nothing. */
@@ -222,8 +206,9 @@ export function WorldPortal() {
     document.documentElement.style.background = ''
 
     if (stored === null && !back) return
-    const target = Number(stored)
-    const to = Number.isFinite(target) && target > 0 ? Math.min(target, RETURN_TO) : RETURN_TO
+    // Where the way in began (the top of the page is a place too); nothing recorded, or nonsense, is the last chapter.
+    const target = stored === null ? Number.NaN : Number(stored)
+    const to = Number.isFinite(target) && target >= 0 ? Math.min(target, RETURN_TO) : RETURN_TO
 
     const settle = () => {
       const tall = document.documentElement.scrollHeight > window.innerHeight * 4
@@ -259,6 +244,9 @@ export function WorldPortal() {
       if (!prefetched && useJourney.getState().progress > 0.55 && worldHref === '/world') {
         prefetched = true
         prepareWorld()
+        // The route's shell too (world/loading.tsx makes it prefetchable): the scroll path
+        // never had a link in view to do it, so the push waited for a server round trip.
+        if (!dataConstrained()) router.prefetch(worldHref)
       }
     }
     const unsubscribe = useJourney.subscribe(approach)
@@ -266,7 +254,7 @@ export function WorldPortal() {
     window.addEventListener('room:ready', prepare, { once: true })
     if (document.querySelector('[data-room-host][data-ready="true"]')) prepare()
     return () => { cancel(); unsubscribe(); window.removeEventListener('room:ready', prepare) }
-  }, [settings.options.worldEntrance, editing, worldHref])
+  }, [settings.options.worldEntrance, editing, worldHref, router])
 
   useEffect(() => {
     if (reducedMotion || !settings.options.worldEntrance) return
@@ -345,7 +333,7 @@ export function WorldPortal() {
       announce('Entering the world')
       // Two short knocks and a long one: the door opened, not another milestone.
       buzz([16, 40, 90])
-      markArrival()
+      markReturn(frame.progress)
       setCommitted(true)
       track('world_entry_start', { source: 'scroll' })
     }
@@ -430,8 +418,9 @@ export function WorldPortal() {
         if (portal.drag !== 0) {
           drag = damp(drag, 0, DRAG_RELAX, dt)
           portal.drag = drag < 0.05 ? 0 : drag
+          return
         }
-        return
+        return IDLE
       }
       armed = atFoot()
 
@@ -476,11 +465,16 @@ export function WorldPortal() {
         garden.set(cq / 400)
       }
 
+      /* Nothing here moves by itself unless a push is being spent or let go (`pull`, `drag`), or the
+         canopy is waiting out its parking time. At rest the loop may sleep; the wheel, a touch or a
+         scroll wakes it. */
+      const resting = pull === 0 && drag === 0 && !(isNear && low && !prepare)
+
       const fq = Math.round(pull * 200)
       const rq = Math.round(reveal * 100)
       if (fq === lastFill && rq === lastReveal) {
         if (pull >= 1) commit()
-        return
+        return resting ? IDLE : undefined
       }
       lastFill = fq
       lastReveal = rq

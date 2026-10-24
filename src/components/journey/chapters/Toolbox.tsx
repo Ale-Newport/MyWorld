@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Chapter } from '@/components/journey/Chapter'
 import { Reveal } from '@/components/typography/Reveal'
 import { TagRow } from '@/components/journey/parts'
@@ -42,6 +42,9 @@ export function Toolbox() {
   const active = pinned ?? hovered
   const boardRef = useRef<HTMLDivElement>(null)
   const setActiveProject = useJourney((s) => s.setActiveProject)
+  // Stable, so a tile that is not the one left or reached does not render again.
+  const toggle = useCallback((id: string) => setPinned((v) => (v === id ? null : id)), [])
+  const leave = useCallback(() => setHovered(null), [])
 
   useEffect(() => {
     window.dispatchEvent(new CustomEvent('toolbox:hover', { detail: { id: active } }))
@@ -63,7 +66,7 @@ export function Toolbox() {
           </E>
         </E>
 
-        <E cms="toolbox.board" as="div" kind="container" label="Technology board" className={styles.board} ref={boardRef} onMouseLeave={() => setHovered(null)}>
+        <E cms="toolbox.board" as="div" kind="container" label="Technology board" className={styles.board} ref={boardRef} onMouseLeave={leave}>
           {techGroups.map((g) => (
             <section key={g.id} className={styles.group}>
               <E cms={`toolbox.group.${g.id}`} as="h3" kind="heading" label={`Group: ${g.label}`} className={styles.groupLabel}>{g.label}</E>
@@ -77,10 +80,10 @@ export function Toolbox() {
                   <li key={n.id} data-tech={n.id}>
                     <TechTile
                       node={n}
-                      active={active}
+                      on={active === n.id}
                       pinned={pinned === n.id}
                       onPreview={setHovered}
-                      onToggle={(id) => setPinned((v) => (v === id ? null : id))}
+                      onToggle={toggle}
                     />
                   </li>
                 ))}
@@ -91,11 +94,13 @@ export function Toolbox() {
 
         {/* data-room-reserve: the home room keeps this slot clear of
             growth while it is empty, so the readout never lands on a
-            leaf (see readingField.ts). */}
+            leaf (see readingField.ts). What fills it is data-room-ignore:
+            a readout that comes and goes with the pointer is not copy the
+            room has to measure again each time it does. */}
         <div className={styles.evidence} data-on={Boolean(activeNode)} aria-live="polite" data-room-reserve="7">
           {activeNode && (
             <>
-              <p className={styles.evidenceHead}>
+              <p className={styles.evidenceHead} data-room-ignore="">
                 <span>{activeNode.name}</span>
                 {activeNode.showCount && (
                   <span className={styles.evidenceCount}>
@@ -104,7 +109,7 @@ export function Toolbox() {
                 )}
               </p>
               {activeNode.showNames && evidence.length > 0 && (
-                <ul className={styles.evidenceList}>
+                <ul className={styles.evidenceList} data-room-ignore="">
                   {evidence.map((p) => (
                     <li key={p.id}>
                       <button type="button" onClick={() => setActiveProject(p.slug)} data-cursor="view">
@@ -115,7 +120,7 @@ export function Toolbox() {
                 </ul>
               )}
               {(activeNode.showNames || activeNode.showCount) && evidence.length === 0 && activeNode.note && (
-                <p className={styles.evidenceNote}>{activeNode.note}</p>
+                <p className={styles.evidenceNote} data-room-ignore="">{activeNode.note}</p>
               )}
             </>
           )}

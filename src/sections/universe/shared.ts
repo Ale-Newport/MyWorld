@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore, type FocusEvent as ReactFocusEvent, type PointerEvent as ReactPointerEvent, type RefObject } from 'react'
-import { subscribe } from '@/lib/ticker'
+import { IDLE, ambient, subscribe } from '@/lib/ticker'
 import { categoryAccent } from '@/content/project-meta'
 import type { SiteProject } from '../types'
 
@@ -106,15 +106,26 @@ export function useBoxSize(ref: RefObject<HTMLElement | null>) {
   return size
 }
 
-/** Calls the latest `fn` on the shared ticker while `on` is true; never a loop of its own. */
-export function useTicker(on: boolean, fn: (dt: number, now: number) => void) {
+/**
+ * Calls the latest `fn` on the shared ticker while `on` is true; never a loop of its own.
+ *
+ * `pace` is the pace of motion that is only there to be alive (see `ambient` in lib/ticker): 1
+ * while the visitor is about, easing to 0 once they have been still for a few seconds. An
+ * option multiplies the clock of its drift or twinkle by it; what the scroll or the pointer
+ * moves it draws as ever. At 0 the archive holds the picture it last drew and the shared loop
+ * may sleep, and any input puts the pace back at once.
+ */
+export function useTicker(on: boolean, fn: (dt: number, now: number, pace: number) => void | typeof IDLE) {
   const latest = useRef(fn)
   useEffect(() => {
     latest.current = fn
   })
   useEffect(() => {
     if (!on) return
-    return subscribe((dt, now) => latest.current(dt, now))
+    return subscribe((dt, now) => {
+      const pace = ambient(now)
+      return pace === 0 ? IDLE : latest.current(dt, now, pace)
+    }, 'section:universe')
   }, [on])
 }
 

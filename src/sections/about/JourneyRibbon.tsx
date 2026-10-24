@@ -622,17 +622,25 @@ export default function JourneyRibbon({ progress, active, reducedMotion, intensi
   const rootRef = useRef<HTMLDivElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const labels = useRef<(HTMLDivElement | null)[]>([])
-  const live = useRef({ ctx: null as CanvasRenderingContext2D | null, dpr: 1, time: 0, hw: new Float32Array(0) })
+  const live = useRef({ ctx: null as CanvasRenderingContext2D | null, dpr: 1, time: 0, hw: new Float32Array(0), since: 0, drawnAt: Number.NaN })
   const size = useBoxSize(rootRef)
   const layout = useMemo(() => compose(size, site), [size, site])
 
   const frame = useCallback(
-    (dt: number) => {
+    (dt: number, pace = 1) => {
       const st = live.current
       if (!layout || !st.ctx) return
-      st.time += dt * speed
+      // The breath is the part that is only there to be alive: it slows, and at rest the loop may sleep.
+      st.time += dt * speed * pace
       const still = reducedMotion
       const p = still ? 1 : progress.current
+      /* The scroll moves the band; between scrolls only its slow breath does, and thirty
+         drawings a second show that as well as sixty (each is a Path2D and a gradient per run
+         and a blurred shadow). A scrolling frame is always drawn. */
+      st.since += dt
+      if (!still && dt > 0 && Math.abs(p - st.drawnAt) < 1e-5 && st.since < 1 / 30 - 0.002) return
+      st.since = 0
+      st.drawnAt = p
       paint(st.ctx, layout, { p, time: still ? 0 : st.time, intensity, dpr: st.dpr, still }, st.hw)
       paintPins(st.ctx, layout, p, still)
       layout.stations.forEach((station, i) => {
@@ -684,7 +692,7 @@ export default function JourneyRibbon({ progress, active, reducedMotion, intensi
     }
   }, [])
 
-  useTicker(active && !reducedMotion && !!layout, frame)
+  useTicker(active && !reducedMotion && !!layout, (dt, _now, pace) => frame(dt, pace))
 
   const vars = layout ? ({ '--t': `${layout.type.title}px`, '--m': `${layout.type.mono}px`, '--d': `${layout.type.detail}px` } as CSSProperties) : undefined
 

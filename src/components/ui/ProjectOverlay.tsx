@@ -6,6 +6,7 @@ import { useJourney } from '@/state/journey'
 import { useSite } from '@/cms/context'
 import { E } from '@/cms/editable'
 import { ProjectVisual } from '@/components/project-visuals/ProjectVisual'
+import { claimEscape, holdScroll } from './scrollLock'
 import styles from './ProjectOverlay.module.css'
 
 /**
@@ -18,6 +19,7 @@ export function ProjectOverlay() {
   const slug = useJourney((s) => s.activeProject)
   const setActiveProject = useJourney((s) => s.setActiveProject)
   const reducedMotion = useJourney((s) => s.reducedMotion)
+  const sheet = useRef<HTMLDivElement>(null)
   const panel = useRef<HTMLDivElement>(null)
   const closeBtn = useRef<HTMLButtonElement>(null)
   const project = slug ? projectBySlug[slug] : undefined
@@ -54,9 +56,9 @@ export function ProjectOverlay() {
     if (!slug) return
     const prev = document.activeElement as HTMLElement | null
     closeBtn.current?.focus()
-    document.body.style.overflow = 'hidden'
+    const release = sheet.current ? holdScroll(sheet.current) : undefined
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setActiveProject(null)
+      if (claimEscape(sheet.current, e)) setActiveProject(null)
       if (e.key !== 'Tab') return
       const nodes = panel.current?.querySelectorAll<HTMLElement>('button, a[href], [tabindex]:not([tabindex="-1"])')
       if (!nodes?.length) return
@@ -68,7 +70,7 @@ export function ProjectOverlay() {
     document.addEventListener('keydown', onKey)
     return () => {
       document.removeEventListener('keydown', onKey)
-      document.body.style.overflow = ''
+      release?.()
       prev?.focus()
     }
   }, [slug, setActiveProject])
@@ -77,6 +79,7 @@ export function ProjectOverlay() {
 
   return (
     <div
+      ref={sheet}
       className={styles.overlay}
       data-open={Boolean(project)}
       role="dialog"

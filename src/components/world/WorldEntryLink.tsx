@@ -4,9 +4,10 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import type { ComponentProps, MouseEvent } from 'react'
 import { prepareWorld } from './prepare'
+import { markReturn } from './return'
 import { worldTransition } from './transition'
 import { garden } from '@/components/home/botanical/garden'
-import { useJourney } from '@/state/journey'
+import { frame, useJourney } from '@/state/journey'
 import { track } from '@/components/analytics/track'
 import { useEditing } from '@/cms/context'
 
@@ -16,13 +17,14 @@ export function transitionAllowed(editing: boolean): boolean {
   return new URLSearchParams(window.location.search).get('cms-test') === 'transition'
 }
 
-/** Intent warms bytes and the leaves; only navigation starts the world. */
+/** Intent (the pointer or the keyboard arriving) warms bytes and the leaves; only navigation starts the world. A click
+    warms nothing: the frame starts a second later and fetches it all itself (prepare.ts). */
 export function WorldEntryLink({ href = '/world', source, onClick, onPointerEnter, onFocus, children, ...rest }: Omit<ComponentProps<typeof Link>, 'href' | 'prefetch'> & { href?: string; source: string }) {
   const router = useRouter()
   const editing = useEditing()
   const prepareLeaves = () => {
     if (!transitionAllowed(editing)) return
-    if (href === '/world') { prepareWorld(true); router.prefetch(href) }
+    if (href === '/world') { prepareWorld(); router.prefetch(href) }
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
     garden.show({ initial: 0, budget: useJourney.getState().performanceTier === 'low' ? 0.6 : 1 })
   }
@@ -42,9 +44,12 @@ export function WorldEntryLink({ href = '/world', source, onClick, onPointerEnte
           window.parent.postMessage({ type: 'cms:transition-blocked' }, window.location.origin)
           return
         }
-        if (href === '/world') prepareWorld(true)
         const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
-        if (worldTransition.begin({ source, push: (h) => router.push(h), reduced, href })) track('world_entry_start', { source })
+        if (worldTransition.begin({ source, push: (h) => router.push(h), reduced, href })) {
+          // Back is a return, from this way in as from the scroll's: to where the visitor was, not the top.
+          markReturn(frame.progress)
+          track('world_entry_start', { source })
+        }
       }}
     >
       {children}

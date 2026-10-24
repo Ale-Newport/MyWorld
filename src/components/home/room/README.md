@@ -26,7 +26,9 @@ scene (see [Fallback](#fallback)).
 | `nature/relief.ts` | The back wall as a height field, so stems lie on the mouldings and wrap round pilasters. |
 | `nature/fields.ts` | The prototype's `mossAt` and `buildWeather`, baked per surface: moss birth, cracks, damp streaks. |
 | `nature/vegetation.ts` | Instanced leaves, one merged stem buffer, their shadows, fallen leaves — every candidate built once per hall; pruning rewrites two attributes. |
-| `layout/readingField.ts` | Where the copy is, measured from the DOM, as a time-aware field. |
+| `layout/readingField.ts` | Where the copy is, measured from the DOM (one chapter at a time, sharing what a pass learns of the transforms above the text), as a time-aware field; the rasters of the chapters that have not moved are kept between reads. |
+| `layout/rasterise.ts` | The field's arithmetic, import-free: a chapter's lines as a Gaussian skirt (separable) and a blur that runs only where there is copy; a generator that offers the thread back as it works. |
+| `layout/slices.ts` | `sliced(job, …)`: runs a generator a few milliseconds at a time in the page's idle time (a timer where there is none), so a read or a plan lands between frames and not in one. |
 | `view.ts` | The room's fitted lens, published for the canopy. |
 | `canopy/plan.ts` | The portal's canopy: the room's ivy, come loose of the wall and grown out towards the lens in layers of depth, planned in screen terms. |
 | `canopy/renderer.ts`, `canopy/shaders.ts` | The canopy's own small WebGL context (transparent, above the page): the room's plants, painted back to front, lit by the hall's key and sky; frozen into plain canvases when full. |
@@ -58,7 +60,24 @@ into a field. Words a reveal has not yet slid into place are measured where they
 will stand; the HUD's footer at both of its places (above a mobile toolbar and
 below it); a slot that fills on interaction (`data-room-reserve`, the Toolbox
 readout) as if it were full; a label whose words change with the chapter
-(`data-room-reserve-text`, the HUD's chapter title) at its longest. Growth born at `G` keeps clear of the chapters
+(`data-room-reserve-text`, the HUD's chapter title) at its longest. What fills
+such a slot, and any readout that comes and goes with the pointer, carries
+`data-room-ignore`: it is neither measured nor a reason to measure again. The
+measuring itself is lazy — a structural change is a trailing debounce that lets
+the burst of changes settle, and a measurement that finds the copy where the last
+one left it stops before the field is rasterised or the wall's foot is placed.
+And it is cut into pieces (`readSteps` in `HomeRoom.tsx`: a chapter's measuring,
+a chapter's raster, the wall's foot, the assembly) that are given the page's slack
+a few milliseconds at a time once the room is up (`config.readBudget`), because a
+chapter's animation mounts a screen or two ahead of the visitor and the page is
+usually being scrolled when it does: read in one task it was 130 to 180 ms of a
+phone's scroll at 4× CPU, at the Toolbox and again at the Universe. Before the
+first frame, or when something urgent asked (a resize, the fonts, the mode), the
+same pieces run back to back. The plants' pruning (`PruneJob` in `nature/botany.ts`,
+`engine.replant`) is cut the same way, `config.replantBudget` a frame, and the
+plants stay as they were until the new plan is whole. `window.__roomRead` and
+`__room().timings` (`replantLongest`, `replantSlices`, `relights`) are the QA probes
+(`scripts/qa/home-chapter-hitch.mjs --assert`). Growth born at `G` keeps clear of the chapters
 still on screen at or after `G`; held growth (reduced motion, a pinned value,
 the stills) keeps clear of every chapter. Stems are not clipped: each is followed from its root and stops at
 its last clear node, ending in a natural tip. Moss, damp and cracks are delayed
@@ -70,7 +89,11 @@ between rows of low copy.
 redraws the surfaces (one geometry pass) and the plants; ambient sway redraws
 only the plants over the cached room (one render call), at `swayFps`, and only
 for `swayLinger` seconds after the last scroll or resize before the air
-settles. Preparation is staged over idle callbacks and aborts if the layer is
+settles. Once it has, the room says so (`engine.resting`) and the shared
+ticker (`lib/ticker`) may stop asking for frames altogether; anything that
+dirties the engine calls `onInvalidate` (HomeRoom hands it `wake`), and a
+scroll, wheel, pointer move, key or resize wakes the loop on its own.
+Preparation is staged over idle callbacks and aborts if the layer is
 torn down; light accumulates a number of samples per frame scaled to the
 pixel count. A frame-time watchdog steps the quality tier down after sustained
 slow frames (fewer pixels, no MSAA at the lowest tier, fewer leaves); a resize

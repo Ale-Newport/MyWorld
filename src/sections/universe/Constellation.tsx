@@ -396,18 +396,19 @@ function Constellation({ projects, visible, filter, progress, active, reducedMot
   const tabOrder = useMemo(() => (sky ? sky.stars.map((_, i) => i).sort((a, b) => sky.stars[a].tier - sky.stars[b].tier || a - b) : []), [sky])
 
   const visibleRef = useRef(visible)
-  useEffect(() => {
+  // Before the still pose below (a layout effect declared after it): with motion reduced that pose is the only one drawn, and it must read this render's filter and hover, not the last one's.
+  useLayoutEffect(() => {
     visibleRef.current = visible
     sim.current.hot = hotIndex
   }, [visible, hotIndex])
 
   /** Positions, twinkle and lines for the current state; `still` is the composed, motionless chart. */
-  const frame = (dt: number, still: boolean) => {
+  const frame = (dt: number, still: boolean, pace = 1) => {
     const c = canvas.current
     if (!sky || !c) return
     const s = sim.current
     const t = still ? 1 : clamp01((progress.current + 0.06) / 0.3)
-    s.t += still ? 0 : dt * speed
+    s.t += still ? 0 : dt * speed * pace
     s.px = still ? 0 : approach(s.px, s.tx, 4, dt)
     s.py = still ? 0 : approach(s.py, s.ty, 4, dt)
     const amp = still ? 0 : Math.min(10, w * 0.008)
@@ -491,7 +492,7 @@ function Constellation({ projects, visible, filter, progress, active, reducedMot
     frame(0, reducedMotion)
   })
 
-  useTicker(active && !reducedMotion && !!sky, (dt) => frame(dt, false))
+  useTicker(active && !reducedMotion && !!sky, (dt, _now, pace) => frame(dt, false, pace))
 
   // Pointer parallax, on a mouse or trackpad only. The box's place is read when the pointer enters, never per frame.
   useEffect(() => {
