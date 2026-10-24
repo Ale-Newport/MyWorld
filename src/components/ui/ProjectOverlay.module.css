@@ -10,9 +10,8 @@
 
 .scrim {
   position: absolute; inset: 0;
+  /* No backdrop blur (see IndexOverlay.module.css): the 95% scrim carries it. */
   background: color-mix(in oklab, var(--bg-primary) 95%, transparent);
-  backdrop-filter: blur(18px);
-  -webkit-backdrop-filter: blur(18px);
 }
 
 /* A fixed height, not a ceiling: with only a maximum the text column grew
@@ -62,7 +61,10 @@
   font-size: var(--fs-tiny);
   transition: background var(--dur-fast), color var(--dur-fast);
 }
-.close:hover { background: var(--text-primary); color: var(--bg-primary); }
+@media (hover: hover) {
+  .close:hover { background: var(--text-primary); color: var(--bg-primary); transition-duration: var(--dur-quick); }
+}
+.close:active, .close[data-press] { background: var(--text-primary); color: var(--bg-primary); transition-duration: var(--dur-quick); }
 
 .visual {
   position: relative;
@@ -169,5 +171,8 @@
   padding: 0.75rem 0 0.2rem;
   transition: color var(--dur-fast), border-color var(--dur-fast);
 }
-.cta:hover { color: var(--project-accent); border-color: var(--project-accent); }
+@media (hover: hover) {
+  .cta:hover { color: var(--project-accent); border-color: var(--project-accent); transition-duration: var(--dur-quick); }
+}
+.cta:active, .cta[data-press] { color: var(--project-accent); border-color: var(--project-accent); transition-duration: var(--dur-quick); }
 .privateNote { font-family: var(--font-mono); font-size: var(--fs-nano); color: var(--text-faint); letter-spacing: 0.06em; }

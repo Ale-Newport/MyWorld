@@ -181,10 +181,10 @@ export default function ProfileFrame({ progress, active, reducedMotion, intensit
     render(layout, els.current, reducedMotion ? 1 : progress.current, 0, 0, 0)
   }, [layout, reducedMotion, progress])
 
-  useTicker(active && !reducedMotion && !!layout, (dt) => {
+  useTicker(active && !reducedMotion && !!layout, (dt, _now, pace) => {
     if (!layout) return
     const st = live.current
-    st.t += dt * speed
+    st.t += dt * speed * pace
     const lean = fine ? 1 : 0
     render(layout, els.current, progress.current, st.t, pointer.pointerX * lean, pointer.pointerY * lean)
   })

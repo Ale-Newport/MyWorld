@@ -22,6 +22,52 @@ html, body {
   background: var(--bg-primary);
 }
 
+/* ============================================================
+   THE WAY INTO THE WORLD IS A CLOSED DOOR
+   From the first leaf growing over the page until the leaves part
+   (and while an error holds them shut) nothing behind them scrolls,
+   bounces, zooms or refreshes. Declarations, not scripts: the browser
+   scrolls on a thread that keeps working while the world blocks the
+   main one, so only CSS holds through a two-second task. Keyed on the
+   attribute the transition machine writes on <html>
+   (components/world/transition.ts); Lenis is stopped from the same
+   event (hooks/useLenisScroll), the page behind is made `inert` there.
+   ============================================================ */
+html[data-world-phase='COVERING'],
+html[data-world-phase='COVERED'],
+html[data-world-phase='LOADING_WORLD'],
+html[data-world-phase='WORLD_READY'],
+html[data-world-phase='REVEALING'],
+html[data-world-phase='ERROR'] {
+  overflow: hidden;          /* the scroll position is kept; wheel, keys and touch cannot move it */
+  overscroll-behavior: none; /* no pull-to-refresh, no rubber band, no scroll chaining */
+}
+/* Classic scrollbars: the page behind does not shift as the leaves grow. (Not on /world
+   itself, which never has one: a gutter there would be taken away again when the leaves
+   part, and the world would be resized under the visitor's first seconds.)
+   Firefox and Safari keep the gutter. Chromium (checked in 153, with and without the
+   `::-webkit-scrollbar` rules below) does not reserve it for the root while it is
+   `overflow: hidden`: on a classic scrollbar the page shifts by the scrollbar's width
+   (4 px of centred content) as the leaves close. The leaves already cover the screen on the
+   scroll path, so it shows only on the first second of the link path. */
+html[data-world-phase='COVERING']:not(:has([data-world-shell])),
+html[data-world-phase='COVERED']:not(:has([data-world-shell])) {
+  scrollbar-gutter: stable;
+}
+/* No pan or pinch starting anywhere while the leaves are closed — and that needs no declaration on <html>: a gesture
+   takes the touch-action of the element it starts on, and every one starts on the cover (it stands over the whole
+   viewport and takes the touches from a third of its charge: `touch-action: none` in canopy.module.css), on the sheet
+   under it that stands from the first frame (`raiseShield` in transition.ts) or on the loader above it (the same). Written on <html> it was a style recalculation of the whole page at the instant the door closes
+   (5 ms here, 20 ms on a phone-class CPU: the one long frame of the way in). At the first parting frame the cover stops
+   taking touches and the world is the visitor's, as it was; an error's dialog may scroll and be zoomed. */
+/* /world never has anything to scroll — from the very first server-rendered paint, before any
+   script. (Separate rules: a browser without :has() must not lose the ones above.) */
+html:has([data-world-shell]) {
+  overflow: hidden;
+  overscroll-behavior: none;
+  background: #0f1804;
+}
+
 body {
   color: var(--text-primary);
   font-family: var(--font-display);

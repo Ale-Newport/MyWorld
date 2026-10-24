@@ -142,7 +142,10 @@
   border-bottom: var(--hair) solid transparent;
   transition: color var(--dur-fast), border-color var(--dur-fast);
 }
-.evidenceList button:hover { color: var(--text-primary); border-bottom-color: var(--border-strong); }
+@media (hover: hover) {
+  .evidenceList button:hover { color: var(--text-primary); border-bottom-color: var(--border-strong); transition-duration: var(--dur-quick); }
+}
+.evidenceList button:active, .evidenceList button[data-press] { color: var(--text-primary); border-bottom-color: var(--border-strong); transition-duration: var(--dur-quick); }
 .evidenceNote { font-size: var(--fs-tiny); color: var(--text-faint); margin-top: var(--sp-3); line-height: 1.5; font-style: italic; }
 
 @media (max-width: 900px) {

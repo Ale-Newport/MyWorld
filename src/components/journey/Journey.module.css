@@ -1,0 +1,6 @@
+/* A sheet (the index, a case study) stands over the page: the chapter pinned behind it is not
+   drawn while it is open, rather than showing through the scrim as a faint ghost. Opacity, not
+   visibility: the room keeps reading the copy's layout (see components/ui/scrollLock.ts). */
+:global(html[data-sheet]) .journey {
+  opacity: 0;
+}

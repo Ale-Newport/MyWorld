@@ -7,7 +7,7 @@ import { SceneManager, scenesFor } from '@/experience/scenes/SceneManager'
 import { JourneyCamera } from '@/experience/camera/JourneyCamera'
 import { useJourney, frame } from '@/state/journey'
 import { detectDevice, createFpsWatchdog } from '@/lib/perf'
-import { subscribe } from '@/lib/ticker'
+import { IDLE, subscribe, watchPace } from '@/lib/ticker'
 import { hasSceneRegions, sceneRegionsVersion } from '@/experience/camera/regions'
 import styles from './GlobalCanvas.module.css'
 
@@ -35,6 +35,21 @@ function FpsGovernor() {
   return null
 }
 
+/* The same verdict for a canvas that does not draw continuously, so has no frame rate of its own to judge
+   by (the home journey's: it draws only the frames its one scene asks for). The page's frames are judged
+   instead, by the shared loop (see `watchPace`) — which costs nothing while the page is at rest. */
+function PaceGovernor() {
+  const setTier = useJourney((s) => s.setPerformanceTier)
+  const gl = useThree((s) => s.gl)
+  const invalidate = useThree((s) => s.invalidate)
+  useEffect(() => watchPace(() => {
+    setTier('low')
+    gl.setPixelRatio(1)
+    invalidate() // resizing the drawing buffer clears it, and nothing here draws until it is asked to
+  }), [setTier, gl, invalidate])
+  return null
+}
+
 /** One frame on demand whenever the set of mounted scenes changes, so a scene that leaves is cleared from the canvas. */
 function Settle({ live }: { live: boolean }) {
   const invalidate = useThree((s) => s.invalidate)
@@ -59,15 +74,15 @@ function DrawOnScroll({ active }: { active: boolean }) {
     let chapter = ''
     let regions = -1
     return subscribe(() => {
-      if (!hasSceneRegions()) return
+      if (!hasSceneRegions()) return IDLE
       const s = useJourney.getState()
       const v = sceneRegionsVersion()
-      if (frame.progress === progress && s.chapter === chapter && v === regions) return
+      if (frame.progress === progress && s.chapter === chapter && v === regions) return IDLE
       progress = frame.progress
       chapter = s.chapter
       regions = v
       invalidate()
-    })
+    }, 'scene-regions')
   }, [active, invalidate])
   return null
 }
@@ -98,6 +113,12 @@ export function GlobalCanvas() {
      which has one scene) it holds still instead of clearing an
      empty full-screen frame sixty times a second over the room. */
   const live = useJourney((s) => scenesFor(s.chapter, s.journeyId).length > 0)
+  /* The home journey has a single scene here, a faint lattice behind the
+     Toolbox, and it asks for its own frames (ToolboxScene) only while it
+     is on stage. The mounted window around it also covers About and the
+     Universe, where it is invisible: a loop that drew there drew nothing
+     at full-screen cost. The projects journey's scenes draw continuously. */
+  const pulled = useJourney((s) => s.journeyId === 'home')
   const [contextLost, setContextLost] = useState(false)
 
   return (
@@ -107,13 +128,16 @@ export function GlobalCanvas() {
           gl={{
             antialias: device.tier !== 'low',
             alpha: true,
-            powerPreference: 'high-performance',
+            // Not 'high-performance': on a machine with two GPUs that wakes the discrete one (and the
+            // copy across) for a canvas that draws a faint lattice, while the room beneath it runs on
+            // the default one.
+            powerPreference: 'default',
             stencil: false,
             depth: true,
           }}
           dpr={device.dpr}
           camera={{ position: [0, 0, 7], fov: 42, near: 0.1, far: 400 }}
-          frameloop={reducedMotion || !live ? 'demand' : 'always'}
+          frameloop={reducedMotion || pulled || !live ? 'demand' : 'always'}
           onCreated={({ gl, scene }) => {
             // No tone mapping: this is a flat, editorial world, not a
             // photographic one, and ACES would pull the ground colour
@@ -141,7 +165,7 @@ export function GlobalCanvas() {
           <DrawOnScroll active={reducedMotion && live} />
           <ReleaseOnLeave />
           <JourneyCamera />
-          <FpsGovernor />
+          {pulled ? <PaceGovernor /> : <FpsGovernor />}
           <ambientLight intensity={0.5} />
           <directionalLight position={[4, 6, 5]} intensity={1.1} />
           <directionalLight position={[-5, -2, 3]} intensity={0.32} color="#9fb4c9" />

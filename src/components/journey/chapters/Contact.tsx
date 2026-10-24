@@ -81,6 +81,10 @@ export function Contact() {
         el.style.transform = `translate3d(0, ${(1 - a) * 1.4 - lift}rem, 0)`
       }
     }
+  }, {
+    /* It also follows the portal's pull and drag, which move with the wheel at the foot of the page
+       and relax on their own afterwards. */
+    signal: () => portal.pull * 1e4 + portal.drag,
   })
 
   return (

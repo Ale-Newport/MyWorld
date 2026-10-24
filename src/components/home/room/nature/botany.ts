@@ -442,45 +442,105 @@ export interface Pruning {
   leaves: Uint8Array
 }
 
-export function prune(b: Botany, probe: FieldProbe, limit: number, foliage = 1): Pruning {
-  const cuts = new Float32Array(b.stems.length)
-  // Main stems first, then branches (whose parents are earlier).
-  for (let i = 0; i < b.stems.length; i++) {
-    const st = b.stems[i]
-    // The takeover's ivy never grows with the story.
-    if (st.wild >= 0) {
-      cuts[i] = 0
-      continue
-    }
-    if (st.parent >= 0 && st.at > cuts[st.parent]) {
-      cuts[i] = 0
-      continue
-    }
-    const envelope = (st.main ? ROOM_CONFIG.vines.leafScale * 1.15 : ROOM_CONFIG.vines.leafScale * 0.95) * foliage
-    let cut = 1
-    for (let k = 0; k < st.points.length; k++) {
-      const birth = st.start + st.duration * st.s[k]
-      if (probe.at(st.points[k], envelope, birth) > limit) {
-        // Back off a little so the tip's young leaves are clear too.
-        cut = Math.max(0, st.s[k] - 0.04)
-        break
-      }
-    }
-    // Too short to read as a plant: drop it.
-    let len = 0
-    for (let k = 1; k < st.points.length; k++) {
-      if (st.s[k] > cut) break
-      len += st.points[k].distanceTo(st.points[k - 1])
-    }
-    cuts[i] = len < (st.main ? 0.35 : 0.12) ? 0 : cut
+/**
+ * The pruning, in pieces. Planning the plants around the copy probes the field at every knot of every stem
+ * and at every leaf: ten or so milliseconds, forty on a slow phone. Done a few milliseconds at a time between
+ * frames it is invisible; `step` does as much as its budget allows (always something) and says when it has
+ * finished. The work and its order are those of the one-piece version.
+ */
+export class PruneJob {
+  readonly pruning: Pruning
+  /** Per planned litter leaf: 1 where the copy leaves it room. */
+  readonly litterKept: Uint8Array
+  /** 0 stems, 1 leaves, 2 litter, 3 finished. */
+  private phase = 0
+  private i = 0
+  private tip = new THREE.Vector3()
+
+  constructor(
+    private b: Botany,
+    private probe: FieldProbe,
+    private limit: number,
+    private foliage = 1,
+    private litter: readonly Leaf[] = [],
+  ) {
+    this.pruning = { cuts: new Float32Array(b.stems.length), leaves: new Uint8Array(b.leaves.length) }
+    this.litterKept = new Uint8Array(litter.length)
   }
-  const leaves = new Uint8Array(b.leaves.length)
-  const tip = new THREE.Vector3()
-  b.leaves.forEach((l, i) => {
-    if (l.stem >= 0 && l.s > cuts[l.stem]) return
-    // The leaf itself, at its full size and lift.
-    tip.copy(l.position).addScaledVector(l.direction, l.size * 0.6).addScaledVector(l.normal, l.size * Math.sin(l.lift) * 0.5)
-    leaves[i] = probe.at(tip, l.size * 0.65, l.birth) <= limit ? 1 : 0
-  })
-  return { cuts, leaves }
+
+  get done() { return this.phase === 3 }
+
+  /** Work for about `budgetMs` (a piece at least); true once everything is planned. */
+  step(budgetMs: number): boolean {
+    const t0 = performance.now()
+    const { b, probe, limit, foliage } = this
+    const { cuts, leaves } = this.pruning
+    let n = 0
+    // The clock is read every few pieces: it costs about as much as one.
+    const out = () => (++n & 15) === 0 && performance.now() - t0 >= budgetMs
+    if (this.phase === 0) {
+      // Main stems first, then branches (whose parents are earlier).
+      for (; this.i < b.stems.length; this.i++) {
+        if (out()) return false
+        const i = this.i
+        const st = b.stems[i]
+        // The takeover's ivy never grows with the story.
+        if (st.wild >= 0) {
+          cuts[i] = 0
+          continue
+        }
+        if (st.parent >= 0 && st.at > cuts[st.parent]) {
+          cuts[i] = 0
+          continue
+        }
+        const envelope = (st.main ? ROOM_CONFIG.vines.leafScale * 1.15 : ROOM_CONFIG.vines.leafScale * 0.95) * foliage
+        let cut = 1
+        for (let k = 0; k < st.points.length; k++) {
+          const birth = st.start + st.duration * st.s[k]
+          if (probe.at(st.points[k], envelope, birth) > limit) {
+            // Back off a little so the tip's young leaves are clear too.
+            cut = Math.max(0, st.s[k] - 0.04)
+            break
+          }
+        }
+        // Too short to read as a plant: drop it.
+        let len = 0
+        for (let k = 1; k < st.points.length; k++) {
+          if (st.s[k] > cut) break
+          len += st.points[k].distanceTo(st.points[k - 1])
+        }
+        cuts[i] = len < (st.main ? 0.35 : 0.12) ? 0 : cut
+      }
+      this.phase = 1
+      this.i = 0
+    }
+    if (this.phase === 1) {
+      const tip = this.tip
+      for (; this.i < b.leaves.length; this.i++) {
+        if (out()) return false
+        const l = b.leaves[this.i]
+        if (l.stem >= 0 && l.s > cuts[l.stem]) continue
+        // The leaf itself, at its full size and lift.
+        tip.copy(l.position).addScaledVector(l.direction, l.size * 0.6).addScaledVector(l.normal, l.size * Math.sin(l.lift) * 0.5)
+        leaves[this.i] = probe.at(tip, l.size * 0.65, l.birth) <= limit ? 1 : 0
+      }
+      this.phase = 2
+      this.i = 0
+    }
+    if (this.phase === 2) {
+      for (; this.i < this.litter.length; this.i++) {
+        if (out()) return false
+        const l = this.litter[this.i]
+        this.litterKept[this.i] = probe.at(l.position, l.size, l.birth) <= limit ? 1 : 0
+      }
+      this.phase = 3
+    }
+    return true
+  }
+}
+
+export function prune(b: Botany, probe: FieldProbe, limit: number, foliage = 1): Pruning {
+  const job = new PruneJob(b, probe, limit, foliage)
+  job.step(Infinity)
+  return job.pruning
 }

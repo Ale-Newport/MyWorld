@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type RefObject } from 'react'
-import { subscribe } from '@/lib/ticker'
+import { IDLE, ambient, subscribe } from '@/lib/ticker'
 
 /* ============================================================
    WHAT THE FIVE "A LITTLE ABOUT ME" OPTIONS SHARE
@@ -46,15 +46,26 @@ export function useBoxSize(ref: RefObject<HTMLElement | null>): Size {
   return size
 }
 
-/** Runs `fn` on the site's one ticker while `on` is true, and not at all otherwise. */
-export function useTicker(on: boolean, fn: (dt: number, now: number) => void) {
+/**
+ * Runs `fn` on the site's one ticker while `on` is true, and not at all otherwise.
+ *
+ * `pace` is the pace of motion that is only there to be alive (see `ambient` in lib/ticker): 1
+ * while the visitor is about, easing to 0 once they have been still for a few seconds. An
+ * option multiplies the clock of its breath, drift or turn by it; what the scroll or the
+ * pointer moves it draws as ever. At 0 the section holds the picture it last drew and the
+ * shared loop may sleep, and any input puts the pace back at once.
+ */
+export function useTicker(on: boolean, fn: (dt: number, now: number, pace: number) => void | typeof IDLE) {
   const fnRef = useRef(fn)
   useEffect(() => {
     fnRef.current = fn
   })
   useEffect(() => {
     if (!on) return
-    return subscribe((dt, now) => fnRef.current(dt, now))
+    return subscribe((dt, now) => {
+      const pace = ambient(now)
+      return pace === 0 ? IDLE : fnRef.current(dt, now, pace)
+    }, 'section:about')
   }, [on])
 }
 

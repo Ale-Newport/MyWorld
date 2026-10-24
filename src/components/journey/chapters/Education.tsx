@@ -72,7 +72,8 @@ export function Education() {
         const a = clamp(range(t, from, from + 0.12))
         row.style.opacity = String(a)
         row.style.transform = `translate3d(0, ${(1 - a) * 0.9}rem, 0)`
-        row.dataset.on = a > 0.65 ? 'true' : 'false'
+        const on = a > 0.65 ? 'true' : 'false'
+        if (row.dataset.on !== on) row.dataset.on = on
       })
     }
     const foot = footRef.current

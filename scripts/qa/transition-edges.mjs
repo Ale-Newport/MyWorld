@@ -5,7 +5,8 @@
        beneath cannot be clicked;
      Back from the world returns to the homepage usable (no cover, nothing inert);
      Forward is a direct arrival with the persistent foliage mask;
-     a failed load shows the error with Try again, and Try again recovers.
+     a failed load shows the error (focused on Try again, the page still shut behind it), and Try again recovers.
+   The full lock matrix (every entry, input, history and reveal case) is scripts/qa/world-loading-lock.mjs.
    node scripts/qa/transition-edges.mjs */
 import { BASE, launch, sleep, assert, finish, out } from './lib.mjs'
 
@@ -54,8 +55,15 @@ const spans = await page.evaluate(() => {
   return pts.every(([x, y]) => { const el = document.elementFromPoint(x, y); return !!el && (el.closest('[data-covered]') || el.closest('[aria-hidden="true"]')?.querySelector?.('canvas') || el.tagName === 'CANVAS') })
 })
 assert(spans, 'after resizing the window the cover still spans every corner', results)
-const inertNow = await page.evaluate(() => [...document.querySelectorAll('#journey, [data-hud]')].every((el) => el.inert))
-assert(inertNow || (await phase()) !== 'COVERED', 'the page under the cover is inert while covered', results)
+// Strict: while the leaves are closed (COVERING … LOADING_WORLD) every body child but the cover,
+// the loader, the status line and the dialog is inert, and the page itself cannot scroll.
+const closed = await page.evaluate(() => {
+  const ALLOW = '[data-world-cover],[data-world-allow],next-route-announcer,nextjs-portal,script,style,link,noscript,template,[hidden]'
+  const open = [...document.body.children].filter((el) => !el.matches(ALLOW) && !el.inert).map((el) => el.tagName.toLowerCase() + (el.id ? '#' + el.id : ''))
+  const journey = [...document.querySelectorAll('#journey, [data-hud]')]
+  return { phase: document.documentElement.dataset.worldPhase, open, journeyInert: journey.length === 0 || journey.every((el) => el.inert), overflow: getComputedStyle(document.documentElement).overflowY, overscroll: getComputedStyle(document.documentElement).overscrollBehaviorY }
+})
+assert(['COVERED', 'LOADING_WORLD'].includes(closed.phase) && closed.open.length === 0 && closed.journeyInert && closed.overflow === 'hidden' && closed.overscroll === 'none', `the page under the cover is inert and cannot scroll while covered (${JSON.stringify(closed)})`, results)
 await page.setViewportSize({ width: 1440, height: 900 })
 await page.waitForFunction(() => window.__phases.includes('IN_WORLD'), null, { timeout: 240000 })
 assert(page.url().endsWith('/world'), 'arrived in /world', results)
@@ -80,9 +88,11 @@ const fresh = await browser.newPage({ viewport: { width: 1280, height: 800 } })
 let blocked = true
 await fresh.route('**/archipelago/preview/main.js*', (r) => (blocked ? r.abort() : r.continue()))
 await fresh.goto(`${BASE}/world`, { waitUntil: 'domcontentloaded' })
-const failed = await fresh.locator('[role="alert"]', { hasText: 'did not load' }).waitFor({ timeout: 90000 }).then(() => true, () => false)
+const failed = await fresh.locator('[role="alertdialog"]', { hasText: 'did not load' }).waitFor({ timeout: 90000 }).then(() => true, () => false)
 await fresh.screenshot({ path: out('transition-error.png') })
 assert(failed, 'when the world cannot load, an error with Try again is shown (not an endless spinner)', results)
+const errorFocus = await fresh.evaluate(() => document.activeElement?.textContent?.trim())
+assert(errorFocus === 'Try again', `the error dialog is focused on "Try again" (${errorFocus})`, results)
 blocked = false
 await fresh.getByRole('button', { name: 'Try again' }).click()
 const recovered = await fresh.waitForSelector('[data-world-shell][data-ready]', { timeout: 240000 }).then(() => true, () => false)

@@ -39,9 +39,10 @@
   stroke-linecap: round;
   transition: stroke var(--dur-mid) var(--ease-out-expo);
 }
-/* The orbit of the body under the pointer or focus firms up. */
-.orbit[data-hot] .front { stroke: color-mix(in oklab, var(--ink) 46%, transparent); }
-.orbit[data-hot] .back { stroke: color-mix(in oklab, var(--ink) 50%, transparent); }
+/* The orbit of the body under the pointer or focus firms up. Pointing at a body is answered within --dur-quick
+   (letting go of it takes the slower eases above), here and on the node, the arm and the name. */
+.orbit[data-hot] .front { stroke: color-mix(in oklab, var(--ink) 46%, transparent); transition-duration: var(--dur-quick); }
+.orbit[data-hot] .back { stroke: color-mix(in oklab, var(--ink) 50%, transparent); transition-duration: var(--dur-quick); }
 
 /* The short stretch of orbit a body has just travelled. */
 .wake {
@@ -72,7 +73,7 @@
   stroke-width: 1;
   stroke-dasharray: 2 4;
   opacity: 0;
-  transition: opacity var(--dur-fast) linear;
+  transition: opacity var(--dur-quick) linear;
 }
 
 /* ---- bodies ---------------------------------------------------- */
@@ -114,7 +115,7 @@
   height: var(--d);
   border-radius: 50%;
   background: var(--tone);
-  transition: box-shadow var(--dur-mid) var(--ease-out-expo);
+  transition: box-shadow var(--dur-mid) var(--ease-out-expo), transform var(--dur-fast) var(--ease-out-expo);
 }
 .body[data-tier='0'] .node {
   box-shadow:
@@ -126,7 +127,11 @@
   box-shadow:
     0 0 0 3px var(--bg-primary),
     0 0 0 4.5px var(--accent);
+  transition-duration: var(--dur-quick), var(--dur-quick);
 }
+/* The press: the body gives under the finger on the frame it lands (see PressFeedback). */
+.body:active .node, .body[data-press] .node { transform: scale(0.82); transition-duration: var(--dur-quick), var(--dur-quick); }
+[data-reduced='true'] .body:active .node, [data-reduced='true'] .body[data-press] .node { transform: none; }
 
 .label {
   position: absolute;
@@ -184,6 +189,7 @@
 .body:focus-visible .name {
   color: var(--ink);
   text-decoration-color: var(--accent);
+  transition-duration: var(--dur-quick);
 }
 
 .meta {

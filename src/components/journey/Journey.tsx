@@ -1,11 +1,12 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import dynamic from 'next/dynamic'
 import { JourneyProvider } from './JourneyProvider'
 import { Hud } from '@/components/navigation/Hud'
 import { IndexOverlay } from '@/components/navigation/IndexOverlay'
 import { Cursor } from '@/components/ui/Cursor'
+import { PressFeedback } from '@/components/ui/PressFeedback'
 import { ProjectOverlay } from '@/components/ui/ProjectOverlay'
 import { useJourney } from '@/state/journey'
 import { useSound } from '@/hooks/useSound'
@@ -16,6 +17,7 @@ import { track } from '@/components/analytics/track'
 import { CustomSection } from '@/cms/sections'
 import { Chapter } from './Chapter'
 import { RoomLoading } from '@/components/home/room/RoomStill'
+import styles from './Journey.module.css'
 
 /* The WebGL layer is client-only and never blocks first paint:
    the entire story is readable before a single shader compiles. */
@@ -79,6 +81,9 @@ function reserve(id: ChapterId) {
   return Reserved
 }
 
+/* How long after the room's first frame the second canvas is made (see the effect in Journey). */
+const CANVAS_AFTER_ROOM_MS = 1200
+
 const CHAPTER_COMPONENTS: Record<ChapterId, React.ComponentType> = {
   prelude: dynamic(() => import('./chapters/Prelude').then((m) => m.Prelude), { loading: reserve('prelude') }),
   about: dynamic(() => import('./chapters/About').then((m) => m.About), { loading: reserve('about') }),
@@ -95,28 +100,53 @@ const CHAPTER_COMPONENTS: Record<ChapterId, React.ComponentType> = {
   stock: dynamic(() => import('./chapters/Stock').then((m) => m.Stock), { loading: reserve('stock') }),
 }
 
-export function Journey({ journey }: { journey: JourneyId }) {
-  const indexOpen = useJourney((s) => s.indexOpen)
+/* Sound reacts to the chapter, the index and the open project, and none of that
+   is a reason for the journey itself to render again: a hook that read those
+   fields in the root re-rendered the whole tree (HomeRoom, every chapter, the
+   HUD, both overlays) at each chapter boundary and at each toggle. It listens
+   from a leaf instead and draws nothing. */
+function SoundEffects() {
+  useSound()
+  return null
+}
+
+/* The index reads its own open flag for the same reason: opening it commits
+   the overlay and nothing else. */
+function IndexHost() {
+  const open = useJourney((s) => s.indexOpen)
   const setIndexOpen = useJourney((s) => s.setIndexOpen)
+  const close = useCallback(() => setIndexOpen(false), [setIndexOpen])
+  return <IndexOverlay open={open} onClose={close} />
+}
+
+export function Journey({ journey }: { journey: JourneyId }) {
+  const setIndexOpen = useJourney((s) => s.setIndexOpen)
+  const openIndex = useCallback(() => setIndexOpen(true), [setIndexOpen])
   const [canvasReady, setCanvasReady] = useState(false)
 
-  useSound()
   useEasterEggs()
 
   /* P1: the second canvas is only useful near a scene. The room already
      renders the hero; loading R3F and allocating an empty canvas there
-     competes with it for both parsing time and GPU memory. */
+     competes with it for both parsing time and GPU memory.
+
+     It is also not a thing to start in the middle of a scroll. Its WebGL
+     context is a round trip to the GPU process, and while the room is
+     drawing a frame for every frame of a gesture that round trip waits
+     behind them: 50 to 120 ms of the main thread at the Toolbox and again
+     at the Universe, with R3F's code arriving (parse, evaluate) in the same
+     stretch. So it is made once the room's first frame is out and the page
+     is waiting for the visitor — the room asleep, the GPU idle — a moment
+     after it, and in idle time. A visitor who is already scrolling by then,
+     or who gets to the About chapter first, has it made there, as before. */
   useEffect(() => {
     let scheduled = false
     let cancel = () => {}
-    const prepare = () => {
+    let afterReady = 0
+    const start = () => setCanvasReady(true)
+    const mount = () => {
       if (scheduled) return
-      const s = useJourney.getState()
-      const owner = s.chapters.findIndex(c => c.id === 'toolbox')
-      const active = s.chapters.findIndex(c => c.id === s.chapter)
-      if (journey === 'home' && (owner < 0 || active < owner - 1)) return
       scheduled = true
-      const start = () => setCanvasReady(true)
       if (typeof window.requestIdleCallback === 'function') {
         const id = window.requestIdleCallback(start, { timeout: 500 })
         cancel = () => window.cancelIdleCallback(id)
@@ -125,9 +155,27 @@ export function Journey({ journey }: { journey: JourneyId }) {
         cancel = () => window.clearTimeout(id)
       }
     }
+    const prepare = () => {
+      if (scheduled) return
+      const s = useJourney.getState()
+      const owner = s.chapters.findIndex(c => c.id === 'toolbox')
+      const active = s.chapters.findIndex(c => c.id === s.chapter)
+      if (journey === 'home' && (owner < 0 || active < owner - 1)) return
+      mount()
+    }
     prepare()
     const unsubscribe = useJourney.subscribe(prepare)
-    return () => { unsubscribe(); cancel() }
+    const settled = () => { afterReady = window.setTimeout(mount, CANVAS_AFTER_ROOM_MS) }
+    if (journey === 'home' && !scheduled) {
+      if (document.querySelector('[data-room-host][data-ready="true"]')) settled()
+      else window.addEventListener('room:ready', settled, { once: true })
+    }
+    return () => {
+      unsubscribe()
+      cancel()
+      window.clearTimeout(afterReady)
+      window.removeEventListener('room:ready', settled)
+    }
   }, [journey])
 
   /* Audience statistics: how far into this journey a visit gets (each mark once per visit to the page). */
@@ -143,12 +191,26 @@ export function Journey({ journey }: { journey: JourneyId }) {
     })
   }, [journey])
 
+  /* The index and a case study belong to the page that opened them. The store outlives the route, so a visitor
+     who left with the index open (it holds the way into the world) came back, by Back, to the same panel
+     standing over a page that had been built again, with its scroll lock on. They are put away on the way out,
+     behind the leaves. */
+  useEffect(() => () => {
+    const s = useJourney.getState()
+    if (s.indexOpen) s.setIndexOpen(false)
+    if (s.activeProject) s.setActiveProject(null)
+  }, [])
+
   /* Global keyboard shortcuts. */
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement | null
       if (target && /input|textarea|select/i.test(target.tagName)) return
-      if (e.key === 'i' && !e.metaKey && !e.ctrlKey) setIndexOpen(!useJourney.getState().indexOpen)
+      if (e.key !== 'i' || e.metaKey || e.ctrlKey) return
+      const { indexOpen, activeProject } = useJourney.getState()
+      // The index is not opened beneath a case study: it would take the focus and the keys into a panel nobody can see.
+      if (activeProject && !indexOpen) return
+      setIndexOpen(!indexOpen)
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
@@ -168,12 +230,13 @@ export function Journey({ journey }: { journey: JourneyId }) {
 
       {canvasReady && <GlobalCanvas />}
       {!editing && <Cursor />}
+      <PressFeedback />
 
       {/* The room is the home journey's alone; `/projects` keeps
           the sprig sheet exactly as it shipped. */}
       {journey === 'home' ? <HomeRoom /> : <Vegetation />}
 
-      <main id="journey" className="journey" data-journey={journey}>
+      <main id="journey" className={`journey ${styles.journey}`} data-journey={journey}>
         {list.map((c) => {
           /* Sections added in the editor have no component of their own. */
           const Component = CHAPTER_COMPONENTS[c.id]
@@ -181,9 +244,10 @@ export function Journey({ journey }: { journey: JourneyId }) {
         })}
       </main>
 
-      <Hud onOpenIndex={() => setIndexOpen(true)} />
-      <IndexOverlay open={indexOpen} onClose={() => setIndexOpen(false)} />
+      <Hud onOpenIndex={openIndex} />
+      <IndexHost />
       <ProjectOverlay />
+      <SoundEffects />
     </JourneyProvider>
   )
 }

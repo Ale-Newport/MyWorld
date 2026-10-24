@@ -82,20 +82,24 @@ export function Universe() {
         <E cms="universe.footer" as="div" kind="container" label="Footer" className={styles.footer}>
           {/* The project under the pointer or focus takes the hint's
               place, so its name is read beside the archive and never
-              printed over it. */}
-          <div className={styles.readout} aria-live="polite">
-            {hoveredProject ? (
-              <p className={styles.label}>
+              printed over it. The hint keeps its place in the flow, only
+              unseen, and the label stands over it: the footer is the same
+              height whatever is read, so pointing at a project never
+              moves the archive above it, and the room (which measures
+              the hint as copy and the label as a readout) has nothing to
+              measure again. */}
+          <div className={styles.readout} aria-live="polite" data-reading={hoveredProject ? 'true' : undefined}>
+            <E cms="universe.hint" as="p" label="Hint" className={styles.hint} aria-hidden={hoveredProject ? 'true' : undefined}>
+              Point at a project to read it · select one to open it
+            </E>
+            {hoveredProject && (
+              <p className={styles.label} data-room-ignore="">
                 <span className={styles.labelName}>{hoveredProject.title}</span>
                 <span className={styles.labelMeta} style={{ color: hoveredProject.accent ?? categoryAccent[hoveredProject.category] }}>
                   {hoveredProject.category} · {hoveredProject.year}
                 </span>
                 <span className={styles.labelDesc}>{hoveredProject.shortDescription}</span>
               </p>
-            ) : (
-              <E cms="universe.hint" as="p" label="Hint" className={styles.hint}>
-                Point at a project to read it · select one to open it
-              </E>
             )}
           </div>
           <div className={styles.actions}>

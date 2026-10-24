@@ -8,7 +8,7 @@ import { useActiveChapter, useJourneyRoute } from '@/components/journey/JourneyP
 import { useSite } from '@/cms/context'
 import { scrollToProgress } from '@/hooks/useLenisScroll'
 import { clamp } from '@/lib/math'
-import { subscribe } from '@/lib/ticker'
+import { IDLE, subscribe } from '@/lib/ticker'
 import styles from './Hud.module.css'
 
 /** Persistent chrome: identity, cross-journey link, index, sound, scrub. */
@@ -31,19 +31,22 @@ export function Hud({ onOpenIndex }: { onOpenIndex: () => void }) {
   const pctRef = useRef<HTMLSpanElement>(null)
   const [dragging, setDragging] = useState(false)
 
-  /* Progress is written directly to the DOM every frame — the HUD
-     never re-renders on scroll. */
+  /* Progress is written directly to the DOM as it moves — the HUD
+     never re-renders on scroll, and a page standing still writes nothing. */
   useEffect(() => {
+    let lastP = -1
     let lastPct = -1
     return subscribe(() => {
       const p = frame.progress
+      if (p === lastP) return IDLE
+      lastP = p
       if (fillRef.current) fillRef.current.style.transform = `scaleX(${p})`
       const pct = Math.round(p * 100)
       if (pct !== lastPct) {
         lastPct = pct
         if (pctRef.current) pctRef.current.textContent = String(pct).padStart(2, '0')
       }
-    })
+    }, 'hud')
   }, [])
 
   const seekFromEvent = useCallback((clientX: number) => {

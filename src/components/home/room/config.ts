@@ -154,6 +154,12 @@ export const ROOM_CONFIG = {
   swayFps: 30,
   /** Seconds the air keeps moving after the last scroll or resize. */
   swayLinger: 8,
+  /** Wall-clock milliseconds a frame may spend planning the plants around the copy once the room is up:
+      less while the page is being scrolled (a frame has little slack then), more when it is still. */
+  replantBudget: { scrolling: 3, still: 10 },
+  /** The same for reading the copy's layout (measuring it, rasterising it): wall-clock milliseconds a slice may spend,
+      and how long (ms) it waits for an idle moment before it takes a piece of a frame instead. */
+  readBudget: { scrolling: 3, still: 10, patience: 50 },
 } as const
 
 /** The painted leaf sheet: the room and the canopy draw the same leaves. */

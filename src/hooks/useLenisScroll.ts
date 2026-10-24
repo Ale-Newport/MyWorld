@@ -4,6 +4,7 @@ import { useEffect } from 'react'
 import Lenis from 'lenis'
 import { useJourney, frame } from '@/state/journey'
 import { clamp, damp } from '@/lib/math'
+import { IDLE, subscribe, wake } from '@/lib/ticker'
 
 let lenisInstance: Lenis | null = null
 
@@ -16,6 +17,8 @@ export function scrollToProgress(p: number, opts?: { immediate?: boolean; durati
   const target = clamp(p) * max
   if (lenisInstance) lenisInstance.scrollTo(target, { immediate: opts?.immediate, duration: opts?.duration ?? 1.5 })
   else window.scrollTo({ top: target, behavior: opts?.immediate ? 'auto' : 'smooth' })
+  // The shared loop may be asleep, and Lenis travels only when it ticks.
+  wake('scrollToProgress')
 }
 
 /**
@@ -42,15 +45,37 @@ export function useLenisScroll(enabled: boolean) {
     })
     lenisInstance = lenis
 
-    let raf = 0
+    /* While the leaves cover the screen for the world (the machine writes
+       `html[data-world-phase]` and announces it) nothing scrolls: Lenis would
+       otherwise turn the wheel into a programmatic scroll of the page under the
+       leaves, which CSS `overflow` does not stop. The machine does not import
+       Lenis, so the /world bundle does not carry it. */
+    const syncLock = () => {
+      const phase = document.documentElement.dataset.worldPhase
+      if (phase && phase !== 'HOME' && phase !== 'IN_WORLD') lenis.stop()
+      else lenis.start()
+    }
+    syncLock()
+    window.addEventListener('world:phase', syncLock)
+
     let last = performance.now()
     let lastProgress = 0
     let storeProgress = -1
     let smoothedVel = 0
 
-    const tick = (now: number) => {
-      const dt = Math.min(0.05, (now - last) / 1000)
+    /* One of the shared ticker's subscribers (lib/ticker), which sleeps when every one of them
+       is at rest: a page left alone asks for no frames at all. This one is at rest when Lenis
+       has nothing left to travel and the values it keeps (velocity, the smoothed pointer) have
+       settled; a wheel, a touch, a key, a scroll or a pointer move wakes the loop again. */
+    const tick = (_dt: number, now: number) => {
+      // The first pass after a sleep is one ordinary frame, not one long one.
+      const gap = (now - last) / 1000
+      const slept = gap > 0.1
+      const dt = slept ? 1 / 60 : Math.min(0.05, gap)
       last = now
+      // Lenis measures a frame from its own previous call, which was seconds ago: handed that, it carries
+      // the first notch of the wheel to its target in one frame. It is told this is an ordinary one.
+      if (slept) lenis.time = now - 1000 / 60
       lenis.raf(now)
 
       const max = Math.max(1, document.documentElement.scrollHeight - window.innerHeight)
@@ -72,9 +97,15 @@ export function useLenisScroll(enabled: boolean) {
         setScroll({ progress: p, velocity: smoothedVel })
       }
 
-      raf = requestAnimationFrame(tick)
+      // The tails of the damped values are smaller than anything they drive can show.
+      if (rawVel === 0 && Math.abs(smoothedVel) < 1e-4) { smoothedVel = 0; frame.velocity = 0 }
+      if (Math.abs(frame.pointerX - frame.pointerTargetX) < 1e-4) frame.pointerX = frame.pointerTargetX
+      if (Math.abs(frame.pointerY - frame.pointerTargetY) < 1e-4) frame.pointerY = frame.pointerTargetY
+      const atRest = !lenis.isScrolling && rawVel === 0 && smoothedVel === 0
+        && frame.pointerX === frame.pointerTargetX && frame.pointerY === frame.pointerTargetY
+      return atRest ? IDLE : undefined
     }
-    raf = requestAnimationFrame(tick)
+    const stop = subscribe(tick, 'lenis')
 
     const onPointer = (e: PointerEvent) => {
       frame.pointerTargetX = (e.clientX / window.innerWidth) * 2 - 1
@@ -83,7 +114,8 @@ export function useLenisScroll(enabled: boolean) {
     window.addEventListener('pointermove', onPointer, { passive: true })
 
     return () => {
-      cancelAnimationFrame(raf)
+      stop()
+      window.removeEventListener('world:phase', syncLock)
       window.removeEventListener('pointermove', onPointer)
       lenis.destroy()
       lenisInstance = null

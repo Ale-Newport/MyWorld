@@ -177,9 +177,9 @@ export default function TypeMotion({ progress, active, reducedMotion, intensity,
     render(layout, els.current, reducedMotion ? 1 : progress.current, clock.current)
   }, [layout, reducedMotion, progress])
 
-  useTicker(active && !reducedMotion && !!layout, (dt) => {
+  useTicker(active && !reducedMotion && !!layout, (dt, _now, pace) => {
     if (!layout) return
-    clock.current += dt * speed
+    clock.current += dt * speed * pace
     render(layout, els.current, progress.current, clock.current)
   })
 

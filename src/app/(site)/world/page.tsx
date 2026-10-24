@@ -1,6 +1,4 @@
 import type { Metadata } from 'next'
-import { WorldRoute } from '@/components/world/WorldRoute'
-import { WorldFallback } from '@/components/world/WorldFallback'
 import { publishedSite } from '@/server/site'
 import { publicSiteUrl } from '@/lib/site-url'
 
@@ -25,14 +23,8 @@ export async function generateMetadata(): Promise<Metadata> {
   }
 }
 
-export default async function WorldPage() {
-  const { doc } = await publishedSite()
-  return (
-    <>
-      {/* Server-rendered and crawlable: the whole point of the world
-          is reachable without WebGL, a keyboard or a mouse. */}
-      <WorldFallback name={doc.profile.name} />
-      <WorldRoute />
-    </>
-  )
+/* The page itself has nothing to draw: the text version of the world and the world's shell
+   are the layout's, so that neither waits for this route's server render (see layout.tsx). */
+export default function WorldPage() {
+  return null
 }

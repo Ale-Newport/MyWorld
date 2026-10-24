@@ -12,6 +12,10 @@
   pointer-events: none;
   overflow: hidden;
   contain: strict;
+  /* Leaves are not text: nothing on them is selected, dragged or long-pressed. */
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
 }
 @supports (height: 100lvh) {
   .root { height: 100lvh; }
@@ -22,6 +26,11 @@
    window, and still arrives). */
 .root[data-blocking='true'] {
   pointer-events: auto;
+  /* ...and no gesture that starts on it pans, zooms or pulls the page to refresh:
+     the page under the leaves is shut (see globals.css, `html[data-world-phase]`),
+     and this holds for /world2, which shares the cover without the machine. */
+  touch-action: none;
+  overscroll-behavior: none;
 }
 
 /* The dark inside of the hedge, behind the last leaves: the page can
@@ -76,6 +85,14 @@
 .root[data-open='true'] .layer[data-band='0'][data-side='left'] { transform: translateX(-46%) scale(1.2); }
 .root[data-open='true'] .layer[data-band='0'][data-side='right'] { transform: translateX(46%) scale(1.2); }
 
+/* An arrival nobody watched grow at /world (a reload, Forward) has its leaves in one piece
+   already: they come up out of the dark rather than pop in once sealed. Only the world's own
+   transition (it writes its phase on <html>; /world2 shares this cover without it) gets this.
+   Compositor only, and `backwards`: it holds nothing once it has run, so the parting is free
+   to fade them out. */
+:global(html[data-world-phase]:not([data-world-phase='HOME']):not([data-world-phase='IN_WORLD'])) .root[data-arrival='true']:not([data-open='true']):not([data-closing='true']) .layer { animation: layer-in 0.42s ease-out backwards; }
+@keyframes layer-in { from { opacity: 0; } }
+
 /* They leave by moving; the fade only tidies the last of each band
    away once it is nearly off the screen. */
 .root[data-open='true'] .layer { opacity: 0; }
@@ -88,6 +105,13 @@
 .root[data-open='true'] .layer[data-band='0'] {
   transition: transform calc(1.18s * var(--part, 1)) cubic-bezier(0.42, 0, 0.5, 1) calc(0.16s * var(--part, 1)), opacity calc(0.3s * var(--part, 1)) linear calc(1.04s * var(--part, 1));
 }
+
+/* CLOSING AGAIN. The way in was taken a second time while the leaves were still parting for the last
+   way out: they close from where they are (the destination state has no `open`, so without these
+   rules the browser would jump). The dark is back at full in a third of a second, which is what the
+   cover's verification waits for. Transform and opacity only. */
+.root[data-closing='true'] .deep { transition: opacity 0.3s linear; }
+.root[data-closing='true'] .layer { transition: transform 0.5s cubic-bezier(0.22, 0.61, 0.36, 1), opacity 0.25s linear; }
 
 /* REDUCED MOTION. No leaves are grown or swept aside: the dark of the
    hedge fades in over the page and fades off the world. The cover is

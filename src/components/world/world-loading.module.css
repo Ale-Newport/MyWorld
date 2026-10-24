@@ -1,0 +1,229 @@
+/* THE ISLAND IS WAKING UP — see WorldLoading.tsx.
+
+   Above the leaf cover (z 90) and below the error dialog (z 95). Only `opacity` and
+   `transform` ever change after the first paint: the world boots in a frame that
+   shares this page's main thread, and a compositor animation is the only thing that
+   keeps moving through its two-second tasks. Nothing here filters, shadows,
+   re-lays-out or repaints. */
+.loader {
+  position: fixed;
+  inset: 0;
+  z-index: 92;
+  display: grid;
+  justify-items: center;
+  align-content: end;
+  padding: 0 1.25rem max(12svh, calc(env(safe-area-inset-bottom) + 2.75rem));
+  pointer-events: none;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  color: #eef3d2;
+  opacity: 0;
+}
+/* A world that starts at once never flashes it: the grace runs from the moment the world
+   is being made (WorldRoute), not from the page's first paint. */
+.loader[data-started] { animation: loader-in 0.9s ease-out 0.6s forwards; }
+/* A direct arrival has nothing before it and a world seconds away: no grace to wait out, and a quick fade. */
+.loader[data-started='direct'] { animation-duration: 0.6s; animation-delay: 0.1s; }
+@keyframes loader-in { to { opacity: 1; } }
+
+.content {
+  opacity: 1;
+  --w: min(88vw, 540px);
+  position: relative;
+  isolation: isolate;
+  display: grid;
+  justify-items: center;
+  width: var(--w);
+}
+/* The light goes out through the parting leaves, once the last firefly has flared and the
+   line that says why has been readable for a moment. (On the inner element: the outer one is
+   still fading in if the world was ready before the grace was over, and must not flash.) */
+.loader[data-leaving] .content {
+  opacity: 0;
+  transition: opacity 0.5s ease-in 0.3s;
+}
+
+/* A pool of shade under it all, so the sprig and the words read on the brightest
+   leaves. Static: one gradient, painted once. */
+.content::before {
+  content: '';
+  position: absolute;
+  inset: -38% -30% -26%;
+  z-index: -1;
+  background: radial-gradient(closest-side, rgb(9 16 3 / 0.84) 0%, rgb(9 16 3 / 0.7) 52%, rgb(9 16 3 / 0) 100%);
+}
+/* The shade goes first, at once and quickly, while the last words are still readable: the
+   opening world is not darkened for the length of the text's own fade. (The words carry their
+   own shadow.) */
+.loader[data-leaving] .content::before {
+  opacity: 0;
+  transition: opacity 0.28s ease-in;
+}
+
+.sprig {
+  position: relative;
+  width: var(--w);
+  aspect-ratio: 400 / 90;
+}
+.vine {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+/* Dormant: still a sprig you can read against the brightest leaves of the cover, but quieter than a lit one. */
+.stem {
+  fill: none;
+  stroke: #7ea23f;
+  stroke-width: 1.9;
+  stroke-linecap: round;
+}
+.dormant {
+  fill: #3f6320;
+  fill-opacity: 0.95;
+  stroke: #8fb54c;
+  stroke-opacity: 0.7;
+  stroke-width: 0.04;
+}
+
+/* One firefly's place: a point on the stem. Its leaves and its light hang from it. */
+.node {
+  position: absolute;
+  width: 0;
+  height: 0;
+}
+
+/* The leaves that wake with it: lit green over the dormant ones, unfurling from the stem. */
+.leaf {
+  position: absolute;
+  left: 0;
+  top: 0;
+  height: auto;
+  aspect-ratio: 1.4 / 1.25;
+  overflow: visible;
+  fill: #b6dc68;
+  fill-opacity: 0.96;
+  transform-origin: 50% 96%;
+  transform: translate(-50%, -96%) rotate(var(--r)) scale(0.72);
+  opacity: 0;
+  transition: opacity 0.9s ease-out, transform 1.1s cubic-bezier(0.2, 0.8, 0.2, 1);
+  transition-delay: calc(var(--k) * 0.12s);
+  will-change: transform, opacity;
+}
+.rib {
+  fill: none;
+  stroke: #eef6c0;
+  stroke-opacity: 0.55;
+  stroke-width: 0.045;
+  stroke-linecap: round;
+}
+.node[data-state='lit'] .leaf {
+  opacity: 1;
+  transform: translate(-50%, -96%) rotate(var(--r)) scale(1);
+}
+/* The step in progress: its leaves stir, never completing on their own. */
+.node[data-state='charging'] .leaf {
+  opacity: 0.32;
+  transform: translate(-50%, -96%) rotate(var(--r)) scale(0.84);
+  transition-duration: var(--eta), var(--eta);
+  transition-timing-function: ease-out;
+  transition-delay: 0s;
+}
+
+/* The firefly: a warm light, baked into a gradient (no shadow, no filter). The state's
+   opacity and scale live on the outer element; the endless drift and breathing on the inner
+   one, so the two never fight over the same property. */
+.mote {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: calc(var(--w) * 0.1);
+  aspect-ratio: 1;
+  opacity: 0.2;
+  transform: translate(-50%, -50%) scale(0.4);
+  transition: opacity 0.7s ease-out, transform 0.8s cubic-bezier(0.2, 0.8, 0.2, 1);
+  will-change: transform, opacity;
+}
+.node[data-state='charging'] .mote {
+  opacity: 0.62;
+  transform: translate(-50%, -50%) scale(0.74);
+  transition-duration: var(--eta), var(--eta);
+  transition-timing-function: ease-out;
+}
+.node[data-state='lit'] .mote {
+  opacity: 1;
+  transform: translate(-50%, -50%) scale(1);
+}
+.glow {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: radial-gradient(circle, #fffbe0 0 12%, #f9d86e 26%, rgb(247 208 106 / 0.42) 50%, rgb(247 208 106 / 0) 70%);
+  animation: drift var(--drift) ease-in-out var(--delay) infinite alternate, breathe 3.1s ease-in-out var(--delay) infinite alternate;
+}
+@keyframes drift { to { transform: translate3d(var(--dx), var(--dy), 0); } }
+@keyframes breathe { from { opacity: 0.72; } to { opacity: 1; } }
+
+/* Once, when a step completes: a ring of light leaves the firefly. */
+.node[data-state='lit'] .mote::after {
+  content: '';
+  position: absolute;
+  inset: 22%;
+  border-radius: 50%;
+  border: 1px solid rgb(255 238 176 / 0.8);
+  animation: ping 1s ease-out 1 both;
+}
+@keyframes ping {
+  from { transform: scale(0.5); opacity: 0.7; }
+  to { transform: scale(2.3); opacity: 0; }
+}
+
+/* The world is ready: the last light flares and spills through the opening. */
+.loader[data-leaving] .node[data-last] .mote {
+  opacity: 0;
+  transform: translate(-50%, -50%) scale(7);
+  transition: transform 0.75s cubic-bezier(0.5, 0, 0.9, 0.6), opacity 0.75s ease-in;
+}
+
+/* Readable from a metre and a half: 12.8 px and up on a phone, 15 px on a desktop (they were 10.5 and 12). */
+.line1 {
+  margin: 1.3rem 0 0.5rem;
+  font: 500 clamp(0.8rem, 0.4rem + 1.2vw, 0.95rem) var(--font-mono);
+  letter-spacing: 0.26em;
+  text-transform: uppercase;
+  text-align: center;
+  color: #f4f8dc;
+  text-shadow: 0 1px 12px #0b1303, 0 0 3px #0b1303, 0 0 1px #0b1303;
+}
+.line2 {
+  margin: 0;
+  min-height: 1.5em;
+  font: 400 clamp(0.82rem, 0.35rem + 1.2vw, 1rem) var(--font-mono);
+  letter-spacing: 0.04em;
+  text-align: center;
+  color: #e2ecb8;
+  text-shadow: 0 1px 12px #0b1303, 0 0 3px #0b1303, 0 0 1px #0b1303;
+  animation: line-in 0.5s ease-out both;
+}
+@keyframes line-in { from { opacity: 0; transform: translate3d(0, 4px, 0); } }
+/* The last line is not announced by fading in: the content is already on its way out. */
+.line2[data-ready] { animation: none; }
+
+/* REDUCED MOTION: the same sprig, standing still. Marks still light and the line still
+   changes — only the movement goes. */
+@media (prefers-reduced-motion: reduce) {
+  .glow, .node[data-state='lit'] .mote::after, .line2 { animation: none; }
+  .leaf, .mote { transition: none; will-change: auto; }
+  .loader[data-leaving] .node[data-last] .mote { transform: translate(-50%, -50%) scale(1); }
+  .loader[data-started] { animation-duration: 0.001ms; }
+  .loader[data-leaving] .content, .loader[data-leaving] .content::before { transition: none; }
+}
+
+@media (forced-colors: active) {
+  .loader { color: CanvasText; }
+  .stem { stroke: CanvasText; }
+  .dormant, .leaf { fill: Highlight; }
+  .glow { background: Highlight; }
+}

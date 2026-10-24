@@ -141,6 +141,10 @@ export function Pansofia() {
       const p = clamp(range(t, 0.62, 0.98))
       rail.scrollLeft = travel * p
     }
+  }, {
+    /* It reads the rail's measured travel and the fan's measured room, which change with the layout
+       (fonts, images) rather than with the scroll: drawn every frame, as it always was. */
+    continuous: true,
   })
 
   return (

@@ -44,7 +44,14 @@
   line-height: 1;
   transition: background var(--dur-fast), color var(--dur-fast);
 }
-.brand:hover .mark { background: var(--text-primary); color: var(--bg-primary); }
+/* A control answers the pointer within a few frames: arriving on it or pressing it takes --dur-quick, letting
+   go the slower --dur-fast. A press is shown on the frame of the pointerdown (`data-press`, see PressFeedback;
+   :active follows it on a mouse), and :hover is only for pointers that can hover — a finger leaves nothing
+   stuck under it. */
+.brand:active .mark, .brand[data-press] .mark { background: var(--text-primary); color: var(--bg-primary); transition-duration: var(--dur-quick); }
+@media (hover: hover) {
+  .brand:hover .mark { background: var(--text-primary); color: var(--bg-primary); transition-duration: var(--dur-quick); }
+}
 
 .brandName {
   font-size: var(--fs-tiny);
@@ -76,7 +83,10 @@
   gap: var(--sp-2);
   color: var(--text-primary);
   padding: 0.3rem 0;
+  transition: transform var(--dur-fast) var(--ease-out-expo);
 }
+.hudBtn:active, .hudBtn[data-press] { transform: scale(0.97); transition-duration: var(--dur-quick); }
+[data-reduced='true'] .hudBtn:active, [data-reduced='true'] .hudBtn[data-press] { transform: none; }
 .btnLabel {
   font-family: var(--font-mono);
   font-size: var(--fs-nano);
@@ -86,17 +96,20 @@
 @media (max-width: 720px) { .hudBtn:not(.indexBtn) .btnLabel { display: none; } }
 
 .soundBars { display: flex; align-items: center; gap: 2px; height: 11px; }
+/* The bars are as tall as they ever get and scaled down to rest (3px of 11): moving a bar is then a
+   compositor transform, where animating its height laid the HUD out again on every frame sound was on. */
 .soundBars i {
-  width: 1.5px; height: 3px;
+  width: 1.5px; height: 11px;
   background: currentColor;
   display: block;
-  transition: height var(--dur-fast) var(--ease-out-expo);
+  transform: scaleY(0.272727);
+  transition: transform var(--dur-fast) var(--ease-out-expo);
 }
 .soundBars[data-on='true'] i { animation: bar 900ms ease-in-out infinite; }
 .soundBars[data-on='true'] i:nth-child(2) { animation-delay: 140ms; }
 .soundBars[data-on='true'] i:nth-child(3) { animation-delay: 280ms; }
 .soundBars[data-on='true'] i:nth-child(4) { animation-delay: 90ms; }
-@keyframes bar { 0%,100% { height: 3px } 50% { height: 11px } }
+@keyframes bar { 0%,100% { transform: scaleY(0.272727) } 50% { transform: scaleY(1) } }
 
 /* ============================================================
    CROSS-JOURNEY LINK
@@ -111,9 +124,13 @@
   gap: var(--sp-2);
   padding: 0.3rem 0;
   color: var(--text-secondary);
-  transition: color var(--dur-fast);
+  transition: color var(--dur-fast), transform var(--dur-fast) var(--ease-out-expo);
 }
-.cross:hover { color: var(--accent); }
+.cross:active, .cross[data-press] { color: var(--accent); transform: scale(0.97); transition-duration: var(--dur-quick); }
+@media (hover: hover) {
+  .cross:hover { color: var(--accent); transition-duration: var(--dur-quick); }
+}
+[data-reduced='true'] .cross:active, [data-reduced='true'] .cross[data-press] { transform: none; }
 .crossLabel {
   font-family: var(--font-mono);
   font-size: var(--fs-nano);
@@ -126,14 +143,19 @@
   line-height: 1;
   transition: transform var(--dur-fast) var(--ease-out-expo);
 }
-.cross:hover .crossArrow { transform: translateX(3px); }
-.cross[data-back='true']:hover .crossArrow { transform: translateX(-3px); }
+@media (hover: hover) {
+  .cross:hover .crossArrow { transform: translateX(3px); transition-duration: var(--dur-quick); }
+  .cross[data-back='true']:hover .crossArrow { transform: translateX(-3px); }
+}
 [data-reduced='true'] .cross:hover .crossArrow { transform: none; }
 
 .indexLines { display: flex; flex-direction: column; gap: 3px; width: 14px; }
 .indexLines i { height: 1px; background: currentColor; display: block; transition: transform var(--dur-fast) var(--ease-out-expo); }
 .indexLines i:nth-child(2) { width: 68%; }
-.hudBtn:hover .indexLines i:nth-child(2) { transform: translateX(32%); }
+@media (hover: hover) {
+  .hudBtn:hover .indexLines i:nth-child(2) { transform: translateX(32%); transition-duration: var(--dur-quick); }
+}
+.hudBtn:active .indexLines i:nth-child(2), .hudBtn[data-press] .indexLines i:nth-child(2) { transform: translateX(32%); transition-duration: var(--dur-quick); }
 
 /* ---------------- BOTTOM ---------------- */
 .bottom {

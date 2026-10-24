@@ -13,10 +13,12 @@
   inset: 0;
   /* Nearly opaque: the journey behind this is enormous type and a
      lit 3D object, and a light veil over it reads as a mistake.
-     The blur is an enhancement, not the mechanism. */
+     No backdrop blur: under a 96% scrim it showed nothing, and it was
+     only ever drawn by Safari (the production stylesheet keeps just the
+     -webkit- spelling of it, which Chromium and Firefox ignore) — a
+     full-viewport blur over live WebGL on every open and close, for a
+     page that looked the same everywhere else. */
   background: color-mix(in oklab, var(--bg-primary) 96%, transparent);
-  backdrop-filter: blur(18px) saturate(0.85);
-  -webkit-backdrop-filter: blur(18px) saturate(0.85);
 }
 
 .panel {
@@ -55,8 +57,14 @@
 }
 .closeX i:first-child { transform: rotate(45deg); }
 .closeX i:last-child { transform: rotate(-45deg); }
-.close:hover .closeX i:first-child { transform: rotate(135deg); }
-.close:hover .closeX i:last-child { transform: rotate(45deg); }
+/* Arriving on or pressing a control is answered within --dur-quick (see Hud.module.css), and only a pointer that
+   can hover is promised a :hover. */
+@media (hover: hover) {
+  .close:hover .closeX i:first-child { transform: rotate(135deg); transition-duration: var(--dur-quick); }
+  .close:hover .closeX i:last-child { transform: rotate(45deg); transition-duration: var(--dur-quick); }
+}
+.close:active .closeX i:first-child, .close[data-press] .closeX i:first-child { transform: rotate(135deg); transition-duration: var(--dur-quick); }
+.close:active .closeX i:last-child, .close[data-press] .closeX i:last-child { transform: rotate(45deg); transition-duration: var(--dur-quick); }
 
 .list {
   display: flex;
@@ -163,7 +171,10 @@
   color: var(--text-muted);
   transition: color var(--dur-fast), border-color var(--dur-fast), padding-left var(--dur-mid) var(--ease-out-expo);
 }
-.item:hover:not(:disabled) { color: var(--text-primary); border-bottom-color: var(--border); padding-left: 0.7rem; }
+@media (hover: hover) {
+  .item:hover:not(:disabled) { color: var(--text-primary); border-bottom-color: var(--border); padding-left: 0.7rem; transition-duration: var(--dur-quick); }
+}
+.item:active:not(:disabled), .item[data-press]:not(:disabled) { color: var(--text-primary); border-bottom-color: var(--border); padding-left: 0.7rem; transition-duration: var(--dur-quick); }
 .item[data-current='true'] { color: var(--text-primary); }
 .item[data-current='true'] .itemNo { color: var(--accent); }
 .item:disabled { opacity: 0.32; cursor: not-allowed; }
@@ -234,7 +245,10 @@
   transition: border-color var(--dur-fast), color var(--dur-fast);
 }
 .modeBtn[data-on='true'] { border-color: var(--accent); color: var(--accent); }
-.modeBtn:hover { border-color: var(--text-primary); }
+@media (hover: hover) {
+  .modeBtn:hover { border-color: var(--text-primary); transition-duration: var(--dur-quick); }
+}
+.modeBtn:active, .modeBtn[data-press] { border-color: var(--text-primary); transition-duration: var(--dur-quick); }
 .modeDot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; opacity: 0.4; }
 .modeBtn[data-on='true'] .modeDot { opacity: 1; }
 .modeNote { font-size: var(--fs-tiny); color: var(--text-muted); max-width: 46ch; line-height: 1.5; }
@@ -249,7 +263,10 @@
   border-bottom: var(--hair) solid transparent;
   transition: color var(--dur-fast), border-color var(--dur-fast);
 }
-.link:hover { color: var(--text-primary); border-bottom-color: var(--border); }
+@media (hover: hover) {
+  .link:hover { color: var(--text-primary); border-bottom-color: var(--border); transition-duration: var(--dur-quick); }
+}
+.link:active, .link[data-press] { color: var(--text-primary); border-bottom-color: var(--border); transition-duration: var(--dur-quick); }
 .linkValue { color: var(--text-faint); }
 
 /* ============================================================
@@ -276,9 +293,17 @@
   transition: color 200ms var(--ease-out-expo), padding-left 200ms var(--ease-out-expo);
 }
 
-.worldLink:hover {
+@media (hover: hover) {
+  .worldLink:hover {
+    color: var(--accent);
+    padding-left: var(--sp-2);
+    transition-duration: var(--dur-quick);
+  }
+}
+.worldLink:active, .worldLink[data-press] {
   color: var(--accent);
   padding-left: var(--sp-2);
+  transition-duration: var(--dur-quick);
 }
 
 .worldLinkNote {

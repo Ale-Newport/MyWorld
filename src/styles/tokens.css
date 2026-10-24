@@ -150,6 +150,9 @@
   --ease-out-expo:  cubic-bezier(0.16, 1, 0.3, 1);
   --ease-in-out:    cubic-bezier(0.65, 0, 0.35, 1);
   --ease-swift:     cubic-bezier(0.22, 1, 0.36, 1);
+  /* What answers a pointer: arriving on a control or pressing it. A hover or a press that takes longer than
+     a few frames to show is a control that feels late; letting go may be slower (--dur-fast). */
+  --dur-quick:   90ms;
   --dur-fast:   180ms;
   --dur-mid:    420ms;
   --dur-slow:   900ms;

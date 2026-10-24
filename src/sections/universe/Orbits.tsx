@@ -1,6 +1,6 @@
 'use client'
 
-import { memo, useEffect, useId, useLayoutEffect, useMemo, useRef, type CSSProperties } from 'react'
+import { memo, useId, useLayoutEffect, useMemo, useRef, type CSSProperties } from 'react'
 import type { SiteProject, UniverseAnimationProps } from '../types'
 import { TIER_NAME, approach, byTierAndCategory, clamp01, easeOut, fitTitle, labelOf, metaOf, smooth, toneOf, useBoxSize, useHot, useTicker, type Tier } from './shared'
 import styles from './Orbits.module.css'
@@ -177,7 +177,8 @@ function Orbits({ projects, visible, progress, active, reducedMotion, intensity,
   const leader = useRef<SVGLineElement>(null)
   const sim = useRef({ spin: [0, 0, 0], pace: 1, open: -1, z: [] as number[], hot: null as string | null, keys: false })
 
-  useEffect(() => {
+  // Before the still pose below (a layout effect declared after it): with motion reduced that pose is the only one drawn, and it must read this render's hover, not the last one's.
+  useLayoutEffect(() => {
     sim.current.hot = hot
     sim.current.keys = byKeys
   }, [hot, byKeys])
@@ -283,11 +284,24 @@ function Orbits({ projects, visible, progress, active, reducedMotion, intensity,
     pose(reducedMotion)
   })
 
-  useTicker(active && !reducedMotion && !!model, (dt) => {
+  /* Between scrolls and visits the system only drifts — about twenty pixels a second at its widest —
+     and thirty poses a second move it by well under a pixel each. Posing is the chapter's heaviest
+     recurring work (every body's transform, name and wake), so a frame that neither scrolls, points
+     nor settles is held back until a thirtieth of a second has gone by, and then simulates all of it. */
+  const calm = useRef({ since: 0, drawn: Number.NaN, hot: null as string | null })
+  useTicker(active && !reducedMotion && !!model, (step, _now, pace) => {
     const s = sim.current
+    const c = calm.current
+    c.since += step
+    const busy = !(Math.abs(progress.current - c.drawn) <= 1e-5) || s.hot !== c.hot || s.keys || Math.abs(s.pace - (s.hot ? 0 : 1)) > 1e-3
+    if (!busy && c.since < 1 / 30 - 0.002) return
+    const dt = Math.min(0.1, c.since)
+    c.since = 0
+    c.drawn = progress.current
+    c.hot = s.hot
     s.pace = approach(s.pace, s.hot ? 0 : 1, s.hot ? 7 : 1.6, dt)
     model?.rings.forEach((r, k) => {
-      s.spin[k] += r.omega * dt * speed * s.pace
+      s.spin[k] += r.omega * dt * speed * s.pace * pace
     })
     // A body reached with the keyboard is brought round to the front of its orbit, where names are read.
     const b = s.keys && s.hot ? model?.bodies.find((x) => x.p.slug === s.hot) : undefined

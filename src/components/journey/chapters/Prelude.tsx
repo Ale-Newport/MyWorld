@@ -54,13 +54,38 @@ export function Prelude() {
   const hintRef = useRef<HTMLDivElement>(null)
   const shellRef = useRef<HTMLDivElement>(null)
 
-  /* Role rotation — stops once the visitor starts scrolling. */
+  /* Role rotation — only while someone can see it. The roles fade out as the
+     visitor starts scrolling (the thesis takes their place) and the name leaves
+     with its chapter, and a tab in the background shows nothing at all; a timer
+     that kept going through all of that was a React commit every 1.5 s for
+     the whole visit, six chapters later and in a hidden tab included. */
+  const rolesFaded = useRef(false)
+  const syncRoles = useRef<() => void>(() => {})
   useEffect(() => {
     if (reducedMotion) return
-    const id = window.setInterval(() => {
-      setRole((r) => (r + 1) % Math.max(1, profile.roles.length))
-    }, 1500)
-    return () => window.clearInterval(id)
+    const shell = shellRef.current
+    const count = Math.max(1, profile.roles.length)
+    let id = 0
+    let inView = true
+    const sync = () => {
+      const run = inView && !rolesFaded.current && document.visibilityState === 'visible'
+      if (run && !id) id = window.setInterval(() => setRole((r) => (r + 1) % count), 1500)
+      else if (!run && id) {
+        window.clearInterval(id)
+        id = 0
+      }
+    }
+    syncRoles.current = sync
+    const io = shell ? new IntersectionObserver(([e]) => { inView = e.isIntersecting; sync() }) : null
+    if (shell) io?.observe(shell)
+    document.addEventListener('visibilitychange', sync)
+    sync()
+    return () => {
+      io?.disconnect()
+      document.removeEventListener('visibilitychange', sync)
+      window.clearInterval(id)
+      syncRoles.current = () => {}
+    }
   }, [reducedMotion, profile.roles.length])
 
   useChapterFrame('prelude', (t) => {
@@ -79,6 +104,11 @@ export function Prelude() {
     // Roles fade out and the thesis takes their place.
     const r = rolesRef.current
     if (r) r.style.opacity = String(1 - clamp(range(t, 0.05, 0.3)))
+    const faded = t >= 0.3
+    if (faded !== rolesFaded.current) {
+      rolesFaded.current = faded
+      syncRoles.current()
+    }
 
     const th = thesisRef.current
     if (th) {

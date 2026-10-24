@@ -23,6 +23,7 @@
   gap: 0.3rem;
   width: 100%;
   color: var(--text-muted);
+  /* Letting go of a tile is a soft release; arriving on it or pressing it is answered at once (below). */
   transition:
     color var(--dur-mid) var(--ease-out-expo),
     transform var(--dur-mid) var(--ease-out-expo);
@@ -135,12 +136,29 @@
   border-style: dashed;
 }
 
-.tile:hover, .tile[data-on='true'] {
+/* The tile that is pointed at, focused or pressed lifts and takes the accent within --dur-quick; only a pointer
+   that can hover is promised the :hover (a finger leaves nothing stuck under it — a tap pins the tile instead). */
+.tile[data-on='true'] {
   color: var(--accent);
   transform: translateY(-2px);
 }
-.tile:hover .plate, .tile[data-on='true'] .plate { border-color: var(--accent); }
+@media (hover: hover) {
+  .tile:hover {
+    color: var(--accent);
+    transform: translateY(-2px);
+  }
+}
+.tile:is(:hover, [data-on='true'], :active, [data-press]) { transition-duration: var(--dur-quick); }
+.tile:is(:hover, [data-on='true'], :active, [data-press]) .plate,
+.tile:is(:hover, [data-on='true'], :active, [data-press]) .count { transition-duration: var(--dur-quick); }
+.tile[data-on='true'] .plate { border-color: var(--accent); }
+@media (hover: hover) {
+  .tile:hover .plate { border-color: var(--accent); }
+}
 .tile[data-on='true'] .count { color: var(--accent); border-color: var(--accent); }
+/* The press: the tile settles back under the finger and keeps the accent. */
+.tile:active, .tile[data-press] { color: var(--accent); transform: translateY(0) scale(0.96); }
+.tile:active .plate, .tile[data-press] .plate { border-color: var(--accent); }
 .tile[data-pinned='true'] .plate {
   background: color-mix(in oklab, var(--accent) 12%, var(--bg-secondary));
   border-color: var(--accent);
@@ -167,5 +185,5 @@
 
 @media (prefers-reduced-motion: reduce) {
   .tile, .plate, .count { transition: none; }
-  .tile:hover, .tile[data-on='true'] { transform: none; }
+  .tile:hover, .tile[data-on='true'], .tile:active, .tile[data-press] { transform: none; }
 }

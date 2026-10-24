@@ -5,9 +5,10 @@ import { useEffect, useRef, useSyncExternalStore } from 'react'
 import type { Chapter, JourneyId } from '@/content/types'
 import { useSite } from '@/cms/context'
 import { WorldEntryLink } from '@/components/world/WorldEntryLink'
-import { useActiveChapter, useJourneyRoute } from '@/components/journey/JourneyProvider'
+import { useJourneyRoute } from '@/components/journey/JourneyProvider'
 import { useJourney } from '@/state/journey'
 import { scrollToProgress } from '@/hooks/useLenisScroll'
+import { claimEscape, holdScroll } from '@/components/ui/scrollLock'
 import styles from './IndexOverlay.module.css'
 
 /* ============================================================
@@ -85,25 +86,33 @@ function useWorldVisited(): boolean {
 export function IndexOverlay({ open, onClose }: { open: boolean; onClose: () => void }) {
   /* Which journey is underfoot comes from the route, so the panel
      prints the right one first even before a single effect has run. */
-  const { id: journeyId, ranges } = useJourneyRoute()
+  const { id: journeyId, chapters, ranges } = useJourneyRoute()
   const { profile, contact, journeys, settings } = useSite()
   const worldNav = settings.navigation.find((n) => n.id === 'world')
-  const chapter = useActiveChapter().id
   const quickView = useJourney((s) => s.quickView)
   const setQuickView = useJourney((s) => s.setQuickView)
+  const sheet = useRef<HTMLDivElement>(null)
   const panel = useRef<HTMLDivElement>(null)
-  const firstItem = useRef<HTMLButtonElement>(null)
   const visited = useWorldVisited()
 
   /* Focus trap + escape. */
   useEffect(() => {
     if (!open) return
     const prev = document.activeElement as HTMLElement | null
-    firstItem.current?.focus()
-    document.body.style.overflow = 'hidden'
+    /* The row of the chapter being read is marked and focused as the panel opens, from the store, not
+       from a subscription: this panel stands shut for almost the whole visit, and following the
+       chapter through every boundary re-rendered both journeys' rows (a hundred-odd components) for
+       a page nobody could see. (The page does not scroll under an open panel — see holdScroll — so the
+       chapter does not change once it is open.) */
+    const reading = (chapters.find((c) => c.id === useJourney.getState().chapter) ?? chapters[0]).id
+    panel.current?.querySelectorAll<HTMLElement>('button[data-id]').forEach((row) => {
+      row.dataset.current = String(row.dataset.id === reading)
+    })
+    panel.current?.querySelector<HTMLElement>(`button[data-id="${CSS.escape(reading)}"]`)?.focus()
+    const release = sheet.current ? holdScroll(sheet.current) : undefined
 
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') { onClose(); return }
+      if (e.key === 'Escape') { if (claimEscape(sheet.current, e)) onClose(); return }
       if (e.key !== 'Tab') return
       const nodes = panel.current?.querySelectorAll<HTMLElement>(
         'button, a[href], [tabindex]:not([tabindex="-1"])',
@@ -118,10 +127,10 @@ export function IndexOverlay({ open, onClose }: { open: boolean; onClose: () => 
     document.addEventListener('keydown', onKey)
     return () => {
       document.removeEventListener('keydown', onKey)
-      document.body.style.overflow = ''
+      release?.()
       prev?.focus()
     }
-  }, [open, onClose])
+  }, [open, onClose, chapters])
 
   const go = (id: string) => {
     const r = ranges.find((x) => x.id === id)
@@ -144,6 +153,7 @@ export function IndexOverlay({ open, onClose }: { open: boolean; onClose: () => 
 
   return (
     <div
+      ref={sheet}
       className={styles.overlay}
       data-open={open}
       role="dialog"
@@ -188,9 +198,9 @@ export function IndexOverlay({ open, onClose }: { open: boolean; onClose: () => 
                         <button
                           key={c.id}
                           type="button"
-                          ref={c.id === chapter ? firstItem : undefined}
                           className={styles.item}
-                          data-current={c.id === chapter}
+                          data-id={c.id}
+                          data-current="false"
                           onClick={() => go(c.id)}
                           data-cursor="link"
                         >

@@ -54,6 +54,8 @@
     inset 0 0 0 1.5px var(--accent),
     inset 0 1px 0 rgba(255, 255, 255, 0.55),
     0 24px 32px -20px rgba(58, 40, 18, 0.55);
+  /* Pointing at a tile is answered within --dur-quick (its light and its ground); letting go takes the slower ease. */
+  transition-duration: var(--dur-quick), var(--dur-quick), 700ms, 700ms, 700ms;
 }
 .tile[data-tier='0'][data-hot] .plate,
 .tile[data-tier='0']:focus-visible .plate { background-color: color-mix(in oklab, var(--accent-p) 11%, #fbf7ef); }
@@ -96,6 +98,7 @@
 .tile:focus-visible .shot[data-ready] {
   opacity: 1;
   filter: none;
+  transition-duration: var(--dur-fast), var(--dur-quick);
 }
 
 /* ---- type -------------------------------------------------------- */
@@ -162,7 +165,7 @@
   -webkit-line-clamp: 2;
 }
 .tile[data-hot] .title,
-.tile:focus-visible .title { text-decoration-color: var(--accent); }
+.tile:focus-visible .title { text-decoration-color: var(--accent); transition-duration: var(--dur-quick); }
 
 .desc {
   font-size: clamp(11.5px, calc(var(--cell) * 0.1), 14px);
