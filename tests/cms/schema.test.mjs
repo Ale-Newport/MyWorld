@@ -91,3 +91,14 @@ test('v1 documents migrate to v2: text kept, geometry dropped, added elements mo
   assert.equal(v1.journeys.home.sections[1].animation.id, 'universe.gone', 'the stored document is never mutated')
   assert.throws(() => migrateSiteDocument({ schemaVersion: 99 }), /newer version/)
 })
+
+test('the typeface setting: a saved site without it keeps Geist, unknown names are refused, and the CSS carries only a vetted stack', async () => {
+  const T = await load('src/styles/typefaces.ts')
+  const options = { worldEntrance: true, analytics: true, leafCharge: 'standard' }
+  const parse = (extra) => S.settings.shape.options.safeParse({ ...options, ...extra })
+  assert.equal(parse({}).data.typeface, 'geist')
+  for (const t of T.TYPEFACES) assert.ok(parse({ typeface: t }).success, t)
+  assert.equal(parse({ typeface: 'comic-sans' }).success, false)
+  assert.equal(T.typefaceCss('geist'), '', 'the default adds nothing: tokens.css already holds it')
+  for (const t of ['akzidenz', 'montreal', 'grotesk']) assert.match(T.typefaceCss(t), /^:root\{--font-display:[^;{}<>]+;--font-mono:[^;{}<>]+\}$/, t)
+})

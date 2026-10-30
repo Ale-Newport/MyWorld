@@ -4,6 +4,7 @@ import { SiteContentProvider } from '@/cms/context'
 import { GardenCover } from '@/components/home/botanical/GardenCover'
 import { Analytics } from '@/components/analytics/Analytics'
 import { publicSiteUrl } from '@/lib/site-url'
+import { typefaceCss } from '@/styles/typefaces'
 
 /* ============================================================
    THE PUBLIC SITE
@@ -66,6 +67,7 @@ export default async function SiteLayout({ children }: { children: React.ReactNo
   }
   return (
     <>
+      {typefaceCss(doc.settings.options.typeface) && <style>{typefaceCss(doc.settings.options.typeface)}</style>}
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(personJsonLd).replace(/</g, '\\u003c') }} />
       <SiteContentProvider doc={doc} editing={preview}>
         {children}

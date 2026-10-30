@@ -1,0 +1,18 @@
+/* Faces for the typeface setting. A face is fetched only when the page actually uses its family,
+   so the ones that are not chosen cost nothing. Akzidenz-Grotesk Pro and Neue Montreal are
+   licensed fonts: their files are not in the repository (public/fonts/README.md says where they go). */
+@import '@fontsource-variable/space-grotesk/wght.css';
+
+@font-face { font-family: 'Akzidenz-Grotesk Pro'; font-weight: 400; font-style: normal; font-display: swap;
+  src: local('Akzidenz-Grotesk Pro'), url('/fonts/akzidenz-grotesk-pro/Regular.woff2') format('woff2'); }
+@font-face { font-family: 'Akzidenz-Grotesk Pro'; font-weight: 500; font-style: normal; font-display: swap;
+  src: local('Akzidenz-Grotesk Pro Medium'), url('/fonts/akzidenz-grotesk-pro/Medium.woff2') format('woff2'); }
+@font-face { font-family: 'Akzidenz-Grotesk Pro'; font-weight: 700; font-style: normal; font-display: swap;
+  src: local('Akzidenz-Grotesk Pro Bold'), url('/fonts/akzidenz-grotesk-pro/Bold.woff2') format('woff2'); }
+
+@font-face { font-family: 'Neue Montreal'; font-weight: 400; font-style: normal; font-display: swap;
+  src: local('Neue Montreal'), url('/fonts/neue-montreal/Regular.woff2') format('woff2'); }
+@font-face { font-family: 'Neue Montreal'; font-weight: 500; font-style: normal; font-display: swap;
+  src: local('Neue Montreal Medium'), url('/fonts/neue-montreal/Medium.woff2') format('woff2'); }
+@font-face { font-family: 'Neue Montreal'; font-weight: 700; font-style: normal; font-display: swap;
+  src: local('Neue Montreal Bold'), url('/fonts/neue-montreal/Bold.woff2') format('woff2'); }
