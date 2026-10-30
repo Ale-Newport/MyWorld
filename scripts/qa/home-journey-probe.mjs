@@ -60,7 +60,7 @@ const NETWORKS = {
   slow4g: { latency: 150, downloadThroughput: (1.6 * 1024 * 1024) / 8, uploadThroughput: (750 * 1024) / 8 },
   fast4g: { latency: 60, downloadThroughput: (9 * 1024 * 1024) / 8, uploadThroughput: (1.5 * 1024 * 1024) / 8 },
 }
-const WORLD = /\/archipelago\/|\/api\/world\/|\/world2\/|^\/world(\?|$)/
+const WORLD = /\/archipelago\/|\/api\/world\/|^\/world(\?|$)/
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
 const r1 = (v) => (v == null ? null : Math.round(v * 10) / 10)
 const r2 = (v) => (v == null ? null : Math.round(v * 100) / 100)

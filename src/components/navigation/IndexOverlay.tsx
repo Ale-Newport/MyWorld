@@ -47,7 +47,7 @@ function groupsOf(list: Chapter[]): Group[] {
    first-time reader is told what it is, and a reader who has
    already pushed their way through is told it is still there.
 
-   `world2Unlocked` is written by the portal at the instant it
+   `worldUnlocked` is written by the portal at the instant it
    commits. localStorage has no server-side answer, and a panel
    that disagreed with its own HTML would be a hydration error
    for the sake of one line of type — so the flag is read through
@@ -58,7 +58,7 @@ function groupsOf(list: Chapter[]): Group[] {
    portal only writes it as the route leaves), so `subscribe` has
    nobody to notify and returns an empty teardown.
    ------------------------------------------------------------ */
-const UNLOCKED_KEY = 'world2Unlocked'
+const UNLOCKED_KEY = 'worldUnlocked'
 
 function subscribeUnlocked(): () => void {
   return () => {}

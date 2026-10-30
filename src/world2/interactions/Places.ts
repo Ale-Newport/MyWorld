@@ -1,7 +1,7 @@
 import * as THREE from 'three'
 import type { Bin } from '@/world/core/Disposal'
 import type { Physical } from '@/world/physics/Physics'
-import type { World2Game } from '../World2Game'
+import type { World2Game } from '../host'
 import type { References } from './references'
 import type { Prompts } from './Prompts'
 import { Screen } from './Screen'

@@ -56,7 +56,7 @@ const DELIBERATELY_HIDDEN = [
      than a formality. The six band hosts and the wash are portalled
      to <body> today, outside every `section[data-chapter]` this sweep
      walks, so nothing below is being silenced right now — but
-     HOME_NATURE_SYSTEM.md contemplates a layer mounted as a direct
+     docs/design/HOME_NATURE_SYSTEM.md contemplates a layer mounted as a direct
      child of a chapter stage, and the day one is, a decorative sheet
      at zero opacity behind an unlit chapter must read as intent and
      not as a chapter that failed to reveal itself. */

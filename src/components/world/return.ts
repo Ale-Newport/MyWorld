@@ -14,7 +14,7 @@
 /** sessionStorage: the journey's progress, 0..1, when the way in began. */
 export const RETURN_KEY = 'journey:return'
 /** localStorage: set the first time anyone goes through; the chapter index reads it. */
-export const UNLOCKED_KEY = 'world2Unlocked'
+export const UNLOCKED_KEY = 'worldUnlocked'
 
 export function markReturn(progress: number) {
   try {

@@ -122,7 +122,7 @@
    - studio     the admin world studio (its own template, served the way world-studio-drive.mjs serves it): Edit shows the
                 generated career with its rim, floor and a readout at 2023; Drive builds the same controller, retires the
                 same colliders and reads a year; neither throws.
-   - world2     GET /world2 still answers 200. */
+   */
 import fs from 'node:fs'
 import path from 'node:path'
 import { spawnSync } from 'node:child_process'
@@ -1909,12 +1909,6 @@ if (want('studio')) {
   await sp.screenshot({ path: file('studio-drive.png') })
   assert(studioErrors.length === 0, `the studio raised no errors${studioErrors.length ? `: ${studioErrors.slice(0, 2).join(' | ')}` : ''}`, results)
   await studio.close()
-}
-
-/* =============================== world2 =============================== */
-if (want('world2')) {
-  const response = await fetch(`${BASE}/world2`)
-  assert(response.status === 200, `GET /world2 answers ${response.status}`, results)
 }
 
 assert(errors.length === 0, `no console errors or page errors${errors.length ? `: ${errors.slice(0, 3).join(' | ')}` : ''}`, results)

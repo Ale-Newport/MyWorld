@@ -1,6 +1,6 @@
 import * as THREE from 'three'
 import type { Physical } from '@/world/physics/Physics'
-import type { World2Environment } from '../World2Environment'
+import type { World2Environment } from '../host'
 
 /* ============================================================
    BLENDER IS THE SOURCE OF TRUTH
@@ -53,7 +53,7 @@ export class References {
   readonly touched = new Set<THREE.Object3D>()
 
   constructor(readonly environment: World2Environment, readonly interactions: World2Interactions) {
-    environment.group.traverse(node => {
+    environment.group.traverse((node: THREE.Object3D) => {
       const source = node.userData.w2Source
       if (typeof source === 'string' && !this.bySource.has(source)) this.bySource.set(source, node)
     })
@@ -69,7 +69,7 @@ export class References {
   /** Same, but a missing name is a level/runtime mismatch worth shouting about. */
   require(name: string): THREE.Object3D {
     const node = this.node(name)
-    if (!node) throw new Error(`World2: "${name}" is not in the exported level. Re-run npm run world2:export.`)
+    if (!node) throw new Error(`World2: "${name}" is not in the exported level.`)
     return node
   }
 
