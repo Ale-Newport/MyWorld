@@ -52,7 +52,7 @@ export function buildSeedDocument(): SiteDocument {
       themeColor: '#f6f0e6',
       // The world entrance's label; links added here join the index overlay.
       navigation: [{ id: 'world', label: 'Enter my world', href: '/world', external: false }],
-      options: { worldEntrance: true, analytics: true, leafCharge: 'standard', leafParting: 'standard' },
+      options: { worldEntrance: true, analytics: true, leafCharge: 'standard', leafParting: 'standard', typeface: 'geist' },
     },
     profile: clone(seedProfile) as unknown as SiteDocument['profile'],
     contact: clone(seedContact),

@@ -256,6 +256,8 @@ export const settings = z.object({
     leafCharge: z.enum(['gentle', 'standard', 'brisk']),
     /** How long the leaves take to part over the world; coverage is verified before it either way. */
     leafParting: z.enum(['slow', 'standard', 'quick']).default('standard'),
+    /** The typeface of the whole public site (see styles/typefaces.ts). */
+    typeface: z.enum(['geist', 'akzidenz', 'montreal', 'grotesk']).default('geist'),
   }),
 })
 export type Settings = z.infer<typeof settings>
