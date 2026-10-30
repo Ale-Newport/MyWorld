@@ -28,7 +28,7 @@ export function GardenCover() {
   const pathname = usePathname()
   const parting = useSite().settings.options.leafParting
   useEffect(() => {
-    if (pathname === '/' || pathname === '/world' || pathname === '/world2') return
+    if (pathname === '/' || pathname === '/world') return
     garden.hide()
     document.documentElement.style.background = ''
   }, [pathname])

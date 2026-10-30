@@ -1,6 +1,6 @@
 import * as THREE from 'three'
 import type { Bin } from '@/world/core/Disposal'
-import type { World2Game } from '../World2Game'
+import type { World2Game } from '../host'
 import type { References } from './references'
 import type { PromptHandle } from './Prompts'
 import { BOARD_FEATURED_COUNT, type BoardProject } from '../content/projects'

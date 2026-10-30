@@ -60,7 +60,7 @@
    STROKE WEIGHT, AND WHY `vector-effect` IS NOT HERE
 
    Both `.ink` and `.stem` carried `vector-effect: non-scaling-
-   stroke`, which HOME_NATURE_SYSTEM.md §5.2 forbids on the
+   stroke`, which docs/design/HOME_NATURE_SYSTEM.md §5.2 forbids on the
    grounds that it "unscales the dash pattern and destroys
    `pathLength="1"`". That objection was checked once by looking
    at on-screen stroke weight, found not to apply, and left in

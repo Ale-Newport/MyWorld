@@ -44,7 +44,7 @@ const SCENARIOS = {
   'desktop-slow': { profile: 'desktop', cpu: 4, net: 'slow4g' },
 }
 const wanted = String(args.scenarios ?? Object.keys(SCENARIOS).join(',')).split(',')
-const WORLD = /\/archipelago\/|\/api\/world\/|\/world2\/|^\/world(\?|$)/
+const WORLD = /\/archipelago\/|\/api\/world\/|^\/world(\?|$)/
 
 /** Home-only page hook: when does the live room flip data-ready (its first lit frame is on screen)? */
 function roomHook() {

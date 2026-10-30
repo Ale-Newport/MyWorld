@@ -55,7 +55,7 @@ const touch = prof.touch
 const CX = prof.viewport.width / 2
 const CY = prof.viewport.height / 2
 const PHASE_TIMEOUT = NET === 'slow4g' ? 900000 : 300000
-const WORLD_RE = /^\/(archipelago|world2|api\/world)\//
+const WORLD_RE = /^\/(archipelago|api\/world)\//
 const isWorldReq = (r) => WORLD_RE.test(new URL(r.url).pathname)
 const r1 = (v) => (v == null ? null : Math.round(v * 10) / 10)
 

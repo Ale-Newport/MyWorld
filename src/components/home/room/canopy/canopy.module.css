@@ -28,7 +28,7 @@
   pointer-events: auto;
   /* ...and no gesture that starts on it pans, zooms or pulls the page to refresh:
      the page under the leaves is shut (see globals.css, `html[data-world-phase]`),
-     and this holds for /world2, which shares the cover without the machine. */
+     and this holds on /world, which shares the cover without the machine. */
   touch-action: none;
   overscroll-behavior: none;
 }
@@ -87,7 +87,7 @@
 
 /* An arrival nobody watched grow at /world (a reload, Forward) has its leaves in one piece
    already: they come up out of the dark rather than pop in once sealed. Only the world's own
-   transition (it writes its phase on <html>; /world2 shares this cover without it) gets this.
+   transition (it writes its phase on <html>; /world shares this cover without it) gets this.
    Compositor only, and `backwards`: it holds nothing once it has run, so the parting is free
    to fade them out. */
 :global(html[data-world-phase]:not([data-world-phase='HOME']):not([data-world-phase='IN_WORLD'])) .root[data-arrival='true']:not([data-open='true']):not([data-closing='true']) .layer { animation: layer-in 0.42s ease-out backwards; }

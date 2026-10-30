@@ -311,7 +311,7 @@ const IMAGE_EXT = /\.(png|jpe?g|webp|avif|gif|svg|ico|ktx2|basis|hdr|exr|bmp)(\?
 function kindOf(url, mime = '', type = '') {
   const u = new URL(url)
   const p = u.pathname.toLowerCase()
-  const world = /^\/(archipelago|world2|api\/world)\//.test(p)
+  const world = /^\/(archipelago|api\/world)\//.test(p)
   if (/\.wasm$/.test(p) || /wasm/.test(mime)) return 'wasm'
   if (/\.glb(\.gz)?$/.test(p) || /\.gltf$/.test(p) || /gltf/.test(mime)) return 'glb'
   if (/\.json(\.gz)?$/.test(p) || /json/.test(mime) || p.startsWith('/api/world/')) return 'json'

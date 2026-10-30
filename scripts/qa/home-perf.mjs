@@ -44,7 +44,7 @@ const NETWORKS = {
   fast3g: { latency: 562.5, downloadThroughput: (1.44 * 1024 * 1024) / 8 * 0.9, uploadThroughput: (675 * 1024) / 8 * 0.9 },
 }
 
-const WORLD_PATTERN = /\/archipelago\/|\/api\/world\/|\/world2\//
+const WORLD_PATTERN = /\/archipelago\/|\/api\/world\//
 
 async function measure(browser) {
   const context = await browser.newContext({ viewport: { width: W, height: H }, deviceScaleFactor: 1 })

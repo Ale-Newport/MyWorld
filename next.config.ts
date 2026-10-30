@@ -16,6 +16,10 @@ const nextConfig: NextConfig = {
   outputFileTracingIncludes: {
     '**/*': ['./node_modules/pg-cloudflare/dist/**', './node_modules/pg-cloudflare/esm/**'],
   },
+  // The retired second world: old links land on the one world.
+  async redirects() {
+    return [{ source: '/world2', destination: '/world', permanent: true }]
+  },
   experimental: {
     optimizePackageImports: ['@react-three/drei'],
   },

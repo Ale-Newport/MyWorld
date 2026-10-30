@@ -28,3 +28,6 @@ next-env.d.ts
 .wrangler/
 .dev.vars*
 !.dev.vars.example
+
+# Local design sources (Blender, video, logos): not part of the site
+/design-source/

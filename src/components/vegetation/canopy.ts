@@ -61,7 +61,7 @@ export type CanopyKind =
 /** Depth band. Decides ink strength, line work and stroke weight. */
 export type Band = 'shadow' | 'back' | 'mid' | 'front' | 'close'
 
-/** How much line work a band pays for. Drawn from HOME_NATURE_SYSTEM.md §2.3. */
+/** How much line work a band pays for. Drawn from docs/design/HOME_NATURE_SYSTEM.md §2.3. */
 export const BAND_DETAIL: Record<Band, {
   midrib: boolean; secondary: boolean; tertiary: boolean; edge: boolean; gradient: boolean
 }> = {

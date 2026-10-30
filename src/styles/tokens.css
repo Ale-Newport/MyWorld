@@ -267,13 +267,5 @@
      foreshadow in nature.module.css is not a hard-coded colour. */
   --ground-bloom:     #f0c090;
 
-  /* The seam. /world2's first painted frame is a full-bleed field
-     of this colour, server-rendered, so the veil fades to it
-     rather than to white and the step out of the leaves is a lift
-     in one hue family instead of a dip. It must move with
-     .route's background in world2.module.css — the same
-     discipline src/world/core/palette.ts documents for --paper. */
-  --world2-ground:    #dce3dc;
-
   color-scheme: light;
 }

@@ -32,7 +32,7 @@ scene (see [Fallback](#fallback)).
 | `view.ts` | The room's fitted lens, published for the canopy. |
 | `canopy/plan.ts` | The portal's canopy: the room's ivy, come loose of the wall and grown out towards the lens in layers of depth, planned in screen terms. |
 | `canopy/renderer.ts`, `canopy/shaders.ts` | The canopy's own small WebGL context (transparent, above the page): the room's plants, painted back to front, lit by the hall's key and sky; frozen into plain canvases when full. |
-| `canopy/CanopyCover.tsx`, `canopy/canopy.module.css` | The cover in the root layout (via `botanical/GardenCover`): grows with the portal's charge, survives the route change, parts on /world2. |
+| `canopy/CanopyCover.tsx`, `canopy/canopy.module.css` | The cover in the root layout (via `botanical/GardenCover`): grows with the portal's charge, survives the route change, parts on /world. |
 
 ## How it works
 
@@ -116,7 +116,7 @@ loose of the wall, layer by layer towards the lens, the nearest last and
 largest, over the dark of the leaves behind. When the charge is full the
 canopy's last frame is frozen into six plain canvases (three depth bands,
 each split down the middle by whole plants) and its context is released,
-with the room's, before the route changes. On /world2 the ivy parts down the
+with the room's, before the route changes. On /world the ivy parts down the
 middle — the near leaves first and furthest — by CSS transforms alone, so it
 keeps its pace while the world starts.
 
@@ -129,7 +129,7 @@ multisampling. Once it stands over the page it takes the clicks, and at the
 commit the page is made `inert`. The hand-off itself (contexts released, route
 pushed) runs on timers of its own, so a setting changing mid-way cannot cancel
 it; leaving by another way meanwhile takes the cover and the seam colour away.
-A cold arrival on /world2 (a hard load that still holds the arrival key) gets
+A cold arrival on /world (a hard load that still holds the arrival key) gets
 the canopy's dark alone, parting by fading: drawing a canopy there would compete
 with the world's start-up.
 
@@ -183,7 +183,7 @@ All need a running server (default `http://localhost:3000`).
 - `node scripts/home-portal-qa.mjs [base] [WxH]` — the way out, driven for
   real: nothing over the page at the foot, the takeover, full cover at the
   commit, the hand-off (contexts released, no light frame), the parting and
-  the arrival on /world2. `PORTAL_VIDEO=1` records the run.
+  the arrival on /world. `PORTAL_VIDEO=1` records the run.
 
 ## Fallback
 
