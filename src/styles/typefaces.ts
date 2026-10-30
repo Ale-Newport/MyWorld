@@ -26,8 +26,13 @@ export function isTypeface(v: unknown): v is Typeface {
   return typeof v === 'string' && (TYPEFACES as readonly string[]).includes(v)
 }
 
+/** A stored value as a typeface: a site saved before the setting existed (or a hand-edited one) has none, and gets the default. */
+export function resolveTypeface(v: unknown): Typeface {
+  return isTypeface(v) ? v : DEFAULT_TYPEFACE
+}
+
 /** The declaration block that applies a typeface; empty for the default, which tokens.css already holds. */
-export function typefaceCss(t: Typeface): string {
-  const stack = TYPEFACE_INFO[t].stack
+export function typefaceCss(value: unknown): string {
+  const stack = TYPEFACE_INFO[resolveTypeface(value)].stack
   return stack ? `:root{--font-display:${stack};--font-mono:${stack}}` : ''
 }

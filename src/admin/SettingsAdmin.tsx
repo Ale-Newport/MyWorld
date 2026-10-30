@@ -6,7 +6,7 @@ import { DraftBar } from './DraftBar'
 import { Loading, PageHeader } from './ui/kit'
 import { ColorInput, Field, MediaInput, SelectInput, StringList, TextInput, Toggle, newId } from './fields'
 import { safeHref } from '@/cms/schema'
-import { TYPEFACES, TYPEFACE_INFO } from '@/styles/typefaces'
+import { TYPEFACES, TYPEFACE_INFO, resolveTypeface } from '@/styles/typefaces'
 
 /* ============================================================
    SETTINGS — each one is read by the public site:
@@ -48,7 +48,7 @@ export function SettingsAdmin() {
           <section className="card stack">
             <h2>Appearance</h2>
             <ColorInput path="settings.themeColor" label="Browser theme colour" optional={false} />
-            <SelectInput path="settings.options.typeface" label="Typeface" options={TYPEFACES.map((t) => ({ value: t, label: TYPEFACE_INFO[t].label }))} hint={TYPEFACE_INFO[s.options.typeface].note} />
+            <SelectInput path="settings.options.typeface" fallback="geist" label="Typeface" options={TYPEFACES.map((t) => ({ value: t, label: TYPEFACE_INFO[t].label }))} hint={TYPEFACE_INFO[resolveTypeface(s.options.typeface)].note} />
             <MediaInput path="settings.favicon" label="Favicon" hint="Square PNG or SVG. Empty keeps the built-in icon." />
             <MediaInput path="settings.ogImage" label="Share image" hint="Shown when the site is shared; 1200×630 works everywhere." />
           </section>
