@@ -60,12 +60,12 @@ export function NumberInput({ path, label, min, max, step = 1, hint }: { path: s
   )
 }
 
-export function SelectInput({ path, label, options, hint }: { path: string; label: string; options: readonly (string | { value: string; label: string })[]; hint?: ReactNode }) {
+export function SelectInput({ path, label, options, hint, fallback }: { path: string; label: string; options: readonly (string | { value: string; label: string })[]; hint?: ReactNode; /** Shown while the document holds no value yet (a setting added after it was saved). */ fallback?: string }) {
   const value = useValue<string>(path)
   const id = useId()
   return (
     <Field label={label} hint={hint} id={id}>
-      <select id={id} {...described(id, hint)} className="input" value={value ?? ''} onChange={(e) => write(path, e.target.value, false)}>
+      <select id={id} {...described(id, hint)} className="input" value={value ?? fallback ?? ''} onChange={(e) => write(path, e.target.value, false)}>
         {options.map((o) => typeof o === 'string' ? <option key={o} value={o}>{o}</option> : <option key={o.value} value={o.value}>{o.label}</option>)}
       </select>
     </Field>
