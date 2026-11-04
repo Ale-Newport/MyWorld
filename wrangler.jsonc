@@ -13,9 +13,9 @@
   "observability": { "enabled": true },
   "limits": { "cpu_ms": 30000 },
   // Run the Worker near its database (Supabase) when most of a request is waiting on it.
-  "placement": { "mode": "smart" }
-  // Optional, faster database connections: create a Hyperdrive config for the
-  // Supabase connection string and add
-  //   "hyperdrive": [{ "binding": "HYPERDRIVE", "id": "<hyperdrive-id>" }]
-  // src/server/db.ts uses it when present, else the DATABASE_URL secret.
+  "placement": { "mode": "smart" },
+  // Pooled connections to Supabase through Hyperdrive (session-mode pooler, port 5432; caching off, so a publish shows at once).
+  // src/server/db.ts uses the binding when present, else the DATABASE_URL secret.
+  // localConnectionString is a placeholder for local tooling (OpenNext's deploy step needs one); it is never deployed.
+  "hyperdrive": [{ "binding": "HYPERDRIVE", "id": "79ba8d775dbb4305a2f6742b5a3cd39b", "localConnectionString": "postgresql://local:local@127.0.0.1:5432/local" }]
 }
