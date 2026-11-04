@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { useState } from 'react'
 
-export function LoginForm({ next, noAdmins }: { next: string; noAdmins: boolean }) {
+export function LoginForm({ next, noAdmins, site }: { next: string; noAdmins: boolean; site: boolean }) {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   return (
@@ -53,7 +53,7 @@ export function LoginForm({ next, noAdmins }: { next: string; noAdmins: boolean 
         </label>
         {error && <p className="notice" data-tone="danger" role="alert">{error}</p>}
         <button className="btn btn-primary" type="submit" disabled={busy}>{busy ? 'Signing in…' : 'Sign in'}</button>
-        <Link href="/" className="a-sub" style={{ fontSize: 12 }}>← Back to the site</Link>
+        {site && <Link href="/" className="a-sub" style={{ fontSize: 12 }}>← Back to the site</Link>}
       </form>
     </main>
   )

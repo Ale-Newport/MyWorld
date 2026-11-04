@@ -6,6 +6,7 @@
     "world:seed": "node scripts/world/build-seed.mjs",
     "predev": "npm run world:seed --silent",
     "dev": "next dev",
+    "dev:site": "npm run world:seed --silent && CMS_SHOW_SITE=1 next dev",
     "prebuild": "npm run world:seed --silent",
     "build": "next build",
     "start": "next start",

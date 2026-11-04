@@ -18,19 +18,22 @@ import { Icon, type IconName } from './ui/icons'
 
    Editing the website and the world happens in the editor on your
    own machine, and Publish there commits the result: the deployed
-   admin keeps only the audience and the settings.
+   admin keeps only the audience and the settings. The editor shows
+   only what the deployed admin cannot do (the website, the world, the
+   site's images), and never the website itself.
    ============================================================ */
-const NAV: { href: string; label: string; icon: IconName; match: RegExp; editor?: boolean }[] = [
+const NAV: { href: string; label: string; icon: IconName; match: RegExp; editor?: boolean; deployed?: boolean }[] = [
   { href: '/admin/pages', label: 'Website', icon: 'website', match: /^\/admin(\/(pages|projects|media|history)(\/.*)?)?$/, editor: true },
   { href: '/admin/world', label: 'World', icon: 'world', match: /^\/admin\/world/, editor: true },
-  { href: '/admin/analytics', label: 'Audience', icon: 'audience', match: /^\/admin\/analytics/ },
-  { href: '/admin/settings', label: 'Settings', icon: 'settings', match: /^\/admin\/settings/ },
+  { href: '/admin/analytics', label: 'Audience', icon: 'audience', match: /^\/admin\/analytics/, deployed: true },
+  { href: '/admin/settings', label: 'Settings', icon: 'settings', match: /^\/admin\/settings/, deployed: true },
+  { href: '/admin/settings', label: 'Site images', icon: 'media', match: /^\/admin\/settings/, editor: true },
 ]
 
 /** Editors want the whole screen: the navigation folds to a rail there. */
 const COMPACT = [/^\/admin\/pages/, /^\/admin\/world/, /^\/admin\/projects\/[^/]+/]
 
-export function AdminShell({ user, csrf, editor, children }: { user: { name: string; email: string }; csrf: string; editor: boolean; children: React.ReactNode }) {
+export function AdminShell({ user, csrf, editor, siteUrl, children }: { user: { name: string; email: string }; csrf: string; editor: boolean; siteUrl: string; children: React.ReactNode }) {
   const pathname = usePathname()
   const toasts = useToasts((s) => s.items)
   const [signingOut, setSigningOut] = useState(false)
@@ -45,12 +48,12 @@ export function AdminShell({ user, csrf, editor, children }: { user: { name: str
   return (
     <div className="a-shell" data-compact={compact}>
       <nav className="a-nav" aria-label="Admin">
-        <Link href={editor ? '/admin/pages' : '/admin/settings'} prefetch={false} className="a-brand" title="Portfolio admin">
+        <Link href={editor ? '/admin/pages' : '/admin/settings'} prefetch={false} className="a-brand" title={editor ? 'Portfolio editor' : 'Portfolio admin'}>
           <span className="a-mark" aria-hidden="true">AN</span>
-          <span className="a-brand-text"><b>Portfolio admin</b><small>{user.name}</small></span>
+          <span className="a-brand-text"><b>{editor ? 'Portfolio editor' : 'Portfolio admin'}</b><small>{user.name}</small></span>
         </Link>
         <div className="a-nav-items">
-          {NAV.filter((item) => editor || !item.editor).map((item) => (
+          {NAV.filter((item) => (editor ? !item.deployed : !item.editor)).map((item) => (
             <Link key={item.href} href={item.href} prefetch={false} className="a-item" aria-current={item.match.test(pathname) ? 'page' : undefined} title={item.label}>
               <Icon name={item.icon} />
               <span className="a-text">{item.label}</span>
@@ -58,8 +61,8 @@ export function AdminShell({ user, csrf, editor, children }: { user: { name: str
           ))}
         </div>
         <div className="a-nav-foot">
-          {/* Leaves Draft Mode first, so the site shows what visitors see. */}
-          <a className="a-item" href="/admin/view-site" target="_blank" rel="noreferrer" title="View the live site">
+          {/* The editor does not show the website: this opens the deployed one. */}
+          <a className="a-item" href={editor ? siteUrl : '/'} target="_blank" rel="noreferrer" title="View the live site">
             <Icon name="external" />
             <span className="a-text">View site</span>
           </a>

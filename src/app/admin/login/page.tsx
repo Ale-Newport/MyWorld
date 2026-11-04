@@ -3,6 +3,7 @@ import { currentSession } from '@/server/auth/guard'
 import { countUsers } from '@/server/auth/users'
 import { LoginForm } from '@/admin/LoginForm'
 import { envReport } from '@/server/env'
+import { EDITOR } from '@/server/mode'
 
 export const dynamic = 'force-dynamic'
 export const metadata = { title: 'Sign in' }
@@ -34,5 +35,5 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
       </main>
     )
   }
-  return <LoginForm next={safeNext} noAdmins={noAdmins} />
+  return <LoginForm next={safeNext} noAdmins={noAdmins} site={!EDITOR} />
 }
