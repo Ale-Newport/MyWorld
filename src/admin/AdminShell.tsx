@@ -6,6 +6,7 @@ import { useEffect, useState } from 'react'
 import { setCsrf, api } from './api'
 import { useToasts } from './toast'
 import { Icon, type IconName } from './ui/icons'
+import { TokenBanner } from './TokenStatus'
 
 /* ============================================================
    ONE ADMIN, FOUR PLACES (TWO ON THE DEPLOYED SITE)
@@ -84,7 +85,7 @@ export function AdminShell({ user, csrf, editor, siteUrl, children }: { user: { 
           </button>
         </div>
       </nav>
-      <div className="a-main">{children}</div>
+      <div className="a-main">{!editor && <TokenBanner />}{children}</div>
       <div className="toasts" role="status" aria-live="polite">
         {toasts.map((t) => <div key={t.id} className="toast" data-tone={t.tone}>{t.text}</div>)}
       </div>
