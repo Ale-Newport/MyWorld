@@ -3,7 +3,7 @@
   "settings": {
     "siteUrl": "https://alejandronewport.com",
     "title": "Alejandro Newport — Software & AI Engineer",
-    "description": "Computer scientist and AI engineer building intelligent products across software, AI, data and interactive systems. Portfolio 2026.",
+    "description": "Computer scientist and engineer building intelligent products across software, AI, data and interactive systems. King’s College London → UCL. Portfolio 2026.",
     "keywords": [
       "Alejandro Newport",
       "Software Engineer",
@@ -49,7 +49,7 @@
     ],
     "thesis": "I BUILD INTELLIGENT SYSTEMS.",
     "thesisShort": "I BUILD THINGS.",
-    "summary": "Computer scientist and engineer building intelligent products across software, AI, data and interactive systems.",
+    "summary": "Computer scientist and AI engineer building intelligent products across software, data and interactive systems.",
     "markers": [
       {
         "from": "SOFTWARE",
@@ -2186,7 +2186,7 @@
       "dataStatus": "verified",
       "privateSource": false,
       "featured": false,
-      "status": "published",
+      "status": "archived",
       "hidden": false,
       "order": 14,
       "links": [],
@@ -2251,7 +2251,7 @@
       "dataStatus": "verified",
       "privateSource": false,
       "featured": false,
-      "status": "published",
+      "status": "archived",
       "hidden": false,
       "order": 15,
       "links": [],
@@ -2553,7 +2553,7 @@
       "dataStatus": "verified",
       "privateSource": false,
       "featured": false,
-      "status": "published",
+      "status": "archived",
       "hidden": false,
       "order": 20,
       "links": [],
@@ -2615,7 +2615,7 @@
       "dataStatus": "verified",
       "privateSource": false,
       "featured": false,
-      "status": "published",
+      "status": "archived",
       "hidden": false,
       "order": 21,
       "links": [],
@@ -3014,7 +3014,7 @@
       ],
       "status": "published",
       "hidden": false,
-      "order": 28,
+      "order": 29,
       "links": [],
       "seo": {},
       "sections": []
@@ -3071,7 +3071,7 @@
       "assetStatus": "real",
       "dataStatus": "verified",
       "privateSource": true,
-      "featured": true,
+      "featured": false,
       "accent": "#15284c",
       "palette": [
         "#15284c",
@@ -3080,7 +3080,7 @@
       ],
       "status": "published",
       "hidden": false,
-      "order": 29,
+      "order": 28,
       "links": [],
       "seo": {},
       "sections": []
@@ -3408,7 +3408,7 @@
         "#74c4cc",
         "#fcc72b"
       ],
-      "status": "published",
+      "status": "archived",
       "hidden": false,
       "order": 34,
       "links": [],
@@ -3905,7 +3905,12 @@
           "subtitle": "Computer scientist & engineer",
           "group": "Introduction",
           "vh": 3.4,
-          "quickVh": 1.8
+          "quickVh": 1.8,
+          "animation": {
+            "id": "about.journey-ribbon",
+            "intensity": 0.65,
+            "speed": 1
+          }
         },
         {
           "id": "toolbox",
@@ -3927,12 +3932,7 @@
           "subtitle": "Interactive spatial archive",
           "group": "Practice",
           "vh": 3.6,
-          "quickVh": 2,
-          "animation": {
-            "id": "universe.mosaic",
-            "intensity": 0.65,
-            "speed": 1
-          }
+          "quickVh": 2
         },
         {
           "id": "education",
@@ -4060,6 +4060,9 @@
     ]
   },
   "elements": {
+    "about.corner": {
+      "hidden": true
+    },
     "focus.title": {
       "text": "Wyllex"
     }
