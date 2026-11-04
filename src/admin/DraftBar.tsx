@@ -42,8 +42,8 @@ export function DraftBar({ children, compact = false }: { children?: ReactNode; 
           <button type="button" className="btn btn-icon" onClick={() => s.undo()} disabled={!s.past.length} title="Undo (⌘Z)" aria-label="Undo"><Icon name="undo" size={16} /></button>
           <button type="button" className="btn btn-icon" onClick={() => s.redo()} disabled={!s.future.length} title="Redo (⇧⌘Z)" aria-label="Redo"><Icon name="redo" size={16} /></button>
         </div>
-        <button type="button" className="btn" onClick={() => void s.save()} disabled={!dirty || s.saving} title="Save draft (⌘S)">{s.saving ? 'Saving…' : compact ? 'Save' : 'Save draft'}</button>
-        <button type="button" className="btn btn-accent" onClick={() => void s.publish()} disabled={s.publishing || (!dirty && !unpublished)}>{s.publishing ? 'Publishing…' : 'Publish'}</button>
+        {!s.live && <button type="button" className="btn" onClick={() => void s.save()} disabled={!dirty || s.saving} title="Save draft (⌘S)">{s.saving ? 'Saving…' : compact ? 'Save' : 'Save draft'}</button>}
+        <button type="button" className="btn btn-accent" onClick={() => void s.publish()} disabled={s.publishing || (!dirty && !unpublished) || (!!s.live && !s.live.canPublish)}>{s.publishing ? 'Publishing…' : 'Publish'}</button>
       </div>
       <Dialog
         open={!!s.conflict}

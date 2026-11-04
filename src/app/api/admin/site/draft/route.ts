@@ -1,12 +1,12 @@
 import { maintainQuietly } from '@/server/maintenance'
-import { adminApi, json, problem } from '@/server/auth/guard'
+import { editorApi, json, problem } from '@/server/auth/guard'
 import { saveSiteDraft } from '@/server/site'
 
 export const runtime = 'nodejs'
 
 /* Save the whole document as a new draft revision on top of `base`.
    409 with the current head when someone else saved in between. */
-export const PUT = adminApi(async (req, { actor }) => {
+export const PUT = editorApi(async (req, { actor }) => {
   const body = (await req.json().catch(() => null)) as { base?: string | null; doc?: unknown; message?: string; force?: boolean } | null
   if (!body || body.doc === undefined) return problem(400, 'Send { base, doc }.')
   const length = Number(req.headers.get('content-length') ?? 0)

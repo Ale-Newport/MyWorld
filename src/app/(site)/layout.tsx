@@ -10,13 +10,13 @@ import { typefaceCss } from '@/styles/typefaces'
    THE PUBLIC SITE
 
    Every public route reads the PUBLISHED site document here, once,
-   and hands it to the client tree. An administrator previewing in
-   Draft Mode gets the draft instead (see server/site.ts). The
-   pages render on request from the content store, so a publish
-   shows at once (the parsed document is cached per revision).
+   and hands it to the client tree. In the deployed site that
+   document is the committed file content/published/site.json, so
+   the pages are prerendered at build and served as files. In the
+   editor (your machine) the draft of an administrator previewing
+   in Draft Mode is shown instead, and pages render on request
+   (see server/site.ts).
    ============================================================ */
-
-export const dynamic = 'force-dynamic'
 
 export async function generateMetadata(): Promise<Metadata> {
   const { doc } = await loadSite()

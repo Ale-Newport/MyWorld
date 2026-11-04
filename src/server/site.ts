@@ -1,24 +1,28 @@
 import { cache } from 'react'
 import { revalidatePath } from 'next/cache'
 import { draftMode } from 'next/headers'
-import { buildSeedDocument } from '@/cms/seed'
+import snapshot from '../../content/published/site.json' with { type: 'json' }
 import { siteDocument, SCHEMA_VERSION, type SiteDocument } from '@/cms/schema'
 import { migrateSiteDocument } from '@/cms/migrate'
 import { validateSiteReferences } from '@/cms/references'
 import { exists, head, publish, publishedRevision, readRevision, saveDraft, seed, type Head, type PublishedRevision, type RevisionMeta } from './revisions.ts'
 import { SYSTEM, type Actor } from './audit.ts'
 import { currentSession } from './auth/guard.ts'
+import { EDITOR } from './mode.ts'
 import { ValidationError } from './auth/guard.ts'
 
 /* ============================================================
    SITE CONTENT ACCESS
 
    Public pages call loadSite(), which returns the PUBLISHED
-   document — or, for an administrator previewing in Draft Mode
-   (and only after their session has been checked here, not just
-   the bypass cookie), the DRAFT. Before anything has been saved
-   the published document is the seed migrated from src/content,
-   built in memory: a public request never writes to the store.
+   document. In the deployed site that is the file committed as
+   content/published/site.json (the editor's Publish writes it):
+   no store is read, and the pages are prerendered at build. In the
+   editor it is the local store's published revision — or, for an
+   administrator previewing in Draft Mode (and only after their
+   session has been checked here, not just the bypass cookie), the
+   DRAFT. A new editor store starts from the committed file, and a
+   public request never writes to the store.
 
    One request reads the document ONCE: layout.generateMetadata,
    generateViewport, the layout and the page all call loadSite(),
@@ -47,8 +51,9 @@ async function documentOf(revisionId: string, content?: string | null): Promise<
   return parse(revisionId, content !== undefined ? content : (await readRevision(revisionId))?.content)
 }
 
+/** What the repository publishes: content/published/site.json, written by the editor's Publish. */
 let seedCache: SiteDocument | null = null
-const seedDoc = () => (seedCache ??= buildSeedDocument())
+const seedDoc = () => (seedCache ??= migrateSiteDocument<SiteDocument>(structuredClone(snapshot)))
 
 /** The published revision, one query. An isolate that has parsed nothing yet reads the content in the same query. */
 async function readPublishedSite(): Promise<{ doc: SiteDocument; revision: RevisionMeta | null }> {
@@ -59,6 +64,8 @@ async function readPublishedSite(): Promise<{ doc: SiteDocument; revision: Revis
 }
 
 export const publishedSite = cache(async (): Promise<{ doc: SiteDocument; revision: RevisionMeta | null }> => {
+  // The deployed site is the committed file, with no store to read or to break.
+  if (!EDITOR) return { doc: seedDoc(), revision: null }
   try {
     return await readPublishedSite()
   } catch (error) {
@@ -79,6 +86,8 @@ export async function draftSite(actor: Actor = SYSTEM): Promise<{ doc: SiteDocum
 
 /** For public pages: published, or the draft for a signed-in administrator in Draft Mode. */
 export const loadSite = cache(async (): Promise<{ doc: SiteDocument; preview: boolean }> => {
+  // Reading Draft Mode makes a page dynamic: only the editor does.
+  if (!EDITOR) return { doc: (await publishedSite()).doc, preview: false }
   let preview = false
   try {
     preview = (await draftMode()).isEnabled

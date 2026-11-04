@@ -13,6 +13,8 @@
      node scripts/world/export-seed.mjs [base-url]       download the published release
      node scripts/world/export-seed.mjs --from-seed      re-encode the files already in the seed folder
      node scripts/world/export-seed.mjs --check          exit 1 unless the seed files are compact and world-seed.json describes them
+     node scripts/world/export-seed.mjs --world-file <f> --assets-file <f>
+                                                         make these two files the seed (what the editor's Publish does)
    Options: --seed-dir <dir> and --manifest <file> work elsewhere than the repository's own seed (a scratch copy). */
 import fs from 'node:fs'
 import path from 'node:path'
@@ -71,6 +73,12 @@ if (flag('check')) {
   }
   if (problems.length) { console.error(problems.join('\n') + '\nrun: node scripts/world/export-seed.mjs --from-seed'); process.exit(1) }
   console.log('seed files are compact and described by world-seed.json')
+} else if (flag('world-file')) {
+  const entries = {
+    world: compactSeedFile('world', fs.readFileSync(option('world-file'))),
+    assets: compactSeedFile('assets', fs.readFileSync(option('assets-file'))),
+  }
+  writeSeed(entries, 'seed = the world as the editor published it')
 } else if (flag('from-seed')) {
   const entries = {}
   for (const [key, file] of FILES) entries[key] = compactSeedFile(key, fs.readFileSync(path.join(dir, file)))

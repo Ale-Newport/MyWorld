@@ -27,6 +27,7 @@ import { driveSpawnProblems } from './world-spawn.ts'
    ============================================================ */
 
 import SEED from './world-seed.json' with { type: 'json' }
+import { EDITOR } from './mode.ts'
 
 /** The seed's two files are static assets (public/archipelago/seed); their hashes are in world-seed.json. */
 const seedFile = (sha: string) => (sha === SEED.world.sha ? SEED.world.path : sha === SEED.assets.sha ? SEED.assets.path : null)
@@ -70,6 +71,8 @@ const seedRefs = (): WorldRefs => ({ world: { sha: SEED.world.sha, size: SEED.wo
 
 /** The published world's files: ONE query (it used to be head()'s three plus readRevision's fourth). */
 export async function publishedWorld(): Promise<{ refs: WorldRefs; revision: RevisionMeta | null }> {
+  // The deployed site shows the world committed in the repository (public/archipelago/seed).
+  if (!EDITOR) return { refs: seedRefs(), revision: null }
   try {
     const found = await publishedRevision('world', { blobs: true })
     if (found?.blobs?.world && found.blobs.assets) {
@@ -86,12 +89,12 @@ export async function publishedWorld(): Promise<{ refs: WorldRefs; revision: Rev
 /** Bytes of a blob, from the store or (for the seed) from the static assets. */
 export async function worldBlob(sha: string): Promise<Buffer | null> {
   // The seed's two files are known by hash: served from the static assets, never the store.
-  return (await seedBytes(sha)) ?? (await readBlob(sha))
+  return (await seedBytes(sha)) ?? (EDITOR ? await readBlob(sha) : null)
 }
 
 /** A blob of the world as a stream: from the store (Supabase's response is passed on as it arrives) or, for the seed, from the static assets. */
 export async function worldBlobStream(sha: string): Promise<ObjectStream | null> {
-  return (await seedStream(sha)) ?? (await readBlobStream(sha))
+  return (await seedStream(sha)) ?? (EDITOR ? await readBlobStream(sha) : null)
 }
 
 /** The public may read exactly the blobs of the published world, nothing else (drafts stay private). */

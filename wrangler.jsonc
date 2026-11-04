@@ -11,6 +11,8 @@
     "binding": "ASSETS"
   },
   "observability": { "enabled": true },
+  // The repository the deployed admin commits its settings to (needs the GITHUB_TOKEN secret).
+  "vars": { "GITHUB_REPO": "Ale-Newport/MyWorld" },
   "limits": { "cpu_ms": 30000 },
   // Run the Worker near its database (Supabase) when most of a request is waiting on it.
   "placement": { "mode": "smart" },

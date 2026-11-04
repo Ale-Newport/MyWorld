@@ -1,4 +1,4 @@
-import { adminApi, json, problem } from '@/server/auth/guard'
+import { editorApi, json, problem } from '@/server/auth/guard'
 import { deleteMedia, updateMedia } from '@/server/media'
 import { mediaUsages } from '@/server/media-usage'
 
@@ -6,7 +6,7 @@ export const runtime = 'nodejs'
 
 type Ctx = { params: Promise<{ id: string }> }
 
-export const PATCH = adminApi<Ctx>(async (req, { params, actor }) => {
+export const PATCH = editorApi<Ctx>(async (req, { params, actor }) => {
   const { id } = await params
   const body = (await req.json().catch(() => null)) as { alt?: unknown; title?: unknown } | null
   if (!body) return problem(400, 'Send { alt, title }.')
@@ -14,7 +14,7 @@ export const PATCH = adminApi<Ctx>(async (req, { params, actor }) => {
   return json({ item: { ...item, usages: (await mediaUsages()).get(id) ?? [] } })
 })
 
-export const DELETE = adminApi<Ctx>(async (_req, { params, actor }) => {
+export const DELETE = editorApi<Ctx>(async (_req, { params, actor }) => {
   const { id } = await params
   await deleteMedia(id, (await mediaUsages()).get(id) ?? [], actor)
   return json({ deleted: id })

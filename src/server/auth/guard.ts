@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation'
 import type { NextRequest } from 'next/server'
 import { csrfMatches, readSession, SESSION_COOKIE, type Session } from './session.ts'
 import type { Actor } from '../audit.ts'
+import { EDITOR } from '../mode.ts'
 
 /* ============================================================
    THE GUARDS
@@ -53,8 +54,10 @@ export function sameOrigin(req: NextRequest) {
 
 type Handler<C> = (req: NextRequest, ctx: C & { session: Session; actor: Actor }) => Promise<Response> | Response
 
-export function adminApi<C = object>(handler: Handler<C>) {
+export function adminApi<C = object>(handler: Handler<C>, options: { editorOnly?: boolean } = {}) {
   return async (req: NextRequest, ctx: C) => {
+    // The deployed site has no editor: its routes do not exist there.
+    if (options.editorOnly && !EDITOR) return problem(404, 'Not found.')
     const session = await readSession(req.cookies.get(SESSION_COOKIE)?.value)
     if (!session) return problem(401, 'Sign in to continue.')
     if (MUTATING.has(req.method)) {
@@ -72,6 +75,9 @@ export function adminApi<C = object>(handler: Handler<C>) {
     }
   }
 }
+
+/** An admin API that exists only in the editor (your machine), never in the deployed site. */
+export const editorApi = <C = object>(handler: Handler<C>) => adminApi(handler, { editorOnly: true })
 
 /* Kept in its own module so code that only validates (media, the world) has no tie to Next's request APIs. */
 export { ValidationError } from '../errors.ts'

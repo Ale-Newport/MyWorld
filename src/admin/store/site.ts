@@ -5,6 +5,8 @@ import type { SiteDocument } from '@/cms/schema'
 import type { Head } from '@/server/revisions'
 import { api, AdminError } from '../api'
 import { toast } from '../toast'
+import { announceGit } from '../git'
+import type { GitResult } from '@/server/git-publish'
 
 /* ============================================================
    THE DRAFT, IN THE BROWSER
@@ -30,6 +32,8 @@ interface SiteStore {
   base: string | null
   head: Head | null
   published: SiteDocument | null
+  /** The deployed admin: no drafts, only the settings, published as a commit on GitHub. */
+  live: { canPublish: boolean } | null
   version: number
   savedVersion: number
   past: SiteDocument[]
@@ -56,6 +60,7 @@ export const useSiteStore = create<SiteStore>((set, get) => ({
   base: null,
   head: null,
   published: null,
+  live: null,
   version: 0,
   savedVersion: 0,
   past: [],
@@ -69,8 +74,8 @@ export const useSiteStore = create<SiteStore>((set, get) => ({
     if (!force && (get().status === 'loading' || get().status === 'ready')) return
     set({ status: 'loading', error: null })
     try {
-      const data = await api<{ doc: SiteDocument; head: Head; published: { revision: string; doc: SiteDocument } | null }>('/api/admin/site')
-      set({ status: 'ready', doc: data.doc, base: data.head.draft?.id ?? null, head: data.head, published: data.published?.doc ?? null, version: 0, savedVersion: 0, past: [], future: [], conflict: null })
+      const data = await api<{ doc: SiteDocument; head: Head; published: { revision: string; doc: SiteDocument } | null; live?: { canPublish: boolean } }>('/api/admin/site')
+      set({ status: 'ready', doc: data.doc, base: data.head.draft?.id ?? null, head: data.head, published: data.published?.doc ?? null, live: data.live ?? null, version: 0, savedVersion: 0, past: [], future: [], conflict: null })
     } catch (error) {
       set({ status: 'error', error: (error as Error).message })
     }
@@ -105,8 +110,8 @@ export const useSiteStore = create<SiteStore>((set, get) => ({
   },
 
   async save(message, opts = {}) {
-    const { doc, base, version } = get()
-    if (!doc) return false
+    const { doc, base, version, live } = get()
+    if (!doc || live) return false
     set({ saving: true })
     try {
       const { revision } = await api<{ revision: { id: string } }>('/api/admin/site/draft', { method: 'PUT', json: { base, doc, message, force: opts.force } })
@@ -127,12 +132,27 @@ export const useSiteStore = create<SiteStore>((set, get) => ({
 
   async publish() {
     const s = get()
+    if (s.live) {
+      // The deployed admin has no draft: the settings go straight into a commit.
+      set({ publishing: true })
+      try {
+        await api('/api/admin/site/publish', { method: 'POST', json: { doc: { settings: s.doc?.settings } } })
+        set({ savedVersion: s.version })
+        toast('Published — the website updates in a minute or two', 'ok')
+        return true
+      } catch (error) {
+        toast((error as Error).message, 'danger')
+        return false
+      } finally {
+        set({ publishing: false })
+      }
+    }
     if (s.version !== s.savedVersion && !(await s.save('Saved before publishing'))) return false
     set({ publishing: true })
     try {
-      await api('/api/admin/site/publish', { method: 'POST', json: {} })
+      const { git } = await api<{ git?: GitResult }>('/api/admin/site/publish', { method: 'POST', json: {} })
       await get().load(true)
-      toast('Published — the public site updates on its next visit', 'ok')
+      announceGit('the site', git)
       return true
     } catch (error) {
       toast((error as Error).message, 'danger')

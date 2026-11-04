@@ -1,17 +1,17 @@
-import { adminApi, json, problem } from '@/server/auth/guard'
+import { editorApi, json, problem } from '@/server/auth/guard'
 import { listMedia, saveUpload, type MediaKind } from '@/server/media'
 import { mediaUsages } from '@/server/media-usage'
 import { config } from '@/server/config'
 
 export const runtime = 'nodejs'
 
-export const GET = adminApi(async () => {
+export const GET = editorApi(async () => {
   const usages = await mediaUsages()
   return json({ items: (await listMedia()).map((m) => ({ ...m, usages: usages.get(m.id) ?? [] })), limits: { maxBytes: config.maxMediaBytes } })
 })
 
 /* multipart/form-data with `file` (and optionally `kind`: texture | icon). */
-export const POST = adminApi(async (req, { actor }) => {
+export const POST = editorApi(async (req, { actor }) => {
   const length = Number(req.headers.get('content-length') ?? 0)
   if (length > config.maxMediaBytes + 64 * 1024) return problem(413, `Files are limited to ${Math.round(config.maxMediaBytes / 1048576)} MB.`)
   const form = await req.formData().catch(() => null)
