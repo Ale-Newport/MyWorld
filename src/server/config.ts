@@ -20,7 +20,8 @@ import { env } from './env.ts'
 export const config = {
   // Runtime state, not source: excluded from the bundler's file tracing.
   dataDir: path.resolve(/* turbopackIgnore: true */ process.env.CMS_DATA_DIR || path.join(/* turbopackIgnore: true */ process.cwd(), '.data', 'cms')),
-  production: process.env.NODE_ENV === 'production',
+  // The editor built for production (CMS_EDITOR=1, see mode.ts) runs on this machine over http: it is not the deployed site.
+  production: process.env.NODE_ENV === 'production' && process.env.CMS_EDITOR !== '1',
   /** Sessions last two weeks of inactivity at most, and 30 days absolute. */
   sessionIdleMs: 14 * 24 * 60 * 60 * 1000,
   sessionMaxMs: 30 * 24 * 60 * 60 * 1000,
