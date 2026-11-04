@@ -239,7 +239,8 @@ export type Project = z.infer<typeof project>
 
 /* ---- settings --------------------------------------------------- */
 export const settings = z.object({
-  siteUrl: z.string().url().max(200),
+  // Absolute and web-only: it becomes the site's metadataBase and every canonical link in the build.
+  siteUrl: z.string().url().max(200).refine((v) => /^https?:\/\//i.test(v), 'Use an http(s) address'),
   title: shortText,
   description: z.string().max(320),
   keywords: z.array(shortText).max(40),

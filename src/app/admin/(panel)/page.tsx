@@ -1,7 +1,8 @@
 import { redirect } from 'next/navigation'
+import { EDITOR } from '@/server/mode'
 
-/* The admin opens on the website editor: there is no separate
-   overview page — each area shows its own state where it is used. */
+/* The admin opens on the website editor (on your machine) or on the settings
+   (deployed): there is no separate overview page. */
 export default function AdminHome() {
-  redirect('/admin/pages')
+  redirect(EDITOR ? '/admin/pages' : '/admin/settings')
 }

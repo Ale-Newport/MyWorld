@@ -2,9 +2,7 @@ import type { MetadataRoute } from 'next'
 import { publishedSite } from '@/server/site'
 import { publicSiteUrl } from '@/lib/site-url'
 
-// Read from the content store on request (its site URL is edited in the admin).
-export const dynamic = 'force-dynamic'
-
+// Built with the site: its URL is a setting of the published document.
 export default async function robots(): Promise<MetadataRoute.Robots> {
   const { doc } = await publishedSite()
   return {

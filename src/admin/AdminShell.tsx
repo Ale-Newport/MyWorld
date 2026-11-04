@@ -8,17 +8,21 @@ import { useToasts } from './toast'
 import { Icon, type IconName } from './ui/icons'
 
 /* ============================================================
-   ONE ADMIN, FOUR PLACES
+   ONE ADMIN, FOUR PLACES (TWO ON THE DEPLOYED SITE)
 
    The navigation is the four things there are to do: edit the
    website, edit the world, read the audience, change the few
    site-wide settings. Everything else lives inside one of them —
    projects, media and history are tabs of the website; the world's
    own history is reached from the world editor.
+
+   Editing the website and the world happens in the editor on your
+   own machine, and Publish there commits the result: the deployed
+   admin keeps only the audience and the settings.
    ============================================================ */
-const NAV: { href: string; label: string; icon: IconName; match: RegExp }[] = [
-  { href: '/admin/pages', label: 'Website', icon: 'website', match: /^\/admin(\/(pages|projects|media|history)(\/.*)?)?$/ },
-  { href: '/admin/world', label: 'World', icon: 'world', match: /^\/admin\/world/ },
+const NAV: { href: string; label: string; icon: IconName; match: RegExp; editor?: boolean }[] = [
+  { href: '/admin/pages', label: 'Website', icon: 'website', match: /^\/admin(\/(pages|projects|media|history)(\/.*)?)?$/, editor: true },
+  { href: '/admin/world', label: 'World', icon: 'world', match: /^\/admin\/world/, editor: true },
   { href: '/admin/analytics', label: 'Audience', icon: 'audience', match: /^\/admin\/analytics/ },
   { href: '/admin/settings', label: 'Settings', icon: 'settings', match: /^\/admin\/settings/ },
 ]
@@ -26,7 +30,7 @@ const NAV: { href: string; label: string; icon: IconName; match: RegExp }[] = [
 /** Editors want the whole screen: the navigation folds to a rail there. */
 const COMPACT = [/^\/admin\/pages/, /^\/admin\/world/, /^\/admin\/projects\/[^/]+/]
 
-export function AdminShell({ user, csrf, children }: { user: { name: string; email: string }; csrf: string; children: React.ReactNode }) {
+export function AdminShell({ user, csrf, editor, children }: { user: { name: string; email: string }; csrf: string; editor: boolean; children: React.ReactNode }) {
   const pathname = usePathname()
   const toasts = useToasts((s) => s.items)
   const [signingOut, setSigningOut] = useState(false)
@@ -41,12 +45,12 @@ export function AdminShell({ user, csrf, children }: { user: { name: string; ema
   return (
     <div className="a-shell" data-compact={compact}>
       <nav className="a-nav" aria-label="Admin">
-        <Link href="/admin/pages" prefetch={false} className="a-brand" title="Portfolio admin">
+        <Link href={editor ? '/admin/pages' : '/admin/settings'} prefetch={false} className="a-brand" title="Portfolio admin">
           <span className="a-mark" aria-hidden="true">AN</span>
           <span className="a-brand-text"><b>Portfolio admin</b><small>{user.name}</small></span>
         </Link>
         <div className="a-nav-items">
-          {NAV.map((item) => (
+          {NAV.filter((item) => editor || !item.editor).map((item) => (
             <Link key={item.href} href={item.href} prefetch={false} className="a-item" aria-current={item.match.test(pathname) ? 'page' : undefined} title={item.label}>
               <Icon name={item.icon} />
               <span className="a-text">{item.label}</span>

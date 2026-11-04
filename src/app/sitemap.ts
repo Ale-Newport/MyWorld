@@ -4,9 +4,7 @@ import { deriveSite } from '@/cms/derive'
 import { publicSiteUrl } from '@/lib/site-url'
 
 /* The two journeys and one page per published project, all read from
-   the published site document — a project unpublished in the admin
-   leaves the sitemap with its next regeneration. */
-export const dynamic = 'force-dynamic'
+   the published site document, so it is as current as the last deploy. */
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const { doc } = await publishedSite()

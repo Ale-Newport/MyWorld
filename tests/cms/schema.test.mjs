@@ -105,3 +105,19 @@ test('the typeface setting: a saved site without it (or with a retired face) wea
   }
   for (const t of T.TYPEFACES.filter((t) => t !== 'grotesk')) assert.match(T.typefaceCss(t), /^:root\{--font-display:[^;{}<>]+;--font-mono:[^;{}<>]+\}$/, t)
 })
+
+test('the site URL must be a web address: it becomes the build\'s metadataBase', () => {
+  const field = S.settings.shape.siteUrl
+  for (const ok of ['https://example.com', 'http://localhost:3000']) assert.ok(field.safeParse(ok).success, ok)
+  for (const bad of ['javascript:alert(1)', 'data:text/html,x', 'ftp://example.com', 'example.com', '']) assert.equal(field.safeParse(bad).success, false, bad)
+})
+
+test('the document committed as the published site is valid and has no broken references', async () => {
+  const fs = await import('node:fs')
+  const raw = JSON.parse(fs.readFileSync(new URL('../../content/published/site.json', import.meta.url), 'utf8'))
+  const parsed = S.siteDocument.safeParse(migrateSiteDocument(raw))
+  assert.ok(parsed.success, parsed.success ? '' : JSON.stringify(parsed.error.issues.slice(0, 3)))
+  assert.deepEqual(validateSiteReferences(parsed.data), [])
+  // What the editor writes is what the schema produces: nothing is left to a default at build time.
+  assert.deepEqual(parsed.data, raw)
+})

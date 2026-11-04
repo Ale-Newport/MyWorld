@@ -1,16 +1,27 @@
 # The admin (`/admin`)
 
-The portfolio has its own content management. You can edit the website's text and its section animations, the projects, the media, a few site-wide settings and the 3D world in the browser. Everything is kept as revisions: a draft you can preview, publish when it is ready, and restore later. The public site only ever shows what has been **published**.
+The portfolio has its own content management. You can edit the website's text and its section animations, the projects, the media, a few site-wide settings and the 3D world in the browser. Everything is kept as revisions: a draft you can preview, publish when it is ready, and restore later.
+
+**Where it runs.** There are two admins, with different jobs:
+
+| | Editor (your machine) | Deployed admin (the website's `/admin`) |
+| --- | --- | --- |
+| How to open it | `npm run dev`, then `/admin` | `/admin` on the live site |
+| What it edits | The website's pages and projects, media, the world, and the settings | **Settings** and **Audience** only |
+| What **Publish** does | Writes the result into the repository (`content/published/site.json`, `public/media`, the world seed in `public/archipelago/seed`), commits it and pushes | Commits the settings to `content/published/site.json` on GitHub |
+| When visitors see it | After the host rebuilds from the push: a minute or two | The same |
+
+The deployed site has no content store. It is **prerendered at build** from the files in the repository, so visiting a page reads no database: Publish is a commit, and a deploy is what makes it live. The database (Supabase) only holds what the deployed admin needs: sessions, the audit log and the audience's events.
 
 The admin has four places:
 
 | Place | Path | What it is for |
 | --- | --- | --- |
-| **Website** | `/admin/pages` | The pages' text and section animations, section by section, with a live preview |
+| **Website** (editor only) | `/admin/pages` | The pages' text and section animations, section by section, with a live preview |
 | ↳ Projects | `/admin/projects` | Create, edit, order, hide, publish, archive and delete projects |
 | ↳ Media | `/admin/media` | Uploads, alt text, where each file is used, safe deletion |
-| ↳ History | `/admin/history` | Every revision of the website and the world, restore, the activity log, storage clean-up |
-| **World** | `/admin/world` | The world editor (map, 3D, terrain, test drive) inside the admin |
+| ↳ History | `/admin/history` | Every revision of the website and the world, restore, the activity log, storage clean-up, **Reload from git** |
+| **World** (editor only) | `/admin/world` | The world editor (map, 3D, terrain, test drive) inside the admin |
 | **Audience** | `/admin/analytics` | First-party, cookieless statistics: what was actually recorded |
 | **Settings** | `/admin/settings` | Title, description, typeface, sharing image, favicon, navigation, world entrance, leaf transition, analytics |
 
@@ -55,30 +66,43 @@ Copy `.env.example` to `.env.local` (development) or set the variables on the Cl
 
 ### Hosting
 
-Production runs on **Cloudflare Workers** (OpenNext: `wrangler.jsonc`, `open-next.config.ts`) with **Supabase** for everything the admin writes:
+Production runs on **Cloudflare Workers** (OpenNext: `wrangler.jsonc`, `open-next.config.ts`). The site's pages, the projects, the world and the uploads are **files in the repository**, built into each deploy; the host (Workers Builds) rebuilds on every push to `main`.
 
-- Postgres holds documents, revisions, users, sessions, the audit log, the media index and audience events. The schema is `supabase/migrations/`. Row Level Security is on for every table with no policies, so Supabase's public API exposes nothing; only the site's server connects.
-- A private Storage bucket (`cms`) holds world documents (`blobs/<sha256>`) and uploads (`media/<id>.<ext>`). Visitors reach them only through the site's routes.
+- `content/published/site.json` is the published website: profile, projects, sections, settings.
+- `public/archipelago/seed/*` and `src/server/world-seed.json` are the published world.
+- `public/media/<id>/<name>` are the uploads that the website uses.
 
-Create the first administrator against Supabase from your machine: `DATABASE_URL=… npm run admin:create`. Back up with Supabase's own database backups plus a copy of the bucket.
+Pages are prerendered at build and served from Workers Static Assets (`open-next.config.ts` configures the read-only static-assets cache; `npm run cf:build` fills it), so a visit runs no query. **Supabase** (Postgres, through Hyperdrive) is only for what the deployed admin writes: users, sessions, the audit log and the audience's events. The schema is `supabase/migrations/`. Row Level Security is on for every table with no policies, so Supabase's public API exposes nothing; only the site's server connects.
 
-Development needs none of this: without those variables the site uses the SQLite file and files in `CMS_DATA_DIR`.
+Create the first administrator against Supabase from your machine: `DATABASE_URL=… npm run admin:create`. Back up with Supabase's own database backups.
 
-A world document is about 118 MB once unzipped, more than a Worker can parse. On Cloudflare the server therefore checks only that a world's files exist and that its asset definitions are sound. The studio's own **Validate World**, which runs in your browser, checks the rest before you save.
+The editor needs none of this: without those variables it uses the SQLite file and the files in `CMS_DATA_DIR`. A production build turns the editor on with `CMS_EDITOR=1` (for checking it); the deployed site has no draft, no media library, no world studio, and their routes answer 404.
 
-Before anything has been saved, the site serves the content that ships in the repository:
+A world document is about 118 MB once unzipped, more than a Worker can parse, which is one more reason the world is edited and checked on your machine: the studio's own **Validate World** runs in the browser before you save.
 
-- the page and project content migrated from `src/content`
-- the world seed in `public/archipelago/seed` (hashes in `src/server/world-seed.json`)
+**Settings from the deployed admin** need three settings on the Worker (they are how Publish becomes a commit): `GITHUB_TOKEN` (a fine-grained personal access token with *Contents: read and write* on this one repository; set it as a secret with `npx wrangler secret put GITHUB_TOKEN`), `GITHUB_REPO` (`owner/name`, in `wrangler.jsonc`) and optionally `GITHUB_BRANCH` (default `main`). Without them the Settings page says so and Publish is off; change settings in the editor instead.
 
-The first save in the admin imports these as revision 1, and nothing is lost.
+---
+
+## Publishing is a commit
+
+In the editor, **Publish** moves the local store's published pointer and then writes what visitors will see into the repository and pushes it:
+
+1. Checks that the remote has no newer version of the same files (for example settings published from the deployed admin). If it has, nothing is published: run `git pull`, then History → **Reload from git**, and publish again.
+2. Publishes the revision in the local store, as before.
+3. Writes `content/published/site.json` (and copies the uploads it uses to `public/media`), or compacts the world into the seed files.
+4. Commits **only those paths** with a message such as `content: publish the site`, and pushes the current branch. The rest of your working tree is never staged.
+
+A toast says what happened. If the push fails (offline, a newer remote), the commit is kept and the toast gives the command to finish it. The website changes when the host has rebuilt, a minute or two after the push.
+
+The editor's own store (`.data/cms`) is a scratch space: the repository is the truth. After pulling changes made elsewhere, **Reload from git** makes the committed site file this editor's draft and live revision. `CMS_REPO_DIR` points the editor at a different checkout (a scratch clone, to try publishing out).
 
 ---
 
 ## Drafts, publishing and history
 
 - **Save draft** (<kbd>⌘S</kbd>) stores a new draft revision on top of the one you loaded. The public site does not change.
-- **Publish** validates the draft and makes it live. Public pages are regenerated straight away.
+- **Publish** validates the draft, makes it live in the editor and commits it (see [Publishing is a commit](#publishing-is-a-commit)).
 - If someone else saved in the meantime (another tab or another administrator), saving is refused instead of overwriting their work. You can either load their version or explicitly keep yours.
 - **History** lists every revision of the site and of the world. *Restore* copies an old revision forward as the new draft, and nothing is ever overwritten. The activity log shows who did what and when.
 - **Retention.** The store keeps:

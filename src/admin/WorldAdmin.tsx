@@ -4,6 +4,8 @@ import Link from 'next/link'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { api } from './api'
 import { toast } from './toast'
+import { announceGit } from './git'
+import type { GitResult } from '@/server/git-publish'
 import { Dialog, Notice, PageHeader } from './ui/kit'
 import { Icon } from './ui/icons'
 
@@ -72,9 +74,9 @@ export function WorldAdmin() {
   const publish = async () => {
     setBusy('publish')
     try {
-      await api('/api/admin/world/publish', { method: 'POST', json: {} })
+      const { git } = await api<{ git?: GitResult }>('/api/admin/world/publish', { method: 'POST', json: {} })
       await refresh()
-      toast('Published — /world and its map now load this world', 'ok')
+      announceGit('this world', git)
     } catch (e) { toast((e as Error).message, 'danger') } finally { setBusy(null) }
   }
   const exportFiles = () => {

@@ -7,6 +7,8 @@ import { PageHeader, Segmented, Tabs, WEBSITE_TABS } from './ui/kit'
 import { toast } from './toast'
 import { describeAction } from './describe'
 import { useSiteStore } from './store/site'
+import { announceGit } from './git'
+import type { GitResult } from '@/server/git-publish'
 
 interface Rev { id: string; createdAt: number; authorName: string | null; message: string | null; publishedAt: number | null; size: number }
 interface Head { draft: Rev | null; published: Rev | null }
@@ -57,8 +59,8 @@ export function HistoryView() {
   const publish = async (rev: Rev) => {
     setBusy(rev.id)
     try {
-      await api(tab === 'site' ? '/api/admin/site/publish' : '/api/admin/world/publish', { method: 'POST', json: { revision: rev.id } })
-      toast('Published that revision', 'ok')
+      const { git } = await api<{ git?: GitResult }>(tab === 'site' ? '/api/admin/site/publish' : '/api/admin/world/publish', { method: 'POST', json: { revision: rev.id } })
+      announceGit('that revision', git)
       if (tab === 'site') await useSiteStore.getState().load(true)
       await load()
     } catch (e) {
@@ -73,7 +75,7 @@ export function HistoryView() {
       <PageHeader
         eyebrow="Website"
         title="History"
-        description={<>Every saved draft and publication of the website and the world. Restoring makes an old revision the draft again; nothing is ever overwritten. <Storage /></>}
+        description={<>Every saved draft and publication of the website and the world. Restoring makes an old revision the draft again; nothing is ever overwritten. <Storage /> <GitSync /></>}
         actions={<Segmented<'site' | 'world' | 'audit'> label="History of" value={tab} onChange={(t) => { setData(null); setTab(t) }} options={[{ value: 'site', label: 'Website' }, { value: 'world', label: 'World' }, { value: 'audit', label: 'Activity log' }]} />}
         tabs={<Tabs label="Website" tabs={WEBSITE_TABS} />}
       />
@@ -152,6 +154,24 @@ function Storage() {
           toast(r.removedRevisions || r.removedFiles ? `Removed ${r.removedRevisions} revision(s) and ${r.removedFiles} file(s), ${mb(r.freedBytes ?? 0)}` : 'Nothing to clean up', 'ok')
         } catch (e) { toast((e as Error).message, 'danger') } finally { setBusy(false) }
       }}>{busy ? 'Cleaning…' : 'Clean up now'}</button>
+    </p>
+  )
+}
+
+/** After a `git pull`: make the committed site file this editor's draft and live revision. */
+function GitSync() {
+  const [busy, setBusy] = useState(false)
+  return (
+    <p className="a-sub" style={{ fontSize: 12.5 }}>
+      Publishing here commits the site to the repository. If something changed there since (settings published from the web admin, another machine), run <code>git pull</code> and then{' '}
+      <button type="button" className="btn btn-sm" disabled={busy} onClick={async () => {
+        setBusy(true)
+        try {
+          const r = await api<{ changed: boolean }>('/api/admin/git/sync', { method: 'POST', json: {} })
+          await useSiteStore.getState().load(true)
+          toast(r.changed ? 'Reloaded the site from git: it is now the draft and the live revision here' : 'Already the same as git', 'ok')
+        } catch (e) { toast((e as Error).message, 'danger') } finally { setBusy(false) }
+      }}>{busy ? 'Reloading…' : 'Reload from git'}</button>
     </p>
   )
 }

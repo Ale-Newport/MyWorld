@@ -1,10 +1,10 @@
-import { adminApi, problem } from '@/server/auth/guard'
+import { editorApi, problem } from '@/server/auth/guard'
 import { worldBlob } from '@/server/world'
 
 export const runtime = 'nodejs'
 
 /* Any world file in the store, for the signed-in editor (drafts included). */
-export const GET = adminApi<{ params: Promise<{ sha: string }> }>(async (_req, { params }) => {
+export const GET = editorApi<{ params: Promise<{ sha: string }> }>(async (_req, { params }) => {
   const { sha } = await params
   if (!/^[a-f0-9]{64}$/.test(sha)) return problem(404, 'Not found')
   const bytes = await worldBlob(sha)

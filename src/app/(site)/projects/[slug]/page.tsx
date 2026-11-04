@@ -7,7 +7,13 @@ import { publicSiteUrl } from '@/lib/site-url'
 
 /* One page per published project, rendered from the same entity the
    homepage cards, the universe, the toolbox evidence and the case-study
-   overlay read. Rendered on request, like the rest of the site. */
+   overlay read. Prerendered at build in the deployed site; in the editor a
+   project created in the draft renders on request. */
+
+export async function generateStaticParams() {
+  const { doc } = await loadSite()
+  return Object.keys(deriveSite(doc).projectBySlug).map((slug) => ({ slug }))
+}
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params

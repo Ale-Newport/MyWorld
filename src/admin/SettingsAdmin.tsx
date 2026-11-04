@@ -3,7 +3,7 @@
 import { useEffect } from 'react'
 import { useSiteStore } from './store/site'
 import { DraftBar } from './DraftBar'
-import { Loading, PageHeader } from './ui/kit'
+import { Loading, Notice, PageHeader } from './ui/kit'
 import { ColorInput, Field, MediaInput, SelectInput, StringList, TextInput, Toggle, newId } from './fields'
 import { safeHref } from '@/cms/schema'
 import { TYPEFACES, TYPEFACE_INFO, resolveTypeface } from '@/styles/typefaces'
@@ -20,7 +20,7 @@ import { TYPEFACES, TYPEFACE_INFO, resolveTypeface } from '@/styles/typefaces'
    the server, not just in the page.
    ============================================================ */
 export function SettingsAdmin() {
-  const { status, doc, load, apply } = useSiteStore()
+  const { status, doc, load, apply, live } = useSiteStore()
   useEffect(() => { void load() }, [load])
   if (status !== 'ready' || !doc) return <main className="a-page"><Loading label="Loading the draft…" /></main>
   const s = doc.settings
@@ -33,9 +33,10 @@ export function SettingsAdmin() {
       <PageHeader
         eyebrow="Site"
         title="Settings"
-        description="Site-wide essentials. Part of the same draft as every other edit: save, then publish to apply them."
+        description={live ? 'Site-wide essentials. Publish commits them to the site’s repository; the website rebuilds and shows them a minute or two later.' : 'Site-wide essentials. Part of the same draft as every other edit: save, then publish to apply them.'}
         actions={<DraftBar />}
       />
+      {live && !live.canPublish && <Notice tone="warn">Publishing from here needs GITHUB_TOKEN and GITHUB_REPO on the Worker (see docs/ADMIN.md). Until they are set, change settings in the editor on your own machine.</Notice>}
       <div className="a-split">
         <div className="stack">
           <section className="card stack">
@@ -49,8 +50,8 @@ export function SettingsAdmin() {
             <h2>Appearance</h2>
             <ColorInput path="settings.themeColor" label="Browser theme colour" optional={false} />
             <SelectInput path="settings.options.typeface" fallback="grotesk" label="Typeface" options={TYPEFACES.map((t) => ({ value: t, label: TYPEFACE_INFO[t].label }))} hint={TYPEFACE_INFO[resolveTypeface(s.options.typeface)].note} />
-            <MediaInput path="settings.favicon" label="Favicon" hint="Square PNG or SVG. Empty keeps the built-in icon." />
-            <MediaInput path="settings.ogImage" label="Share image" hint="Shown when the site is shared; 1200×630 works everywhere." />
+            {!live && <MediaInput path="settings.favicon" label="Favicon" hint="Square PNG or SVG. Empty keeps the built-in icon." />}
+            {!live && <MediaInput path="settings.ogImage" label="Share image" hint="Shown when the site is shared; 1200×630 works everywhere." />}
           </section>
           <section className="card stack">
             <h2>Navigation</h2>

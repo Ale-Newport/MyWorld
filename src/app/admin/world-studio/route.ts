@@ -1,5 +1,6 @@
 import type { NextRequest } from 'next/server'
 import { readSession, SESSION_COOKIE } from '@/server/auth/session'
+import { EDITOR } from '@/server/mode'
 import { STUDIO_HTML } from '@/server/world-studio/studio-template'
 
 export const runtime = 'nodejs'
@@ -18,6 +19,7 @@ export const dynamic = 'force-dynamic'
    ============================================================ */
 
 export async function GET(req: NextRequest) {
+  if (!EDITOR) return new Response('Not found', { status: 404 })
   const session = await readSession(req.cookies.get(SESSION_COOKIE)?.value)
   if (!session) return Response.redirect(new URL('/admin/login?next=/admin/world', req.url), 307)
   const config = {
