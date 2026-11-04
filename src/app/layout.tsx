@@ -1,6 +1,5 @@
 import type { Metadata, Viewport } from 'next'
-import { GeistSans } from 'geist/font/sans'
-import { GeistMono } from 'geist/font/mono'
+import { fontVariables } from '@/styles/fonts'
 import '@/styles/globals.css'
 
 /* The document shell every route shares. What a public page says
@@ -21,7 +20,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={`${GeistSans.variable} ${GeistMono.variable}`} suppressHydrationWarning>
+    <html lang="en" className={fontVariables} suppressHydrationWarning>
       <body>{children}</body>
     </html>
   )
