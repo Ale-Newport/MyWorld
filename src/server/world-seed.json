@@ -1,12 +1,12 @@
 {
   "world": {
     "path": "/archipelago/seed/editor-world.json.gz",
-    "sha": "bef194c43a0b049cd4aabeba9b43424327f8bd2c5d02c629ec2542afa3f13149",
-    "size": 6994213
+    "sha": "711284b37c80c442c5d33934e6bb82ccb8ab1acd6e55805eb413530a07d794ce",
+    "size": 6871512
   },
   "assets": {
     "path": "/archipelago/seed/asset-definitions.json",
-    "sha": "604ad3d7276c3fb988f3087ba679f73e0b28278d5db76a0a878f88bafeda330e",
-    "size": 3253199
+    "sha": "a572b9e1d25c395c09e6ae8ff144974d8b39bf634628ce631e0d12ae08ef87c6",
+    "size": 3289894
   }
 }
