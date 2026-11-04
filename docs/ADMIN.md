@@ -246,7 +246,7 @@ A period with no visits says so. Nothing is estimated or filled in. Collection c
 Not linking the admin is not what protects it. These do:
 
 - **Server-side checks on every request.**
-  - The proxy only redirects signed-out browsers to the login page as a convenience.
+  - There is no middleware in front of the admin: signed-out browsers are redirected to the login page by the page itself, and the admin responses carry no-index, same-origin-frame and no-referrer headers from `next.config.ts`.
   - Every admin page verifies the session on the server (`requireAdmin`).
   - Every admin API verifies it again (`adminApi`), together with a CSRF token sent in a header on every write.
 - **Sessions.**
