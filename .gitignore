@@ -31,3 +31,7 @@ next-env.d.ts
 
 # Local design sources (Blender, video, logos): not part of the site
 /design-source/
+
+# The world seed is MADE from content/world (npm run world:seed): the gzip and its hashes are never committed
+/public/archipelago/seed/
+/src/server/world-seed.json

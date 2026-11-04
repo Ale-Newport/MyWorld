@@ -25,7 +25,7 @@ import { ValidationError } from './errors.ts'
    revision, so the editor starts from what is really live.
    ============================================================ */
 
-const WORLD_PATHS = ['public/archipelago/seed', 'src/server/world-seed.json']
+const WORLD_PATHS = ['content/world']
 const MEDIA_URL = /\/media\/([a-z0-9]{20})\/([^"\s)\\]+)/g
 
 const execFileAsync = promisify(execFile)
@@ -78,7 +78,7 @@ async function exportWorld(refs: { world: { sha: string }; assets: { sha: string
     await execFileAsync(process.execPath, [
       path.join(process.cwd(), 'scripts/world/export-seed.mjs'),
       '--world-file', files.world, '--assets-file', files.assets,
-      '--seed-dir', inRepo('public/archipelago/seed'), '--manifest', inRepo('src/server/world-seed.json'),
+      '--source-dir', inRepo('content/world'),
     ], { maxBuffer: 16 * 1024 * 1024, timeout: 300_000 })
   } finally {
     fs.rmSync(dir, { recursive: true, force: true })

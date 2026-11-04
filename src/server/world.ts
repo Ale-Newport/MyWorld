@@ -19,7 +19,8 @@ import { driveSpawnProblems } from './world-spawn.ts'
    and named by a revision; publishing moves a pointer.
 
    Before the first save the published world is the seed in
-   public/archipelago/seed, a static asset (hashes in world-seed.json): the
+   public/archipelago/seed, a static asset (hashes in world-seed.json), made
+   by `npm run world:seed` from content/world, which git keeps: the
    Archipelago imported from HelloWorld (4ccab18), as saved by the
    portfolio's world editor with its additions (the infield slalom,
    the penguin round-up, the paddock grove and the coastal lookout,

@@ -6,8 +6,9 @@
   - the player and the world studio
   - physics, driving, terrain, car and plane modes
   - the World2 activities
-- **The world document** (the editor's save, about 17 MB gzipped) and **the asset definitions** are stored as revisions in the content store and served by `/api/world/release` and `/api/world/blob/<sha>`.
-- **Before the first save,** the site serves the seed in `public/archipelago/seed` (static assets; hashes in `src/server/world-seed.json`).
+- **The world the site ships** is two plain, compact JSON files in the repository: `content/world/editor-world.json` (the world document, about 33 MB) and `content/world/asset-definitions.json`. Plain text is deliberate: git stores a new version as a small difference (a typical edit adds a few hundred KB to the history), where a gzip would add about 7 MB per publish. `npm run world:seed` makes the seed from them (`public/archipelago/seed`, the world gzipped, and `src/server/world-seed.json`, their hashes); both are generated, ignored by git, and made by dev, build, test and the Cloudflare build.
+- **In the editor** the world document and the asset definitions are stored as revisions in the local content store and served by `/api/world/release` and `/api/world/blob/<sha>`. The editor's **Publish** also writes the two files into `content/world`, commits and pushes them.
+- **On the deployed site** `/api/world/release` and the blobs are the seed, served as static assets.
 
 Nothing depends on HelloWorld's development server, on a path on this Mac or on a symbolic link. HelloWorld remains the upstream of the editor and the player; it is not modified by anything here.
 
@@ -36,10 +37,12 @@ The inspector's **Drive spawn · recovery** section has two tools:
 - **Set drive spawn here** pins where `/world` and DRIVE start: at the selected object, or the centre of the view, on the nearest valid spot within 10 m. The pin is an undoable edit, saved with the world as `worldVariant.spawn` (`[x, north, height]`), `spawnHeading` and `spawnPinned: true`. **Use the plaza** removes it. Documents without the pin start in the Central Plaza.
 - **Show recovery anchors** draws the anchors for the world as edited. Anchors are never stored: each drive derives them from the scene.
 
-To make the published world the one the repository ships:
+To make a published world the one the repository ships (the editor's Publish does this for you):
 
 ```sh
-node scripts/world/export-seed.mjs
+node scripts/world/export-seed.mjs [base-url]                       # download a published release
+node scripts/world/export-seed.mjs --world-file <f> --assets-file <f>
+node scripts/world/export-seed.mjs --check                          # sources compact, seed made from them
 ```
 
 The seed currently contains:
