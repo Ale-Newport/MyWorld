@@ -98,7 +98,7 @@ A world document is about 118 MB once unzipped, more than a Worker can parse, wh
 npm run editor:install
 ```
 
-It builds the editor once, registers it with launchd (it starts when you log in and comes back if it stops) and creates **~/Applications/Portfolio Editor.app**. Open that app, or drag it to the Dock: it opens the editor at <http://localhost:3100> (starting it first if needed). The editor listens only on this Mac, uses the same local drafts (`.data/cms`) and the same git login as `npm run dev`, and logs to `~/Library/Logs/portfolio-editor.log`.
+It builds the editor once, registers it with launchd (it starts when you log in and comes back if it stops) and creates **~/Applications/Portfolio Editor.app**. Open that app, or drag it to the Dock: it opens the editor at <http://127.0.0.1:41873> (starting it first if needed). The address is deliberately unusual: a port no other tool uses, and `127.0.0.1` rather than `localhost`, because browsers share cookies between all ports of `localhost`. The editor listens only on this Mac, uses the same local drafts (`.data/cms`) and the same git login as `npm run dev`, and logs to `~/Library/Logs/portfolio-editor.log`.
 
 Content changes (pages, projects, the world) need nothing more. When the **code** of the site changes (after a `git pull` that brings new code), rebuild with `npm run editor:update`; `npm run editor:status` says whether it is running, and `npm run editor:uninstall` removes the app and the launchd entry (drafts and the repository are untouched).
 
