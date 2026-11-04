@@ -75,7 +75,7 @@ export function HistoryView() {
       <PageHeader
         eyebrow="Website"
         title="History"
-        description={<>Every saved draft and publication of the website and the world. Restoring makes an old revision the draft again; nothing is ever overwritten. <Storage /> <GitSync /></>}
+        description={<>Every saved draft and publication of the website and the world. Restoring makes an old revision the draft again; nothing is ever overwritten. <Storage /> <GitSync load={load} /></>}
         actions={<Segmented<'site' | 'world' | 'audit'> label="History of" value={tab} onChange={(t) => { setData(null); setTab(t) }} options={[{ value: 'site', label: 'Website' }, { value: 'world', label: 'World' }, { value: 'audit', label: 'Activity log' }]} />}
         tabs={<Tabs label="Website" tabs={WEBSITE_TABS} />}
       />
@@ -158,8 +158,8 @@ function Storage() {
   )
 }
 
-/** After a `git pull`: make the committed site file this editor's draft and live revision. */
-function GitSync() {
+/** After a `git pull`: make the committed website and world this editor's draft and live revision. */
+function GitSync({ load }: { load: () => Promise<void> }) {
   const [busy, setBusy] = useState(false)
   return (
     <p className="a-sub" style={{ fontSize: 12.5 }}>
@@ -167,9 +167,10 @@ function GitSync() {
       <button type="button" className="btn btn-sm" disabled={busy} onClick={async () => {
         setBusy(true)
         try {
-          const r = await api<{ changed: boolean }>('/api/admin/git/sync', { method: 'POST', json: {} })
+          const r = await api<{ changed: boolean; site: { changed: boolean }; world: { changed: boolean } }>('/api/admin/git/sync', { method: 'POST', json: {} })
           await useSiteStore.getState().load(true)
-          toast(r.changed ? 'Reloaded the site from git: it is now the draft and the live revision here' : 'Already the same as git', 'ok')
+          await load()
+          toast(r.changed ? `Reloaded from git: ${[r.site.changed && 'the website', r.world.changed && 'the world'].filter(Boolean).join(' and ')} ${r.site.changed && r.world.changed ? 'are' : 'is'} now the draft and the live revision here` : 'Already the same as git', 'ok')
         } catch (e) { toast((e as Error).message, 'danger') } finally { setBusy(false) }
       }}>{busy ? 'Reloading…' : 'Reload from git'}</button>
     </p>

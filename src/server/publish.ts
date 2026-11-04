@@ -7,9 +7,10 @@ import type { SiteDocument } from '@/cms/schema'
 import { SITE_FILE } from './github.ts'
 import { assertNotBehind, commitAndPush, inRepo, type GitResult } from './git-publish.ts'
 import { SYSTEM, type Actor } from './audit.ts'
-import { readBlob } from './blobs.ts'
+import { putBlob, readBlob } from './blobs.ts'
 import { getMedia, mediaBytes } from './media.ts'
 import { head, publish, readRevision, saveDraft } from './revisions.ts'
+import { draftWorld } from './world.ts'
 import { draftSite, publishSite, validateSite } from './site.ts'
 import { publishWorld } from './world.ts'
 import { ValidationError } from './errors.ts'
@@ -114,4 +115,31 @@ export async function syncSiteFromGit(actor: Actor = SYSTEM) {
   const draft = await saveDraft('site', { base: current.draft?.id ?? null, content, schemaVersion: valid.schemaVersion, message: 'Reloaded from git', actor, force: true })
   await publish('site', { revisionId: draft.id, actor, validate: () => undefined })
   return { changed: true }
+}
+
+/** After `git pull`: the committed world (content/world) becomes the draft and the published revision of this editor. */
+export async function syncWorldFromGit(actor: Actor = SYSTEM) {
+  const source = inRepo('content/world')
+  if (!fs.existsSync(path.join(source, 'editor-world.json'))) throw new ValidationError('content/world does not exist.')
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'world-sync-'))
+  try {
+    await execFileAsync(process.execPath, [
+      path.join(process.cwd(), 'scripts/world/build-seed.mjs'), '--force',
+      '--source-dir', source, '--seed-dir', path.join(dir, 'seed'), '--manifest', path.join(dir, 'manifest.json'),
+    ], { maxBuffer: 16 * 1024 * 1024, timeout: 300_000 })
+    const manifest = JSON.parse(fs.readFileSync(path.join(dir, 'manifest.json'), 'utf8')) as { world: { path: string; sha: string; size: number }; assets: { path: string; sha: string; size: number } }
+    const { head: current } = await draftWorld(actor)
+    const live = current.published ? (await readRevision(current.published.id))?.blobs : null
+    if (live?.world?.sha === manifest.world.sha && live.assets?.sha === manifest.assets.sha && current.draft?.id === current.published?.id) return { changed: false }
+    for (const key of ['world', 'assets'] as const) {
+      const bytes = fs.readFileSync(path.join(dir, 'seed', path.basename(manifest[key].path)))
+      await putBlob(bytes, manifest[key].sha)
+    }
+    const refs = { world: { sha: manifest.world.sha, size: manifest.world.size }, assets: { sha: manifest.assets.sha, size: manifest.assets.size } }
+    const draft = await saveDraft('world', { base: current.draft?.id ?? null, blobs: refs, schemaVersion: 2, message: 'Reloaded from git', actor, force: true })
+    await publish('world', { revisionId: draft.id, actor, validate: () => undefined })
+    return { changed: true }
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true })
+  }
 }
