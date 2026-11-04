@@ -6,6 +6,8 @@ import { DraftBar } from './DraftBar'
 import { Loading, Notice, PageHeader } from './ui/kit'
 import { ColorInput, Field, MediaInput, SelectInput, StringList, TextInput, Toggle, newId } from './fields'
 import { safeHref } from '@/cms/schema'
+import { TokenCard } from './TokenStatus'
+import { LegacyData } from './LegacyData'
 import { TYPEFACES, TYPEFACE_INFO, resolveTypeface } from '@/styles/typefaces'
 
 /* ============================================================
@@ -37,6 +39,7 @@ export function SettingsAdmin() {
         actions={<DraftBar />}
       />
       {live && !live.canPublish && <Notice tone="warn">Publishing from here needs GITHUB_TOKEN and GITHUB_REPO on the Worker (see docs/ADMIN.md). Until they are set, change settings in the editor on your own machine.</Notice>}
+      {live && <TokenCard />}
       <div className="a-split">
         <div className="stack">
           <section className="card stack">
@@ -101,6 +104,7 @@ export function SettingsAdmin() {
           <Field label="Theme colour"><div style={{ height: 36, borderRadius: 8, background: s.themeColor, border: '1px solid var(--a-line)' }} /></Field>
         </aside>
       </div>
+      <LegacyData />
     </main>
   )
 }

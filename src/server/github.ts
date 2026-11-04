@@ -78,3 +78,55 @@ export async function publishSettings(settings: unknown, actorName: string): Pro
 /** What the deployed admin shows as its "draft" and "published" revision: the file built into the deploy. */
 const stamp = { docId: 'site', parentId: null, createdAt: 0, authorId: null, authorName: null, message: null, schemaVersion: 2, hash: 'git', size: 0, publishedAt: null } as const
 export const LIVE_HEAD = { draft: { id: 'git', ...stamp }, published: { id: 'git', ...stamp }, updatedAt: null } as unknown as import('./revisions.ts').Head
+
+/* ============================================================
+   THE TOKEN'S EXPIRY
+
+   A fine-grained token has an expiry date, and GitHub reports it
+   on every authenticated response (github-authentication-token-
+   expiration). The admin reads it so the Settings page can say how
+   long is left, warn before publishing stops working, and say how
+   to renew it. Asked at most every half hour per Worker instance.
+   ============================================================ */
+
+export interface TokenStatus {
+  configured: boolean
+  /** GitHub accepts the token for this repository. */
+  valid: boolean
+  /** When it expires (ms since epoch), or null for a token without an expiry. */
+  expiresAt: number | null
+  daysLeft: number | null
+  repo: string | null
+  error: string | null
+}
+
+let remembered: { at: number; status: TokenStatus } | null = null
+
+export async function tokenStatus({ fresh = false }: { fresh?: boolean } = {}): Promise<TokenStatus> {
+  const t = target()
+  if (!t) return { configured: false, valid: false, expiresAt: null, daysLeft: null, repo: null, error: null }
+  if (!fresh && remembered && Date.now() - remembered.at < 30 * 60_000) return remembered.status
+  let status: TokenStatus
+  try {
+    const response = await fetch(`${api()}/repos/${t.repo}`, { headers: { authorization: `Bearer ${t.token}`, accept: 'application/vnd.github+json', 'x-github-api-version': '2022-11-28', 'user-agent': 'portfolio-admin' } })
+    // "2027-11-04 18:34:28 UTC"
+    const header = response.headers.get('github-authentication-token-expiration')
+    const expiresAt = header ? Date.parse(header.replace(' UTC', 'Z').replace(' ', 'T')) : NaN
+    const known = Number.isFinite(expiresAt)
+    // Read the body rather than cancel it: under Next's patched fetch the response is a tee, and cancelling a tee waits for both halves.
+    await response.text().catch(() => '')
+    status = {
+      configured: true,
+      valid: response.ok,
+      expiresAt: known ? expiresAt : null,
+      daysLeft: known ? Math.floor((expiresAt - Date.now()) / 86_400_000) : null,
+      repo: t.repo,
+      error: response.ok ? null : response.status === 401 ? 'GitHub no longer accepts this token (it has expired or was revoked).' : response.status === 404 ? 'The token cannot see this repository.' : `GitHub answered ${response.status}.`,
+    }
+  } catch (error) {
+    // Offline or GitHub unreachable: say nothing alarming; the next look retries.
+    return { configured: true, valid: true, expiresAt: null, daysLeft: null, repo: t.repo, error: `Could not reach GitHub: ${(error as Error).message}` }
+  }
+  remembered = { at: Date.now(), status }
+  return status
+}

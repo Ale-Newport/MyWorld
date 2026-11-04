@@ -82,7 +82,11 @@ The editor needs none of this: without those variables it uses the SQLite file a
 
 A world document is about 118 MB once unzipped, more than a Worker can parse, which is one more reason the world is edited and checked on your machine: the studio's own **Validate World** runs in the browser before you save.
 
-**Settings from the deployed admin** need three settings on the Worker (they are how Publish becomes a commit): `GITHUB_TOKEN` (a fine-grained personal access token with *Contents: read and write* on this one repository; set it as a secret with `npx wrangler secret put GITHUB_TOKEN`), `GITHUB_REPO` (`owner/name`, in `wrangler.jsonc`) and optionally `GITHUB_BRANCH` (default `main`). Without them the Settings page says so and Publish is off; change settings in the editor instead.
+**Settings from the deployed admin** need three settings on the Worker (they are how Publish becomes a commit): `GITHUB_TOKEN` (a fine-grained personal access token with *Contents: read and write* on this one repository; set it as a secret with `npx wrangler secret put GITHUB_TOKEN`), `GITHUB_REPO` (`owner/name`, in `wrangler.jsonc`) and optionally `GITHUB_BRANCH` (default `main`). Without them the Settings page says so and Publish is off.
+
+**The token expires.** Settings shows how long is left (GitHub reports the date), every deployed admin page warns from 30 days before, and Settings → *GitHub token* has the steps: regenerate it on GitHub (Settings → Developer settings → Fine-grained tokens → `portfolio-admin-settings` → Regenerate token), then `npx wrangler secret put GITHUB_TOKEN` from the project folder, then *Check again*.
+
+**Old content data.** Settings → *Old content data* (shown while anything is left) deletes what the previous, database-backed content store left in Supabase: revisions of the site and the world, the media library and the stored files. The live website does not read any of it. Users, sessions, the activity log and the audience's events are kept.
 
 ---
 
