@@ -95,7 +95,7 @@ In the editor, **Publish** moves the local store's published pointer and then wr
 
 A toast says what happened. If the push fails (offline, a newer remote), the commit is kept and the toast gives the command to finish it. The website changes when the host has rebuilt, a minute or two after the push.
 
-The editor's own store (`.data/cms`) is a scratch space: the repository is the truth. After pulling changes made elsewhere, **Reload from git** makes the committed site file this editor's draft and live revision. `CMS_REPO_DIR` points the editor at a different checkout (a scratch clone, to try publishing out).
+The editor's own store (`.data/cms`) is a scratch space: the repository is the truth. After pulling changes made elsewhere, History → **Reload from git** makes the committed website and world this editor's draft and live revision. Do it before editing whenever the repository may have moved: publishing from a stale store would write that stale state over what is live. `CMS_REPO_DIR` points the editor at a different checkout (a scratch clone, to try publishing out).
 
 ---
 
