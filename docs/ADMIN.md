@@ -8,7 +8,7 @@ The portfolio has its own content management. You can edit the website's text an
 | --- | --- | --- |
 | How to open it | `npm run dev`, then `/admin` | `/admin` on the live site |
 | What it edits | The website's pages and projects, media, the world, and the settings | **Settings** and **Audience** only |
-| What **Publish** does | Writes the result into the repository (`content/published/site.json`, `public/media`, the world seed in `public/archipelago/seed`), commits it and pushes | Commits the settings to `content/published/site.json` on GitHub |
+| What **Publish** does | Writes the result into the repository (`content/published/site.json`, `public/media`, the world in `content/world`), commits it and pushes | Commits the settings to `content/published/site.json` on GitHub |
 | When visitors see it | After the host rebuilds from the push: a minute or two | The same |
 
 The deployed site has no content store. It is **prerendered at build** from the files in the repository, so visiting a page reads no database: Publish is a commit, and a deploy is what makes it live. The database (Supabase) only holds what the deployed admin needs: sessions, the audit log and the audience's events.
@@ -69,7 +69,7 @@ Copy `.env.example` to `.env.local` (development) or set the variables on the Cl
 Production runs on **Cloudflare Workers** (OpenNext: `wrangler.jsonc`, `open-next.config.ts`). The site's pages, the projects, the world and the uploads are **files in the repository**, built into each deploy; the host (Workers Builds) rebuilds on every push to `main`.
 
 - `content/published/site.json` is the published website: profile, projects, sections, settings.
-- `public/archipelago/seed/*` and `src/server/world-seed.json` are the published world.
+- `content/world/*` is the published world, as compact plain JSON (git keeps a new version as a small difference). The gzip that is served, and its hashes, are made from it by `npm run world:seed` and are not committed.
 - `public/media/<id>/<name>` are the uploads that the website uses.
 
 Pages are prerendered at build and served from Workers Static Assets (`open-next.config.ts` configures the read-only static-assets cache; `npm run cf:build` fills it), so a visit runs no query. **Supabase** (Postgres, through Hyperdrive) is only for what the deployed admin writes: users, sessions, the audit log and the audience's events. The schema is `supabase/migrations/`. Row Level Security is on for every table with no policies, so Supabase's public API exposes nothing; only the site's server connects.
@@ -226,7 +226,7 @@ An activity is an experience group whose data includes `activity: { type, … }`
 
 `scripts/world/author-areas.mjs` built the current areas: the slalom, the round-up, the paddock grove and the coastal lookout. It used the studio itself, so they are ordinary groups you can edit there.
 
-`scripts/world/export-seed.mjs` makes the published world the one the repository ships.
+`scripts/world/export-seed.mjs` makes a published world the one the repository ships (`content/world`); `npm run world:seed` builds the served seed from it.
 
 ## Media
 

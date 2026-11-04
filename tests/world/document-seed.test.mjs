@@ -4,6 +4,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import zlib from 'node:zlib';
+import os from 'node:os';
 import {compactWorldDocument,shortenFloat32Arrays} from '../../public/archipelago/preview/world-instances.js';
 import {definitionsToRestore} from '../../public/archipelago/preview/asset-definitions.js';
 
@@ -42,4 +43,22 @@ test('the seed asset definitions are in the same compact form, and the player ne
  const bytes=needed.reduce((n,d)=>n+JSON.stringify(d).length,0);
  assert.ok(needed.length<defs.definitions.length&&bytes<.1*text.length,`the player parses ${needed.length} of ${defs.definitions.length} definitions, ${(bytes/1e3).toFixed(0)} KB of ${(text.length/1e3).toFixed(0)} KB`);
  assert.ok(needed.some(d=>d.id==='experience-part:615e6628-d9eb-4fe9-ab44-dfcd7d1dfbdb'),'a definition an instance reference names is among them');
+});
+
+test('the repository keeps the world as compact plain JSON (git stores its changes as small differences), and the seed is made from exactly that',async()=>{
+ const {compactSource,buildSeed,SOURCE_FILES}=await import('../../scripts/world/seed-lib.mjs');
+ const sources=path.join(root,'content/world');
+ for(const [key,file] of Object.entries(SOURCE_FILES)){
+  const bytes=fs.readFileSync(path.join(sources,file));
+  assert.equal(bytes[0],0x7b,`${file} is plain JSON, not gzip`);
+  assert.equal(Buffer.compare(compactSource(key,bytes),bytes),0,`${file} is in its compact form`);
+  assert.equal(manifest.source[key],sha(bytes),`the seed was made from the current ${file}`);
+ }
+ assert.deepEqual(JSON.parse(zlib.gunzipSync(worldBytes)),JSON.parse(fs.readFileSync(path.join(sources,'editor-world.json'),'utf8')),'the shipped gzip is that document');
+ // Building again from the same sources changes nothing; the gzip is deterministic.
+ const out=fs.mkdtempSync(path.join(os.tmpdir(),'seed-build-'));
+ const first=buildSeed({sourceDir:sources,seedDir:path.join(out,'seed'),manifestFile:path.join(out,'m.json')});
+ assert.equal(first.world.sha,manifest.world.sha,'the same sources give the same bytes, on every machine');
+ assert.equal(buildSeed({sourceDir:sources,seedDir:path.join(out,'seed'),manifestFile:path.join(out,'m.json')}),false,'and a second build finds nothing to do');
+ fs.rmSync(out,{recursive:true,force:true});
 });
