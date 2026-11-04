@@ -2,7 +2,7 @@
 
    `npm run editor:install` builds the editor, registers it with launchd (so it starts when you log in and
    comes back if it stops) and puts "Portfolio Editor.app" in ~/Applications: open it, or drag it to the Dock,
-   and the editor opens in your browser at http://localhost:3100. It is the same editor `npm run dev` shows
+   and the editor opens in your browser at http://127.0.0.1:41873. It is the same editor `npm run dev` shows
    (same local store in .data/cms, same git login), built once instead of compiled on demand, and listening
    only on this Mac.
 
@@ -19,8 +19,11 @@ import path from 'node:path'
 import { spawnSync } from 'node:child_process'
 
 const LABEL = 'com.alejandro.portfolio-editor'
-const PORT = 3100
-const URL_ = `http://localhost:${PORT}/`
+/* An address of its own, so nothing else on this Mac can collide with it: a port no common tool uses, and
+   127.0.0.1 rather than localhost, because a browser keeps cookies per host name and shares them between every
+   port of `localhost` (a Draft Mode or sign-in cookie of another dev server would otherwise leak in). */
+const PORT = 41873
+const URL_ = `http://127.0.0.1:${PORT}/`
 const root = path.resolve(import.meta.dirname, '../..')
 const home = os.homedir()
 const plist = path.join(home, 'Library/LaunchAgents', `${LABEL}.plist`)
@@ -99,9 +102,19 @@ ${Object.entries(env).map(([k, v]) => `    <key>${k}</key><string>${xml(v)}</str
 }
 
 const loaded = () => quiet('launchctl', ['print', `${domain}/${LABEL}`]).status === 0
-function load() {
-  if (loaded()) quiet('launchctl', ['bootout', `${domain}/${LABEL}`])
-  const r = quiet('launchctl', ['bootstrap', domain, plist])
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
+async function load() {
+  if (loaded()) {
+    quiet('launchctl', ['bootout', `${domain}/${LABEL}`])
+    // launchd takes a moment to let go; bootstrapping before then fails with an input/output error.
+    for (let i = 0; i < 20 && loaded(); i++) await sleep(500)
+  }
+  let r
+  for (let attempt = 0; attempt < 5; attempt++) {
+    r = quiet('launchctl', ['bootstrap', domain, plist])
+    if (!r.status) break
+    await sleep(1000)
+  }
   if (r.status) throw new Error(`launchctl could not load the editor: ${r.stderr.trim()}`)
   quiet('launchctl', ['enable', `${domain}/${LABEL}`])
 }
@@ -163,7 +176,7 @@ async function install() {
   if (process.platform !== 'darwin') throw new Error('The editor app is for macOS.')
   build()
   writePlist()
-  load()
+  await load()
   writeApp()
   if (await waitUp()) say(`\nThe editor is running: ${URL_}\nApp: ${app}  (open it, or drag it to the Dock)`)
   else say(`\nInstalled, but the editor did not answer yet. See ${log}`)

@@ -24,8 +24,16 @@ const nextConfig: NextConfig = {
        The website is the deployed one. `npm run dev:site` (CMS_SHOW_SITE=1) shows it, for working on its code. */
     const editor = process.env.NODE_ENV !== 'production' || process.env.CMS_EDITOR === '1'
     if (editor && process.env.CMS_SHOW_SITE !== '1') {
-      const missing = [{ type: 'cookie' as const, key: '__prerender_bypass' }]
-      for (const source of ['/', '/projects/:path*', '/world']) redirects.push({ source, missing, destination: '/admin', permanent: false } as never)
+      /* Which requests are the editor's own previews? Not decided by a cookie alone: the Draft Mode cookie belongs to
+         `localhost` as a whole, so any other dev server on this machine would leave it for everyone. A browser says what
+         it is loading: a page the person navigated to (`document`) goes to the editor; a preview frame (`iframe`) and the
+         page's own requests (`empty`) are served. A browser that does not send the header falls back to the cookie. */
+      const document = [{ type: 'header' as const, key: 'sec-fetch-dest', value: 'document' }]
+      const unknown = [{ type: 'header' as const, key: 'sec-fetch-dest' }, { type: 'cookie' as const, key: '__prerender_bypass' }]
+      for (const source of ['/', '/projects/:path*', '/world']) {
+        redirects.push({ source, has: document, destination: '/admin', permanent: false } as never)
+        redirects.push({ source, missing: unknown, destination: '/admin', permanent: false } as never)
+      }
     }
     return redirects
   },
