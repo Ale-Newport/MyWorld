@@ -50,8 +50,6 @@ export function SettingsAdmin() {
             <h2>Appearance</h2>
             <ColorInput path="settings.themeColor" label="Browser theme colour" optional={false} />
             <SelectInput path="settings.options.typeface" fallback="grotesk" label="Typeface" options={TYPEFACES.map((t) => ({ value: t, label: TYPEFACE_INFO[t].label }))} hint={TYPEFACE_INFO[resolveTypeface(s.options.typeface)].note} />
-            {!live && <MediaInput path="settings.favicon" label="Favicon" hint="Square PNG or SVG. Empty keeps the built-in icon." />}
-            {!live && <MediaInput path="settings.ogImage" label="Share image" hint="Shown when the site is shared; 1200×630 works everywhere." />}
           </section>
           <section className="card stack">
             <h2>Navigation</h2>
@@ -103,6 +101,28 @@ export function SettingsAdmin() {
           <Field label="Theme colour"><div style={{ height: 36, borderRadius: 8, background: s.themeColor, border: '1px solid var(--a-line)' }} /></Field>
         </aside>
       </div>
+    </main>
+  )
+}
+
+/* The editor's part of the settings: the images need the media library, which exists only on this machine. Everything
+   else about the site's settings is edited on the deployed admin (and published from there as a commit). */
+export function SiteImagesAdmin() {
+  const { status, doc, load } = useSiteStore()
+  useEffect(() => { void load() }, [load])
+  if (status !== 'ready' || !doc) return <main className="a-page"><Loading label="Loading the draft…" /></main>
+  return (
+    <main className="a-page">
+      <PageHeader
+        eyebrow="Site"
+        title="Site images"
+        description="The favicon and the share image come from the media library. The site's other settings (title, typeface, navigation, options) are edited on the website's own admin."
+        actions={<DraftBar />}
+      />
+      <section className="card stack" style={{ maxWidth: 640 }}>
+        <MediaInput path="settings.favicon" label="Favicon" hint="Square PNG or SVG. Empty keeps the built-in icon." />
+        <MediaInput path="settings.ogImage" label="Share image" hint="Shown when the site is shared; 1200×630 works everywhere." />
+      </section>
     </main>
   )
 }

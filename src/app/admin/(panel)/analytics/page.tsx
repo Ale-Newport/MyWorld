@@ -1,4 +1,6 @@
 import Link from 'next/link'
+import { notFound } from 'next/navigation'
+import { EDITOR } from '@/server/mode'
 import { PageHeader } from '@/admin/ui/kit'
 import { report } from '@/server/analytics'
 import { publishedSite } from '@/server/site'
@@ -59,6 +61,8 @@ function Table({ head, rows, empty = 'Nothing recorded.' }: { head: string[]; ro
 }
 
 export default async function Audience({ searchParams }: { searchParams: Promise<{ days?: string }> }) {
+  // The audience is read on the deployed admin: this machine records none.
+  if (EDITOR) notFound()
   const { days: raw } = await searchParams
   const days = RANGES.some((r) => String(r.days) === raw) ? Number(raw) : 30
   const { from, to } = period(days)

@@ -6,10 +6,12 @@ The portfolio has its own content management. You can edit the website's text an
 
 | | Editor (your machine) | Deployed admin (the website's `/admin`) |
 | --- | --- | --- |
-| How to open it | `npm run dev`, then `/admin` | `/admin` on the live site |
-| What it edits | The website's pages and projects, media, the world, and the settings | **Settings** and **Audience** only |
+| How to open it | `npm run dev`, then `localhost:3000` (it opens the editor) | `/admin` on the live site |
+| What it shows | Only what the deployed admin cannot do: **Website** (pages, projects, media, history), **World** and **Site images** (the favicon and share image, which come from the media library) | **Settings** and **Audience** only |
 | What **Publish** does | Writes the result into the repository (`content/published/site.json`, `public/media`, the world in `content/world`), commits it and pushes | Commits the settings to `content/published/site.json` on GitHub |
 | When visitors see it | After the host rebuilds from the push: a minute or two | The same |
+
+The editor is an app, not the website: on your machine `/`, `/projects` and `/world` send you to the editor, and the pages appear only inside the editor's own previews. **View site** opens the deployed website. To work on the site's own code with the pages showing, use `npm run dev:site`.
 
 The deployed site has no content store. It is **prerendered at build** from the files in the repository, so visiting a page reads no database: Publish is a commit, and a deploy is what makes it live. The database (Supabase) only holds what the deployed admin needs: sessions, the audit log and the audience's events.
 
@@ -23,7 +25,7 @@ The admin has four places:
 | ↳ History | `/admin/history` | Every revision of the website and the world, restore, the activity log, storage clean-up, **Reload from git** |
 | **World** (editor only) | `/admin/world` | The world editor (map, 3D, terrain, test drive) inside the admin |
 | **Audience** | `/admin/analytics` | First-party, cookieless statistics: what was actually recorded |
-| **Settings** | `/admin/settings` | Title, description, typeface, sharing image, favicon, navigation, world entrance, leaf transition, analytics |
+| **Settings** (deployed only) | `/admin/settings` | Title, description, typeface, navigation, world entrance, leaf transition, analytics. In the editor this place is **Site images**: the favicon and the share image |
 
 The website editor edits **content**, not layout. Where each section's text and animation sit, how big the type is and how everything adapts from a 320 px phone to a 3440 px ultrawide screen is the site's code; nothing in the admin can move, resize or restyle it. (The world editor is different: there, moving, rotating and scaling 3D objects and painting terrain is the point.)
 
