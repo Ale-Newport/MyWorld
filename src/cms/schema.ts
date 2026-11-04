@@ -257,7 +257,7 @@ export const settings = z.object({
     /** How long the leaves take to part over the world; coverage is verified before it either way. */
     leafParting: z.enum(['slow', 'standard', 'quick']).default('standard'),
     /** The typeface of the whole public site (see styles/typefaces.ts). */
-    typeface: z.enum(['geist', 'akzidenz', 'montreal', 'grotesk']).default('geist'),
+    typeface: z.enum(['grotesk', 'inter-tight', 'hanken', 'instrument', 'schibsted', 'geist']).default('grotesk'),
   }),
 })
 export type Settings = z.infer<typeof settings>

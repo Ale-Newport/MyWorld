@@ -92,16 +92,16 @@ test('v1 documents migrate to v2: text kept, geometry dropped, added elements mo
   assert.throws(() => migrateSiteDocument({ schemaVersion: 99 }), /newer version/)
 })
 
-test('the typeface setting: a saved site without it keeps Geist, unknown names are refused, and the CSS carries only a vetted stack', async () => {
+test('the typeface setting: a saved site without it (or with a retired face) wears Space Grotesk, unknown names are refused, and the CSS carries only a vetted stack', async () => {
   const T = await load('src/styles/typefaces.ts')
   const options = { worldEntrance: true, analytics: true, leafCharge: 'standard' }
   const parse = (extra) => S.settings.shape.options.safeParse({ ...options, ...extra })
-  assert.equal(parse({}).data.typeface, 'geist')
+  assert.equal(parse({}).data.typeface, 'grotesk')
   for (const t of T.TYPEFACES) assert.ok(parse({ typeface: t }).success, t)
   assert.equal(parse({ typeface: 'comic-sans' }).success, false)
-  assert.equal(T.typefaceCss(undefined), '', 'a published document saved before the setting has no value, and must not break a page')
-  assert.equal(T.typefaceCss('nonsense'), '')
-  assert.equal(T.resolveTypeface(undefined), 'geist')
-  assert.equal(T.typefaceCss('geist'), '', 'the default adds nothing: tokens.css already holds it')
-  for (const t of ['akzidenz', 'montreal', 'grotesk']) assert.match(T.typefaceCss(t), /^:root\{--font-display:[^;{}<>]+;--font-mono:[^;{}<>]+\}$/, t)
+  for (const v of [undefined, 'nonsense', 'akzidenz', 'montreal']) {
+    assert.equal(T.resolveTypeface(v), 'grotesk', String(v))
+    assert.equal(T.typefaceCss(v), '', 'a published document may hold no value, and must not break a page')
+  }
+  for (const t of T.TYPEFACES.filter((t) => t !== 'grotesk')) assert.match(T.typefaceCss(t), /^:root\{--font-display:[^;{}<>]+;--font-mono:[^;{}<>]+\}$/, t)
 })

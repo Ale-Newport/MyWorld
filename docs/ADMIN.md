@@ -16,7 +16,7 @@ The admin has four places:
 
 The website editor edits **content**, not layout. Where each section's text and animation sit, how big the type is and how everything adapts from a 320 px phone to a 3440 px ultrawide screen is the site's code; nothing in the admin can move, resize or restyle it. (The world editor is different: there, moving, rotating and scaling 3D objects and painting terrain is the point.)
 
-**Typeface.** Settings → Appearance → Typeface changes the type of the whole public site (text and labels): Geist (the original), Akzidenz-Grotesk Pro, Neue Montreal or Space Grotesk. Akzidenz-Grotesk Pro and Neue Montreal are licensed fonts, so their files are not in the repository: put your licensed WOFF2 files in `public/fonts/` as `public/fonts/README.md` describes, otherwise the site shows Helvetica Neue for them. Space Grotesk is bundled. Like every setting it goes live on publish. The admin's own interface keeps Geist.
+**Typeface.** Settings → Appearance → Typeface changes the type of the whole public site (text and labels): Space Grotesk (the site's own), or the free grotesques Inter Tight (close to Akzidenz-Grotesk), Hanken Grotesk (close to Neue Montreal), Instrument Sans and Schibsted Grotesk, or Geist (the previous type). All are open-licence and served from the site itself: only the chosen one is downloaded. The paid Akzidenz-Grotesk Pro and Neue Montreal are not offered. Like every setting it goes live on publish. The admin's own interface keeps Geist.
 
 The admin is not linked from the public site. That is not what protects it; see [Security](#security).
 
