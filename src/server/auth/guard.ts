@@ -10,9 +10,9 @@ import type { Actor } from '../audit.ts'
    Every admin page calls requireAdmin() on the server before it
    renders anything, and every admin API route is wrapped in
    adminApi(), which checks the session and, for anything that
-   changes state, the CSRF token and the request's origin. The
-   proxy's cookie check in src/proxy.ts is only a fast redirect;
-   it is never what keeps anyone out.
+   changes state, the CSRF token and the request's origin. There
+   is no middleware in front of them; the admin's security headers
+   are set in next.config.ts.
    ============================================================ */
 
 export async function currentSession(): Promise<Session | null> {

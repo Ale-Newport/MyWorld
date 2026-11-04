@@ -20,6 +20,22 @@ const nextConfig: NextConfig = {
   async redirects() {
     return [{ source: '/world2', destination: '/world', permanent: true }]
   },
+  /* The admin is never indexed, framed by another site, or sent as a referrer.
+     These were a Node.js middleware (src/proxy.ts); as plain headers they cost no
+     separate bundle to load on a cold start. Who may enter is decided on the
+     server by requireAdmin() / adminApi(), never here. */
+  async headers() {
+    const admin = [
+      { key: 'X-Robots-Tag', value: 'noindex, nofollow' },
+      { key: 'X-Frame-Options', value: 'SAMEORIGIN' },
+      { key: 'Referrer-Policy', value: 'same-origin' },
+      { key: 'X-Content-Type-Options', value: 'nosniff' },
+    ]
+    return [
+      { source: '/admin', headers: admin },
+      { source: '/admin/:path*', headers: admin },
+    ]
+  },
   experimental: {
     optimizePackageImports: ['@react-three/drei'],
   },

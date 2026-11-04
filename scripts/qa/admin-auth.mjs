@@ -14,7 +14,7 @@ for (const [path, method] of [['/api/admin/site', 'GET'], ['/api/admin/site/draf
   const r = await get(path, { method, headers: { 'content-type': 'application/json' }, body: method === 'GET' ? undefined : '{}' })
   assert(r.status === 401, `anonymous ${method} ${path} → 401 (${r.status})`, results)
 }
-// A forged cookie passes the proxy's quick check but not the server's.
+// A forged cookie is not a session: the server refuses it.
 const forged = await get('/admin', { headers: { cookie: 'an_admin=' + 'x'.repeat(43) } })
 assert(forged.status === 307 || forged.status === 308, `forged session cookie → redirect (${forged.status})`, results)
 const forgedApi = await get('/api/admin/site', { headers: { cookie: 'an_admin=' + 'x'.repeat(43) } })
