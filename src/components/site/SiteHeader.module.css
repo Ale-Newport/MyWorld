@@ -1,0 +1,62 @@
+/* The journeys' top bar (navigation/Hud.module.css), for a page that scrolls natively: fixed, over a band of the
+   page's own cream so text scrolling under it never collides with the names. */
+.bar {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  z-index: var(--z-hud);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-4);
+  padding: clamp(1rem, 2.2vw, 1.75rem) var(--gutter);
+  padding-top: calc(clamp(1rem, 2.2vw, 1.75rem) + env(safe-area-inset-top, 0px));
+  padding-left: var(--gutter-left);
+  padding-right: var(--gutter-right);
+  background: linear-gradient(to bottom, var(--bg-primary) 55%, color-mix(in oklab, var(--bg-primary) 0%, transparent));
+  transition: opacity var(--dur-mid) var(--ease-out-expo);
+}
+.bar[data-hidden] { opacity: 0; pointer-events: none; }
+
+.brand { display: flex; align-items: baseline; gap: var(--sp-3); color: var(--text-primary); }
+.mark {
+  font-family: var(--font-mono);
+  font-size: var(--fs-tiny);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  border: var(--hair) solid var(--border-strong);
+  padding: 0.28rem 0.4rem;
+  line-height: 1;
+  transition: background var(--dur-fast), color var(--dur-fast);
+}
+.brand:active .mark, .brand[data-press] .mark { background: var(--text-primary); color: var(--bg-primary); transition-duration: var(--dur-quick); }
+@media (hover: hover) {
+  .brand:hover .mark { background: var(--text-primary); color: var(--bg-primary); transition-duration: var(--dur-quick); }
+}
+.brandName { font-size: var(--fs-tiny); letter-spacing: var(--tracking-label); text-transform: uppercase; font-weight: 450; }
+@media (max-width: 560px) { .brandName { display: none; } }
+
+.indexBtn {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: 0.3rem 0;
+  color: var(--text-primary);
+  transition: transform var(--dur-fast) var(--ease-out-expo);
+}
+.indexBtn:active, .indexBtn[data-press] { transform: scale(0.97); transition-duration: var(--dur-quick); }
+.btnLabel { font-family: var(--font-mono); font-size: var(--fs-nano); letter-spacing: var(--tracking-label); text-transform: uppercase; }
+.indexLines { display: flex; flex-direction: column; gap: 3px; width: 14px; }
+.indexLines i { height: 1px; background: currentColor; display: block; }
+.indexLines i:nth-child(2) { width: 68%; }
+
+@media (pointer: coarse) {
+  .brand, .indexBtn { position: relative; }
+  .brand::after, .indexBtn::after { content: ''; position: absolute; inset: -11px -5px; }
+}
+
+/* A desktop prints the pages; a phone opens the index (the same breakpoint as the journeys' HUD). */
+.pages { display: none; }
+@media (min-width: 900px) {
+  .pages { display: flex; }
+  .indexBtn { display: none; }
+}

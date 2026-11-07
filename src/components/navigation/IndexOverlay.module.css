@@ -25,7 +25,7 @@
   position: relative;
   height: 100%;
   display: grid;
-  grid-template-rows: auto 1fr auto;
+  grid-template-rows: auto 1fr;
   padding: clamp(1rem, 2.2vw, 1.75rem) var(--gutter) clamp(1.25rem, 2.4vw, 2rem);
   max-width: 1680px;
   margin-inline: auto;
@@ -69,252 +69,76 @@
 .list {
   display: flex;
   flex-direction: column;
-  gap: var(--sp-6);
   padding-block: var(--sp-5);
   min-height: 0;
   overflow-y: auto;
   overscroll-behavior: contain;
 }
-/* Centre the list when it fits, scroll it when it does not —
-   `margin: auto` on a flex child does both without a media query. */
-.list > :first-child { margin-top: auto; }
-.list > :last-child { margin-bottom: auto; }
 
 /* ============================================================
-   THE EDGE HAS TO SAY THERE IS MORE
-   Two journeys, their group headings and fourteen rows do not
-   fit one short panel, and macOS hides the scrollbar until the
-   wheel moves. Without this the panel ends by slicing a chapter
-   title in half, which reads as a layout fault rather than an
-   invitation to keep going. The same `margin: auto` that centres
-   a list that fits also leaves both edges empty, so the fade
-   costs nothing at the sizes where nothing is hidden.
-
-   The band has to keep clear of the keyboard. Focus moving down
-   the list parks the next row flush against the edge of the
-   scrollport — inside the fade, where the mask alpha runs to
-   zero and takes the focus ring down with it, and the ring worst
-   of all, because the outline is painted three pixels OUTSIDE
-   the row it belongs to. An unreadable focus indicator on the
-   site's main navigation is a plain accessibility failure, not a
-   nicety. So the scrollport keeps the band as scroll padding
-   with the ring's own offset on top of it, which parks a focused
-   row past the fade entirely, and the band is a step narrower
-   than the rhythm elsewhere so no single row can be swallowed
-   whole by it.
+   ONE ROW PER PAGE
+   Five pages fit any screen, so the list stands at the foot of the
+   panel (where a thumb is) and scrolls only on a phone on its side.
+   The page's name is the row; its number and its note speak in the
+   chrome's mono label, so they read as annotation.
    ============================================================ */
-.list {
-  --edge: var(--sp-3);
-  scroll-padding-block: calc(var(--edge) + var(--sp-2));
-  mask-image: linear-gradient(
-    to bottom,
-    transparent 0,
-    #000 var(--edge),
-    #000 calc(100% - var(--edge)),
-    transparent 100%
-  );
-}
-
-/* ============================================================
-   TWO JOURNEYS, PRINTED AS TWO
-   The split only works if the index shows the shape of it: a
-   heading per journey, a heading per thematic group, and the
-   groups in running order. Everything speaks in the same mono
-   uppercase as the rest of the chrome, so the structure reads as
-   annotation and never competes with the chapter titles.
-   ============================================================ */
-.journey { display: flex; flex-direction: column; }
-
-.journeyHead {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: var(--sp-4);
-  padding-bottom: var(--sp-2);
-  border-bottom: var(--hair) solid var(--border);
-}
-.journeyLabel {
-  font-family: var(--font-mono);
-  font-size: var(--fs-micro);
-  font-weight: 500;
-  letter-spacing: var(--tracking-wide);
-  text-transform: uppercase;
-  color: var(--text-primary);
-}
-.journeyPath {
-  font-family: var(--font-mono);
-  font-size: var(--fs-nano);
-  letter-spacing: var(--tracking-label);
-  text-transform: uppercase;
-  color: var(--text-faint);
-}
-
-.group { display: flex; flex-direction: column; padding-top: var(--sp-4); }
-.groupLabel {
-  font-family: var(--font-mono);
-  font-size: var(--fs-nano);
-  font-weight: 400;
-  letter-spacing: var(--tracking-label);
-  text-transform: uppercase;
-  color: var(--text-faint);
-  padding-bottom: var(--sp-1);
+.pages {
+  margin: auto 0 0;
+  padding: 0;
+  list-style: none;
+  border-top: var(--hair) solid var(--border);
 }
 
 .item {
   display: grid;
-  grid-template-columns: 2.6rem minmax(0, 1fr) minmax(0, 1.2fr) 3rem;
+  grid-template-columns: 2.4rem minmax(0, 1fr) auto;
+  grid-template-areas: 'no title arrow' 'no note arrow';
   align-items: baseline;
-  gap: var(--sp-4);
-  padding: clamp(0.2rem, 0.5svh, 0.5rem) 0;
-  border-bottom: var(--hair) solid transparent;
-  text-align: left;
+  column-gap: var(--sp-4);
+  row-gap: 0.2rem;
+  padding: clamp(0.9rem, 2.4svh, 1.4rem) 0;
+  border-bottom: var(--hair) solid var(--border);
   color: var(--text-muted);
-  transition: color var(--dur-fast), border-color var(--dur-fast), padding-left var(--dur-mid) var(--ease-out-expo);
+  transition: color var(--dur-fast), padding-left var(--dur-mid) var(--ease-out-expo);
 }
 @media (hover: hover) {
-  .item:hover:not(:disabled) { color: var(--text-primary); border-bottom-color: var(--border); padding-left: 0.7rem; transition-duration: var(--dur-quick); }
+  .item:hover { color: var(--text-primary); padding-left: 0.7rem; transition-duration: var(--dur-quick); }
 }
-.item:active:not(:disabled), .item[data-press]:not(:disabled) { color: var(--text-primary); border-bottom-color: var(--border); padding-left: 0.7rem; transition-duration: var(--dur-quick); }
+.item:active, .item[data-press] { color: var(--text-primary); padding-left: 0.7rem; transition-duration: var(--dur-quick); }
 .item[data-current='true'] { color: var(--text-primary); }
 .item[data-current='true'] .itemNo { color: var(--accent); }
-.item:disabled { opacity: 0.32; cursor: not-allowed; }
 
-/* A finger needs about 44px to land on a row: the rows are as tall as their type asks on a pointer that is precise,
-   and taller on one that is not (the panel scrolls, so the length costs nothing). */
-@media (pointer: coarse) {
-  .item { padding-block: 0.8rem; }
-}
-
-/* A chapter on the other route. It costs a page load, so it is
-   quieter until it is pointed at — the difference is the tell,
-   not a badge. */
-.itemAway { color: var(--text-faint); }
-.itemAway:hover .itemNo { color: var(--accent); }
-
-.itemNo { font-family: var(--font-mono); font-size: var(--fs-micro); letter-spacing: 0.08em; }
-/* Fourteen rows and their headings share one panel now, so the
-   title runs a size smaller than it did at seven. */
+.itemNo { grid-area: no; font-family: var(--font-mono); font-size: var(--fs-micro); letter-spacing: 0.08em; }
 .itemTitle {
-  font-size: clamp(1.05rem, 0.85rem + 1.05vw, 1.9rem);
+  grid-area: title;
+  font-size: clamp(2rem, 1.2rem + 4.2vw, 3.6rem);
   font-weight: 500;
   letter-spacing: var(--tracking-tight);
   line-height: 1.05;
   color: inherit;
 }
-.itemLabel {
+.itemNote {
+  grid-area: note;
   font-family: var(--font-mono);
   font-size: var(--fs-nano);
   letter-spacing: var(--tracking-label);
   text-transform: uppercase;
   color: var(--text-faint);
-  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
-.itemYear { font-family: var(--font-mono); font-size: var(--fs-nano); color: var(--text-faint); text-align: right; }
-
-@media (max-width: 800px) {
-  .item { grid-template-columns: 2.1rem 1fr auto; }
-  .itemLabel { display: none; }
+.itemArrow {
+  grid-area: arrow;
+  align-self: center;
+  font-size: 1.25rem;
+  transition: transform var(--dur-fast) var(--ease-out-expo);
+}
+@media (hover: hover) {
+  .item:hover .itemArrow { transform: translateX(4px); transition-duration: var(--dur-quick); }
 }
 
-.foot {
-  display: grid;
-  grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
-  gap: var(--sp-6);
-  align-items: end;
-  padding-top: var(--sp-5);
-  border-top: var(--hair) solid var(--border);
-}
-@media (max-width: 800px) { .foot { grid-template-columns: 1fr; gap: var(--sp-5); } }
-
-/* ============================================================
-   A SHORT SCREEN SCROLLS THE WHOLE PANEL
-   The list scrolls in its own band between the head and the foot,
-   which is right while the band is tall. On a phone on its side the
-   foot alone is most of the screen and the band was one row high —
-   the site's main navigation reduced to a slot. There the panel
-   scrolls as one page instead: the head, every chapter, then the foot.
-   ============================================================ */
-@media (max-height: 700px), (max-width: 800px) and (max-height: 900px) {
+/* A phone on its side: the panel scrolls as one page. */
+@media (max-height: 520px) {
   .panel { display: block; overflow-y: auto; overscroll-behavior: contain; }
-  .list { overflow: visible; -webkit-mask-image: none; mask-image: none; }
-  .list > :first-child { margin-top: 0; }
-  .list > :last-child { margin-bottom: 0; }
-}
-
-.modeRow { display: flex; flex-direction: column; gap: var(--sp-3); align-items: flex-start; }
-.modeBtn {
-  display: inline-flex; align-items: center; gap: var(--sp-3);
-  border: var(--hair) solid var(--border-strong);
-  padding: 0.5rem 0.9rem;
-  font-family: var(--font-mono); font-size: var(--fs-nano);
-  letter-spacing: var(--tracking-label); text-transform: uppercase;
-  transition: border-color var(--dur-fast), color var(--dur-fast);
-}
-.modeBtn[data-on='true'] { border-color: var(--accent); color: var(--accent); }
-@media (hover: hover) {
-  .modeBtn:hover { border-color: var(--text-primary); transition-duration: var(--dur-quick); }
-}
-.modeBtn:active, .modeBtn[data-press] { border-color: var(--text-primary); transition-duration: var(--dur-quick); }
-.modeDot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; opacity: 0.4; }
-.modeBtn[data-on='true'] .modeDot { opacity: 1; }
-.modeNote { font-size: var(--fs-tiny); color: var(--text-muted); max-width: 46ch; line-height: 1.5; }
-
-.links { display: grid; gap: var(--sp-1); }
-.link {
-  display: flex; justify-content: space-between; gap: var(--sp-4);
-  padding: 0.35rem 0;
-  font-family: var(--font-mono); font-size: var(--fs-micro);
-  letter-spacing: 0.06em;
-  color: var(--text-muted);
-  border-bottom: var(--hair) solid transparent;
-  transition: color var(--dur-fast), border-color var(--dur-fast);
-}
-@media (hover: hover) {
-  .link:hover { color: var(--text-primary); border-bottom-color: var(--border); transition-duration: var(--dur-quick); }
-}
-.link:active, .link[data-press] { color: var(--text-primary); border-bottom-color: var(--border); transition-duration: var(--dur-quick); }
-.linkValue { color: var(--text-faint); }
-
-/* ============================================================
-   ENTRY TO /WORLD
-   Offered, never insisted on: the world is a second way through
-   the same material, not a prerequisite for any of it.
-   ============================================================ */
-
-.worldLink {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: var(--sp-4);
-  flex-wrap: wrap;
-  padding: var(--sp-4) 0;
-  margin-bottom: var(--sp-4);
-  border-top: 1px solid var(--border);
-  border-bottom: 1px solid var(--border);
-  font-family: var(--font-mono);
-  font-size: var(--fs-micro);
-  letter-spacing: var(--tracking-label);
-  text-transform: uppercase;
-  color: var(--text-primary);
-  transition: color 200ms var(--ease-out-expo), padding-left 200ms var(--ease-out-expo);
-}
-
-@media (hover: hover) {
-  .worldLink:hover {
-    color: var(--accent);
-    padding-left: var(--sp-2);
-    transition-duration: var(--dur-quick);
-  }
-}
-.worldLink:active, .worldLink[data-press] {
-  color: var(--accent);
-  padding-left: var(--sp-2);
-  transition-duration: var(--dur-quick);
-}
-
-.worldLinkNote {
-  color: var(--text-muted);
-  text-transform: none;
-  letter-spacing: 0.02em;
-  font-size: var(--fs-tiny);
+  .list { overflow: visible; }
+  .itemTitle { font-size: 1.6rem; }
+  .item { padding-block: 0.6rem; }
 }

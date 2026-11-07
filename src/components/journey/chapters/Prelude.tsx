@@ -16,9 +16,11 @@ import styles from './Prelude.module.css'
 
 /* ============================================================
    HOME · 00 – 12%  PRELUDE
-   No loader, no splash. The name is on screen immediately; the
-   roles cycle; scrolling collapses them into a single thesis
-   and the letterforms begin to disperse.
+   No loader, no splash. The name is on screen immediately, the
+   roles cycle under it as its subtitle, and scrolling lifts and
+   loosens the two together until they leave with the chapter.
+   How large the roles are set is the editor's (the prelude
+   section's `rolesSize`).
    ============================================================ */
 
 /* ============================================================
@@ -33,7 +35,8 @@ import styles from './Prelude.module.css'
 const MINUTES_PER_VH = 0.15
 
 export function Prelude() {
-  const { profile } = useSite()
+  const { profile, journeys } = useSite()
+  const rolesSize = journeys.home.sections.find((s) => s.id === 'prelude')?.rolesSize ?? 1
   const tag = useCmsText('prelude.tag', 'PORTFOLIO')
   // Sized on the server from the face's own widths: as large as the stage allows, never wider.
   const name = fitName(profile.name)
@@ -46,17 +49,16 @@ export function Prelude() {
      rather than the store, so the figure is right in the server's
      HTML instead of being corrected a frame after paint. */
   const { chapters } = useJourneyRoute()
-  const minutes = Math.max(1, Math.round(totalVh(false, chapters) * MINUTES_PER_VH))
+  const minutes = Math.max(1, Math.round(totalVh(chapters) * MINUTES_PER_VH))
   const [role, setRole] = useState(0)
   const nameRef = useRef<HTMLHeadingElement>(null)
   const rolesRef = useRef<HTMLDivElement>(null)
-  const thesisRef = useRef<HTMLParagraphElement>(null)
   const hintRef = useRef<HTMLDivElement>(null)
   const shellRef = useRef<HTMLDivElement>(null)
 
-  /* Role rotation — only while someone can see it. The roles fade out as the
-     visitor starts scrolling (the thesis takes their place) and the name leaves
-     with its chapter, and a tab in the background shows nothing at all; a timer
+  /* Role rotation — only while someone can see it. The roles leave with the
+     name as the visitor scrolls the chapter away, and a tab in the background
+     shows nothing at all; a timer
      that kept going through all of that was a React commit every 1.5 s for
      the whole visit, six chapters later and in a hidden tab included. */
   const rolesFaded = useRef(false)
@@ -119,29 +121,25 @@ export function Prelude() {
     const shell = shellRef.current
     if (!shell || reducedMotion) return
 
-    // The name lifts and loosens as the visitor scrolls away.
+    // The name lifts and loosens as the visitor scrolls away; its subtitle, the roles, goes with it.
     const away = range(t, 0.08, 0.75)
+    const lift = `calc(${-away} * min(14svh, var(--prelude-lift, 14svh)))`
     const n = nameRef.current
     if (n) {
-      n.style.transform = `translate3d(0, calc(${-away} * min(14svh, var(--prelude-lift, 14svh))), 0) scale(${1 - away * 0.14})`
+      n.style.transform = `translate3d(0, ${lift}, 0) scale(${1 - away * 0.14})`
       n.style.letterSpacing = `${-0.045 + away * 0.09}em`
       n.style.opacity = String(1 - clamp(range(t, 0.5, 0.9)))
     }
 
-    // Roles fade out and the thesis takes their place.
     const r = rolesRef.current
-    if (r) r.style.opacity = String(1 - clamp(range(t, 0.05, 0.3)))
-    const faded = t >= 0.3
+    if (r) {
+      r.style.transform = `translate3d(0, ${lift}, 0)`
+      r.style.opacity = String(1 - clamp(range(t, 0.3, 0.7)))
+    }
+    const faded = t >= 0.7
     if (faded !== rolesFaded.current) {
       rolesFaded.current = faded
       syncRoles.current()
-    }
-
-    const th = thesisRef.current
-    if (th) {
-      const a = clamp(range(t, 0.22, 0.5)) * (1 - clamp(range(t, 0.72, 0.95)))
-      th.style.opacity = String(a)
-      th.style.transform = `translate3d(0, ${(1 - a) * 1.6}rem, 0)`
     }
 
     const h = hintRef.current
@@ -186,7 +184,7 @@ export function Prelude() {
               time, and the reduced-motion stylesheet stands the whole set
               up at once. One element per role is what lets it be set as a
               rule of type on a desk and a stacked list on a phone. */}
-          <E cms="prelude.roles" as="div" kind="list" label="Rotating roles" className={styles.rolesWrap} ref={rolesRef} aria-hidden="true">
+          <E cms="prelude.roles" as="div" kind="list" label="Rotating roles" className={`${styles.rolesWrap} ${shared.driven}`} ref={rolesRef} aria-hidden="true" style={{ '--roles-size': rolesSize } as CSSProperties}>
             {profile.roles.map((r, i) => (
               <E cms={`prelude.roles.${i}`} key={r} label={`Role ${i + 1}`} bind={`profile.roles.${i}`} className={styles.role} data-on={i === role}>{r}</E>
             ))}
@@ -194,10 +192,6 @@ export function Prelude() {
           <p className="sr-only">
             {profile.roles.join(', ')}. {profile.summary}
           </p>
-
-          <E cms="prelude.thesis" as="p" label="Thesis" bind="profile.thesis" data-room-travel="0 1.6rem" className={`${styles.thesis} ${shared.driven}`} ref={thesisRef}>
-            {profile.thesis}
-          </E>
         </div>
 
         {/* Gone before the opening line arrives in the same place. */}

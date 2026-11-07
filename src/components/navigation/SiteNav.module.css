@@ -1,0 +1,39 @@
+/* The pages in the top bar: the chrome's mono label, a hair under the current one. Desktop only — the bars that
+   carry it decide when it shows (Hud.module.css, SiteHeader.module.css). */
+.nav { display: flex; }
+.list {
+  display: flex;
+  align-items: center;
+  gap: clamp(0.9rem, 1.6vw, 1.6rem);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.link {
+  position: relative;
+  display: block;
+  padding: 0.3rem 0;
+  font-family: var(--font-mono);
+  font-size: var(--fs-nano);
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  color: var(--text-secondary);
+  transition: color var(--dur-fast);
+}
+.link::after {
+  content: '';
+  position: absolute;
+  left: 0; right: 0; bottom: 0;
+  height: var(--hair);
+  background: currentColor;
+  transform: scaleX(0);
+  transform-origin: 0 50%;
+  transition: transform var(--dur-mid) var(--ease-out-expo);
+}
+.link[aria-current='page'] { color: var(--text-primary); }
+.link[aria-current='page']::after { transform: none; }
+.link:active, .link[data-press] { color: var(--accent); transition-duration: var(--dur-quick); }
+@media (hover: hover) {
+  .link:hover { color: var(--accent); transition-duration: var(--dur-quick); }
+  .link:hover::after { transform: none; }
+}

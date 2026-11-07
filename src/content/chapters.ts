@@ -172,12 +172,9 @@ export function journeyOf(id: ChapterId): JourneyId {
   return chapterById[id].journey
 }
 
-/** Total scroll length in viewport heights for a given mode. */
-export function totalVh(quick: boolean, list: Chapter[] = chapters): number {
-  return list.reduce(
-    (sum, c) => sum + (quick ? c.quickVh : c.vh),
-    0,
-  )
+/** Total scroll length in viewport heights. */
+export function totalVh(list: Chapter[] = chapters): number {
+  return list.reduce((sum, c) => sum + c.vh, 0)
 }
 
 export interface ChapterRange {
@@ -188,12 +185,12 @@ export interface ChapterRange {
 }
 
 /** Normalised [start,end] scroll ranges for every chapter in `list`. */
-export function chapterRanges(quick: boolean, list: Chapter[] = chapters): ChapterRange[] {
-  const total = totalVh(quick, list)
+export function chapterRanges(list: Chapter[] = chapters): ChapterRange[] {
+  const total = totalVh(list)
   let cursor = 0
   const out: ChapterRange[] = []
   for (const c of list) {
-    const len = quick ? c.quickVh : c.vh
+    const len = c.vh
     const start = cursor / total
     cursor += len
     out.push({ id: c.id, start, end: cursor / total, chapter: c })

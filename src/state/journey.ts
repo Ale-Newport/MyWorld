@@ -36,7 +36,6 @@ export interface JourneyState {
   ranges: ChapterRange[]
 
   /* ---- modes -------------------------------------------- */
-  quickView: boolean
   reducedMotion: boolean
   performanceTier: PerformanceTier
   soundEnabled: boolean
@@ -51,7 +50,6 @@ export interface JourneyState {
   setScroll: (p: { progress: number; velocity: number }) => void
   setPointer: (x: number, y: number) => void
   setJourney: (id: JourneyId, chapters: Chapter[]) => void
-  setQuickView: (v: boolean) => void
   setReducedMotion: (v: boolean) => void
   setPerformanceTier: (t: PerformanceTier) => void
   toggleSound: () => void
@@ -95,7 +93,6 @@ export const useJourney = create<JourneyState>((set, get) => ({
   chapters: [],
   ranges: [],
 
-  quickView: false,
   reducedMotion: false,
   performanceTier: 'high',
   soundEnabled: false,
@@ -128,7 +125,7 @@ export const useJourney = create<JourneyState>((set, get) => ({
     const s = get()
     if (s.journeyId === id && s.chapters === list) return
     if (s.journeyId === id && s.ranges.length) {
-      const ranges = chapterRanges(s.quickView, list)
+      const ranges = chapterRanges(list)
       const { active, chapterProgress } = resolve(s.progress, ranges)
       set({ chapters: list, ranges, ...(active ? { chapter: active.id, chapterIndex: active.chapter.index } : {}), chapterProgress })
       return
@@ -136,25 +133,13 @@ export const useJourney = create<JourneyState>((set, get) => ({
     set({
       chapters: list,
       journeyId: id,
-      ranges: chapterRanges(s.quickView, list),
+      ranges: chapterRanges(list),
       chapter: list[0]?.id ?? 'prelude',
       chapterIndex: 0,
       progress: 0,
       chapterProgress: 0,
       velocity: 0,
       direction: 1,
-    })
-  },
-
-  setQuickView: (v) => {
-    const s = get()
-    const ranges = chapterRanges(v, s.chapters)
-    const { active, chapterProgress } = resolve(s.progress, ranges)
-    set({
-      quickView: v,
-      ranges,
-      ...(active ? { chapter: active.id, chapterIndex: active.chapter.index } : {}),
-      chapterProgress,
     })
   },
 
