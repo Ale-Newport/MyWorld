@@ -17,6 +17,10 @@ function label(doc: SiteDocument, path: string[]): string {
     const p = doc.projects[Number(path[1])]
     return `Project “${p?.title ?? path[1]}” → ${path.slice(2).filter((s) => !/^\d+$/.test(s)).join(' › ')}`
   }
+  if (path[0] === 'posts') {
+    const p = doc.posts?.[Number(path[1])]
+    return `Blog post “${p?.title ?? path[1]}” → ${path.slice(2).filter((s) => !/^\d+$/.test(s)).join(' › ')}`
+  }
   if (path[0] === 'settings') return `Settings → ${path.slice(1).join(' › ')}`
   if (path[0] === 'elements') return `Page element ${path[1]}`
   if (path[0] === 'additions') return `Added element in section “${path[1]}”`

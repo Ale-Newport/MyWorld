@@ -77,6 +77,7 @@ export function buildSeedDocument(): SiteDocument {
     collections: { 'pansofia.gallery': featuredClientProjects.map((p) => p.id) },
     elements: {},
     additions: {},
+    posts: [],
   }
   return siteDocument.parse(doc)
 }

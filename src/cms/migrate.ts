@@ -136,6 +136,7 @@ export function migrateSiteDocument<T = unknown>(input: unknown): T {
   doc.collections ??= {}
   doc.credentials ??= []
   doc.additions ??= {}
+  doc.posts ??= []
   doc.journeys = normaliseAnimations(doc.journeys)
   return doc as T
 }
