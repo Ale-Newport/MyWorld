@@ -39,6 +39,15 @@ function target() {
 
 export const githubConfigured = () => !!target()
 
+/** The repository the blog commits to (server/blog-publish.ts), or null until GITHUB_TOKEN and GITHUB_REPO are set. */
+export function contentTarget(): import('./blog-publish.ts').GitHubTarget | null {
+  const t = target()
+  return t && { ...t, api: api() }
+}
+
+/** Said wherever publishing from the web is refused for want of the Worker's settings. */
+export const NOT_CONFIGURED = 'Publishing from the web needs the GITHUB_TOKEN secret and the GITHUB_REPO variable on the Worker (see the GitHub token card in Settings). Until they are set, nothing can be committed from here.'
+
 async function call(path: string, init: RequestInit & { token: string }) {
   const { token, ...rest } = init
   const response = await fetch(`${api()}${path}`, {
