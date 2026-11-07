@@ -1,0 +1,169 @@
+/* The home's closing chapter (journey/chapters/Contact.module.css), laid out as a page: the same rows — the closing
+   words taking what is left, then the links, then the colophon — in a column that, on a desktop, leaves the
+   terminal its width at the right. The window's size and place are set here so the column and the window agree. */
+.page {
+  --page-top: clamp(6.5rem, 14svh, 9rem);
+  --term-top: var(--page-top);
+  --term-w: clamp(21rem, 33vw, 31rem);
+  --term-h: min(31rem, calc(100svh - var(--term-top) - clamp(2rem, 7svh, 4.5rem)));
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: auto minmax(min-content, 1fr) auto auto auto;
+  row-gap: clamp(1.5rem, 3.6svh, 2.75rem);
+  min-height: 100svh;
+  padding: var(--page-top) var(--gutter-right) calc(clamp(1.5rem, 4svh, 2.5rem) + env(safe-area-inset-bottom, 0px)) var(--gutter-left);
+  color: var(--text-primary);
+  background: var(--bg-primary);
+}
+
+/* The page's words stand above the light behind the terminal's glass (Terminal.module.css, .glow), wherever the
+   window is dragged; the window itself stands above them. */
+.eyebrow, .closing, .links, .colophon { position: relative; z-index: 1; }
+
+/* ---- the corner notes, as a row ---- */
+.eyebrow {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: var(--sp-3) var(--sp-5);
+  font-family: var(--font-mono);
+  font-size: var(--fs-nano);
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  line-height: 1.5;
+  color: var(--text-muted);
+}
+.tags { display: flex; flex-wrap: wrap; gap: clamp(0.7rem, 2vw, 1.6rem); }
+.tags > :first-child { color: var(--accent); }
+.stats { text-align: right; }
+
+/* ---- the closing words ---- */
+.closing {
+  container-type: inline-size;
+  align-self: center;
+  min-width: 0;
+}
+/* Sized by the column (cqi), the screen's height and the longest word (--word-em, from capitals.ts), whichever is
+   smallest, so a phone on its side gets a line that fits its band and a long answer wraps between words. */
+.title {
+  margin: 0;
+  font-size: min(clamp(2.4rem, 13cqi, 10.5rem), calc(100cqi / var(--word-em, 4)), 21svh);
+  font-weight: 500;
+  letter-spacing: -0.052em;
+  line-height: 0.86;
+  text-transform: uppercase;
+}
+/* Each line is its own mask: the words rise out of it. */
+.titleLine {
+  display: block;
+  overflow: hidden;
+  padding-block: 0.04em 0.1em;
+  margin-block: -0.04em -0.1em;
+}
+.titleText {
+  display: block;
+  text-wrap: balance;
+  overflow-wrap: anywhere;
+  animation: rise var(--dur-slow) var(--ease-out-expo) backwards;
+  animation-delay: calc(var(--i, 0) * 90ms + 80ms);
+}
+.answer { color: var(--accent); }
+
+/* ---- the links, as the home sets them ---- */
+.links {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(16rem, 100%), 1fr));
+  gap: 0 var(--sp-5);
+  border-top: var(--hair) solid var(--border);
+}
+.item { border-bottom: var(--hair) solid var(--border); }
+.link {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  grid-template-rows: auto auto;
+  align-items: baseline;
+  gap: 0.2rem var(--sp-3);
+  padding: var(--sp-4) var(--sp-4) var(--sp-4) 0;
+  color: var(--text-muted);
+  transition: padding-left var(--dur-mid) var(--ease-out-expo), color var(--dur-fast);
+}
+@media (hover: hover) {
+  .link:hover { padding-left: var(--sp-4); color: var(--text-primary); transition-duration: var(--dur-quick); }
+}
+.link:active, .link[data-press] { padding-left: var(--sp-4); color: var(--text-primary); transition-duration: var(--dur-quick); }
+.link[data-pending='true'] { cursor: default; }
+@media (hover: hover) {
+  .link[data-pending='true']:hover { padding-left: 0; color: var(--text-muted); }
+}
+.link[data-pending='true']:active, .link[data-pending='true'][data-press] { padding-left: 0; color: var(--text-muted); }
+
+.linkLabel {
+  font-family: var(--font-mono);
+  font-size: var(--fs-nano);
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  color: var(--accent);
+}
+.linkValue {
+  grid-column: 1;
+  grid-row: 2;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--fs-small);
+  letter-spacing: -0.01em;
+  color: var(--text-primary);
+}
+.linkArrow { grid-column: 2; grid-row: 1 / span 2; align-self: center; font-size: var(--fs-tiny); }
+
+/* ---- the terminal's place in the flow: under the links on a phone; on a desktop it floats (Terminal.module.css) ---- */
+.terminal { min-width: 0; }
+
+/* ---- the colophon ---- */
+.colophon {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: var(--sp-2) var(--sp-4);
+  font-family: var(--font-mono);
+  font-size: var(--fs-nano);
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+
+/* ---- the entrance: once, and short ---- */
+.eyebrow, .item, .colophon {
+  animation: lift var(--dur-slow) var(--ease-out-expo) backwards;
+  animation-delay: calc(var(--i, 0) * 70ms + 120ms);
+}
+@keyframes rise {
+  from { transform: translate3d(0, 105%, 0); }
+}
+@keyframes lift {
+  from { opacity: 0; transform: translate3d(0, 0.9rem, 0); }
+}
+
+/* A desktop: the column keeps clear of the floating window, and the terminal's slot leaves the grid. */
+@media (min-width: 900px) {
+  .page { padding-right: calc(var(--gutter-right) + var(--term-w) + clamp(2rem, 4.5vw, 5rem)); }
+  .terminal { position: absolute; top: 0; right: 0; width: 0; height: 0; }
+}
+
+@media (max-width: 899px) {
+  .link { padding-block: var(--sp-3); }
+}
+
+/* A phone on its side: the links go two by two. */
+@media (max-height: 520px) and (orientation: landscape) {
+  .page { --page-top: 4.75rem; row-gap: 1rem; }
+  .links { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .link { padding-block: 0.45rem; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .eyebrow, .item, .colophon, .titleText { animation: none; }
+}

@@ -1,0 +1,443 @@
+/* ============================================================
+   LIQUID GLASS
+   A pane that bends the light behind it rather than hiding it:
+   a heavy blur that keeps the page's warmth (saturate), a tint
+   of the wall's own cream, a sheen that falls from the top-left
+   like a window lit from above, and a rim of light that is bright
+   where the light strikes the edge and faint where it leaves.
+   Behind it, a little warm and green light (.glow), so the glass
+   has something to bend on a page that is otherwise all cream. The
+   light travels with the window and stays under the page's type.
+
+   Without backdrop-filter, or when the visitor asks for less
+   transparency, the pane is simply paper: opaque, same rim.
+
+   The page sets the window's size and place (--term-*, in
+   ContactPage.module.css), so the column beside it can keep clear.
+   ============================================================ */
+
+.slot { position: relative; }
+
+/* ---- the light behind the glass --------------------------------- */
+.glow {
+  position: absolute;
+  inset: -1.5rem -0.5rem;
+  pointer-events: none;
+  background:
+    radial-gradient(closest-side at 24% 30%, color-mix(in oklab, var(--accent-soft) 34%, transparent), transparent),
+    radial-gradient(closest-side at 78% 74%, color-mix(in oklab, var(--signal) 24%, transparent), transparent),
+    radial-gradient(closest-side at 66% 16%, color-mix(in oklab, var(--ground-bloom) 52%, transparent), transparent);
+  transition: opacity var(--dur-slow) var(--ease-out-expo);
+  animation: glowIn 1400ms var(--ease-out-expo) 200ms backwards;
+}
+.glow[data-off] { opacity: 0; }
+
+/* ---- the window ---------------------------------------------------- */
+.window {
+  --win-radius: 18px;
+  --glass: rgb(251 246 238 / 0.44);
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: min(27rem, 72svh);
+  border-radius: var(--win-radius);
+  color: var(--ink);
+  background:
+    linear-gradient(180deg, rgb(255 255 255 / 0.5) 0, rgb(255 255 255 / 0.16) 2.5rem, rgb(255 255 255 / 0.05) 55%, rgb(255 255 255 / 0.2) 100%),
+    var(--glass);
+  -webkit-backdrop-filter: blur(22px) saturate(185%);
+  backdrop-filter: blur(22px) saturate(185%);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.95),
+    inset 0 -1px 0 rgb(255 255 255 / 0.32),
+    inset 0 0 0 1px rgb(255 255 255 / 0.2),
+    inset 0 0 2.25rem rgb(255 255 255 / 0.2),
+    0 0 0 0.5px rgb(58 40 18 / 0.2),
+    0 2px 6px -2px rgb(58 40 18 / 0.16),
+    0 32px 72px -28px rgb(58 40 18 / 0.46);
+  isolation: isolate;
+  overflow: hidden;
+  animation: windowIn 760ms var(--ease-out-expo) 380ms backwards;
+}
+.window[data-reopened] { animation-duration: 420ms; animation-delay: 0ms; }
+.window[data-zoomed] { height: min(42rem, 86svh); }
+
+/* The sheen: light falling from the top-left, and one soft diagonal glint. */
+.window::before,
+.dock::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  pointer-events: none;
+  background:
+    radial-gradient(120% 70% at 8% -12%, rgb(255 255 255 / 0.6), transparent 52%),
+    linear-gradient(118deg, transparent 38%, rgb(255 255 255 / 0.16) 46%, transparent 54%);
+}
+/* The rim: a hairline of light, brightest where the light strikes the edge. */
+.window::after,
+.dock::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  pointer-events: none;
+  background: linear-gradient(150deg, rgb(255 255 255 / 1), rgb(255 255 255 / 0.28) 26%, rgb(255 255 255 / 0) 52%, rgb(255 255 255 / 0.12) 78%, rgb(255 255 255 / 0.7));
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0);
+}
+
+/* ---- title bar ---------------------------------------------------------- */
+.titlebar {
+  position: relative;
+  flex: none;
+  display: flex;
+  align-items: center;
+  height: 2.5rem;
+  padding: 0 0.875rem;
+  border-bottom: 1px solid rgb(58 40 18 / 0.08);
+  user-select: none;
+  -webkit-user-select: none;
+}
+.title {
+  position: absolute;
+  inset: 0;
+  padding-inline: 5.25rem;
+  text-align: center;
+  margin: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-family: var(--font-display);
+  font-size: 0.75rem;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  line-height: 2.5rem;
+  color: var(--ink-4);
+  pointer-events: none;
+  transition: color var(--dur-fast);
+}
+.window[data-focused] .title { color: var(--ink-2); }
+
+.lights { position: relative; z-index: 1; display: flex; gap: 0.5rem; }
+.light {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 0.75rem;
+  height: 0.75rem;
+  border-radius: 50%;
+  background: var(--light);
+  box-shadow: inset 0 0 0 0.5px rgb(0 0 0 / 0.2), inset 0 1px 1px rgb(255 255 255 / 0.45);
+  color: rgb(70 20 10 / 0.62);
+  transition: filter var(--dur-fast);
+}
+.light[data-light='close'] { --light: #ff5f57; }
+.light[data-light='minimise'] { --light: #febc2e; color: rgb(110 60 0 / 0.62); }
+.light[data-light='zoom'] { --light: #28c840; color: rgb(0 80 10 / 0.62); }
+/* A finger's worth of target, without moving the lights apart. */
+.light::after { content: ''; position: absolute; inset: -6px -4px; }
+.light svg {
+  width: 8px;
+  height: 8px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  opacity: 0;
+  transition: opacity var(--dur-quick);
+}
+.lights:hover svg, .lights:focus-within svg { opacity: 1; }
+.light:active, .light[data-press] { filter: brightness(0.82); transition-duration: var(--dur-quick); }
+.light:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 50%; }
+
+/* ---- the screen ------------------------------------------------------------ */
+.body { position: relative; flex: 1; min-height: 0; }
+.screen {
+  position: absolute;
+  inset: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: rgb(58 40 18 / 0.25) transparent;
+  padding: 0.7rem 1rem 1rem;
+  container-type: inline-size;
+  font-family: var(--font-geist-mono), ui-monospace, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace;
+  font-size: 0.8125rem;
+  line-height: 1.5;
+  font-variant-ligatures: none;
+  color: var(--ink);
+  cursor: text;
+}
+
+.log { display: block; }
+.entry { display: block; }
+.line { white-space: pre-wrap; overflow-wrap: anywhere; }
+
+.screen [data-tone='accent'] { color: var(--accent); }
+.screen [data-tone='signal'] { color: var(--signal); }
+.screen [data-tone='dim'] { color: var(--ink-3); }
+.screen [data-tone='error'] { color: var(--accent-deep); }
+.screen [data-tone='strong'] { font-weight: 600; }
+
+/* A command named in the output: what to type next. */
+.kbd { color: var(--accent); font-weight: 500; }
+
+.screen a {
+  color: var(--accent);
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.2em;
+  transition: color var(--dur-fast);
+}
+.screen a:active, .screen a[data-press] { color: var(--accent-deep); transition-duration: var(--dur-quick); }
+@media (hover: hover) {
+  .screen a:hover { color: var(--accent-deep); transition-duration: var(--dur-quick); }
+}
+
+.rows {
+  display: grid;
+  /* A key column at least as wide as help's longest name, so its two lists line up. */
+  grid-template-columns: minmax(14ch, max-content) minmax(0, 1fr);
+  column-gap: 2ch;
+}
+.rowKey { white-space: nowrap; }
+.rowValue { white-space: pre-wrap; overflow-wrap: anywhere; }
+.columns {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 24ch), 1fr));
+  column-gap: 2ch;
+}
+.art {
+  margin: 0;
+  font: inherit;
+  line-height: 1.3;
+  white-space: pre;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.fetch { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 0.25rem 3ch; }
+
+/* ---- the prompt ------------------------------------------------------------- */
+.promptRow { position: relative; white-space: pre-wrap; overflow-wrap: anywhere; }
+/* While a command runs there is no prompt — but the input keeps its focus, so typing ahead works. */
+.promptRow[data-busy] { height: 0; overflow: hidden; opacity: 0; }
+
+.prompt { white-space: pre; }
+.who { color: var(--signal); }
+.cwd { font-weight: 600; }
+.sigil { color: var(--ink-3); }
+
+.mirror { white-space: pre-wrap; }
+/* The block: hollow while the window is not being typed in, solid and blinking when it is. Typing restarts the
+   blink (the element is keyed to the text), so it holds still under the fingers. */
+.caret {
+  display: inline-block;
+  min-width: 1ch;
+  line-height: 1.32;
+  vertical-align: -0.12em;
+  box-shadow: inset 0 0 0 1px var(--ink-3);
+  border-radius: 1px;
+}
+.window[data-focused] .caret {
+  background: var(--ink);
+  color: var(--bg-primary);
+  box-shadow: none;
+  animation: blink 1.06s steps(1, end) 0.5s infinite;
+}
+
+/* Over the whole row, invisible: it takes the keys (and on a phone, the tap that raises the keyboard). Its type is
+   16 px whatever the screen's is, which is what keeps iOS from zooming in on it. */
+.input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  font: inherit;
+  font-size: 16px;
+  color: transparent;
+  caret-color: transparent;
+  background: transparent;
+  opacity: 0;
+  cursor: text;
+}
+
+.measure {
+  position: absolute;
+  top: 0;
+  left: 0;
+  visibility: hidden;
+  white-space: pre;
+  pointer-events: none;
+}
+
+.matrix {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  background: rgb(4 12 7 / 0.9);
+  font-family: var(--font-geist-mono), ui-monospace, Menlo, monospace;
+  cursor: pointer;
+}
+
+/* ---- the dock pill -------------------------------------------------------------- */
+.dock {
+  --glass: rgb(251 246 238 / 0.5);
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.45rem 1.05rem 0.45rem 0.45rem;
+  border-radius: var(--radius-pill);
+  font-family: var(--font-mono);
+  font-size: var(--fs-nano);
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  color: var(--ink);
+  background:
+    linear-gradient(180deg, rgb(255 255 255 / 0.55), rgb(255 255 255 / 0.12)),
+    var(--glass);
+  -webkit-backdrop-filter: blur(18px) saturate(185%);
+  backdrop-filter: blur(18px) saturate(185%);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.95),
+    inset 0 0 0 1px rgb(255 255 255 / 0.22),
+    0 0 0 0.5px rgb(58 40 18 / 0.2),
+    0 14px 32px -16px rgb(58 40 18 / 0.5);
+  isolation: isolate;
+  animation: dockIn 480ms var(--ease-out-expo) backwards;
+  transition: transform var(--dur-fast) var(--ease-out-expo);
+}
+.dock:active, .dock[data-press] { transform: scale(0.97); transition-duration: var(--dur-quick); }
+@media (hover: hover) {
+  .dock:hover { transform: translateY(-2px); transition-duration: var(--dur-quick); }
+}
+.dock:focus-visible { outline-offset: 3px; border-radius: var(--radius-pill); }
+.dockIcon {
+  display: grid;
+  place-items: center;
+  width: 1.85rem;
+  height: 1.85rem;
+  border-radius: 0.5rem;
+  background: linear-gradient(180deg, #3a342c, #15120e);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.2), 0 1px 2px rgb(0 0 0 / 0.25);
+  color: #ece6da;
+  font-family: var(--font-geist-mono), ui-monospace, Menlo, monospace;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0;
+}
+/* The running-app dot under the icon: there for a minimised session, gone for a closed one. */
+.dockDot {
+  position: absolute;
+  bottom: 2px;
+  left: calc(0.45rem + 0.925rem - 2px);
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--ink-3);
+}
+
+/* ---- a desktop: floating ------------------------------------------------------------ */
+@media (min-width: 900px) {
+  .glow {
+    position: fixed;
+    inset: auto;
+    top: calc(var(--term-top) - 3rem);
+    right: calc(var(--gutter-right) - 2.5rem);
+    width: calc(var(--term-w) + 5rem);
+    height: calc(var(--term-h) + 6rem);
+  }
+  .window {
+    position: fixed;
+    z-index: 55;
+    top: var(--term-top);
+    right: var(--gutter-right);
+    width: var(--term-w);
+    height: var(--term-h);
+  }
+  .window[data-zoomed] {
+    --zoom-w: min(64rem, calc(100vw - var(--gutter-left) - var(--gutter-right)));
+    width: var(--zoom-w);
+    height: min(42rem, calc(100svh - var(--term-top) - 1.5rem));
+    right: calc((100vw - var(--zoom-w)) / 2);
+  }
+  .titlebar { cursor: grab; touch-action: none; }
+  .window[data-dragging] .titlebar { cursor: grabbing; }
+  .window[data-dragging] { box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.95),
+    inset 0 -1px 0 rgb(255 255 255 / 0.32),
+    inset 0 0 0 1px rgb(255 255 255 / 0.2),
+    inset 0 0 2.25rem rgb(255 255 255 / 0.2),
+    0 0 0 0.5px rgb(58 40 18 / 0.2),
+    0 4px 10px -2px rgb(58 40 18 / 0.18),
+    0 44px 90px -30px rgb(58 40 18 / 0.5); }
+  .dock {
+    position: fixed;
+    z-index: 55;
+    right: var(--gutter-right);
+    bottom: max(1.5rem, calc(env(safe-area-inset-bottom, 0px) + 0.75rem));
+  }
+}
+
+/* ---- a phone: docked in the page -------------------------------------------------------- */
+@media (max-width: 899px) {
+  .screen { font-size: 0.875rem; padding: 0.7rem 0.9rem 1rem; }
+  .title { padding-inline: 4.75rem; }
+}
+/* The prompt drops the machine's name where every column counts. */
+@container (max-width: 26rem) {
+  .at { display: none; }
+  .rows { grid-template-columns: minmax(0, 1fr); }
+  .rowValue { padding-left: 2ch; }
+}
+@media (pointer: coarse) {
+  .lights { gap: 0.65rem; }
+  .light { width: 0.875rem; height: 0.875rem; }
+  .light svg { opacity: 1; }
+}
+
+/* ---- glass that cannot be glass ---------------------------------------------------------- */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .window, .dock { --glass: #fbf7ef; }
+}
+@media (prefers-reduced-transparency: reduce) {
+  .window, .dock {
+    --glass: #fbf7ef;
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+}
+@media (forced-colors: active) {
+  .window, .dock { border: 1px solid CanvasText; }
+  .caret, .window[data-focused] .caret { background: Highlight; color: HighlightText; }
+}
+
+@keyframes windowIn {
+  from { opacity: 0; transform: translate3d(0, 1.25rem, 0) scale(0.97); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes glowIn { from { opacity: 0; } }
+@keyframes dockIn {
+  from { opacity: 0; transform: translate3d(0, 0.75rem, 0) scale(0.92); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes blink {
+  50% { background: transparent; color: inherit; box-shadow: inset 0 0 0 1px transparent; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .window, .glow, .dock { animation: none; }
+  .window[data-focused] .caret { animation: none; }
+}
