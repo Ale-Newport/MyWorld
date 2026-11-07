@@ -10,6 +10,7 @@ import { useSite } from '@/cms/context'
 import { E, useCms, useCmsText } from '@/cms/editable'
 import { useJourney } from '@/state/journey'
 import { SectionAnimation } from '@/sections/SectionAnimation'
+import { Arrow } from '@/components/ui/Arrow'
 import shared from './chapters.module.css'
 import styles from './Universe.module.css'
 
@@ -17,9 +18,9 @@ import styles from './Universe.module.css'
    HOME · 38 – 52%  PROJECT UNIVERSE
    Every project, in one structure. The section's animation draws
    the archive in the region between the heading and the footer;
-   this layer owns the filters, the label and the accessible list,
-   because the archive has to be usable by someone who never sees
-   the animation at all.
+   this layer owns the filters and the label. Every project in the
+   animation is a button of its own, named and in the tab order, so
+   the archive is usable by someone who never sees it move.
 
    Four rows that never overlap: heading and filters, the
    animation, the footer. On a phone the filters get a row of
@@ -34,7 +35,6 @@ export function Universe() {
   const tag = useCmsText('universe.tag', 'PROJECT UNIVERSE')
   const [filter, setFilter] = useState('all')
   const [hovered, setHovered] = useState<string | null>(null)
-  const [listOpen, setListOpen] = useState(false)
   const setActiveProject = useJourney((s) => s.setActiveProject)
 
   const active = universeFilters.find((f) => f.id === filter)
@@ -114,42 +114,10 @@ export function Universe() {
               data-cursor="link"
             >
               {journeys.projects.chapters.length} projects, up close
-              <span aria-hidden="true"> →</span>
+              <Arrow dir="right" />
             </E>
-            <button
-              type="button"
-              className={styles.listToggle}
-              onClick={() => setListOpen((v) => !v)}
-              aria-expanded={listOpen}
-              data-cursor="link"
-            >
-              {listOpen ? 'Close list' : 'Open as list'}
-            </button>
           </div>
         </E>
-
-        {/* Full text alternative to the animated archive. */}
-        <div className={styles.list} data-open={listOpen}>
-          <ul>
-            {visibleList.map((p) => (
-              <li key={p.id}>
-                <button
-                  type="button"
-                  className={styles.listItem}
-                  onClick={() => setActiveProject(p.slug)}
-                  style={{ ['--row-accent' as string]: p.accent ?? categoryAccent[p.category] }}
-                  data-cursor="view"
-                  tabIndex={listOpen ? 0 : -1}
-                >
-                  <span className={styles.listYear}>{p.year}</span>
-                  <span className={styles.listName}>{p.title}</span>
-                  <span className={styles.listDesc}>{p.shortDescription}</span>
-                  <span className={styles.listTier}>{p.importance}</span>
-                </button>
-              </li>
-            ))}
-          </ul>
-        </div>
       </div>
     </Chapter>
   )

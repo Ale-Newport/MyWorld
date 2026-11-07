@@ -10,12 +10,14 @@
   .host { display: block; }
 }
 
-.dot, .ring {
+.dot, .ring, .label {
   position: fixed;
   top: 0; left: 0;
-  will-change: transform;
   transition: opacity 200ms linear;
 }
+/* Both only move by transform. The ring grows by its own width and height (Cursor.tsx), so its hairline is drawn
+   at every size rather than scaled up into a soft band. */
+.dot, .ring, .label { will-change: transform; }
 
 .dot {
   width: 5px; height: 5px;
@@ -26,7 +28,7 @@
 
 .ring {
   width: 26px; height: 26px;
-  margin: -13px 0 0 -13px;
+  translate: -50% -50%;
   border-radius: 50%;
   border: var(--hair) solid var(--border-strong);
   display: grid;
@@ -41,15 +43,23 @@
 .ring[data-kind='view']    { border-color: var(--accent); }
 .ring[data-kind='drag']    { border-style: dashed; border-color: var(--text-secondary); }
 .ring[data-down='true']    { background: color-mix(in oklab, var(--text-primary) 14%, transparent); }
+/* A ring that carries a word is filled with the page's own cream, so the word reads over whatever text is under it. */
+.ring[data-has-text='true'] { background: color-mix(in oklab, var(--bg-primary) 86%, transparent); }
 
+/* Centred on the ring's centre, at the size it is read at: never scaled, so every glyph is drawn crisp. */
 .label {
+  translate: -50% -50%;
   font-family: var(--font-mono);
-  font-size: 3.4px;
+  font-size: 10px;
+  font-weight: 500;
+  line-height: 1;
   letter-spacing: 0.14em;
+  /* The tracking trails the last letter; this puts the word back on the ring's centre. */
+  padding-left: 0.14em;
   text-transform: uppercase;
   color: var(--text-primary);
   white-space: nowrap;
   opacity: 0;
   transition: opacity var(--dur-quick) linear;
 }
-.ring[data-has-text='true'] .label { opacity: 1; }
+.label[data-on='true'] { opacity: 1; }

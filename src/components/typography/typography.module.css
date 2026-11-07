@@ -4,7 +4,17 @@
    ============================================================ */
 
 .reveal { display: block; }
-.reveal .unitWrap { display: inline-block; overflow: hidden; vertical-align: top; }
+/* The clip is let out beyond the line box. The site sets its display type at a line-height under 1, so a clip
+   exactly the line's height (overflow: hidden) cut the tails off g, y, p and j and the tops off accented capitals.
+   An inset clip-path can reach outside the box without changing its size — overflow cannot — so the lines lay out
+   exactly as before and only what is truly outside the glyphs is cut: --ink above and below, a little sideways
+   for the overhang of a J or a Y at the ends of a tightly tracked line. */
+.reveal .unitWrap {
+  --ink: 0.26em;
+  display: inline-block;
+  vertical-align: top;
+  clip-path: inset(calc(var(--ink) * -1) -0.1em);
+}
 .reveal .unit { display: inline-block; will-change: transform, opacity, filter; }
 /* Letter-by-letter modes: a word's letters wrap together, never apart. */
 .reveal .word { white-space: nowrap; }
@@ -14,7 +24,7 @@
 
 /* ---- mask: lines rise out of a clipped box ---------------- */
 .reveal[data-mode='mask'] .unitWrap { display: block; }
-.reveal[data-mode='mask'][data-state='hidden'] .unit { transform: translateY(105%); }
+.reveal[data-mode='mask'][data-state='hidden'] .unit { transform: translateY(calc(105% + var(--ink))); }
 .reveal[data-mode='mask'][data-state='shown'] .unit {
   transform: translateY(0);
   transition: transform 1.05s var(--ease-out-expo);
@@ -36,7 +46,7 @@
 
 /* ---- perspective: words rotate up out of the page --------- */
 .reveal[data-mode='perspective'] { perspective: 700px; }
-.reveal[data-mode='perspective'] .unitWrap { overflow: visible; }
+.reveal[data-mode='perspective'] .unitWrap { clip-path: none; }
 .reveal[data-mode='perspective'][data-state='hidden'] .unit {
   transform: rotateX(-72deg) translateY(0.35em); opacity: 0; transform-origin: 50% 100%;
 }
@@ -46,7 +56,7 @@
 }
 
 /* ---- clip: a wipe across the line ------------------------- */
-.reveal[data-mode='clip'] .unitWrap { display: block; overflow: visible; }
+.reveal[data-mode='clip'] .unitWrap { display: block; clip-path: none; }
 .reveal[data-mode='clip'][data-state='hidden'] .unit { clip-path: inset(0 100% 0 0); }
 .reveal[data-mode='clip'][data-state='shown'] .unit {
   clip-path: inset(0 0 0 0);

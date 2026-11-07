@@ -167,19 +167,25 @@
 /* A very large display has both the height for a caption row and
    the width for a column wider than the plate. Below this, the
    name lives in the aria-label, the tooltip and the readout.
-   One line only: two lines cost another row of tiles. */
+   A name wider than its column folds onto a second line rather
+   than being cut (TENSORFLOW / KERAS, REINFORCEMENT LEARNING);
+   every caption keeps the height of two, so the rows still line up. */
 @media (min-width: 1800px) and (min-height: 940px) {
   .name {
-    display: block;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    overflow: hidden;
     font-size: var(--fs-nano);
     line-height: 1.1;
+    height: 2.2em;
     text-align: center;
+    text-wrap: balance;
+    overflow-wrap: anywhere;
     letter-spacing: -0.005em;
     color: inherit;
     max-width: 100%;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
   }
 }
 

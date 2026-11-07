@@ -13,6 +13,7 @@ import { useJourney } from '@/state/journey'
 import { clamp, easeOutCubic, range } from '@/lib/math'
 import shared from './chapters.module.css'
 import styles from './Contact.module.css'
+import { Arrow } from '@/components/ui/Arrow'
 
 /* ============================================================
    HOME · 86 – 100%  WHAT'S NEXT?
@@ -134,7 +135,7 @@ export function Contact() {
                   >
                     <E cms={`contact.link.${c.id}.label`} label={`${c.label} — label`} bind={`contact.${i}.label`} className={styles.linkLabel}>{c.label}</E>
                     <E cms={`contact.link.${c.id}.value`} label={`${c.label} — value`} bind={`contact.${i}.value`} className={styles.linkValue}>{c.value}</E>
-                    <span className={styles.linkArrow} aria-hidden="true">↗</span>
+                    <span className={styles.linkArrow}><Arrow /></span>
                   </a>
                 )}
               </li>

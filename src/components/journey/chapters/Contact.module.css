@@ -68,7 +68,7 @@
   position: relative;
   z-index: 1;
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(12rem, 100%), 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(14rem, 100%), 1fr));
   gap: 0 var(--sp-5);
   border-top: var(--hair) solid var(--border);
 }
@@ -103,7 +103,9 @@
   grid-column: 1; grid-row: 2;
   font-size: var(--fs-small); letter-spacing: -0.01em;
   color: var(--text-primary);
-  overflow: hidden; text-overflow: ellipsis;
+  /* Never cut: an address too long for its column folds at the @ or the dot rather than ending in an ellipsis. */
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 .linkArrow { grid-column: 2; grid-row: 1 / span 2; align-self: center; font-size: var(--fs-tiny); }
 

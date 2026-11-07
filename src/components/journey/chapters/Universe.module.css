@@ -3,9 +3,8 @@
 
    Heading and filters share the top row on wide screens; the
    animation has every pixel between them and the footer; the
-   footer holds the readout and the two ways onward. Nothing is
-   absolutely positioned except the list sheet, which covers the
-   whole stage on purpose when it is opened.
+   footer holds the readout and the way on to the projects
+   journey. Nothing is absolutely positioned.
    ============================================================ */
 
 .stage {
@@ -94,24 +93,7 @@
 }
 .labelDesc { flex-basis: 100%; font-size: var(--fs-tiny); color: var(--text-muted); line-height: 1.4; }
 
-.listToggle {
-  min-height: 2.25rem;
-  font-family: var(--font-mono); font-size: var(--fs-micro);
-  letter-spacing: var(--tracking-label); text-transform: uppercase;
-  border: var(--hair) solid var(--border-strong);
-  padding: 0.45rem 0.8rem;
-  white-space: nowrap;
-  transition: background var(--dur-fast), color var(--dur-fast);
-}
-@media (hover: hover) {
-  .listToggle:hover { background: var(--text-primary); color: var(--bg-primary); transition-duration: var(--dur-quick); }
-}
-.listToggle:active, .listToggle[data-press] { background: var(--text-primary); color: var(--bg-primary); transition-duration: var(--dur-quick); }
-
-/* The doorway to the projects journey sits beside the list toggle:
-   one opens the archive in place, the other leaves for the long
-   version. Raised above the list sheet, which covers the stage
-   when it is open, so both stay reachable. */
+/* The doorway to the projects journey: the long version of the archive. */
 .actions { position: relative; z-index: 1; display: flex; align-items: center; gap: var(--sp-3); flex: none; }
 .cross {
   font-family: var(--font-mono); font-size: var(--fs-micro);
@@ -126,59 +108,6 @@
   .cross:hover { color: var(--text-primary); border-color: var(--text-primary); transition-duration: var(--dur-quick); }
 }
 .cross:active, .cross[data-press] { color: var(--text-primary); border-color: var(--text-primary); transition-duration: var(--dur-quick); }
-
-.list {
-  position: absolute;
-  inset: 0;
-  /* No backdrop blur (see IndexOverlay.module.css): the 94% sheet carries it. */
-  background: color-mix(in oklab, var(--bg-primary) 94%, transparent);
-  overflow-y: auto;
-  padding: clamp(5rem, 12svh, 8rem) var(--gutter) clamp(6rem, 14svh, 8rem);
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity var(--dur-mid) var(--ease-out-expo);
-}
-/* `.stage > *` in chapters.module.css sets `pointer-events: auto`
-   on every direct child of a stage, and it is the same specificity
-   as `.list` — so which of the two wins is decided by the order
-   the two stylesheets happen to be injected in, and it was winning.
-   The closed list is `inset: 0` at zero opacity, so an invisible
-   sheet was covering the whole chapter: the constellation could not
-   be clicked and the filters underneath it could not be reached.
-   Found while hit-testing this chapter for the nature layer, which
-   turned out not to be the thing intercepting anything.
-
-   `:not()` raises the specificity past the stage rule, so the
-   closed state no longer depends on injection order. */
-.list:not([data-open='true']) { pointer-events: none; }
-.list[data-open='true'] { opacity: 1; pointer-events: auto; }
-
-.listItem {
-  display: grid;
-  grid-template-columns: 3.4rem minmax(0, 1.1fr) minmax(0, 2fr) 5rem;
-  gap: var(--sp-4);
-  align-items: baseline;
-  width: 100%;
-  text-align: left;
-  padding: 0.55rem 0;
-  border-bottom: var(--hair) solid var(--border);
-  color: var(--text-muted);
-  --row-accent: var(--accent);
-  transition: color var(--dur-fast), padding-left var(--dur-mid) var(--ease-out-expo);
-}
-@media (hover: hover) {
-  .listItem:hover { color: var(--text-primary); padding-left: 0.6rem; transition-duration: var(--dur-quick); }
-}
-.listItem:active, .listItem[data-press] { color: var(--text-primary); padding-left: 0.6rem; transition-duration: var(--dur-quick); }
-.listYear { font-family: var(--font-mono); font-size: var(--fs-nano); color: var(--text-faint); }
-.listName { font-size: var(--fs-small); font-weight: 500; letter-spacing: -0.015em; color: var(--text-primary); }
-.listDesc { font-size: var(--fs-tiny); line-height: 1.4; }
-.listTier {
-  font-family: var(--font-mono); font-size: var(--fs-nano);
-  letter-spacing: var(--tracking-label); text-transform: uppercase;
-  color: var(--row-accent); text-align: right;
-}
-
 
 /* Tablets and below: heading, then the filters on a row of their
    own (one line that scrolls sideways — wrapping would eat the
@@ -211,12 +140,8 @@
 @media (max-width: 640px) {
   .footer { flex-direction: column; align-items: stretch; gap: var(--sp-3); }
   .actions { justify-content: space-between; align-items: flex-end; }
-  /* The list toggle keeps its one line; on the narrowest phones the
-     way to the projects journey is the one that folds. */
   .cross { white-space: normal; min-width: 0; }
   .labelDesc { display: none; }
-  .listItem { grid-template-columns: 3rem 1fr auto; }
-  .listDesc { display: none; }
 }
 
 /* A phone on its side has almost no height: the heading shrinks to

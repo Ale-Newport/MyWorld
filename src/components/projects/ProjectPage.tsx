@@ -10,6 +10,7 @@ import { ProjectVisual } from '@/components/project-visuals/ProjectVisual'
 import { categoryAccent } from '@/content/project-meta'
 import { track } from '@/components/analytics/track'
 import styles from './ProjectPage.module.css'
+import { Arrow } from '@/components/ui/Arrow'
 
 /* ============================================================
    A PROJECT'S OWN PAGE
@@ -41,7 +42,7 @@ function Section({ section, at }: { section: ProjectSection; at: string }) {
         <figure key={i} className={styles.video}><video src={it.src} controls playsInline preload="metadata" aria-label={it.alt || it.label || section.title} />{it.label && <figcaption>{it.label}</figcaption>}</figure>
       ))}
       {section.type === 'links' && (
-        <ul className={styles.linkList}>{items.filter((it) => it.href).map((it, i) => <li key={i}><a href={it.href} target={it.href!.startsWith('http') ? '_blank' : undefined} rel={it.href!.startsWith('http') ? 'noopener noreferrer' : undefined}>{it.label || it.href} ↗</a></li>)}</ul>
+        <ul className={styles.linkList}>{items.filter((it) => it.href).map((it, i) => <li key={i}><a href={it.href} target={it.href!.startsWith('http') ? '_blank' : undefined} rel={it.href!.startsWith('http') ? 'noopener noreferrer' : undefined}>{it.label || it.href} <Arrow /></a></li>)}</ul>
       )}
       {section.type === 'table' && section.table && (
         <div className={styles.tableWrap}>
@@ -145,9 +146,9 @@ export function ProjectPage({ slug }: { slug: string }) {
             </section>
           )}
           <section className={styles.links}>
-            {p.repository && !p.privateSource && <a href={p.repository} target="_blank" rel="noopener noreferrer">Source ↗</a>}
-            {p.liveUrl && <a href={p.liveUrl} target="_blank" rel="noopener noreferrer">Live site ↗</a>}
-            {p.links.map((l) => <a key={l.href} href={l.href} target={l.href.startsWith('http') ? '_blank' : undefined} rel={l.href.startsWith('http') ? 'noopener noreferrer' : undefined}>{l.label} ↗</a>)}
+            {p.repository && !p.privateSource && <a href={p.repository} target="_blank" rel="noopener noreferrer">Source <Arrow /></a>}
+            {p.liveUrl && <a href={p.liveUrl} target="_blank" rel="noopener noreferrer">Live site <Arrow /></a>}
+            {p.links.map((l) => <a key={l.href} href={l.href} target={l.href.startsWith('http') ? '_blank' : undefined} rel={l.href.startsWith('http') ? 'noopener noreferrer' : undefined}>{l.label} <Arrow /></a>)}
             {p.privateSource && <span className={styles.private}>Source is private</span>}
           </section>
         </aside>
