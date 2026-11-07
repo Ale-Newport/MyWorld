@@ -75,6 +75,12 @@
   .center { margin-bottom: 0; gap: 0.5rem; }
 }
 
+/* No taller than 360px (a phone on its side with its bars up, a page zoomed to 300 %): the corner notes occupy the
+   first 85px or so, and the name began under them. The stage starts below the notes. */
+@media (max-height: 360px) and (orientation: landscape) {
+  .stage { --stage-top: 5.4rem; --stage-bottom: 4.6rem; }
+}
+
 @media (max-width: 620px) {
   .center { margin-bottom: clamp(8rem, 30svh, 16rem); gap: 1rem; }
   .thesis { font-size: clamp(0.95rem, 4.4vw, 1.4rem); }

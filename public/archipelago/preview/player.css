@@ -43,3 +43,7 @@ body.player[data-input=touch] #interact-action{right:var(--touch-right);bottom:c
 @media(prefers-reduced-motion:reduce){#touch-controls button{transition:none}#touch-controls button:active,#touch-controls button[data-pressed]{transform:none}}
 /* A phone on its side: the compact HUD of a narrow screen, and a shorter column. */
 @media(max-height:500px){body.player{--touch-height:166px}body.player[data-input=touch] #drive-hud{left:max(15px,env(safe-area-inset-left));bottom:25px}body.player[data-input=touch] #drive-hud div{font-size:8px}body.player[data-input=touch] #speed{font-size:42px}#touch-controls{gap:8px}#touch-controls button{min-height:44px}#touch-controls #touch-jump{width:62px;height:62px}}
+/* A phone on its side with its bars up (about 315px tall): the column of buttons, 78px above the foot to clear the readout, rose into
+   the row of the HUD's buttons along the top. The column is at the right and the readout at the left, so it stands lower. */
+@media(max-height:360px){body.player{--touch-bottom:calc(max(22px,env(safe-area-inset-bottom)) + 36px)}}
+@media(max-height:300px){body.player{--touch-bottom:calc(max(22px,env(safe-area-inset-bottom)) + 14px)}}

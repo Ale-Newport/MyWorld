@@ -1,6 +1,6 @@
 'use client'
 
-import { memo, useId, useLayoutEffect, useMemo, useRef, type CSSProperties } from 'react'
+import { memo, useEffect, useId, useLayoutEffect, useMemo, useRef, type CSSProperties } from 'react'
 import type { SiteProject, UniverseAnimationProps } from '../types'
 import { TIER_NAME, approach, byTierAndCategory, clamp01, easeOut, fitTitle, labelOf, metaOf, smooth, toneOf, useBoxSize, useHot, useTicker, type Tier } from './shared'
 import styles from './Orbits.module.css'
@@ -170,6 +170,8 @@ function Orbits({ projects, visible, progress, active, reducedMotion, intensity,
 
   const els = useRef<(HTMLButtonElement | null)[]>([])
   const labels = useRef<(HTMLSpanElement | null)[]>([])
+  /** Each name's box (width, height), measured when the layout settles: the names are cleared of one another from it, without reading layout every frame. */
+  const sizes = useRef<[number, number][]>([])
   const wakes = useRef<(SVGPathElement | null)[]>([])
   const grads = useRef<(SVGLinearGradientElement | null)[]>([])
   const captions = useRef<(SVGTextElement | null)[]>([])
@@ -199,6 +201,8 @@ function Orbits({ projects, visible, progress, active, reducedMotion, intensity,
     let hx = 0
     let hy = 0
     const clear = [Infinity, Infinity, Infinity]
+    /** The names on show this frame, to be cleared of one another below. */
+    const named: { i: number; la: number; hot: boolean; tier: number; l: number; t: number; w: number; h: number }[] = []
     model.bodies.forEach((b, i) => {
       const el = els.current[i]
       if (!el) return
@@ -235,6 +239,9 @@ function Orbits({ projects, visible, progress, active, reducedMotion, intensity,
         label.style.opacity = la.toFixed(3)
         // At the ends of an orbit a name leans inward, so it never needs a margin outside the system.
         label.style.transform = `translateX(${f1(-50 - 50 * lean)}%)`
+        const size = sizes.current[i]
+        // The body, and the name with it, is drawn larger the nearer it is to the viewer.
+        if (la > 0.04 && size) named.push({ i, la, hot: isHot, tier: r.tier, l: x + size[0] * scale * (-0.5 - 0.5 * lean), t: y + scale * (NODE[r.tier] * 0.5 + (r.tier === 0 ? 9 : 6)), w: size[0] * scale, h: size[1] * scale })
       }
 
       const wake = wakes.current[i]
@@ -259,6 +266,19 @@ function Orbits({ projects, visible, progress, active, reducedMotion, intensity,
       }
     })
 
+    /* Two names that would run into one another are not both shown: the one under the pointer first, then the
+       clearer one (a name on its way in or out gives way), then the nearer orbit. The names are a pose of
+       drifting bodies, so a clash comes and goes by pixels; the label's opacity transition makes it a fade. */
+    named.sort((a, b) => Number(b.hot) - Number(a.hot) || b.la - a.la || a.tier - b.tier)
+    const kept: typeof named = []
+    for (const n of named) {
+      const clash = kept.some((k) => n.l < k.l + k.w + 4 && k.l < n.l + n.w + 4 && n.t < k.t + k.h && k.t < n.t + n.h)
+      if (clash) {
+        const label = labels.current[n.i]
+        if (label) label.style.opacity = '0'
+      } else kept.push(n)
+    }
+
     // An orbit's caption gives way to a body passing behind it.
     model.rings.forEach((r, k) => {
       const cap = captions.current[k]
@@ -281,8 +301,20 @@ function Orbits({ projects, visible, progress, active, reducedMotion, intensity,
   useLayoutEffect(() => {
     sim.current.open = -1
     sim.current.z = []
+    sizes.current = labels.current.map((el) => (el ? [el.offsetWidth, el.offsetHeight] : [0, 0]))
     pose(reducedMotion)
   })
+  // The names are measured again when the type has loaded: a fallback face is another width.
+  useEffect(() => {
+    let live = true
+    void document.fonts?.ready.then(() => {
+      if (!live) return
+      sizes.current = labels.current.map((el) => (el ? [el.offsetWidth, el.offsetHeight] : [0, 0]))
+      pose(reducedMotion)
+    })
+    return () => { live = false }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [model])
 
   /* Between scrolls and visits the system only drifts — about twenty pixels a second at its widest —
      and thirty poses a second move it by well under a pixel each. Posing is the chapter's heaviest
