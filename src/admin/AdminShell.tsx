@@ -9,7 +9,7 @@ import { Icon, type IconName } from './ui/icons'
 import { TokenBanner } from './TokenStatus'
 
 /* ============================================================
-   ONE ADMIN, FOUR PLACES (TWO ON THE DEPLOYED SITE)
+   ONE ADMIN, FOUR PLACES (THREE ON THE DEPLOYED SITE)
 
    The navigation is the four things there are to do: edit the
    website, edit the world, read the audience, change the few
@@ -19,16 +19,18 @@ import { TokenBanner } from './TokenStatus'
 
    Editing the website and the world happens in the editor on your
    own machine, and Publish there commits the result: the deployed
-   admin keeps only the audience and the settings. The editor shows
-   only what the deployed admin cannot do (the website, the world, the
-   site's images), and never the website itself.
+   admin keeps the blog (each post a commit), the audience and the
+   settings. The editor shows only what the deployed admin cannot do
+   (the website, the world, the site's images), and never the website
+   itself.
    ============================================================ */
 const NAV: { href: string; label: string; icon: IconName; match: RegExp; editor?: boolean; deployed?: boolean }[] = [
   { href: '/admin/pages', label: 'Website', icon: 'website', match: /^\/admin(\/(pages|projects|blog|media|history)(\/.*)?)?$/, editor: true },
   { href: '/admin/world', label: 'World', icon: 'world', match: /^\/admin\/world/, editor: true },
+  { href: '/admin/blog', label: 'Blog', icon: 'blog', match: /^\/admin\/blog/, deployed: true },
   { href: '/admin/analytics', label: 'Audience', icon: 'audience', match: /^\/admin\/analytics/, deployed: true },
   { href: '/admin/settings', label: 'Settings', icon: 'settings', match: /^\/admin\/settings/, deployed: true },
-  { href: '/admin/settings', label: 'Site images', icon: 'media', match: /^\/admin\/settings/, editor: true },
+  { href: '/admin/settings', label: 'Site look', icon: 'media', match: /^\/admin\/settings/, editor: true },
 ]
 
 /** Editors want the whole screen: the navigation folds to a rail there. */
@@ -41,8 +43,10 @@ export function AdminShell({ user, csrf, editor, siteUrl, children }: { user: { 
   // Set during the first render, before any child can make a request.
   useState(() => { setCsrf(csrf); return csrf })
   useEffect(() => {
-    // The public site's custom cursor and scroll locks must not follow us in.
+    // The public site's custom cursor, scroll locks and dark theme must not follow us in.
     document.documentElement.removeAttribute('data-cursor')
+    document.documentElement.dataset.theme = 'light'
+    document.documentElement.style.colorScheme = 'light'
     document.body.style.overflow = ''
   }, [])
   const compact = COMPACT.some((p) => p.test(pathname))

@@ -47,8 +47,20 @@ async function exportMedia(doc: SiteDocument): Promise<void> {
   if (fs.existsSync(root)) for (const entry of fs.readdirSync(root)) if (!used.has(entry)) fs.rmSync(path.join(root, entry), { recursive: true, force: true })
 }
 
+/* The blog is written in the deployed admin, which commits its posts straight to the repository; the editor does not
+   edit them. So the editor's Publish keeps the posts the repository holds, whatever its own store remembers — a store
+   not reloaded since those commits would otherwise write old posts back over new ones. */
+function committedPosts(): SiteDocument['posts'] {
+  try {
+    const committed = JSON.parse(fs.readFileSync(inRepo(SITE_FILE), 'utf8')) as Partial<SiteDocument>
+    return Array.isArray(committed.posts) ? committed.posts : []
+  } catch {
+    return []
+  }
+}
+
 async function exportSite(content: string): Promise<GitResult> {
-  const doc = JSON.parse(content) as SiteDocument
+  const doc = { ...(JSON.parse(content) as SiteDocument), posts: committedPosts() }
   await exportMedia(doc)
   fs.mkdirSync(path.dirname(inRepo(SITE_FILE)), { recursive: true })
   fs.writeFileSync(inRepo(SITE_FILE), JSON.stringify(doc, null, 2) + '\n')
