@@ -2,7 +2,7 @@
 
 import { memo } from 'react'
 import type { ToolboxTech } from '@/cms/derive'
-import { techLogos } from '@/content/tech-logos'
+import { logoOf } from '@/content/tech-ink'
 import styles from './tech-tile.module.css'
 
 /* ============================================================
@@ -32,7 +32,7 @@ interface TechTileProps {
 }
 
 export const TechTile = memo(function TechTile({ node, on, pinned, onPreview, onToggle }: TechTileProps) {
-  const logo = techLogos[node.id]
+  const logo = logoOf(node)
   const count = node.evidence.length
 
   /* The name leads, so the wall is navigable by name alone; the

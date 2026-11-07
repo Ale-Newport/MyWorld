@@ -387,3 +387,25 @@
 @media (prefers-reduced-motion: reduce) {
   .admin-root * { transition: none !important; animation: none !important; }
 }
+
+/* ---- Website › Tech Toolbox › Technologies (website/TechTools.tsx) ---- */
+.admin-root .tt-group { display: grid; gap: 6px; }
+.admin-root .tt-group + .tt-group { margin-top: 6px; }
+.admin-root .tt-group-head { display: flex; align-items: center; gap: 8px; margin: 0; font-size: 12px; font-weight: 600; letter-spacing: 0.02em; color: var(--a-ink-2); }
+.admin-root .tt-list { display: grid; gap: 4px; margin: 0; padding: 0; list-style: none; }
+.admin-root .tt-row { border: 1px solid var(--a-line); border-radius: 9px; background: #fff; }
+.admin-root .tt-row[data-open] { border-color: var(--a-line-strong); }
+.admin-root .tt-line { display: flex; align-items: center; gap: 8px; padding: 6px 8px; }
+.admin-root .tt-mark { display: inline-grid; place-items: center; flex: none; color: var(--a-ink-2); }
+.admin-root .tt-mark b { font: 600 12px/1 var(--a-mono); }
+.admin-root .tt-name { flex: 1 1 auto; min-width: 0; min-height: 30px; }
+.admin-root .tt-count { flex: none; font-size: 11.5px; white-space: nowrap; }
+.admin-root .tt-details { padding: 4px 10px 12px; border-top: 1px solid var(--a-line); }
+.admin-root .tt-projects { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 4px; max-height: 260px; overflow: auto; font-size: 12.5px; }
+.admin-root .tt-found { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 6px; }
+.admin-root .tt-found-item { display: grid; justify-items: center; gap: 4px; padding: 8px 4px; border: 1px solid var(--a-line); border-radius: 8px; background: #fff; font-size: 11px; color: var(--a-ink-2); cursor: pointer; }
+.admin-root .tt-found-item:hover { border-color: var(--a-line-strong); }
+.admin-root .tt-found-item[aria-pressed='true'] { border-color: var(--a-select); box-shadow: 0 0 0 2px rgb(47 108 216 / 0.16); }
+.admin-root .tt-found-item span { max-width: 100%; overflow-wrap: anywhere; text-align: center; }
+.admin-root .tt-add { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) auto; align-items: end; gap: 8px; padding-top: 10px; border-top: 1px solid var(--a-line); }
+@media (max-width: 640px) { .admin-root .tt-add { grid-template-columns: 1fr; } .admin-root .tt-count { display: none; } }

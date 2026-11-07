@@ -10,6 +10,7 @@ const paths = {
   pages: <><path d="M5.25 2.75h6.5l3 3v11.5h-9.5z" /><path d="M11.75 2.75v3h3M7.75 9.5h4.5M7.75 12.5h4.5" /></>,
   projects: <><rect x="3" y="3" width="6" height="6" rx="1.25" /><rect x="11" y="3" width="6" height="6" rx="1.25" /><rect x="3" y="11" width="6" height="6" rx="1.25" /><rect x="11" y="11" width="6" height="6" rx="1.25" /></>,
   media: <><rect x="2.75" y="3.75" width="14.5" height="12.5" rx="2" /><circle cx="7.25" cy="8" r="1.4" /><path d="m3.5 15 4.25-4 3 2.5 2.5-2 3.25 3" /></>,
+  blog: <><path d="M12.6 3.9a1.6 1.6 0 0 1 2.3 2.3L7.25 13.85l-3 .75.75-3z" /><path d="m11.25 5.25 2.3 2.3M10.5 17.25h6" /></>,
   history: <><path d="M3.5 10a6.5 6.5 0 1 0 1.9-4.6" /><path d="M3.25 3.5v2.25H5.5M10 6.5V10l2.5 1.75" /></>,
   external: <><path d="M11.5 3.5h5v5M16.25 3.75 9.5 10.5" /><path d="M14.5 11.5v4.25a.75.75 0 0 1-.75.75H4.25a.75.75 0 0 1-.75-.75V6.25a.75.75 0 0 1 .75-.75H8.5" /></>,
   signout: <><path d="M8 3.5H4.25a.75.75 0 0 0-.75.75v11.5c0 .41.34.75.75.75H8" /><path d="M12.5 6.5 16 10l-3.5 3.5M16 10H7.5" /></>,
@@ -30,6 +31,10 @@ const paths = {
   reset: <><path d="M4 10a6 6 0 1 0 1.8-4.25" /><path d="M4 3.75V6.5h2.75" /></>,
   leaf: <><path d="M4 16c0-7 4.5-11.5 12-12-0.5 7.5-5 12-12 12z" /><path d="M4 16 11 9" /></>,
   menu: <path d="M3.5 6h13M3.5 10h13M3.5 14h13" />,
+  plus: <path d="M10 4.5v11M4.5 10h11" />,
+  trash: <><path d="M4 6h12M8 6V4.25h4V6" /><path d="M5.5 6l.75 10.25h7.5L14.5 6" /></>,
+  up: <path d="m6 12 4-4 4 4" />,
+  down: <path d="m6 8 4 4 4-4" />,
 }
 
 export type IconName = keyof typeof paths
