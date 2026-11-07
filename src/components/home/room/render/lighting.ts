@@ -32,6 +32,40 @@ interface LightSample {
   excludePlaster?: boolean
 }
 
+/**
+ * The part of the hall the lens sees: where rays through a grid over
+ * the screen leave the hall's box (its walls, floor and vault are its
+ * faces), as a box, with a margin for the lookups' offsets and jitter.
+ * Everything drawn in front of those surfaces (pilasters, mouldings)
+ * stands between them and the lens, so it is inside the box too.
+ */
+function seenBox(camera: THREE.PerspectiveCamera, hall: THREE.Box3): THREE.Box3 {
+  const out = new THREE.Box3()
+  const o = camera.position
+  const p = new THREE.Vector3()
+  const d = new THREE.Vector3()
+  const N = 8
+  for (let j = 0; j <= N; j++) {
+    for (let i = 0; i <= N; i++) {
+      d.set((i / N) * 2 - 1, (j / N) * 2 - 1, 0.5).unproject(camera).sub(o).normalize()
+      // Slab test: the ray's way out of the box.
+      let t0 = 0
+      let t1 = Infinity
+      for (const k of ['x', 'y', 'z'] as const) {
+        if (Math.abs(d[k]) < 1e-9) continue
+        const a = (hall.min[k] - o[k]) / d[k]
+        const b = (hall.max[k] - o[k]) / d[k]
+        t0 = Math.max(t0, Math.min(a, b))
+        t1 = Math.min(t1, Math.max(a, b))
+      }
+      if (t1 < t0 || !Number.isFinite(t1)) continue
+      out.expandByPoint(p.copy(o).addScaledVector(d, t1))
+    }
+  }
+  if (out.isEmpty()) return hall.clone()
+  return out.expandByScalar(0.3).intersect(hall)
+}
+
 export interface CacheQuality {
   shadowSize: number
   keySamples: number
@@ -55,6 +89,10 @@ export class LightingCache {
   private index = 0
   private bounds = new THREE.Sphere()
   private corners: THREE.Vector3[] = []
+  /** The corners of what the lens actually sees of the hall (see `begin`), and their centre. */
+  private seen: THREE.Vector3[] = []
+  private seenCentre = new THREE.Vector3()
+  private seenRadius = 1
   private shadowSize: number
 
   constructor(
@@ -247,9 +285,16 @@ export class LightingCache {
     this.gbuffer.setSize(width, height)
     this.irradiance.setSize(width, height)
     bounds.getBoundingSphere(this.bounds)
-    const { min, max } = bounds
-    this.corners = []
-    for (const x of [min.x, max.x]) for (const y of [min.y, max.y]) for (const z of [min.z, max.z]) this.corners.push(new THREE.Vector3(x, y, z))
+    const boxCorners = (b: THREE.Box3) => {
+      const out: THREE.Vector3[] = []
+      for (const x of [b.min.x, b.max.x]) for (const y of [b.min.y, b.max.y]) for (const z of [b.min.z, b.max.z]) out.push(new THREE.Vector3(x, y, z))
+      return out
+    }
+    this.corners = boxCorners(bounds)
+    const seen = seenBox(camera, bounds)
+    this.seen = boxCorners(seen)
+    seen.getCenter(this.seenCentre)
+    this.seenRadius = seen.getBoundingSphere(new THREE.Sphere()).radius
     const r = this.renderer
     const prevTarget = r.getRenderTarget()
     r.setRenderTarget(this.gbuffer)
@@ -280,26 +325,35 @@ export class LightingCache {
       const s = this.samples[this.index++]
       let cam: THREE.Camera
       if (s.pos) {
-        // Perspective from the point on the window, framing the hall.
-        // The frustum is fitted to the corners of the visible part of
-        // the hall as the light sees them.
+        // Perspective from the point on the window, aimed at what the
+        // lens sees. Its frustum is fitted to the corners of THAT part
+        // of the hall as the light sees them, not of the whole hall: a
+        // phone frames a bay four metres across of a hall nine wide,
+        // and a map spread over all nine spent most of its texels on
+        // stone nobody sees — every pilaster's shadow came out of a
+        // texel a centimetre or more wide, jittered over two more, which
+        // on a phone is a blur several pixels deep. Anything that
+        // can shade a seen point stands on the line from it to the
+        // light, so it is inside this frustum too; the near plane still
+        // comes from the whole hall, so nothing between is clipped.
         const pc = this.persp
-        const dist = s.pos.distanceTo(c)
+        const aim = this.seenCentre
+        const dist = s.pos.distanceTo(aim)
         pc.position.copy(s.pos)
         pc.up.set(0, 1, 0)
-        pc.lookAt(c)
+        pc.lookAt(aim)
         pc.updateMatrixWorld(true)
         const inv = pc.matrixWorldInverse.copy(pc.matrixWorld).invert()
         let maxTan = 0
         let zMin = Infinity
         let zMax = 0
-        for (const corner of this.corners) {
-          const v = corner.clone().applyMatrix4(inv)
-          const z = -v.z
+        const v = new THREE.Vector3()
+        for (const corner of this.seen) {
+          const z = -v.copy(corner).applyMatrix4(inv).z
           maxTan = Math.max(maxTan, Math.abs(v.x / z), Math.abs(v.y / z))
-          zMin = Math.min(zMin, z)
           zMax = Math.max(zMax, z)
         }
+        for (const corner of this.corners) zMin = Math.min(zMin, -v.copy(corner).applyMatrix4(inv).z)
         pc.near = Math.max(0.3, zMin * 0.95)
         pc.far = zMax * 1.05
         pc.fov = THREE.MathUtils.radToDeg(2 * Math.atan(maxTan * 1.02))
@@ -313,24 +367,29 @@ export class LightingCache {
         // Texel footprint at the hall, for offsets and jitter.
         u.uTexel.value = (2 * maxTan * 1.02 * dist) / this.shadowSize
       } else {
-        // Orthographic for a direction of sky.
+        // Orthographic for a direction of sky, across what the lens sees
+        // (an occluder shades a seen point along this direction, so it
+        // stands within the same width) and deep enough to take in the
+        // whole hall behind it towards the sky.
         const oc = this.shadowCam
-        oc.left = -R
-        oc.right = R
-        oc.top = R
-        oc.bottom = -R
+        const aim = this.seenCentre
+        const back = aim.distanceTo(c) + R + 0.05
+        oc.left = -this.seenRadius
+        oc.right = this.seenRadius
+        oc.top = this.seenRadius
+        oc.bottom = -this.seenRadius
         oc.near = 0.05
-        oc.far = 2 * R + 0.1
-        oc.position.copy(c).addScaledVector(s.dir, R + 0.05)
+        oc.far = back + this.seenRadius + 0.1
+        oc.position.copy(aim).addScaledVector(s.dir, back)
         oc.up.copy(Math.abs(s.dir.y) > 0.95 ? new THREE.Vector3(0, 0, 1) : new THREE.Vector3(0, 1, 0))
-        oc.lookAt(c)
+        oc.lookAt(aim)
         oc.updateProjectionMatrix()
         oc.updateMatrixWorld(true)
         cam = oc
         u.uPersp.value = 0
         u.uNear.value = oc.near
         u.uFar.value = oc.far
-        u.uTexel.value = (2 * R) / this.shadowSize
+        u.uTexel.value = (2 * this.seenRadius) / this.shadowSize
       }
 
       this.shadowMat.uniforms.uExcludeFloor.value = s.excludeFloor ? 1 : 0
@@ -346,7 +405,14 @@ export class LightingCache {
       u.uRadiance.value.copy(s.radiance)
       u.uKey.value = s.key
       u.uBias.value = 0.004
-      u.uJitter.value = u.uTexel.value * (s.key > 0 ? 2.0 : 3.5)
+      // The key's spread is two texels of its map, which is fitted to
+      // what the lens sees, so it narrows with the map: its edges are the
+      // crisp ones (a pilaster's on the wall). The sky's keeps the width
+      // it always had, three and a half texels of a map over the whole
+      // hall: each of its few dozen directions throws a hard-edged shadow
+      // of some far moulding across the wall, and that width is what
+      // dissolves their edges into one gradient on white plaster.
+      u.uJitter.value = s.key > 0 ? u.uTexel.value * 2.0 : ((2 * R) / this.shadowSize) * 3.5
       u.uSeed.value = this.index
       r.setRenderTarget(this.irradiance)
       r.render(this.quadScene, cam)

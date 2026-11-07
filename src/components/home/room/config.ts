@@ -140,10 +140,20 @@ export const ROOM_CONFIG = {
      frame budget is missed. A lower tier keeps the same scene and
      the same plants; it spends fewer samples and pixels. */
   quality: {
-    high: { dpr: 1.75, msaa: 4, shadowSize: 2048, keySamples: 72, skySamples: 96, samplesPerFrame: 32, leafShare: 1, sway: true },
-    medium: { dpr: 1.5, msaa: 4, shadowSize: 1536, keySamples: 48, skySamples: 64, samplesPerFrame: 14, leafShare: 0.85, sway: true },
-    low: { dpr: 1, msaa: 0, shadowSize: 1024, keySamples: 28, skySamples: 36, samplesPerFrame: 8, leafShare: 0.7, sway: false },
+    high: { dpr: 1.75, smallDpr: 2, msaa: 4, shadowSize: 2048, keySamples: 72, skySamples: 96, samplesPerFrame: 32, leafShare: 1, sway: true },
+    medium: { dpr: 1.5, smallDpr: 2, msaa: 4, shadowSize: 1536, keySamples: 64, skySamples: 64, samplesPerFrame: 14, leafShare: 0.85, sway: true },
+    low: { dpr: 1, smallDpr: 1.5, msaa: 0, shadowSize: 1024, keySamples: 40, skySamples: 36, samplesPerFrame: 10, leafShare: 0.7, sway: false },
   },
+  /** A SMALL SCREEN (a phone, at most this many CSS pixels) draws at
+      its tier's `smallDpr` instead of `dpr`. A phone's screen is three
+      device pixels to the CSS pixel and held a foot from the eye; at
+      the desktop tiers' ratios (1, 1.5) the whole room was magnified
+      two or three times over, and every soft thing in it — the
+      pilasters' shadows first — went from soft to smeared. Its
+      viewport is a quarter of a laptop's, so the extra pixels still
+      come to fewer than a laptop draws. (The key's sample counts above
+      are what keeps those shadows' penumbrae smooth at that density.) */
+  smallArea: 0.6e6,
   /** Pixel budget for the canvas, in megapixels, after dpr. Every
       pixel is paid for twice over (two multisampled passes). */
   maxMegapixels: 3.8,

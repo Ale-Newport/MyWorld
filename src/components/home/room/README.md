@@ -53,6 +53,21 @@ seed. Reduced motion holds one settled state (`growth.reducedMotion`) and no air
 layout to convergence (soft key shadows, skylight occlusion, bounce) and cached
 as an irradiance image. Surfaces, moss and plants then read that cache —
 plants at their own pixel, so a leaf under the cornice is in the cornice's shade.
+The shadow maps are fitted to the part of the hall the lens actually sees (a
+phone frames one bay of it), the key's lookups spread over two of their texels
+and the sky's over the width it has always had, with interleaved offsets that
+the cache's 3×3 read averages away. A small screen (`smallArea`) draws at its
+tier's `smallDpr`: at a desktop's ratios a phone magnified the whole room, and
+the pilasters' shadows went from soft to smeared.
+
+**Moss in the joints.** On the floor moss takes the grout long before the stone:
+each stretch of joint has its own head start (wetter runs at the scale of a stone
+or two), so the lines come in as lengths that creep along the joints, swell into
+cushions and meet up as `G` rises; a strip across the view is as deep as the band
+of stone its tufts hide at that grazing angle. Under the reading field the joints
+get only the head start they always had (`render/shaders.ts`, THE GROUT). The
+slabs lie on a bedding plane, so a joint looked straight down shows grout, not
+the clear colour.
 
 **Reading.** The copy's line boxes are measured relative to their pinned stages
 (every chapter at once) plus the fixed HUD, inflated by type size and blurred
@@ -83,7 +98,15 @@ the stills) keeps clear of every chapter. Stems are not clipped: each is followe
 its last clear node, ending in a natural tip. Moss, damp and cracks are delayed
 under the field. The lens is fitted to the DOM too: the plain architrave carries
 the HUD's row, the pilasters sit in the copy's gutter, and the wall's foot falls
-between rows of low copy.
+between rows of low copy. So the first frame is drawn only once no read is due
+(`engine.holdForCopy`, and a face still loading holds it too, for up to 2.5 s):
+the room used to come up fitted to a page whose chapters had not arrived yet,
+with their read waiting for the visitor's first scroll to pause, and then refit
+— every pilaster moving — as soon as it did. After the first frame only a read
+that something urgent asked for (a resize, the fonts, the mode) or the editor's
+copy (`cms:content`) refits the lens; a structural read (a chapter's animation
+mounting) replants around the copy and leaves the columns where the visitor
+first saw them (`window.__roomRead.refits` counts the reads that could move them).
 
 **Redraw policy.** Nothing is drawn while nothing changes. A growth change
 redraws the surfaces (one geometry pass) and the plants; ambient sway redraws
@@ -96,7 +119,8 @@ scroll, wheel, pointer move, key or resize wakes the loop on its own.
 Preparation is staged over idle callbacks and aborts if the layer is
 torn down; light accumulates a number of samples per frame scaled to the
 pixel count. A frame-time watchdog steps the quality tier down after sustained
-slow frames (fewer pixels, no MSAA at the lowest tier, fewer leaves); a resize
+slow frames (fewer pixels, no MSAA at the lowest tier, fewer leaves; last of
+all, a phone gives up its small-screen density); a resize
 is applied once the window settles, and a change of screen pixel density is
 picked up too.
 
@@ -149,7 +173,7 @@ Edit `config.ts`. A few useful knobs:
   parting is in `canopy/canopy.module.css`.
 - `clearance.*` — how much air the copy keeps (per type size).
 - `light.*` — exposure, key window, skylight, bounces.
-- `quality.*`, `maxMegapixels`, `samplePixelsPerFrame` — pixel ratio, MSAA,
+- `quality.*`, `smallArea`, `maxMegapixels`, `samplePixelsPerFrame` — pixel ratio (and a phone's, `smallDpr`), MSAA,
   shadow map size, sample counts and leaf share per tier; the pixel budget.
 
 Per-layout room proportions, lens distance and foliage scale are in
@@ -192,7 +216,10 @@ If WebGL2 is unavailable or its context is lost, the layer shows
 scene by `scripts/home-room-stills.mjs`, early in the growth and with the
 entablature just out of frame (a still is scaled to screens it was not fitted
 to, so nothing dark stands where a HUD might). They are requested only in that
-case.
+case. There is no start frame: until the canvas has converged the layer is the
+wall's plain tone, and the room fades in over it. A picture of the room fitted
+to one screen stood its pilasters and its wall's foot in the wrong places on
+every other, and they moved when the live room replaced it.
 
 ## Known limits
 

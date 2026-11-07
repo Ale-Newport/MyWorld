@@ -172,6 +172,10 @@ export class RoomEngine {
   private inset: number | null = null
   private avoid: Band | null = null
   private floorBand: readonly [number, number] | undefined = undefined
+  /** A read of the copy is due or under way (see `holdForCopy`). */
+  private copyDue = false
+  /** A small screen that was still slow at the lowest tier draws at that tier's own ratio (see `demote`). */
+  private lean = false
   /** Start-up costs, ms (main thread, per stage), for the QA probe. */
   readonly timings: Record<string, number> = {}
   /** Milliseconds since the engine was made at which each start-up milestone was reached (QA probe). */
@@ -538,17 +542,25 @@ export class RoomEngine {
   /**
    * Step down one quality tier after a sustained run of slow frames.
    * The hall, its light and its plants are the same; fewer pixels,
-   * no air moving. Returns false at the lowest tier.
+   * no air moving. A phone that is still slow at the lowest tier gives
+   * up its small screen's density last (`lean`), which leaves it where
+   * every phone was before it had one. Returns false when nothing is
+   * left to give.
    */
   demote(): boolean {
-    if (this.disposed || this.quality === 'low') return false
-    const before = ROOM_CONFIG.quality[this.quality]
-    this.quality = this.quality === 'high' ? 'medium' : 'low'
+    if (this.disposed) return false
+    if (this.quality === 'low') {
+      if (this.lean || this.ratioFor(this.width, this.height, this.lastDpr) <= ROOM_CONFIG.quality.low.dpr) return false
+      this.lean = true
+    } else {
+      const before = ROOM_CONFIG.quality[this.quality]
+      this.quality = this.quality === 'high' ? 'medium' : 'low'
+      if (ROOM_CONFIG.quality[this.quality].msaa !== before.msaa) this.makeTargets()
+      // Fewer leaves; their edges follow the new MSAA setting.
+      this.dropVegetation()
+      this.dirtyPlants = true
+    }
     const q = ROOM_CONFIG.quality[this.quality]
-    if (q.msaa !== before.msaa) this.makeTargets()
-    // Fewer leaves; their edges follow the new MSAA setting.
-    this.dropVegetation()
-    this.dirtyPlants = true
     this.dirtyRoom = true
     const ratio = this.ratioFor(this.width, this.height, this.lastDpr)
     if (ratio !== this.dpr) {
@@ -567,8 +579,26 @@ export class RoomEngine {
 
   private ratioFor(width: number, height: number, dpr: number) {
     const q = ROOM_CONFIG.quality[this.quality]
-    const cap = Math.sqrt((ROOM_CONFIG.maxMegapixels * 1e6) / Math.max(1, width * height))
-    return Math.max(0.5, Math.min(dpr, q.dpr, cap))
+    const area = Math.max(1, width * height)
+    const cap = Math.sqrt((ROOM_CONFIG.maxMegapixels * 1e6) / area)
+    // A phone's few, dense pixels (see `smallArea` in config.ts), unless it has had to give them up.
+    const tier = area <= ROOM_CONFIG.smallArea && !this.lean ? q.smallDpr : q.dpr
+    return Math.max(0.5, Math.min(dpr, tier, cap))
+  }
+
+  /**
+   * The copy has changed and its read is due or under way (HomeRoom
+   * says so every frame until its first one is out). The lens is fitted
+   * to the copy, so a first frame drawn now would be fitted to a page
+   * that is about to change under it — and the read that followed would
+   * move every pilaster on screen, in the middle of the visitor's first
+   * scroll. Before the first frame it holds the frame; after, it means
+   * nothing.
+   */
+  holdForCopy(due: boolean) {
+    if (due === this.copyDue) return
+    this.copyDue = due
+    if (!due) this.options.onInvalidate?.()
   }
 
   /** The measured reading field (viewport space). */
@@ -880,9 +910,10 @@ export class RoomEngine {
       this.dirtyRoom = true
     }
     // The first frame waits for every part of the finished room — the
-    // fields, the sheets, the plants pruned around the measured copy —
-    // so what appears first is what stays.
-    if (!this.readyFired && (!this.built.fields || !this.booted || !this.reading || !this.vegetation)) return false
+    // fields, the sheets, the plants pruned around the measured copy,
+    // and the lens fitted to the copy as it stands, not as it stood a
+    // read ago — so what appears first is what stays.
+    if (!this.readyFired && (!this.built.fields || !this.booted || !this.reading || !this.vegetation || this.copyDue)) return false
     if (!this.readyFired && !this.compiled) {
       void this.compileAll()
       if (this.compiling) return false
