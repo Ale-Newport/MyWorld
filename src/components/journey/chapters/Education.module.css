@@ -4,7 +4,7 @@
    bringing a ground of its own. */
 
 .stage {
-  --stage-row-gap: clamp(1rem, 2.6vh, 2rem);
+  --stage-row-gap: clamp(1rem, 2.6svh, 2rem);
 }
 
 .head {
@@ -30,8 +30,8 @@
 
 .card {
   display: flex; flex-direction: column;
-  gap: clamp(0.35rem, 0.9vh, 0.6rem);
-  padding: clamp(1rem, 2.2vh, 1.6rem) clamp(1rem, 2vw, 1.75rem);
+  gap: clamp(0.35rem, 0.9svh, 0.6rem);
+  padding: clamp(1rem, 2.2svh, 1.6rem) clamp(1rem, 2vw, 1.75rem);
   border: var(--hair) solid var(--panel-edge);
   border-radius: var(--radius-card);
 }
@@ -69,7 +69,7 @@
 
 .modules {
   display: flex; flex-direction: column;
-  margin-top: clamp(0.25rem, 0.8vh, 0.6rem);
+  margin-top: clamp(0.25rem, 0.8svh, 0.6rem);
   border-top: var(--hair) solid var(--border);
 }
 .module {
@@ -78,7 +78,7 @@
   grid-template-rows: auto auto;
   column-gap: var(--sp-3);
   align-items: center;
-  padding: clamp(0.3rem, 0.85vh, 0.6rem) 0;
+  padding: clamp(0.3rem, 0.85svh, 0.6rem) 0;
   border-bottom: var(--hair) solid var(--border);
 }
 .module:last-child { border-bottom: 0; }
@@ -136,7 +136,7 @@
    column list and the title steps down, so heading, cards and the
    credentials line fit between the corner band and the HUD. */
 @media (max-height: 700px) and (min-width: 901px) {
-  .stage { --stage-top: clamp(4.5rem, 12vh, 6rem); --stage-bottom: clamp(3.75rem, 10vh, 5rem); --stage-row-gap: 0.6rem; }
+  .stage { --stage-top: clamp(4.5rem, 12svh, 6rem); --stage-bottom: clamp(3.75rem, 10svh, 5rem); --stage-row-gap: 0.6rem; }
   .title { font-size: clamp(1.5rem, 0.6rem + 2.4vw, 2.6rem); }
   .card { padding: 0.75rem 1rem; gap: 0.3rem; }
   .modules { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: var(--sp-4); }
@@ -151,7 +151,7 @@
    line gives way. */
 @media (max-height: 560px) and (orientation: landscape) {
   .stage { --stage-top: 4.5rem; --stage-bottom: 3.75rem; --stage-row-gap: 0.5rem; }
-  .title { font-size: clamp(1.3rem, 6vh, 2.2rem); }
+  .title { font-size: clamp(1.3rem, 6svh, 2.2rem); }
   .cards { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.75rem; }
   .card { padding: 0.6rem 0.8rem; gap: 0.2rem; }
   .institution { font-size: 1rem; }

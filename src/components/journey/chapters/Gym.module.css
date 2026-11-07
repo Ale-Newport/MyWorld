@@ -11,9 +11,9 @@
 .stage {
   --stage-rows: minmax(0, 1fr) auto;
   --stage-align: stretch;
-  --stage-row-gap: clamp(0.75rem, 2.6vh, 1.75rem);
-  --stage-top: clamp(5rem, 11vh, 7rem);
-  --stage-bottom: clamp(5.25rem, 11vh, 7rem);
+  --stage-row-gap: clamp(0.75rem, 2.6svh, 1.75rem);
+  --stage-top: clamp(5rem, 11svh, 7rem);
+  --stage-bottom: clamp(5.25rem, 11svh, 7rem);
 }
 
 .visual {
@@ -35,7 +35,7 @@
 }
 
 .title {
-  font-size: clamp(2.2rem, min(1.1rem + 4vw, 10vh), 5rem);
+  font-size: clamp(2.2rem, min(1.1rem + 4vw, 10svh), 5rem);
   font-weight: 500; letter-spacing: -0.048em; line-height: 0.88;
   text-transform: uppercase;
 }
@@ -93,9 +93,9 @@
 @media (max-width: 800px), (max-aspect-ratio: 4/5) {
   .stage {
     --stage-rows: auto minmax(0, 1fr) auto auto;
-    --stage-row-gap: clamp(0.75rem, 2vh, 1.25rem);
-    --stage-top: clamp(4.5rem, 9vh, 6rem);
-    --stage-bottom: clamp(4.75rem, 9vh, 6rem);
+    --stage-row-gap: clamp(0.75rem, 2svh, 1.25rem);
+    --stage-top: clamp(4.5rem, 9svh, 6rem);
+    --stage-bottom: clamp(4.75rem, 9svh, 6rem);
   }
   .head { grid-column: 1 / -1; grid-row: 1; gap: var(--sp-2); }
   .visual { grid-column: 1 / -1; grid-row: 2; }
@@ -114,14 +114,17 @@
 @media (max-height: 520px) and (orientation: landscape) {
   .stage {
     --stage-col-gap: clamp(1rem, 2.5vw, 1.5rem);
-    --stage-rows: minmax(0, 1fr) auto;
+    /* The paragraph sets the first row's height rather than being squeezed into what is left: on a short screen
+       the words are taller than that, and squeezed they ran down behind the equation. Words taller than the
+       screen travel through it (stageFit.ts), with the equation below them. */
+    --stage-rows: auto auto;
     --stage-row-gap: 0.5rem;
     --stage-top: 4rem;
     --stage-bottom: 4.5rem;
   }
   .head { grid-column: 1 / span 6; grid-row: 1; gap: var(--sp-2); }
   .head > p { font-size: var(--fs-tiny); line-height: 1.5; }
-  .title { font-size: clamp(1.4rem, 9vh, 2.4rem); }
+  .title { font-size: clamp(1.4rem, 9svh, 2.4rem); }
   .visual { grid-column: 7 / span 4; grid-row: 1; }
   .stages { grid-column: 11 / span 2; grid-row: 1; gap: 0.2rem; }
   .equation { grid-column: 1 / -1; grid-row: 2; transform: none !important; }

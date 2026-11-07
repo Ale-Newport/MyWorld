@@ -35,6 +35,12 @@
 }
 .chip[data-on='true'] { color: var(--accent); border-color: var(--accent); }
 .chip:hover { color: var(--text-primary); border-color: var(--border-strong); }
+/* Small by design (a label in a corner of the picture); a finger gets a taller hit area without the chip growing over the
+   picture. The chips sit a gap apart, so the extension reaches a little past the chip and no further. */
+@media (pointer: coarse) {
+  .chip { position: relative; }
+  .chip::after { content: ''; position: absolute; inset: -6px -3px; }
+}
 
 .readout {
   position: absolute;

@@ -112,7 +112,7 @@
   --fs-h1:     clamp(3rem, 1.2rem + 8vw, 9rem);
   /* Capped by the height as well as the width: a phone on its side
      sets the name to fit its 390 px, not its 844. */
-  --fs-mega:   clamp(3rem, min(0.5rem + 13.2vw, 25vh), 14rem);
+  --fs-mega:   clamp(3rem, min(0.5rem + 13.2vw, 25svh), 14rem);
 
   --lh-tight:  0.86;
   --lh-snug:   1.06;

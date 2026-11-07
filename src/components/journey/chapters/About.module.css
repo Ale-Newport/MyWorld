@@ -15,8 +15,8 @@
   --stage-rows: minmax(0, 1fr);
   --stage-align: stretch;
   --stage-items: center;
-  --stage-top: clamp(7rem, 15vh, 9.5rem);
-  --stage-bottom: clamp(7rem, 15vh, 9rem);
+  --stage-top: clamp(7rem, 15svh, 9.5rem);
+  --stage-bottom: clamp(7rem, 15svh, 9rem);
 }
 
 .intro {
@@ -56,9 +56,9 @@
 @media (max-width: 700px), (max-aspect-ratio: 11/10) {
   .stage {
     --stage-rows: auto minmax(0, 1fr);
-    --stage-row-gap: clamp(1.25rem, 4vh, 2.75rem);
-    --stage-top: clamp(7rem, 14vh, 9rem);
-    --stage-bottom: clamp(6.5rem, 13vh, 8rem);
+    --stage-row-gap: clamp(1.25rem, 4svh, 2.75rem);
+    --stage-top: clamp(7rem, 14svh, 9rem);
+    --stage-bottom: clamp(6.5rem, 13svh, 8rem);
   }
   .intro { grid-column: 1 / -1; grid-row: 1; align-self: end; }
   .summary { max-width: 24ch; }
@@ -74,8 +74,8 @@
   .stage { --stage-rows: minmax(0, 1fr); --stage-top: 5.25rem; --stage-bottom: 4.25rem; }
   .corner { display: none; }
   .intro { grid-column: 1 / span 6; grid-row: 1; align-self: center; }
-  .summary, .summary[data-length='medium'] { font-size: clamp(1.05rem, 5.4vh, 1.6rem); max-width: 26ch; }
-  .summary[data-length='long'] { font-size: clamp(0.92rem, 4.2vh, 1.2rem); max-width: 34ch; }
+  .summary, .summary[data-length='medium'] { font-size: clamp(1.05rem, 5.4svh, 1.6rem); max-width: 26ch; }
+  .summary[data-length='long'] { font-size: clamp(0.92rem, 4.2svh, 1.2rem); max-width: 34ch; }
   .visual { grid-column: 7 / span 6; grid-row: 1; align-self: center; height: 100%; min-height: 0; max-height: none; }
 }
 

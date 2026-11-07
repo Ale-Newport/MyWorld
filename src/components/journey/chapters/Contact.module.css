@@ -18,9 +18,9 @@
      rather than the links running over the closing line. */
   --stage-rows: minmax(min-content, 1fr) auto auto;
   --stage-align: stretch;
-  --stage-row-gap: clamp(0.75rem, 2.2vh, 1.75rem);
-  --stage-top: clamp(6.5rem, 14vh, 9rem);
-  --stage-bottom: calc(clamp(4.2rem, 9.5vh, 5.8rem) + 3.25rem);
+  --stage-row-gap: clamp(0.75rem, 2.2svh, 1.75rem);
+  --stage-top: clamp(6.5rem, 14svh, 9rem);
+  --stage-bottom: calc(clamp(4.2rem, 9.5svh, 5.8rem) + 3.25rem);
   --portal-dim: 0;
   --portal-drag: 0;
   transform: translate3d(0, calc(var(--portal-drag) * -1px), 0);
@@ -47,7 +47,7 @@
 .question, .answer {
   grid-area: 1 / 1;
   /* No larger than its longest word allows (--word-em, from the server). */
-  font-size: min(clamp(2.4rem, min(0.5rem + 9.4vw, 19vh), 10rem), calc((100vw - var(--gutter-left) - var(--gutter-right) - 1rem) / var(--word-em, 4)));
+  font-size: min(clamp(2.4rem, min(0.5rem + 9.4vw, 19svh), 10rem), calc((100vw - var(--gutter-left) - var(--gutter-right) - 1rem) / var(--word-em, 4)));
   font-weight: 500;
   letter-spacing: -0.052em;
   line-height: 0.82;
@@ -120,7 +120,7 @@
 
 @media (max-width: 700px) {
   .colophon span:last-child { display: none; }
-  .stage { --stage-top: clamp(6.5rem, 14vh, 8.5rem); }
+  .stage { --stage-top: clamp(6.5rem, 14svh, 8.5rem); }
   /* Four rows at desktop rhythm do not leave the headline a band to
      sit in; this keeps each row well past a thumb's width. */
   .link { padding-block: var(--sp-3); }
@@ -129,7 +129,7 @@
 /* A phone on its side: the links go two by two, and the colophon,
    which says nothing a visitor needs, gives way to them. */
 @media (max-height: 520px) and (orientation: landscape) {
-  .stage { --stage-top: 4.75rem; --stage-bottom: calc(clamp(4.2rem, 9.5vh, 5.8rem) + 2.5rem); --stage-row-gap: 0.5rem; }
+  .stage { --stage-top: 4.75rem; --stage-bottom: calc(clamp(4.2rem, 9.5svh, 5.8rem) + 2.5rem); --stage-row-gap: 0.5rem; }
   .links { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .link { padding-block: 0.45rem; }
   .colophon { display: none; }

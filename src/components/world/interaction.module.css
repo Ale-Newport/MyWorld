@@ -193,7 +193,7 @@
   font-family: var(--font-mono);
   font-size: var(--fs-nano);
   font-variant-numeric: tabular-nums;
-  max-height: 46vh;
+  max-height: 46svh;
   overflow-y: auto;
 }
 

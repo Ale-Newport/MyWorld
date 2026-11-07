@@ -27,7 +27,9 @@
 .corner {
   position: absolute;
   right: max(0.9rem, env(safe-area-inset-right));
-  top: max(3.4rem, calc(env(safe-area-inset-top) + 2.6rem));
+  /* Clear of the HUD's row of buttons above it (44px tall, 10px from the top, whatever the root font size): on a
+     phone on its side the rem shrinks with the screen and the row did not, and this button stood over the last pill. */
+  top: max(3.4rem, calc(env(safe-area-inset-top) + 2.6rem), 60px);
   display: grid;
   gap: var(--sp-2);
   pointer-events: auto;
