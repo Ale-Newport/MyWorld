@@ -5,13 +5,24 @@ import styles from './world-loading.module.css'
 /* ============================================================
    THE ISLAND IS WAKING UP
 
-   Not a spinner: a short sprig of the same ivy the leaves are made
-   of lies across the hedge, and the island's fireflies gather on it,
-   one for every real step of the world's start. A step that has
-   COMPLETED lights its firefly (with a ring, once) and wakes its
-   leaves; the step in progress slowly gathers light on its own, so
-   the sprig is never still. When the world is ready the last
-   firefly flares and the light goes out through the parting leaves.
+   Not a spinner, and no longer a string of fireflies: a readout set
+   like the rest of the site — a label in the small tracked capitals,
+   a step counter in tabular figures, and one hairline rule — with
+   the ivy the leaves are made of growing along it. The rule is the
+   vine. It has one knot for every real step of the world's start;
+   a step that has COMPLETED draws the vine up to its knot and opens
+   a leaf there, and the step in progress reaches a faint tendril
+   towards the next knot on its own clock (`ETA`, an ease that never
+   arrives by itself — only the runtime can say a step is done). A
+   small light rides the tip of the vine, the last of the fireflies.
+   When the world is ready the vine reaches the end of the rule, the
+   last pair of leaves opens, and the light goes out through the
+   parting leaves.
+
+   The counter names the step in progress ("04 / 08", the line under
+   it says what it is), never a percentage: only completed steps are
+   claims about the world (loading.ts), and a percentage that sits
+   still for five seconds of one synchronous block reads as a hang.
 
    It draws over the cover, which is part of the page the machine
    (transition.ts) has closed, so it carries `data-world-allow`.
@@ -21,8 +32,10 @@ import styles from './world-loading.module.css'
    pace through that — which is also why every loop is started while
    the thread is still idle (the first server-rendered paint, or the
    cover sealing) and why nothing here is a paint, a filter or a
-   layout property. Static art (the stem, the dormant leaves) is
-   painted once.
+   layout property. The vine grows by `scaleX` and the light rides it
+   by `translateX` of the same length, with the same ease, so the two
+   never part company; the rule, the knots and the words are painted
+   once.
 
    Server-rendered, so its markup is in the first paint of a direct arrival, but it is
    invisible until `started`. Through the leaves that is when the world is being made
@@ -33,27 +46,28 @@ import styles from './world-loading.module.css'
    no page that was covered for it and a world that is seconds away: the loader is up in
    a fraction of a second, from the first paint, on the dark of the hedge — which is all
    there is until the leaves are drawn, and they come up behind it.
+
+   For assistive technology the rule is a `progressbar` (steps completed of MARKS, with
+   the step's name as its value text); the words drawn around it are hidden from it, so
+   nothing is read twice. Changes are announced by the route's own status line
+   (WorldRoute), which is always mounted and names stages only.
    ============================================================ */
 
-/** The sprig, in a 400 × 90 box: where each firefly rests and which leaves grow from it. */
-const STEM = 'M6 56.3C10 55.3 17.9 50.3 30 50.3C42.1 50.3 62.4 55.4 78.6 56.1C94.8 56.8 111 56.2 127.2 54.7C143.4 53.2 159.6 49.8 175.8 47.3C192 44.8 208.2 41.2 224.4 39.6C240.6 38 256.8 37.2 273 37.8C289.2 38.4 305.4 40.9 321.6 43.2C337.8 45.5 358.1 51 370.2 51.6C382.3 52.2 390 47.4 394 46.6'
-const W = 400
-const H = 90
-
-interface LeafSpec { r: number; s: number; k: 0 | 1 }
-interface NodeSpec { x: number; y: number; leaves: [LeafSpec, LeafSpec]; drift: [number, number, number]; delay: number }
-
-/* r: degrees clockwise from straight up · s: leaf length in box units · k: lobed ivy or plain heart.
-   drift: dx, dy (px) and seconds of each firefly's wander. */
-const NODES: NodeSpec[] = [
-  { x: 30, y: 50.3, leaves: [{ r: 38, s: 24, k: 0 }, { r: 146, s: 13.5, k: 1 }], drift: [4, -5, 9], delay: 0 },
-  { x: 78.6, y: 56.1, leaves: [{ r: 153, s: 22, k: 1 }, { r: 31, s: 12.6, k: 1 }], drift: [-4, 4, 11], delay: -2.4 },
-  { x: 127.2, y: 54.7, leaves: [{ r: 32, s: 25, k: 0 }, { r: 152, s: 14.4, k: 1 }], drift: [5, -3, 8], delay: -5.1 },
-  { x: 175.8, y: 47.3, leaves: [{ r: 155, s: 22, k: 0 }, { r: 29, s: 12.6, k: 1 }], drift: [-3, -5, 10], delay: -1.2 },
-  { x: 224.4, y: 39.6, leaves: [{ r: 34, s: 24, k: 1 }, { r: 150, s: 13.5, k: 1 }], drift: [4, 5, 9.5], delay: -6.3 },
-  { x: 273, y: 37.8, leaves: [{ r: 152, s: 21, k: 0 }, { r: 32, s: 11.7, k: 1 }], drift: [-5, 3, 11.5], delay: -3.7 },
-  { x: 321.6, y: 43.2, leaves: [{ r: 30, s: 24, k: 0 }, { r: 154, s: 13.5, k: 1 }], drift: [3, -4, 8.5], delay: -7.5 },
-  { x: 370.2, y: 51.6, leaves: [{ r: 151, s: 26, k: 1 }, { r: 33, s: 14.4, k: 1 }], drift: [-4, -4, 10.5], delay: -4.4 },
+/** Which leaves open at each knot: `r` degrees clockwise from straight up, `k` plain heart (1) or lobed ivy (0),
+    `s` its size against the others. They alternate above and below the rule, leaning the way the vine grows,
+    as ivy does — plain hearts, which stay clean at this size; the last knot, the world itself, opens a pair,
+    and the lobed leaf of the room's ivy is kept for it. */
+interface LeafSpec { r: number; k: 0 | 1; s: number }
+/* One entry per mark (MARKS, loading.ts). */
+const SPRIGS: LeafSpec[][] = [
+  [{ r: 40, k: 1, s: 1 }],
+  [{ r: 142, k: 1, s: 0.86 }],
+  [{ r: 36, k: 1, s: 0.94 }],
+  [{ r: 146, k: 1, s: 0.9 }],
+  [{ r: 42, k: 1, s: 0.98 }],
+  [{ r: 140, k: 1, s: 0.86 }],
+  [{ r: 38, k: 1, s: 0.94 }],
+  [{ r: 30, k: 0, s: 1.18 }, { r: 148, k: 1, s: 0.96 }],
 ]
 
 /** The two leaf outlines of the room's ivy (room/nature/sprites.ts), base at the origin, tip at -1.16. */
@@ -63,11 +77,28 @@ const LEAF = [
 ] as const
 const RIB = 'M0 0L.01-1.02'
 
-const pct = (v: number, of: number) => `${((v / of) * 100).toFixed(2)}%`
-const leafWidth = (s: number) => `calc(var(--w) * ${((s * 1.4) / W).toFixed(4)})`
+function Leaf({ l, j }: { l: LeafSpec; j: number }) {
+  return (
+    <svg
+      className={styles.leaf}
+      viewBox="-0.7 -1.2 1.4 1.25"
+      focusable="false"
+      aria-hidden="true"
+      style={{ ['--r' as string]: `${l.r}deg`, ['--r0' as string]: `${l.r < 90 ? l.r + 42 : l.r - 42}deg`, ['--s' as string]: l.s, ['--k' as string]: j } as CSSProperties}
+    >
+      <path d={LEAF[l.k]} />
+      <path d={RIB} className={styles.rib} />
+    </svg>
+  )
+}
+
+const two = (n: number) => String(n).padStart(2, '0')
 
 export function WorldLoading({ snapshot, leaving, started, direct = false }: { snapshot: LoadingSnapshot; leaving: boolean; started: boolean; direct?: boolean }) {
   const { lit, ready } = snapshot
+  const copy = copyAt(snapshot)
+  /* The step in progress, counted from one; once the world is ready, the last. */
+  const step = Math.min(MARKS, lit + 1)
   const root = useRef<HTMLDivElement>(null)
   /* Ready before the loader was fully there. Before its grace is over it has not appeared and now
      never will: cancelling its fade-in (rather than letting it rise under a content that is already
@@ -88,52 +119,52 @@ export function WorldLoading({ snapshot, leaving, started, direct = false }: { s
     }
   }, [leaving])
   return (
-    <div ref={root} className={styles.loader} data-world-allow="" data-world-loader="" data-started={started ? (direct ? 'direct' : 'true') : undefined} data-leaving={leaving || undefined} aria-hidden="true">
+    <div ref={root} className={styles.loader} data-world-allow="" data-world-loader="" data-started={started ? (direct ? 'direct' : 'true') : undefined} data-leaving={leaving || undefined}>
       <div className={styles.content}>
-        <div className={styles.sprig}>
-          {/* The dormant sprig: painted once. */}
-          <svg className={styles.vine} viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" focusable="false">
-            <path d={STEM} className={styles.stem} />
-            {NODES.map((n, i) => n.leaves.map((l, j) => (
-              <path
-                key={`${i}-${j}`}
-                d={LEAF[l.k]}
-                className={styles.dormant}
-                transform={`translate(${n.x} ${n.y}) rotate(${l.r}) scale(${l.s})`}
-              />
-            )))}
-          </svg>
-          {NODES.map((n, i) => {
+        <p className={styles.caption} aria-hidden="true">
+          <span className={styles.title}>The island is waking up</span>
+          <span className={styles.count}>
+            <span className={styles.now}>{two(step)}</span>
+            <span className={styles.of}>{` / ${two(MARKS)}`}</span>
+          </span>
+        </p>
+        {/* The rule. `--p` is the share of it the vine has grown along — whole steps only — and `--marks` how many
+            knots it is cut into, so the CSS never has to be told the count again. */}
+        <div
+          className={styles.vine}
+          role="progressbar"
+          aria-label="Loading the island"
+          aria-valuemin={0}
+          aria-valuemax={MARKS}
+          aria-valuenow={lit}
+          aria-valuetext={ready ? copy : `Step ${step} of ${MARKS}: ${copy}`}
+          style={{ ['--p' as string]: lit / MARKS, ['--marks' as string]: MARKS } as CSSProperties}
+        >
+          <span className={styles.track} />
+          <span className={styles.fill} />
+          {SPRIGS.map((leaves, i) => {
             const state = i < lit ? 'lit' : i === lit && !ready ? 'charging' : 'dormant'
             return (
               <span
                 key={i}
                 className={styles.node}
                 data-state={state}
-                data-last={i === MARKS - 1 || undefined}
-                style={{ left: pct(n.x, W), top: pct(n.y, H), ['--eta' as string]: `${ETA[i]}ms`, ['--dx' as string]: `${n.drift[0]}px`, ['--dy' as string]: `${n.drift[1]}px`, ['--drift' as string]: `${n.drift[2]}s`, ['--delay' as string]: `${n.delay}s` } as CSSProperties}
+                style={{ left: `${(((i + 1) / MARKS) * 100).toFixed(3)}%`, ['--eta' as string]: `${ETA[i]}ms` } as CSSProperties}
               >
-                {n.leaves.map((l, j) => (
-                  <svg
-                    key={j}
-                    className={styles.leaf}
-                    viewBox="-0.7 -1.2 1.4 1.25"
-                    focusable="false"
-                    style={{ width: leafWidth(l.s), ['--r' as string]: `${l.r}deg`, ['--k' as string]: j } as CSSProperties}
-                  >
-                    <path d={LEAF[l.k]} />
-                    <path d={RIB} className={styles.rib} />
-                  </svg>
-                ))}
-                <span className={styles.mote}><span className={styles.glow} /></span>
+                {/* The tendril the step in progress reaches towards this knot. */}
+                <span className={styles.charge} />
+                {leaves.map((l, j) => <Leaf key={j} l={l} j={j} />)}
+                <span className={styles.knot} />
               </span>
             )
           })}
+          {/* The light at the tip of the vine: it rides the same length as the fill, by the same ease. */}
+          <span className={styles.head}>
+            <span className={styles.bud}><span className={styles.glow} /></span>
+          </span>
         </div>
-        <p className={styles.line1}>The island is waking up</p>
-        <p className={styles.line2} key={copyAt(snapshot)} data-ready={ready || undefined}>{copyAt(snapshot)}</p>
+        <p className={styles.stage} key={copy} data-ready={ready || undefined} aria-hidden="true">{copy}</p>
       </div>
     </div>
   )
 }
-
