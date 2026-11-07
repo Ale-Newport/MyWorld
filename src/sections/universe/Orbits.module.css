@@ -145,6 +145,8 @@
   max-width: var(--lw);
   line-height: 1.12;
   opacity: 0;
+  /* A name that gives way to another (Orbits.tsx) fades rather than blinks; the per-frame ramps are smoothed by it a touch. */
+  transition: opacity 180ms linear;
   will-change: transform, opacity;
 }
 .body[data-tier='0'] .label { top: calc(var(--d) * 0.5 + 9px); }
