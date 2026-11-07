@@ -1,6 +1,10 @@
-import type { Metadata } from 'next'
+import type { Metadata, Viewport } from 'next'
 import { publishedSite } from '@/server/site'
 import { publicSiteUrl } from '@/lib/site-url'
+
+/* The browser's bar on /world starts in the hedge's dark — the leaves, and the dark under them, are what is on the screen
+   first — and follows the world's own top edge once it is drawn (WorldRoute). Merged over the site's viewport: only this key. */
+export const viewport: Viewport = { themeColor: '#0f1804' }
 
 export async function generateMetadata(): Promise<Metadata> {
   const { doc } = await publishedSite()

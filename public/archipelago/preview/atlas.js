@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import {OutputPass} from 'three/addons/postprocessing/OutputPass.js';
 import {authoredWorldBounds,landFootprint,visibleInWorld} from './world-bounds.js';
 import {areaOf} from './runtime/placement.js';
+import {ACCENT} from './portfolio/world2/signs/accent.js';
 /* THE ATLAS — the M map.
    An orthographic photograph of the world itself, north up, framed from the
    island's real footprint (land and its visible shallows, a little sea around
@@ -57,7 +58,8 @@ import {areaOf} from './runtime/placement.js';
    buttons (focus stays inside); Enter or Space on a place travels there;
    arrows/WASD pan; + − zoom and 0 shows the whole island. */
 export const MAP_HIDDEN=2;
-const KINDS={experience:{label:'Areas',color:'#1d3c46'},activity:{label:'Activities',color:'#d9542b'},place:{label:'Places',color:'#2f7f74'}};
+/* Activities are the things that answer you, so their pins wear the site's accent (portfolio/world2/signs/accent.js). */
+const KINDS={experience:{label:'Areas',color:'#1d3c46'},activity:{label:'Activities',color:ACCENT},place:{label:'Places',color:'#2f7f74'}};
 const MIN_ZOOM=1,MAX_ZOOM=7,DRAG={mouse:5,pen:6,touch:10};
 /** Framing: the sea around the footprint (shares of its longer side) and how far above the middle the island sits (share of the plane's height).
  * North and south carry the lift, so they get the roomier margin. East and west get the thin one: on a portrait stage the plane's width is what limits the

@@ -98,7 +98,7 @@
 }
 /* The one signal colour, on the one number that answers "how far": light enough to read
    on the shade (5:1). */
-.now { color: var(--accent-soft, #d8754c); }
+.now { color: var(--accent-soft, color-mix(in srgb, var(--accent, #2f6b3f) 70%, #fff)); }
 .of { color: color-mix(in srgb, var(--cream) 56%, transparent); }
 
 /* ---- The rule, and the vine that grows along it ------------------------------------- */

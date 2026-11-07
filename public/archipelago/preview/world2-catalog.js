@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import {sourceGroundPatch} from './prefab-terrain.js';
+import {ACCENT} from './portfolio/world2/signs/accent.js';
 import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';
 import {loadCompressedGLB} from './compressed-gltf.js';
 import {fetchEarly} from './early-fetch.js';
@@ -20,7 +21,8 @@ const nameOf=o=>o.userData.w2Source??o.name;
 // Keep their geometry and cloth material, but give those five surfaces a
 // a muted racing palette. The podium has separate branded materials.
 const CIRCUIT_FABRIC=new Set(['Cylinder.022','Cylinder.037','Cylinder.039','refBanners','refBanners.001']);
-const FABRIC_COLORS=['#bf6844','#558e88','#c2a263','#558e88','#bf6844'];
+/* The circuit's banners: the site's accent (it was the terracotta), teal and ochre. */
+const FABRIC_COLORS=[ACCENT,'#558e88','#c2a263','#558e88',ACCENT];
 const CIRCUIT_ARTWORK=new Set(['circuitWebgl','circuitWebgpu','circuitBrand']);
 export function plainCircuitFabric(world){world.traverse(node=>{
  if(!node.isMesh||!CIRCUIT_FABRIC.has(nameOf(node)))return;

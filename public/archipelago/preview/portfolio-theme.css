@@ -5,7 +5,9 @@ body.player {
  --border:rgba(26,23,18,.14);--border-strong:rgba(26,23,18,.3);
  --panel:rgba(251,247,239,.94);--panel-edge:rgba(90,70,40,.14);
  --panel-shadow:0 1px 0 #ffffff8c inset,0 22px 44px -28px #3a281273;
- --radius-card:14px;--accent:#bf4f27;--accent-deep:#8d3515;
+ --radius-card:14px;
+ /* The site's accent (portfolio-theme.js sets the one the host chose, from portfolio/world2/signs/accent.js); its shades are mixed from it. */
+ --accent:#2f6b3f;--accent-soft:color-mix(in srgb,var(--accent) 70%,#fff);--accent-deep:color-mix(in srgb,var(--accent) 70%,#000);
  --font-display:var(--font-geist-sans,'Helvetica Neue'),Arial,sans-serif;
  --font-mono:var(--font-geist-mono,ui-monospace),Menlo,monospace;
  color:var(--text-primary);background:#0f1804;font-family:var(--font-display);
@@ -53,11 +55,13 @@ body.player #gameplay-hud {font-size:13px;top:76px;max-width:min(390px,calc(100v
 /* Their text changes up to sixty times a second: a change stays inside the box (no paint containment, the glow of the speed would be clipped), and the digits are all one width. */
 body.player :is(#gameplay-hud,#drive-hud) {contain:layout style;font-variant-numeric:tabular-nums}
 body.player #notice {font:12px/1.6 var(--font-mono)}
-body.player #touch-controls button {padding:6px 4px;min-height:48px;border-radius:10px;font-size:9px}
-body.player #touch-controls button:active,body.player #touch-controls button[data-pressed] {background:var(--bg-tertiary);color:var(--accent)}
-body.player #touch-vehicle b {color:inherit}
-body.player #touch-vehicle[aria-pressed=false] b:first-child,body.player #touch-vehicle[aria-pressed=true] b:last-child {color:var(--accent)}
-body.player #touch-controls #touch-jump {border-radius:50%;font-size:12px}
+/* The touch keys (sizes and layout in player.css): cream keys with ink icons, one shape; pressed, a step darker and the accent's ink.
+   PLANE is a toggle, so while the plane is up it stays lit: a wash of the accent, the accent's border. JUMP is the one filled key. */
+body.player #touch-controls button {padding:0;min-height:0;border-radius:18px;font:600 9px/1 var(--font-mono);letter-spacing:.08em}
+body.player #touch-controls button:active,body.player #touch-controls button[data-pressed] {background:var(--bg-tertiary);color:var(--accent-deep)}
+body.player #touch-vehicle[aria-pressed=true] {background:color-mix(in srgb,var(--accent) 14%,var(--bg-primary));border-color:var(--accent);color:var(--accent-deep)}
+body.player #touch-controls #touch-jump {border-radius:50%;font-size:10px;box-shadow:0 1px 0 #ffffff40 inset,0 10px 24px -10px #1a1712b3}
+body.player #touch-controls #touch-jump:is(:active,[data-pressed]):not([aria-disabled=true]) {background:var(--accent-deep)!important;border-color:var(--accent-deep)!important;color:#fff7ef}
 /* The full-screen loading UI belongs to the studio. Public entry is masked by foliage. */
 body.player #loading {background:#0f1804}
 body.player #loading>* {visibility:hidden}
@@ -95,8 +99,6 @@ body.player .atlas-feedback::after {background:var(--bg-primary);border-color:va
 body.player :is(.atlas-player,.atlas-key-player) {border-bottom-color:var(--accent)}
 body.player .atlas-player::after {border-color:color-mix(in srgb,var(--accent) 50%,transparent)}
 @media(max-width:760px) {
- body.player #player-nav {inset:max(10px,env(safe-area-inset-top)) 10px auto;gap:5px}
- body.player #player-nav :is(a,button){font-size:9px;padding:8px 10px;letter-spacing:.02em;min-height:44px}
  body.player .atlas {width:calc(100vw - 20px);height:calc(100dvh - 24px);padding:14px;gap:12px;grid-template-columns:1fr;grid-template-rows:auto minmax(0,1fr) auto}
  body.player .atlas-head h2 {font-size:26px}
  body.player .atlas-eyebrow {max-width:210px;font-size:9px}
@@ -107,3 +109,67 @@ body.player .atlas-player::after {border-color:color-mix(in srgb,var(--accent) 5
 
 /* The visitor HUD is just speed; the studio retains its driving diagnostics. */
 body.player #drive-hud > :not(#speed):not(span) { display: none !important; }
+
+/* ============================================================
+   THE HUD ON A PHONE (and any window as small)
+
+   One line along the top, one corner each for what the thumbs
+   reach at the foot, all of it clear of the notch, the rounded
+   corners and the home indicator (--safe-*, player.css):
+
+     top     ← PORTFOLIO, the way out, on its own at the left;
+             MAP, CONTROLS and ACHIEVEMENTS as one segmented pill
+             at the right — their icons only on a phone held
+             upright, icon and word when there is room for it
+     foot    the speed in a chip at the left, the touch keys in
+             the right-hand corner (player.css), a notice between
+             them
+
+   Every control at the top is 44 px tall, set in the same 11 px
+   mono capitals; nothing wraps. A desktop keeps the row of pills
+   it has (the group is `display: contents` there and the icons
+   are not drawn).
+   ============================================================ */
+body.player #player-nav .nav-group {display:contents}
+body.player #player-nav .hud-icon {display:none}
+@media (max-width:760px),(max-height:500px) {
+ body.player #player-nav {inset:calc(var(--safe-top) + 10px) calc(var(--safe-right) + 12px) auto calc(var(--safe-left) + 12px);justify-content:space-between;align-items:center;gap:8px}
+ body.player #player-nav :is(a,button) {box-sizing:border-box;height:44px;min-height:44px;font:500 11px/1 var(--font-mono);letter-spacing:.08em;white-space:nowrap}
+ body.player #player-nav #player-home {display:inline-flex;align-items:center;padding:0 16px}
+ body.player #player-nav .nav-group {display:flex;align-items:stretch;box-sizing:border-box;height:44px;border:1px solid var(--border-strong);border-radius:999px;background:var(--panel);box-shadow:var(--panel-shadow)}
+ body.player #player-nav .nav-group button {position:relative;display:inline-flex;align-items:center;justify-content:center;gap:8px;height:42px;min-height:0;min-width:48px;padding:0 14px;border:0;border-radius:0;background:transparent;box-shadow:none}
+ body.player #player-nav .nav-group button:first-child {border-radius:999px 0 0 999px;padding-left:16px}
+ body.player #player-nav .nav-group button:last-child {border-radius:0 999px 999px 0;padding-right:16px}
+ body.player #player-nav .nav-group button+button::before {content:'';position:absolute;left:0;top:12px;bottom:12px;width:1px;background:var(--border-strong)}
+ body.player #player-nav .nav-group button:is(:active,[data-press]):not([aria-disabled=true]) {transform:none;background:var(--bg-tertiary)}
+ body.player #player-nav .nav-group button:focus-visible {outline-offset:-4px}
+ body.player #player-nav .hud-icon {display:block;flex:none;width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+ body.player #player-nav kbd {margin-left:0}
+ /* Below the bar: the activity's panel, clear of it and of the sides. */
+ body.player #gameplay-hud {top:calc(var(--safe-top) + 64px);left:calc(var(--safe-left) + 12px);max-width:min(390px,calc(100% - 24px - var(--safe-left) - var(--safe-right)))}
+ /* The speed: a chip of the bar's height in the left-hand corner of the foot, level with the touch keys. */
+ body.player.driving #drive-hud {display:flex;align-items:baseline;gap:6px;box-sizing:border-box;left:calc(var(--safe-left) + 12px);bottom:calc(var(--safe-bottom) + 16px);height:44px;padding:0 16px;align-content:center;background:var(--panel);border:1px solid var(--panel-edge);border-radius:999px;box-shadow:var(--panel-shadow);text-shadow:none;line-height:42px}
+ body.player.driving #drive-hud strong {font:500 22px/42px var(--font-display);letter-spacing:-.02em}
+ body.player.driving #drive-hud>span {margin:0;font:500 9px/42px var(--font-mono);letter-spacing:.1em;color:var(--text-muted)!important}
+ /* A notice: centred over the foot, between the speed chip and the touch keys, above the chip. */
+ html body.player #notice {left:calc(var(--safe-left) + 12px);right:calc(var(--safe-right) + 12px);bottom:calc(var(--safe-bottom) + 70px);width:fit-content;max-width:none;margin-inline:auto;transform:none;text-align:center}
+ html body.player[data-input=touch] #notice {right:calc(var(--touch-right) + var(--touch-jump) + 12px)}
+ body.player .atlas {width:calc(100vw - 20px - var(--safe-left) - var(--safe-right));height:calc(100dvh - 24px - var(--safe-top) - var(--safe-bottom))}
+}
+/* A phone held upright: the group is three icons, each named for a screen reader (and the M of the map, a keyboard's, goes too). */
+@media (max-width:600px) {
+ body.player #player-nav .nav-group button {width:48px;padding:0}
+ body.player #player-nav .nav-group button:first-child {padding-left:2px}
+ body.player #player-nav .nav-group button:last-child {padding-right:2px}
+ body.player #player-nav .nav-group :is(.nav-label,kbd) {position:absolute;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;clip-path:inset(50%);white-space:nowrap;border:0}
+}
+/* A phone on its side: the keys run along the foot, so the notice stands between the chip and them, on their line. */
+@media (max-height:500px) {
+ html body.player #notice {bottom:calc(var(--safe-bottom) + 16px);left:calc(var(--safe-left) + 130px)}
+ html body.player[data-input=touch] #notice {right:calc(var(--touch-right) + var(--touch-key)*2 + var(--touch-jump) + var(--touch-gap)*2 + 12px)}
+ body.player .atlas {width:min(1120px,calc(100vw - 32px - var(--safe-left) - var(--safe-right)));height:min(800px,calc(100dvh - 24px - var(--safe-top) - var(--safe-bottom)))}
+}
+/* A larger touch screen keeps the desktop's HUD; its notice keeps clear of the keys' column. */
+@media (min-width:761px) and (min-height:501px) {
+ body.player[data-input=touch] #notice {max-width:calc(100% - 2 * (var(--touch-right) + var(--touch-jump) + 24px))}
+}

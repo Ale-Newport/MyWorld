@@ -1,4 +1,5 @@
 import * as THREE from 'three'
+import { ACCENT, ACCENT_DEEP } from './accent'
 
 /* ============================================================
    THE WORLD'S OWN COLOURS
@@ -32,8 +33,8 @@ export const PALETTE_HEX: readonly string[] = [
 ]
 
 /**
- * The paint tokens of "Island timber": the site's ink, cream and terracotta
- * for anything written on a sign, and the atlas's timber for anything built.
+ * The paint tokens of "Island timber": the site's ink, cream and accent
+ * (the editor's colour, ./accent) for anything written on a sign, and the atlas's timber for anything built.
  * Every text/background pair used by the kit is checked in tests/world/signs-palette.test.mjs.
  */
 export const TOKENS = {
@@ -52,8 +53,8 @@ export const TOKENS = {
   copper: '#b36d45',
   timber: '#f8a658',
   gold: '#e4a90c',
-  terracotta: '#bf4f27',
-  terracottaDeep: '#8d3515',
+  accent: ACCENT,
+  accentDeep: ACCENT_DEEP,
   teal: '#2f6f5e',
   leaf: '#4b6a1d',
   sage: '#91ad78',

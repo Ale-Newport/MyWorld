@@ -571,7 +571,7 @@ function paintBoard(station: StationId, title: string, value: string, pending: b
     ctx.fillStyle = t.tokens.ink
     t.drawFit(ctx, name, pad, top, 'left')
     const sub = t.fitText(ctx, value, { maxWidth: w - pad * 2, maxLines: 1, minPx: h * 0.07, maxPx: h * 0.2, weight: pending ? 600 : 500, family: t.fonts.sans, lineHeight: 1 })
-    ctx.fillStyle = pending ? t.tokens.terracottaDeep : t.tokens.ink2
+    ctx.fillStyle = pending ? t.tokens.accentDeep : t.tokens.ink2
     t.drawFit(ctx, sub, pad, top + Math.min(room - sub.height, name.height + h * 0.05), 'left')
   }
 }
