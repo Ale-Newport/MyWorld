@@ -19,6 +19,12 @@
       through an edge-aware lookup so silhouettes stay crisp.
    ============================================================ */
 
+import { ROOM_CONFIG } from '../config'
+import { nightLight } from './night'
+
+/** The moss by night: its lift and the moon on its tufts (see roomFrag). */
+const NIGHT_MOSS = ROOM_CONFIG.night.moss
+
 /* ---- shared ------------------------------------------------- */
 
 const reconstruct = /* glsl */ `
@@ -224,6 +230,7 @@ export const roomFrag = /* glsl */ `
   uniform float uSoffitH;
   uniform float uMossTile;
   uniform float uDebugIrr;
+  ${nightLight}
   ${reconstruct}
 
   varying vec3 vWorld;
@@ -469,6 +476,11 @@ export const roomFrag = /* glsl */ `
     float lit = clamp(0.9 + 0.35 * (md.r - 0.45) + 2.2 * dot(dm, normalize(uKeyDir.xy + vec2(0.0, 0.001))), 0.55, 1.35);
     vec3 mossCol = mix(substrate, matCol, smoothstep(0.15, 0.7, md.r));
     mossCol = mix(mossCol, ma.rgb * lit, ma.a * (0.35 + 0.55 * dense));
+    // By night the moss is lifted as the ivy is, and the tops of its tufts
+    // catch the moon (cooler, on the side the window lights): a mat with a
+    // grain, not a black line. 0 by day.
+    mossCol *= uPlantLift * (1.0 + ${(NIGHT_MOSS.lift - 1).toFixed(2)} * uNight);
+    mossCol += uMoon * vec3(0.8, 0.95, 0.9) * smoothstep(0.42, 0.85, md.r) * lit * ${NIGHT_MOSS.tops.toFixed(2)} * uNight;
     float moss = clamp(max(cover * (0.82 + 0.16 * dense), ahead), 0.0, 1.0);
     albedo = mix(albedo, mossCol, moss);
     rough = mix(rough, 1.0, moss);
@@ -502,6 +514,8 @@ export const roomFrag = /* glsl */ `
     }
 
     vec4 E = irradiance(wp, n);
+    // By night the same light is the moon's and a low sky's (render/night.ts).
+    E.rgb = lightNow(E);
     vec3 diffuse = albedo * E.rgb * self;
     // Fine relief catches the key light: tiny modulation only.
     diffuse *= 1.0 + bump * 0.18;
@@ -513,12 +527,12 @@ export const roomFrag = /* glsl */ `
     float nh = max(dot(n, h), 0.0);
     float dd = a * a / (3.14159 * pow(nh * nh * (a * a - 1.0) + 1.0, 2.0));
     float fres = 0.04 + 0.96 * pow(1.0 - max(dot(v, h), 0.0), 5.0);
-    vec3 spec = uKeyColor * dd * fres * E.a * 0.25 * (1.0 - moss);
+    vec3 spec = keyNow() * dd * fres * E.a * 0.25 * (1.0 - moss);
     if (mat == 2) {
       // Blurred reflection of the bright walls in honed stone.
       vec3 r = reflect(-v, n);
       float fv = 0.03 + 0.97 * pow(1.0 - max(dot(n, v), 0.0), 5.0);
-      vec3 env = mix(uBounce * 0.8, uSkyTint, smoothstep(-0.05, 0.6, r.y));
+      vec3 env = mix(uBounce * 0.8, uSkyTint, smoothstep(-0.05, 0.6, r.y)) * duskNow();
       spec += env * fv * 0.35 * (1.0 - rough) * (1.0 - moss);
     }
 
@@ -534,6 +548,9 @@ export const outputFrag = /* glsl */ `
   uniform sampler2D tRead;
   uniform float uDebug;
   uniform float uDither;
+  // The frame's level in display-linear light: 1 by day, the dark
+  // ground's value by night (render/night.ts).
+  uniform vec3 uLevel;
   varying vec2 vUv;
   float hash12(vec2 p) {
     vec3 p3 = fract(vec3(p.xyx) * 0.1031);
@@ -550,9 +567,10 @@ export const outputFrag = /* glsl */ `
       gl_FragColor.rgb = mix(gl_FragColor.rgb, vec3(0.1, 0.2, 1.0), step(0.3, f.a) * 0.35);
     }
     #include <tonemapping_fragment>
+    gl_FragColor.rgb *= uLevel;
     #include <colorspace_fragment>
     // Triangular dither: a white wall is one long gradient, and an
-    // 8-bit gradient bands without it.
+    // 8-bit gradient bands without it (a dark one more so).
     float n = hash12(gl_FragCoord.xy) + hash12(gl_FragCoord.xy + 17.17) - 1.0;
     gl_FragColor.rgb += n * uDither;
   }

@@ -19,6 +19,7 @@ scene (see [Fallback](#fallback)).
 | `scene/architecture.ts`, `scene/profiles.ts`, `scene/builder.ts` | The hall as real geometry: swept moulding profiles (entablature, skirting, Attic bases, Tuscan capitals, niche surrounds; panel frames, which no composition currently uses), fluted pilaster shafts, niches, bevelled floor slabs. |
 | `render/camera.ts` | The fitted lens (vertical lens shift, no tilt), pinned to the measured HUD and gutter. |
 | `render/lighting.ts` | The lighting cache: ~250 shadow-mapped samples (an area key, a skylight, floor and wall bounce) accumulated once per layout. |
+| `render/night.ts` | The hall at night (the site's dark theme): the cached light re-weighted for a moon and a low sky, the frame's level, and the theme read from `<html data-theme>`. |
 | `render/shaders.ts`, `render/natureShaders.ts` | Surfaces (stone, plaster, limestone, moss, damp, cracks), plants and their contact shadows, output. |
 | `render/textures.ts` | Tileable noise for stone grain and plaster at real-world scale. |
 | `nature/sprites.ts` | The prototype's leaf and moss painters, ported: pigment (albedo) separated from relief (normal map); no painted shadows. |
@@ -59,6 +60,32 @@ and the sky's over the width it has always had, with interleaved offsets that
 the cache's 3×3 read averages away. A small screen (`smallArea`) draws at its
 tier's `smallDpr`: at a desktop's ratios a phone magnified the whole room, and
 the pilasters' shadows went from soft to smeared.
+
+**Night.** In the site's dark theme (`<html data-theme="dark">`, written before
+the first paint) the copy is cream, and the room is the same hall at night. Nothing
+is lit or built again for it, and the composition is the day's to the pixel, so a
+toggle never moves a column. The cache's key share (its alpha) is re-coloured as
+the moon coming in by the same window, the rest of its light becomes a low night
+sky (`night.moon`, `night.dusk`), and the finished frame is brought down after tone
+mapping (`night.level`) to about the page's dark ground — in display-linear light,
+where the contact shades, soffits and the pilasters' shadows keep the day's
+proportions (before tone mapping they would sink into the curve's toe). Plants and
+moss stay darker than the plaster (so they can never lift the ground behind the
+copy), but a dark leaf on a dark wall is a hole unless the moon finds it: each
+leaf gets a cool glint, its veins and curled margin (its normal map's relief) and
+a rim inside its outline (`night.leaves`), and the moss's tufts catch it on their
+tops (`night.moss`). The first frame is in the page's theme
+(`EngineOptions.night`) and so is the host's first-paint tone (`room.module.css`);
+a toggle at run time cross-fades three uniforms over the cached room in
+`night.fade` seconds (about 33 redraws, no relight; at once under reduced motion),
+after which the room rests as before. The canopy takes the moon and the night sky
+too, brought down less (`night.canopyLevel`): it hangs nearer the lens, over the
+dark page. It is the one cinematic moment on the way into /world, so at night it is
+a moonlit hedge — the same glint, veins and rim on every blade, and the near band
+lifted above the deep ones (`night.canopy`) so the gaps between the leaves stay dark
+and the page behind still recedes. The fallback still, a day frame, is dimmed by CSS at night. With the
+night's level the plaster behind the copy measures L ≈ 0.009–0.012, so the dimmest
+label ink still reads at 5.8:1 and the cream at 13:1 or more.
 
 **Moss in the joints.** On the floor moss takes the grout long before the stone:
 each stretch of joint has its own head start (wetter runs at the scale of a stone
@@ -173,6 +200,9 @@ Edit `config.ts`. A few useful knobs:
   parting is in `canopy/canopy.module.css`.
 - `clearance.*` — how much air the copy keeps (per type size).
 - `light.*` — exposure, key window, skylight, bounces.
+- `night.*` — the dark theme's moon and sky, the frame's level (keep the plaster
+  behind the copy at or under L 0.012 — measure it), the plants' lift and sheen,
+  the canopy's level, the toggle's fade.
 - `quality.*`, `smallArea`, `maxMegapixels`, `samplePixelsPerFrame` — pixel ratio (and a phone's, `smallDpr`), MSAA,
   shadow map size, sample counts and leaf share per tier; the pixel budget.
 

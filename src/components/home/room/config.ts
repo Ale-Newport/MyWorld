@@ -123,6 +123,45 @@ export const ROOM_CONFIG = {
     wallBounce: { intensity: 0.7, color: [1.0, 0.975, 0.94] },
   },
 
+  /* ---- night (the site's dark theme) -------------------------
+     The same hall after dark: the same stone and plaster, the same
+     window, the same plants — only the light is another. The moon
+     comes in through the clerestory the sun did, so the cached light
+     is re-weighted, not gathered again: its key share (the cache's
+     alpha) takes the moon's colour, the rest (sky, bounces) a low
+     night sky's, and the finished frame is then brought down, after
+     tone mapping, to the dark ground's value. The cream copy reads on
+     it as the dark ink read on the day. See render/night.ts. */
+  night: {
+    /** The moon's share, colour × strength (the day key is 0.95). */
+    moon: [0.62, 0.69, 0.8],
+    /** Multiplier on the rest of the day's light, per channel: a low,
+        faintly cool sky (1 would be the day's). */
+    dusk: [0.3, 0.305, 0.3],
+    /** Display-linear level of the whole frame after tone mapping:
+        where the plaster lands (about the page's #131410 ground). */
+    level: [0.0195, 0.0187, 0.0138],
+    /** Plants are lifted above the level, and their waxy cuticles
+        catch the moon: a wall of ivy at night reads by its sheen. */
+    plants: 1.25,
+    sheen: 5,
+    /** The canopy in front of the lens, nearer than the wall and lit
+        from the open side: brought down less. */
+    canopyLevel: [0.21, 0.22, 0.21],
+    /** What the moon finds on the canopy's leaves (canopy/shaders.ts):
+        the near band's extra level (the deep one has none), and the
+        strength of the glint, of the veins and margin, of the rim. */
+    canopy: { nearLift: 0.6, glint: 0.14, relief: 0.18, rim: 0.16 },
+    /** The same on the room's ivy against the wall, and on the moss's
+        tufts: what keeps them plants and not holes in a dark wall. */
+    leaves: { glint: 0.7, relief: 0.6, rim: 0.7 },
+    /** The moss's own lift (on top of `plants`), and the moon on its tufts' tops. */
+    moss: { lift: 1.6, tops: 0.28 },
+    /** Seconds the room takes to go from day to night when the
+        visitor toggles the theme (at once with reduced motion). */
+    fade: 0.55,
+  },
+
   /* ---- the portal's canopy ----------------------------------
      The ivy that closes over the page at the very end (see
      canopy/plan.ts). It hangs in the air in front of the hall, so it

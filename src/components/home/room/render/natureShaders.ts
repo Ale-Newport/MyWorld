@@ -7,13 +7,23 @@
    it, without a second lighting model. Each splits that light
    into the key's share (stored in the cache's alpha) and the
    rest, and re-shades the key's share for its own orientation.
+   By night both shares are the night's (render/night.ts), and the
+   plants are lifted a little above the plaster's level: dark leaves
+   on a dark wall read by their sheen and a little of their green.
    ============================================================ */
+
+import { ROOM_CONFIG } from '../config'
+import { nightLight } from './night'
+
+/* What the moon finds on the room's own leaves by night (see leafFrag). */
+const { glint: GLINT, relief: RELIEF, rim: RIM } = ROOM_CONFIG.night.leaves
 
 const shared = /* glsl */ `
   uniform sampler2D tIrr;
   uniform vec2 uRes;
   uniform vec3 uKeyDir;
   uniform vec3 uKeyColor;
+  ${nightLight}
 
   // Split the cache at this pixel into ambient and key, and return
   // what a surface of normal n (attached to a wall of normal nw)
@@ -21,7 +31,7 @@ const shared = /* glsl */ `
   vec3 plantLight(vec3 n, vec3 nw, float wrap) {
     vec4 E = texture2D(tIrr, gl_FragCoord.xy / uRes);
     vec3 key = uKeyColor * E.a;
-    vec3 ambient = max(E.rgb - key, vec3(0.0));
+    vec3 ambient = max(E.rgb - key, vec3(0.0)) * duskNow();
     float wallNdl = max(dot(nw, uKeyDir), 0.15);
     float vis = E.a / wallNdl;
     float ndl = dot(n, uKeyDir);
@@ -29,7 +39,7 @@ const shared = /* glsl */ `
     // Sky from above, bounce from below, both softened by the plant
     // standing a little proud of a wall that already took some.
     float hemi = 0.82 + 0.18 * n.y;
-    return ambient * hemi + uKeyColor * vis * lit;
+    return (ambient * hemi + keyNow() * vis * lit) * uPlantLift;
   }
 `
 
@@ -260,7 +270,22 @@ export const leafFrag = /* glsl */ `
     vec3 hv = normalize(v + uKeyDir);
     float spec = pow(max(dot(n, hv), 0.0), 28.0) * 0.06;
     vec4 Ec = texture2D(tIrr, gl_FragCoord.xy / uRes);
-    col += uKeyColor * Ec.a * spec * (1.0 - vLitter);
+    col += keyNow() * Ec.a * spec * uSheen * (1.0 - vLitter);
+    if (uNight > 0.0) {
+      // By night a dark leaf on a dark wall is a hole unless the moon finds
+      // it: a cool glint where the blade turns to the window, its veins and
+      // curled margin (the normal map's relief) and a rim inside its
+      // outline — weaker where the wall behind is in the moon's shadow, never
+      // gone (the sky is in them too). 0 by day.
+      // The glint is the cuticle's (the moon's colour); veins and rim are the leaf's green, lit.
+      float moonVis = 0.4 + 0.6 * clamp(Ec.a * 1.4, 0.0, 1.0);
+      float glint = pow(max(dot(n, hv), 0.0), 10.0);
+      float relief = clamp((1.0 - tn.z) * 5.0, 0.0, 1.0);
+      float rim = clamp((a.a - textureLod(tAlbedo, vUv, 1.6).a) * 4.0, 0.0, 1.0);
+      vec3 green = albedo * 2.2 + 0.08;
+      vec3 moon = uMoon * vec3(0.86, 0.96, 1.12) * (glint * ${GLINT.toFixed(2)} + green * (relief * ${RELIEF.toFixed(2)} + rim * ${RIM.toFixed(2)}));
+      col += moon * moonVis * occl * (1.0 - vLitter) * uNight;
+    }
     gl_FragColor = vec4(col, a.a);
   }
 `

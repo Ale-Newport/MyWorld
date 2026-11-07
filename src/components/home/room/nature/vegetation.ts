@@ -8,6 +8,7 @@ import {
   leafFrag, leafShadowFrag, leafShadowVert, leafVert,
   stemFrag, stemShadowFrag, stemVert,
 } from '../render/natureShaders'
+import type { NightUniforms } from '../render/night'
 
 /* ============================================================
    VEGETATION MESHES
@@ -27,7 +28,8 @@ import {
    there is no sorting and nothing to go wrong when they overlap.
    ============================================================ */
 
-export interface VegetationUniforms {
+/** The night's uniforms are the hall's own (render/night.ts): one toggle re-lights wall and plants together. */
+export interface VegetationUniforms extends NightUniforms {
   tIrr: { value: THREE.Texture | null }
   uRes: { value: THREE.Vector2 }
   uKeyDir: { value: THREE.Vector3 }
@@ -182,6 +184,11 @@ export class Vegetation {
       uSway: uniforms.uSway,
       uSwayAmp: uniforms.uSwayAmp,
       uTakeover: uniforms.uTakeover,
+      uNight: uniforms.uNight,
+      uMoon: uniforms.uMoon,
+      uDusk: uniforms.uDusk,
+      uPlantLift: uniforms.uPlantLift,
+      uSheen: uniforms.uSheen,
       ...options.uniforms,
     }
     // Shades multiply what is already there; they are drawn in the

@@ -31,6 +31,10 @@
   .host { height: 100lvh; }
 }
 
+/* The site's dark theme: the room is the same hall at night
+   (render/night.ts), and its first paint the night plaster's tone. */
+:global(:root[data-theme='dark']) .host { background: #181915; }
+
 .canvas,
 .still {
   position: absolute;
@@ -56,6 +60,10 @@
 }
 
 .host[data-fallback='true'] .canvas { opacity: 0; }
+
+/* The stills are the day's; at night the fallback is the same frame
+   brought down to the night's value. */
+:global(:root[data-theme='dark']) .still { filter: brightness(0.17) saturate(0.85); }
 
 @media (prefers-reduced-motion: reduce) {
   .canvas, .still { transition: none; }

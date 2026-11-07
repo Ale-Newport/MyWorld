@@ -9,6 +9,7 @@ import { ROOM_CONFIG } from './config'
 import { RoomEngine } from './engine'
 import { growthFor } from './growth'
 import { RoomStill } from './RoomStill'
+import { isNight, onNight } from './render/night'
 import {
   ROOM_IGNORE, RasterCache, assembleField, chapterSections, footerShifts, groupByChapter, measureChapter, measureHud, settledRects,
   type ReadingBox, type ShiftMemo,
@@ -49,6 +50,8 @@ export function HomeRoom() {
     try {
       engine = new RoomEngine(canvas, {
         quality: detectDevice().tier,
+        // The theme is on <html> before the first paint (site/theme-script.ts), so the first frame is already in it.
+        night: isNight(),
         onReady: () => { up = true; setReady(true); window.dispatchEvent(new Event('room:ready')) },
         onContextLost: () => setFallback(true),
         onContextRestored: () => {
@@ -446,6 +449,13 @@ export function HomeRoom() {
     }
     applyMotion()
 
+    // The site's theme toggled (or followed the system): day or night, cross-faded over the same light; at once
+    // under reduced motion, and before the first frame.
+    const unsubNight = onNight((night) => {
+      engine?.setNight(night, useJourney.getState().reducedMotion || !up)
+      wake()
+    })
+
     // Frame-time watchdog: if most of the frames the room draws over a
     // couple of seconds come in under ~25 fps, step its quality down.
     let slow = 0
@@ -503,6 +513,7 @@ export function HomeRoom() {
     return () => {
       unsub()
       unsubStore()
+      unsubNight()
       ro.disconnect()
       mo.disconnect()
       window.removeEventListener('cms:content', onContent)

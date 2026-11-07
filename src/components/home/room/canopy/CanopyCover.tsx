@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useImperativeHandle, useRef, type Ref } from 'react'
 import { roomView } from '../view'
+import { onNight } from '../render/night'
 import { defaultView } from './plan'
 import { CanopyRenderer, type Pause } from './renderer'
 import { standing } from './standing'
@@ -234,9 +235,12 @@ export function CanopyCover({ initial = 0, budget = 1, reduced = false, partScal
       if (s.charge >= 0.999) seal()
     }
     window.addEventListener('journey:leaving', onLeaving)
+    // The site's theme toggled while the canopy stands: its leaves take the other light (render/night.ts).
+    const unsubNight = onNight((night) => s.renderer?.setNight(night))
 
     return () => {
       disposed = true
+      unsubNight()
       cancelAnimationFrame(s.sealFrame)
       s.sealFrame = 0
       if (!eager && typeof win.requestIdleCallback === 'function') (win as IdleWindow & { cancelIdleCallback: (h: number) => void }).cancelIdleCallback(idleId)

@@ -5,6 +5,7 @@ import { fullscreenVert } from '../render/shaders'
 import { createLeafAtlas, type LeafAtlas } from '../nature/sprites'
 import { Vegetation, type VegetationUniforms } from '../nature/vegetation'
 import type { RoomView } from '../view'
+import { applyNight, canopyLight, isNight, nightUniforms } from '../render/night'
 import { canopyPlanner } from './plan'
 import { canopyLeafFrag, canopyOutFrag, canopyStemFrag } from './shaders'
 
@@ -61,6 +62,9 @@ export class CanopyRenderer {
   private atlas: LeafAtlas
   private uniforms: VegetationUniforms
   private ambient: THREE.Vector3
+  /** By night (the site's dark theme) the moon's key and a low sky, and the frame brought down (render/night.ts). */
+  private night = -1
+  private level = new THREE.Vector3(1, 1, 1)
   private layers: Layer[] = []
   private leafShare: number
   private maxPixels: number
@@ -115,7 +119,7 @@ export class CanopyRenderer {
     this.outMat = new THREE.ShaderMaterial({
       vertexShader: fullscreenVert,
       fragmentShader: canopyOutFrag,
-      uniforms: { tColor: { value: this.rt.texture } },
+      uniforms: { tColor: { value: this.rt.texture }, uLevel: { value: this.level } },
       depthTest: false,
       depthWrite: false,
       blending: THREE.NoBlending,
@@ -145,7 +149,24 @@ export class CanopyRenderer {
       uSwayAmp: { value: ROOM_CONFIG.vines.swayAmplitude },
       // Nothing in the canopy is held back by any copy.
       uTakeover: { value: 1 },
+      ...nightUniforms(),
     }
+    this.setNight(isNight())
+  }
+
+  /**
+   * Day or night, from the page's theme. The canopy is a passing thing
+   * (it stands for a second or two before it is frozen), so a toggle
+   * while it stands is applied at once and drawn again; a frozen canopy
+   * keeps the light it was frozen in.
+   */
+  setNight(on: boolean) {
+    const n = on ? 1 : 0
+    if (n === this.night || this.disposed) return
+    this.night = n
+    canopyLight(n, this.uniforms.uKeyColor.value, this.ambient)
+    applyNight(this.uniforms, n, this.level, ROOM_CONFIG.night.canopyLevel)
+    if (this.ready && this.charge >= 0 && !this.lost) this.draw()
   }
 
   private onLost = (e: Event) => {
@@ -218,7 +239,7 @@ export class CanopyRenderer {
           botany.leaves.sort((a, b) => b.position.distanceToSquared(eye) - a.position.distanceToSquared(eye))
           const veg = new Vegetation(
             botany, [], this.atlas, this.uniforms, { leafShare: this.leafShare, msaa: 0 },
-            { leafFrag: canopyLeafFrag, stemFrag: canopyStemFrag, shadows: false, painter: true, uniforms: { uAmbient: { value: this.ambient }, uDark } },
+            { leafFrag: canopyLeafFrag, stemFrag: canopyStemFrag, shadows: false, painter: true, uniforms: { uAmbient: { value: this.ambient }, uDark, uNear: { value: layer.band / 2 } } },
           )
           // Every stem grows whole and every leaf is admitted: the charge
           // alone decides how far.
