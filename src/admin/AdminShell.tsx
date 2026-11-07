@@ -24,7 +24,7 @@ import { TokenBanner } from './TokenStatus'
    site's images), and never the website itself.
    ============================================================ */
 const NAV: { href: string; label: string; icon: IconName; match: RegExp; editor?: boolean; deployed?: boolean }[] = [
-  { href: '/admin/pages', label: 'Website', icon: 'website', match: /^\/admin(\/(pages|projects|media|history)(\/.*)?)?$/, editor: true },
+  { href: '/admin/pages', label: 'Website', icon: 'website', match: /^\/admin(\/(pages|projects|blog|media|history)(\/.*)?)?$/, editor: true },
   { href: '/admin/world', label: 'World', icon: 'world', match: /^\/admin\/world/, editor: true },
   { href: '/admin/analytics', label: 'Audience', icon: 'audience', match: /^\/admin\/analytics/, deployed: true },
   { href: '/admin/settings', label: 'Settings', icon: 'settings', match: /^\/admin\/settings/, deployed: true },
@@ -32,7 +32,7 @@ const NAV: { href: string; label: string; icon: IconName; match: RegExp; editor?
 ]
 
 /** Editors want the whole screen: the navigation folds to a rail there. */
-const COMPACT = [/^\/admin\/pages/, /^\/admin\/world/, /^\/admin\/projects\/[^/]+/]
+const COMPACT = [/^\/admin\/pages/, /^\/admin\/world/, /^\/admin\/projects\/[^/]+/, /^\/admin\/blog\/[^/]+/]
 
 export function AdminShell({ user, csrf, editor, siteUrl, children }: { user: { name: string; email: string }; csrf: string; editor: boolean; siteUrl: string; children: React.ReactNode }) {
   const pathname = usePathname()
