@@ -6,15 +6,14 @@ import { toast } from '../toast'
 import { postWords, readingMinutes } from '@/cms/blog'
 import { isSafeSrc } from '@/cms/safe'
 import { ACCEPT, uploadImage } from './upload'
-import { throughAdmin, useBlogStore } from './store'
 
 /* ============================================================
    THE POST'S FIELDS
 
    The admin's shared controls (fields.tsx) are bound to the site
    draft; a post in the deployed admin is an edit in this browser
-   until it is committed (store.ts), so these are the same controls,
-   in the same markup and classes, given a value and a setter.
+   until it is saved (store.ts), so these are the same controls, in
+   the same markup and classes, given a value and a setter.
    ============================================================ */
 
 export function TextField({ label, value, onChange, hint, maxLength, multiline = false, rows, placeholder, validate }: { label: string; value: string; onChange: (v: string) => void; hint?: ReactNode; maxLength?: number; multiline?: boolean; rows?: number; placeholder?: string; validate?: (v: string) => string | null }) {
@@ -41,16 +40,9 @@ export function DateField({ value, onChange }: { value: string; onChange: (v: st
   )
 }
 
-/** A picture uploaded in this session is shown from memory; one committed earlier is read back through the admin until the site has it. */
-function useShown(url: string | undefined) {
-  const previews = useBlogStore((s) => s.previews)
-  return url ? previews[url] ?? throughAdmin(url) : undefined
-}
-
 /** A button that uploads one image and hands back its address. */
 export function UploadButton({ label, onUploaded, small = true }: { label: string; onUploaded: (url: string) => void; small?: boolean }) {
   const [busy, setBusy] = useState(false)
-  const remember = useBlogStore((s) => s.rememberPreview)
   return (
     <label className={`btn${small ? ' btn-sm' : ''}`} aria-busy={busy || undefined}>
       {busy ? 'Uploading…' : label}
@@ -60,9 +52,7 @@ export function UploadButton({ label, onUploaded, small = true }: { label: strin
         if (!file) return
         setBusy(true)
         try {
-          const { url, blob } = await uploadImage(file)
-          remember(url, blob)
-          onUploaded(url)
+          onUploaded(await uploadImage(file))
         } catch (error) {
           toast((error as Error).message, 'danger')
         } finally {
@@ -167,14 +157,13 @@ export function TagsInput({ tags, onChange }: { tags: string[]; onChange: (next:
 /** The cover: uploaded here, or typed as an address; previewed at the size it reads at. */
 export function CoverField({ cover, onChange }: { cover?: string; onChange: (v: string | undefined) => void }) {
   const id = useId()
-  const shown = useShown(cover)
   const invalid = !!cover && !isSafeSrc(cover)
   return (
     <div className="field">
       <label htmlFor={id}>Image</label>
-      {shown && !invalid && <img src={shown} alt="" style={{ width: '100%', maxHeight: 220, objectFit: 'cover', borderRadius: 8, border: '1px solid var(--a-line)', background: 'var(--a-sunk)' }} />}
+      {cover && !invalid && <img src={cover} alt="" style={{ width: '100%', maxHeight: 220, objectFit: 'cover', borderRadius: 8, border: '1px solid var(--a-line)', background: 'var(--a-sunk)' }} />}
       <div className="row">
-        <input id={id} className="input a-mono" style={{ flex: 1, minWidth: 160 }} value={cover ?? ''} placeholder="/uploads/blog/… or https://…" aria-invalid={invalid} aria-describedby={`${id}-hint`} onChange={(e) => onChange(e.target.value || undefined)} />
+        <input id={id} className="input a-mono" style={{ flex: 1, minWidth: 160 }} value={cover ?? ''} placeholder="/blog-media/… or https://…" aria-invalid={invalid} aria-describedby={`${id}-hint`} onChange={(e) => onChange(e.target.value || undefined)} />
         <UploadButton label={cover ? 'Replace' : 'Upload'} onUploaded={onChange} />
         {cover && <button type="button" className="btn btn-sm" onClick={() => onChange(undefined)}>Remove</button>}
       </div>

@@ -1,16 +1,20 @@
 import type { Metadata } from 'next'
 import { loadSite } from '@/server/site'
 import { publicSiteUrl } from '@/lib/site-url'
+import { listedPosts, summarisePost } from '@/cms/blog'
 import { BlogIndex } from '@/components/blog/BlogIndex'
+import { readPublished } from './published'
 
 /* ============================================================
    /blog
-   The posts written in the admin, newest first. Prerendered at
-   build from the published site document in the deployed site,
-   so a post goes live the way any other edit does: switched to
-   Published in the admin, then the site published. The page's
-   words are the posts'; this file only says what it is called.
+   The posts written in the deployed admin, newest first, read
+   from the database on every request (server/blog.ts): a post is
+   here as soon as it is published, with no build. The rest of the
+   site stays prerendered from the repository. Without the
+   database the page says the blog is unavailable, calmly.
    ============================================================ */
+
+export const dynamic = 'force-dynamic'
 
 export async function generateMetadata(): Promise<Metadata> {
   const { doc } = await loadSite()
@@ -35,6 +39,7 @@ export async function generateMetadata(): Promise<Metadata> {
   }
 }
 
-export default function BlogRoute() {
-  return <BlogIndex />
+export default async function BlogRoute() {
+  const { ok, posts } = await readPublished()
+  return <BlogIndex posts={listedPosts(posts).map(summarisePost)} unavailable={!ok} />
 }

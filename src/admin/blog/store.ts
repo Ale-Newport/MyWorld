@@ -4,45 +4,35 @@ import { create } from 'zustand'
 import { api, AdminError } from '../api'
 import { toast } from '../toast'
 import { listedPosts, uniquePostSlug } from '@/cms/blog'
-import type { BlogPost, SiteDocument } from '@/cms/schema'
+import type { BlogPost } from '@/cms/schema'
 
 /* ============================================================
-   THE BLOG, IN THE DEPLOYED ADMIN'S BROWSER
+   THE BLOG, IN THE ADMIN'S BROWSER
 
-   What GitHub has now (the posts the next build will show), what
-   this deploy was built with (what visitors see now), and the
-   edits made here that are not committed yet. Those edits — a new
-   post, a change to an old one — live only in this browser until
-   Save draft or Publish commits them, and are kept in localStorage
-   so a closed tab or a reload loses nothing.
+   The posts as the database has them now (server/blog.ts), and the
+   edits made here that are not saved yet. Those edits — a new post,
+   a change to an old one — live only in this browser until Save
+   draft or Publish sends them, and are kept in localStorage so a
+   closed tab or a reload loses nothing.
 
-   Each commit sends the post together with the version it was
-   started from, so a post changed meanwhile somewhere else is
-   never overwritten without asking.
+   A save carries the revision the posts were read at and the post
+   as it was then, so a post changed meanwhile somewhere else is
+   never overwritten without asking. What is saved is on the site
+   at once: /blog is read from the database on every request.
    ============================================================ */
 
 export interface Working {
   post: BlogPost
-  /** The post as it was on GitHub when this edit began (null: a new post). */
-  base: BlogPost | null
+  /** The post as the database had it when this edit began (null: a new post). */
+  original: BlogPost | null
   at: number
 }
 
 export interface Loaded {
-  configured: boolean
-  repo: string | null
-  branch: string | null
-  /** Where `doc` came from: GitHub's branch head, or (without settings, or offline) this deploy. */
-  source: 'github' | 'deploy'
-  doc: SiteDocument
-  sha: string | null
-  /** The posts this deploy was built with. */
-  deployed: BlogPost[]
-  error: string | null
+  /** The revision of the blog these posts were read at (null before the first post). */
+  revision: string | null
+  posts: BlogPost[]
 }
-
-/** Where a post stands between this browser, GitHub and the live site. */
-export type LiveState = 'live' | 'pending' | 'leaving' | 'draft' | 'new'
 
 const STORAGE = 'portfolio-admin:blog-working'
 const HISTORY = 100
@@ -63,7 +53,8 @@ function persist(working: Record<string, Working>) {
 function restore(): Record<string, Working> {
   try {
     const raw = JSON.parse(localStorage.getItem(STORAGE) ?? '{}') as Record<string, Working>
-    return raw && typeof raw === 'object' ? raw : {}
+    // Only edits in this shape (an earlier admin kept others under the same key).
+    return Object.fromEntries(Object.entries(raw && typeof raw === 'object' ? raw : {}).filter(([, w]) => w && typeof w === 'object' && w.post && 'original' in w))
   } catch {
     return {}
   }
@@ -77,12 +68,10 @@ interface BlogStore {
   past: Record<string, BlogPost[]>
   future: Record<string, BlogPost[]>
   lastCoalesce: { key: string; at: number } | null
-  /** What is being committed, in words, or null. */
+  /** What is being saved, in words, or null. */
   busy: string | null
-  /** A commit refused because the post changed on GitHub meanwhile. */
+  /** A save refused because the post changed elsewhere meanwhile. */
   conflict: { id: string; message: string } | null
-  /** Pictures uploaded in this session, by their site address: shown from memory until the site has rebuilt. */
-  previews: Record<string, string>
   load: (force?: boolean) => Promise<void>
   create: () => string
   edit: (id: string, mutate: (p: BlogPost) => void, coalesce?: string) => void
@@ -91,42 +80,21 @@ interface BlogStore {
   discard: (id: string) => void
   commit: (id: string, status: BlogPost['status'], opts?: { overwrite?: boolean }) => Promise<boolean>
   remove: (id: string) => Promise<boolean>
-  rememberPreview: (url: string, file: Blob) => void
 }
 
-/** The post as GitHub has it (or the deploy, when GitHub could not be read). */
-export const savedPost = (data: Loaded | null, id: string) => data?.doc.posts?.find((p) => p.id === id) ?? null
-export const deployedPost = (data: Loaded | null, id: string) => data?.deployed.find((p) => p.id === id) ?? null
+/** The post as the database has it. */
+export const savedPost = (data: Loaded | null, id: string) => data?.posts.find((p) => p.id === id) ?? null
 
-/** GitHub's posts with this browser's edits laid over them, new posts included. */
+/** The database's posts with this browser's edits laid over them, new posts included. */
 export function mergedPosts(data: Loaded | null, working: Record<string, Working>): BlogPost[] {
-  const saved = data?.doc.posts ?? []
+  const saved = data?.posts ?? []
   const merged = saved.map((p) => working[p.id]?.post ?? p)
-  for (const w of Object.values(working)) if (!saved.some((p) => p.id === w.post.id) && !w.base) merged.push(w.post)
+  for (const w of Object.values(working)) if (!saved.some((p) => p.id === w.post.id) && !w.original) merged.push(w.post)
   return merged
 }
 
-export function liveState(data: Loaded | null, id: string): LiveState {
-  const saved = savedPost(data, id)
-  const deployed = deployedPost(data, id)
-  if (!saved) return deployed?.status === 'published' ? 'leaving' : 'new'
-  if (saved.status === 'published') return samePost(saved, deployed) ? 'live' : 'pending'
-  return deployed?.status === 'published' ? 'leaving' : 'draft'
-}
-
-/** Posts deleted on GitHub that visitors still see until the rebuild. */
-export const leavingPosts = (data: Loaded | null) => (data?.deployed ?? []).filter((d) => d.status === 'published' && !savedPost(data, d.id))
-
-/** How many commits the live site has not caught up with. */
-export function pendingCount(data: Loaded | null): number {
-  if (!data || data.source !== 'github') return 0
-  const states = (data.doc.posts ?? []).map((p) => liveState(data, p.id))
-  return states.filter((s) => s === 'pending' || s === 'leaving').length + leavingPosts(data).length
-}
-
-/** Pictures in posts are read back from GitHub (through the admin) until the site has rebuilt with them. */
-export const UPLOAD = /\/uploads\/blog\/([a-f0-9]{20}\.(?:webp|png|jpg|gif|avif))/g
-export const throughAdmin = (text: string) => text.replace(UPLOAD, (_m, name: string) => `/api/admin/blog/image?name=${name}`)
+/** Newest first, drafts included, as the admin's preview of /blog lists them. */
+export const sortedPosts = (posts: BlogPost[]) => listedPosts(posts, { preview: true })
 
 export const useBlogStore = create<BlogStore>((set, get) => ({
   status: 'idle',
@@ -138,27 +106,26 @@ export const useBlogStore = create<BlogStore>((set, get) => ({
   lastCoalesce: null,
   busy: null,
   conflict: null,
-  previews: {},
 
   async load(force = false) {
     if (!force && (get().status === 'loading' || get().status === 'ready')) return
-    set({ status: get().data ? get().status : 'loading', error: null })
+    const first = !get().data
+    if (first) set({ status: 'loading', error: null })
     try {
       const data = await api<Loaded>('/api/admin/blog')
-      // The browser's unsaved edits come back with the page (first load only: later ones keep the live state).
-      const working = get().status === 'ready' ? get().working : { ...restore(), ...get().working }
-      set({ status: 'ready', data, working })
+      // The browser's unsaved edits come back with the page (on the first load; later loads keep the live ones).
+      set({ status: 'ready', error: null, data, working: first ? { ...restore(), ...get().working } : get().working })
     } catch (error) {
-      set({ status: get().data ? 'ready' : 'error', error: (error as Error).message })
+      set({ status: first ? 'error' : 'ready', error: (error as Error).message })
+      if (!first) toast((error as Error).message, 'danger')
     }
   },
 
   create() {
     const { data, working } = get()
-    const posts = mergedPosts(data, working)
-    const slug = uniquePostSlug(posts, 'Untitled post')
+    const slug = uniquePostSlug(mergedPosts(data, working), 'Untitled post')
     const post: BlogPost = { id: slug, slug, title: 'Untitled post', excerpt: '', body: '', date: today(), tags: [], status: 'draft' }
-    const next = { ...working, [slug]: { post, base: null, at: Date.now() } }
+    const next = { ...working, [slug]: { post, original: null, at: Date.now() } }
     persist(next)
     set({ working: next })
     return slug
@@ -172,7 +139,7 @@ export const useBlogStore = create<BlogStore>((set, get) => ({
     mutate(post)
     const now = Date.now()
     const merge = !!coalesce && lastCoalesce?.key === `${id}:${coalesce}` && now - lastCoalesce.at < 900
-    const next = { ...working, [id]: { post, base: working[id] ? working[id].base : savedPost(data, id), at: now } }
+    const next = { ...working, [id]: { post, original: working[id] ? working[id].original : savedPost(data, id), at: now } }
     persist(next)
     set({
       working: next,
@@ -187,8 +154,7 @@ export const useBlogStore = create<BlogStore>((set, get) => ({
     const stack = past[id] ?? []
     const current = working[id]?.post ?? savedPost(data, id)
     if (!stack.length || !current) return
-    const post = stack[stack.length - 1]
-    const next = { ...working, [id]: { post, base: working[id]?.base ?? savedPost(data, id), at: Date.now() } }
+    const next = { ...working, [id]: { post: stack[stack.length - 1], original: working[id]?.original ?? savedPost(data, id), at: Date.now() } }
     persist(next)
     set({ working: next, past: { ...past, [id]: stack.slice(0, -1) }, future: { ...future, [id]: [current, ...(future[id] ?? [])] }, lastCoalesce: null })
   },
@@ -198,7 +164,7 @@ export const useBlogStore = create<BlogStore>((set, get) => ({
     const stack = future[id] ?? []
     const current = working[id]?.post ?? savedPost(data, id)
     if (!stack.length || !current) return
-    const next = { ...working, [id]: { post: stack[0], base: working[id]?.base ?? savedPost(data, id), at: Date.now() } }
+    const next = { ...working, [id]: { post: stack[0], original: working[id]?.original ?? savedPost(data, id), at: Date.now() } }
     persist(next)
     set({ working: next, future: { ...future, [id]: stack.slice(1) }, past: { ...past, [id]: [...(past[id] ?? []), current] }, lastCoalesce: null })
   },
@@ -211,8 +177,6 @@ export const useBlogStore = create<BlogStore>((set, get) => ({
   },
 
   async commit(id, status, opts = {}) {
-    // Overwriting: against the version GitHub has now, so the refusal is not met again.
-    if (opts.overwrite) await get().load(true)
     const { data, working } = get()
     const saved = savedPost(data, id)
     const w = working[id]
@@ -226,16 +190,15 @@ export const useBlogStore = create<BlogStore>((set, get) => ({
       : others.some((p) => p.slug === post.slug) ? 'Another post already uses this address (Details › Slug).'
       : null
     if (problem) { toast(problem, 'danger'); return false }
-    const base = opts.overwrite ? saved : w ? w.base : saved
-    const verb = status === 'published' ? (saved?.status === 'published' ? 'Publishing the changes' : 'Publishing') : saved?.status === 'published' ? 'Unpublishing' : 'Saving the draft'
+    const verb = status === 'published' ? (saved?.status === 'published' ? 'Saving the changes' : 'Publishing') : saved?.status === 'published' ? 'Unpublishing' : 'Saving the draft'
     set({ busy: `${verb}…`, conflict: null })
     try {
-      const result = await api<{ commit: string; url: string; doc: SiteDocument }>('/api/admin/blog', { json: { type: 'save', post, base } })
+      const result = await api<Loaded>('/api/admin/blog', { json: { type: 'save', post, original: w ? w.original : saved, base: data.revision, force: !!opts.overwrite } })
       const rest = { ...get().working }
       delete rest[id]
       persist(rest)
-      set({ data: { ...data, doc: result.doc, source: 'github' }, working: rest, past: { ...get().past, [id]: [] }, future: { ...get().future, [id]: [] } })
-      toast(status === 'published' ? 'Committed — the live site shows it in a minute or two' : saved?.status === 'published' ? 'Unpublished — it leaves the live site in a minute or two' : 'Draft saved on GitHub', 'ok')
+      set({ data: result, working: rest, past: { ...get().past, [id]: [] }, future: { ...get().future, [id]: [] } })
+      toast(status === 'published' ? 'Published — it is on /blog now' : saved?.status === 'published' ? 'Unpublished — it has left /blog' : 'Draft saved — only the admin sees it', 'ok')
       return true
     } catch (error) {
       if (error instanceof AdminError && error.status === 409) set({ conflict: { id, message: error.message } })
@@ -247,17 +210,17 @@ export const useBlogStore = create<BlogStore>((set, get) => ({
   },
 
   async remove(id) {
-    const { data, working } = get()
+    const { data } = get()
     const saved = savedPost(data, id)
     if (!saved) { get().discard(id); return true }
     set({ busy: 'Deleting…', conflict: null })
     try {
-      const result = await api<{ doc: SiteDocument }>('/api/admin/blog', { json: { type: 'delete', id, base: saved } })
-      const rest = { ...working }
+      const result = await api<Loaded>('/api/admin/blog', { json: { type: 'delete', id, original: saved, base: data!.revision } })
+      const rest = { ...get().working }
       delete rest[id]
       persist(rest)
-      set({ data: { ...data!, doc: result.doc, source: 'github' }, working: rest })
-      toast(saved.status === 'published' ? 'Deleted — it leaves the live site in a minute or two' : 'Draft deleted', 'ok')
+      set({ data: result, working: rest })
+      toast(saved.status === 'published' ? 'Deleted — it has left /blog' : 'Draft deleted', 'ok')
       return true
     } catch (error) {
       if (error instanceof AdminError && error.status === 409) set({ conflict: { id, message: error.message } })
@@ -267,18 +230,4 @@ export const useBlogStore = create<BlogStore>((set, get) => ({
       set({ busy: null })
     }
   },
-
-  rememberPreview(url, file) {
-    set({ previews: { ...get().previews, [url]: URL.createObjectURL(file) } })
-  },
 }))
-
-/** The document the preview renders: GitHub's, with this browser's edits, every post listed (drafts too) and pictures read through the admin. */
-export function previewDocument(data: Loaded | null, working: Record<string, Working>): SiteDocument | null {
-  if (!data) return null
-  const posts = mergedPosts(data, working).map((p) => ({ ...p, body: throughAdmin(p.body), ...(p.cover ? { cover: throughAdmin(p.cover) } : {}) }))
-  return { ...data.doc, posts }
-}
-
-/** Newest first, as /blog lists them. */
-export const sortedPosts = (posts: BlogPost[]) => listedPosts({ posts }, { preview: true })

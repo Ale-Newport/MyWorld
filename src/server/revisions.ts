@@ -7,8 +7,8 @@ import { audit, type Actor } from './audit.ts'
 /* ============================================================
    DOCUMENTS AND REVISIONS
 
-   Every editable thing — the site content, the world — is a
-   document with an append-only line of revisions. Two pointers
+   Every editable thing — the site content, the world, the blog —
+   is a document with an append-only line of revisions. Two pointers
    per document say which revision is the working DRAFT and which
    is PUBLISHED; the public website only ever reads the second.
 
@@ -24,7 +24,8 @@ import { audit, type Actor } from './audit.ts'
    history is never rewritten.
    ============================================================ */
 
-export type DocId = 'site' | 'world'
+/** The blog (server/blog.ts) is the one document the deployed site reads at request time. */
+export type DocId = 'site' | 'world' | 'blog'
 
 export interface RevisionMeta {
   id: string

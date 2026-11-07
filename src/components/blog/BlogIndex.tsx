@@ -1,9 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { useMemo } from 'react'
-import { useEditing, useSite } from '@/cms/context'
-import { formatPostDate, listedPosts, readingMinutes } from '@/cms/blog'
+import { formatPostDate, type PostSummary } from '@/cms/blog'
 import { SiteHeader } from '@/components/site/SiteHeader'
 import { Arrow } from '@/components/ui/Arrow'
 import styles from './BlogIndex.module.css'
@@ -15,16 +13,13 @@ import styles from './BlogIndex.module.css'
    cover where it has one. A row is one link — the title is the
    link's name, the rest of the row answers the pointer too.
 
-   Read from the document the layout hands down, so in the
-   admin's preview a draft appears here (marked) while it is
-   being written; nothing else ever sees one.
+   The posts are handed in already listed (cms/blog listedPosts):
+   the published ones for a visitor, drafts as well (marked) in the
+   admin's preview. `unavailable`: the database could not be read,
+   and the page says so calmly instead of failing.
    ============================================================ */
 
-export function BlogIndex() {
-  const { doc } = useSite()
-  const editing = useEditing()
-  const posts = useMemo(() => listedPosts(doc, { preview: editing }).map((p) => ({ ...p, minutes: readingMinutes(p.body) })), [doc, editing])
-
+export function BlogIndex({ posts, unavailable = false }: { posts: PostSummary[]; unavailable?: boolean }) {
   return (
     <>
       <SiteHeader current="blog" />
@@ -37,7 +32,13 @@ export function BlogIndex() {
           <h1 className={styles.title}>Blog</h1>
         </header>
 
-        {posts.length === 0 ? (
+        {unavailable ? (
+          <section className={styles.empty} aria-labelledby="blog-unavailable">
+            <h2 id="blog-unavailable" className={styles.emptyLabel}>The blog is unavailable right now</h2>
+            <p className={styles.emptyText}>The posts could not be read just now. Please try again in a moment; the rest of the site is here as usual.</p>
+            <Link href="/projects" className={styles.emptyLink} data-cursor="link">See the projects <Arrow dir="right" /></Link>
+          </section>
+        ) : posts.length === 0 ? (
           <section className={styles.empty} aria-labelledby="blog-empty">
             <h2 id="blog-empty" className={styles.emptyLabel}>Nothing published yet</h2>
             <p className={styles.emptyText}>Posts will appear here as they are published. In the meantime, the work is on the projects page.</p>

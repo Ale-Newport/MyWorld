@@ -6,7 +6,7 @@ import { BlogMoved } from '@/admin/blog/BlogMoved'
 
 export const metadata = { title: 'Blog' }
 
-/* Posts are written in the deployed admin, which commits them to the repository.
+/* Posts are written in the deployed admin and kept in the site's database (server/blog.ts).
    The editor on your machine points there instead (admin/blog/BlogMoved). */
 export default async function BlogPage() {
   if (EDITOR) return <BlogMoved siteUrl={publicSiteUrl((await publishedSite()).doc.settings.siteUrl)} />

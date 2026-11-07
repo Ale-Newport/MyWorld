@@ -11,7 +11,8 @@ import { api } from '../api'
    before it leaves the browser (JPEG where the browser cannot write
    WebP; PNG kept as PNG then, for its transparency). GIFs are sent
    as they are, to keep their frames. The server checks again what
-   the bytes are, and the size, before committing them.
+   the bytes are, and the size, before it keeps them in the media
+   library (server/blog.ts); they are served at once.
    ============================================================ */
 
 export const MAX_BYTES = 5 * 1024 * 1024
@@ -38,12 +39,12 @@ export async function prepareImage(file: File): Promise<Blob> {
   return blob && (scale < 1 || blob.size < file.size) ? blob : file
 }
 
-/** Prepare, check and commit an image. Returns its address on the site and the prepared bytes (for an instant preview). */
-export async function uploadImage(file: File): Promise<{ url: string; blob: Blob; commit: string | null }> {
+/** Prepare, check and upload a picture. Returns its address on the site (/blog-media/<id>/<name>). */
+export async function uploadImage(file: File): Promise<string> {
   const blob = await prepareImage(file)
-  if (blob.size > MAX_BYTES) throw new Error(`That image is ${(blob.size / 1024 / 1024).toFixed(1)} MB even after resizing; the limit is 5 MB.`)
+  if (blob.size > MAX_BYTES) throw new Error(`That picture is ${(blob.size / 1024 / 1024).toFixed(1)} MB even after resizing; the limit is 5 MB.`)
   const form = new FormData()
-  form.append('file', blob, 'image')
-  const result = await api<{ url: string; commit: string | null }>('/api/admin/blog/image', { method: 'POST', body: form })
-  return { url: result.url, blob, commit: result.commit }
+  // The file's own name, for a readable address (the server gives it the extension of what the bytes are).
+  form.append('file', blob, file.name || 'picture')
+  return (await api<{ url: string }>('/api/admin/blog/image', { method: 'POST', body: form })).url
 }

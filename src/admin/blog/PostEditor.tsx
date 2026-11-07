@@ -11,35 +11,34 @@ import { uniquePostSlug } from '@/cms/blog'
 import type { BlogPost } from '@/cms/schema'
 import { BlogPreviewPane } from './PreviewFrame'
 import { BodyField, CoverField, DateField, TagsInput, TextField } from './fields'
-import { liveState, mergedPosts, previewDocument, samePost, savedPost, useBlogStore, type LiveState } from './store'
+import { mergedPosts, samePost, savedPost, useBlogStore } from './store'
 
 /* ============================================================
    ONE POST, IN THE DEPLOYED ADMIN
 
    The form edits the post in this browser (kept if the tab closes);
    the preview beside it is the public blog's own page for it, fed
-   the edit on every keystroke. Nothing reaches GitHub until a
-   button says so:
+   the edit on every keystroke. Nothing is saved until a button
+   says so:
 
-     Save draft      commits it as a draft (on GitHub, not on /blog)
-     Publish         commits it as published: on /blog after the rebuild
-     Publish changes the same, for a post that is already live
-     Unpublish       commits it back to a draft: it leaves /blog
+     Save draft      saves it as a draft: in the admin, not on /blog
+     Publish         saves it published: on /blog at the next request
+     Publish changes the same, for a post that is already on /blog
+     Unpublish       saves it back as a draft: it leaves /blog
 
-   Every one of them is one commit to content/published/site.json,
-   and the live site rebuilds from it in a minute or two.
+   Each is one new version of the blog in the database
+   (server/blog.ts), live at once; no build, nothing committed.
    ============================================================ */
 
 const TABS = ['Write', 'Details'] as const
 type Tab = (typeof TABS)[number]
 const SLUG = /^[a-z0-9]+(-[a-z0-9]+)*$/
 
-export const LIVE_WORDS: Record<LiveState, { tone?: string; text: string }> = {
-  live: { tone: 'ok', text: 'On the live site' },
-  pending: { tone: 'accent', text: 'Not live yet — rebuilding' },
-  leaving: { tone: 'accent', text: 'Leaving the live site — rebuilding' },
-  draft: { text: 'Draft on GitHub' },
-  new: { tone: 'warn', text: 'Not saved yet' },
+/** Where a post stands, in one badge. */
+export function standing(saved: BlogPost | null, dirty: boolean): { tone?: string; text: string } {
+  if (!saved) return { tone: 'warn', text: 'Not saved yet' }
+  if (dirty) return { tone: 'warn', text: 'Unsaved changes' }
+  return saved.status === 'published' ? { tone: 'ok', text: 'On /blog' } : { text: 'Draft — only in the admin' }
 }
 
 function useDebounced<T>(value: T, ms: number): T {
@@ -68,7 +67,7 @@ export function PostEditor({ id }: { id: string }) {
   const working = s.working[id]
   const post = working?.post ?? saved
   const slug = useDebounced(post?.slug ?? '', 700)
-  const doc = useMemo(() => previewDocument(s.data, s.working), [s.data, s.working])
+  const previewPosts = useMemo(() => (s.data ? mergedPosts(s.data, s.working) : null), [s.data, s.working])
 
   /* ⌘Z / ⇧⌘Z outside a text field (a field keeps its own undo). */
   useEffect(() => {
@@ -83,7 +82,7 @@ export function PostEditor({ id }: { id: string }) {
   }, [id])
 
   if (s.status !== 'ready' || !s.data) {
-    return <main className="a-page">{s.status === 'error' ? <Notice tone="danger">{s.error}</Notice> : <Loading label="Reading the posts from GitHub…" />}</main>
+    return <main className="a-page">{s.status === 'error' ? <Notice tone="danger">{s.error}</Notice> : <Loading label="Reading the posts…" />}</main>
   }
   if (!post) {
     return (
@@ -96,19 +95,19 @@ export function PostEditor({ id }: { id: string }) {
   const data = s.data
   const edit = (mutate: (p: BlogPost) => void, coalesce?: string) => s.edit(id, mutate, coalesce)
   const dirty = !!working && !samePost(working.post, saved)
-  const state = liveState(data, id)
+  const badge = standing(saved, dirty)
   const others = mergedPosts(data, s.working).filter((p) => p.id !== id)
   const slugTaken = others.some((p) => p.slug === post.slug)
   const fromTitle = uniquePostSlug(others, post.title || 'post')
   const published = saved?.status === 'published'
-  const canCommit = data.configured && data.source === 'github' && !s.busy
+  const canCommit = !s.busy
 
   const commit = (status: BlogPost['status'], overwrite = false) => s.commit(id, status, { overwrite })
   // The address the preview opens: the slug once typing pauses (from the first render, the post's own).
   const shownSlug = SLUG.test(slug) ? slug : SLUG.test(post.slug) ? post.slug : null
   const remove = async () => {
     const words = saved
-      ? `Delete “${post.title || 'Untitled'}”? This commits its removal to GitHub${published ? ' and it leaves the live site after the rebuild' : ''}. Its earlier versions stay in the repository's history.`
+      ? `Delete “${post.title || 'Untitled'}”?${published ? ' It leaves /blog at once.' : ''} Earlier versions of the blog are kept in the database for a while.`
       : `Discard the new post “${post.title || 'Untitled'}”? It was never saved.`
     if (!confirm(words)) return
     if (await s.remove(id)) router.push('/admin/blog')
@@ -116,14 +115,15 @@ export function PostEditor({ id }: { id: string }) {
 
   const actions = (
     <div className="a-publishbar" role="toolbar" aria-label="Post">
-      <span className="badge" data-tone={s.busy ? undefined : !saved || dirty ? 'warn' : LIVE_WORDS[state].tone} role="status" aria-live="polite">{s.busy ?? (!saved ? LIVE_WORDS.new.text : dirty ? 'Unsaved changes' : LIVE_WORDS[state].text)}</span>
+      <span className="badge" data-tone={s.busy ? undefined : badge.tone} role="status" aria-live="polite">{s.busy ?? badge.text}</span>
+      {published && saved && <a className="btn btn-ghost" href={`/blog/${saved.slug}`} target="_blank" rel="noreferrer" title="The post on the site, as visitors see it">View <Icon name="external" size={14} /></a>}
       <div className="btn-group">
         <button type="button" className="btn btn-icon" onClick={() => s.undo(id)} disabled={!s.past[id]?.length} title="Undo (⌘Z)" aria-label="Undo"><Icon name="undo" size={16} /></button>
         <button type="button" className="btn btn-icon" onClick={() => s.redo(id)} disabled={!s.future[id]?.length} title="Redo (⇧⌘Z)" aria-label="Redo"><Icon name="redo" size={16} /></button>
       </div>
-      {dirty && saved && <button type="button" className="btn btn-ghost" disabled={!!s.busy} onClick={() => { if (confirm('Discard your changes to this post? GitHub’s version stays.')) s.discard(id) }}>Discard</button>}
+      {dirty && saved && <button type="button" className="btn btn-ghost" disabled={!!s.busy} onClick={() => { if (confirm('Discard your changes to this post? The saved version stays.')) s.discard(id) }}>Discard</button>}
       {published
-        ? <button type="button" className="btn" disabled={!canCommit} onClick={() => { if (confirm(`Unpublish “${post.title}”? It stays on GitHub as a draft and leaves the live site after the rebuild.`)) void commit('draft') }}>Unpublish</button>
+        ? <button type="button" className="btn" disabled={!canCommit} onClick={() => { if (confirm(`Unpublish “${post.title}”? It stays here as a draft and leaves /blog at once.`)) void commit('draft') }}>Unpublish</button>
         : <button type="button" className="btn" disabled={!canCommit || (!dirty && !!saved)} onClick={() => void commit('draft')}>Save draft</button>}
       <button type="button" className="btn btn-accent" disabled={!canCommit || (published && !dirty)} onClick={() => void commit('published')}>{published ? 'Publish changes' : 'Publish'}</button>
     </div>
@@ -140,13 +140,11 @@ export function PostEditor({ id }: { id: string }) {
 
   const form = (
     <div className="ce-form">
-      {!data.configured && <Notice tone="warn">{data.error}</Notice>}
-      {data.configured && data.source !== 'github' && <Notice tone="danger">{data.error} Nothing can be committed until GitHub answers; your edits are kept in this browser.</Notice>}
       {s.conflict?.id === id && (
         <Notice tone="danger">
-          <b>Not committed.</b> {s.conflict.message}
+          <b>Not saved.</b> {s.conflict.message}
           <div className="row" style={{ marginTop: 8 }}>
-            <button type="button" className="btn btn-sm" onClick={() => { s.discard(id); void s.load(true) }}>Take GitHub’s version</button>
+            <button type="button" className="btn btn-sm" onClick={() => { s.discard(id); void s.load(true) }}>Take the other version</button>
             {saved && <button type="button" className="btn btn-sm btn-danger" onClick={() => void commit(post.status, true)}>Overwrite it with mine</button>}
           </div>
         </Notice>
@@ -188,7 +186,7 @@ export function PostEditor({ id }: { id: string }) {
         <Group title="Danger zone">
           <div className="row">
             <button type="button" className="btn btn-danger" disabled={!!s.busy || (!!saved && !canCommit)} onClick={() => void remove()}>{saved ? 'Delete post' : 'Discard new post'}</button>
-            <span className="a-sub" style={{ fontSize: 12 }}>{saved ? 'Prefer Unpublish to take it off the site without losing it.' : 'It has not been saved to GitHub.'}</span>
+            <span className="a-sub" style={{ fontSize: 12 }}>{saved ? 'Prefer Unpublish to take it off the site without losing it.' : 'It has not been saved yet.'}</span>
           </div>
         </Group>
       </>}
@@ -199,7 +197,7 @@ export function PostEditor({ id }: { id: string }) {
     <EditorFrame
       header={header}
       form={form}
-      preview={<BlogPreviewPane doc={doc} slug={view === 'post' ? shownSlug : null} tools={<Segmented<'post' | 'index'> label="Show" size="sm" value={view} onChange={setView} options={[{ value: 'post', label: 'Post' }, { value: 'index', label: 'Blog' }]} />} />}
+      preview={<BlogPreviewPane posts={previewPosts} slug={view === 'post' ? shownSlug : null} tools={<Segmented<'post' | 'index'> label="Show" size="sm" value={view} onChange={setView} options={[{ value: 'post', label: 'Post' }, { value: 'index', label: 'Blog' }]} />} />}
     />
   )
 }

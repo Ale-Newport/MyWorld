@@ -3,20 +3,21 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { DEVICES, type Device } from '../DraftPreview'
 import { Segmented } from '../ui/kit'
-import type { SiteDocument } from '@/cms/schema'
+import type { BlogPost } from '@/cms/schema'
 
 /* ============================================================
    THE PREVIEW PANE, FOR THE DEPLOYED ADMIN'S BLOG
 
    The editor's preview (DraftPreview) frames the public route in
-   Draft Mode, which the deployed site's prerendered pages cannot
-   offer. This frames /admin/blog-preview instead — the same blog
+   Draft Mode; the blog's public pages show only what is published.
+   This frames /admin/blog-preview instead — the same blog
    components — at the device's real viewport, scaled to fit the
-   pane, so the phone layout is the phone layout. The document is
-   posted to it once it is ready and again on every edit.
+   pane, so the phone layout is the phone layout. The posts, with
+   this browser's unsaved edits, are posted to it once it is ready
+   and again on every edit.
    ============================================================ */
 
-export function BlogPreviewPane({ doc, slug, tools }: { doc: SiteDocument | null; slug: string | null; tools?: ReactNode }) {
+export function BlogPreviewPane({ posts, slug, tools }: { posts: BlogPost[] | null; slug: string | null; tools?: ReactNode }) {
   const [device, setDevice] = useState<Device>('laptop')
   return (
     <div className="ed-preview-inner">
@@ -30,18 +31,18 @@ export function BlogPreviewPane({ doc, slug, tools }: { doc: SiteDocument | null
         />
         {tools}
       </div>
-      <BlogPreviewFrame doc={doc} slug={slug} device={device} />
+      <BlogPreviewFrame posts={posts} slug={slug} device={device} />
     </div>
   )
 }
 
-function BlogPreviewFrame({ doc, slug, device }: { doc: SiteDocument | null; slug: string | null; device: Device }) {
+function BlogPreviewFrame({ posts, slug, device }: { posts: BlogPost[] | null; slug: string | null; device: Device }) {
   const frame = useRef<HTMLIFrameElement>(null)
   const host = useRef<HTMLDivElement>(null)
   const ready = useRef(false)
-  const latest = useRef(doc)
+  const latest = useRef(posts)
   const [scale, setScale] = useState(0)
-  useEffect(() => { latest.current = doc })
+  useEffect(() => { latest.current = posts })
 
   useEffect(() => {
     const el = host.current
@@ -60,9 +61,9 @@ function BlogPreviewFrame({ doc, slug, device }: { doc: SiteDocument | null; slu
   useEffect(() => {
     const onMessage = (e: MessageEvent) => {
       if (e.origin !== location.origin || e.source !== frame.current?.contentWindow) return
-      if ((e.data as { type?: string })?.type !== 'cms:preview-ready') return
+      if ((e.data as { type?: string })?.type !== 'blog:preview-ready') return
       ready.current = true
-      if (latest.current) frame.current?.contentWindow?.postMessage({ type: 'cms:document', doc: latest.current }, location.origin)
+      if (latest.current) frame.current?.contentWindow?.postMessage({ type: 'blog:posts', posts: latest.current }, location.origin)
     }
     window.addEventListener('message', onMessage)
     return () => window.removeEventListener('message', onMessage)
@@ -70,10 +71,10 @@ function BlogPreviewFrame({ doc, slug, device }: { doc: SiteDocument | null; slu
 
   /* every edit, once per frame at most */
   useEffect(() => {
-    if (!doc || !ready.current) return
-    const raf = requestAnimationFrame(() => frame.current?.contentWindow?.postMessage({ type: 'cms:document', doc }, location.origin))
+    if (!posts || !ready.current) return
+    const raf = requestAnimationFrame(() => frame.current?.contentWindow?.postMessage({ type: 'blog:posts', posts }, location.origin))
     return () => cancelAnimationFrame(raf)
-  }, [doc])
+  }, [posts])
 
   const { w, h, label } = DEVICES[device]
   const src = `/admin/blog-preview${slug ? `?slug=${encodeURIComponent(slug)}` : ''}`
