@@ -4,8 +4,7 @@ import { useEffect } from 'react'
 import { useSiteStore } from './store/site'
 import { DraftBar } from './DraftBar'
 import { Loading, Notice, PageHeader } from './ui/kit'
-import { ColorInput, Field, MediaInput, SelectInput, StringList, TextInput, Toggle, newId } from './fields'
-import { safeHref } from '@/cms/schema'
+import { ColorInput, Field, MediaInput, SelectInput, StringList, TextInput, Toggle } from './fields'
 import { TokenCard } from './TokenStatus'
 import { LegacyData } from './LegacyData'
 import { TYPEFACES, TYPEFACE_INFO, resolveTypeface } from '@/styles/typefaces'
@@ -56,23 +55,19 @@ export function SettingsAdmin() {
           </section>
           <section className="card stack">
             <h2>Navigation</h2>
-            {world >= 0 && <TextInput path={`settings.navigation.${world}.label`} label="World entrance label" hint="The index's link to /world. The address is fixed: the leaf transition leads there." />}
-            <div className="stack" style={{ gap: 8 }}>
-              <div className="row"><span className="a-sub" style={{ fontSize: 12 }}>Extra links in the index overlay</span><span className="spacer" />
-                <button type="button" className="btn btn-sm" disabled={s.navigation.length >= 12} onClick={() => apply((d) => { d.settings.navigation.push({ id: newId('nav-'), label: 'Link', href: 'https://', external: true }) })}>+ Link</button>
-              </div>
-              {extra.length === 0 && <p className="a-sub" style={{ fontSize: 12.5 }}>None. Contact links are edited with the profile.</p>}
-              {extra.map(({ n, i }) => {
-                const bad = !safeHref.safeParse(n.href).success
-                return (
+            {world >= 0 && <TextInput path={`settings.navigation.${world}.label`} label="World entrance label" hint="The words on the way into the world at the foot of the homepage. The address is fixed: the leaf transition leads there." />}
+            <p className="a-sub" style={{ fontSize: 12.5 }}>The menu lists the site&apos;s pages — Home, Projects, World, Blog and Contact — and nothing else. Contact links are edited with the profile.</p>
+            {extra.length > 0 && (
+              <div className="stack" style={{ gap: 8 }}>
+                <span className="a-sub" style={{ fontSize: 12 }}>Links kept from the old index (no longer shown anywhere)</span>
+                {extra.map(({ n, i }) => (
                   <div key={n.id} className="row" style={{ alignItems: 'center' }}>
-                    <input className="input" style={{ width: 150 }} value={n.label} aria-label={`Link ${i} label`} onChange={(e) => apply((d) => { d.settings.navigation[i].label = e.target.value }, { coalesce: `nav-${n.id}-label` })} />
-                    <input className="input" style={{ flex: 1 }} value={n.href} aria-label={`Link ${i} address`} aria-invalid={bad} onChange={(e) => apply((d) => { d.settings.navigation[i].href = e.target.value; d.settings.navigation[i].external = /^https?:/.test(e.target.value) }, { coalesce: `nav-${n.id}-href` })} />
+                    <span className="a-mono" style={{ flex: 1, fontSize: 12.5 }}>{n.label} — {n.href}</span>
                     <button type="button" className="btn btn-sm btn-icon" aria-label="Remove link" onClick={() => apply((d) => { d.settings.navigation.splice(i, 1) })}>✕</button>
                   </div>
-                )
-              })}
-            </div>
+                ))}
+              </div>
+            )}
           </section>
           <section className="card stack">
             <h2>Behaviour</h2>

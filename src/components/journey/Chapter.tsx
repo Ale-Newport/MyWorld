@@ -1,7 +1,6 @@
 'use client'
 
 import { useRef } from 'react'
-import { useJourney } from '@/state/journey'
 import type { ChapterId } from '@/content/types'
 import { useSite } from '@/cms/context'
 import { useCms } from '@/cms/editable'
@@ -28,14 +27,13 @@ interface ChapterProps {
  * not fit the screen lets them travel through it (stageFit.ts).
  */
 export function Chapter({ id, children, flow, className, noPin, grow, labelledBy }: ChapterProps) {
-  const quickView = useJourney((s) => s.quickView)
   const meta = useSite().chapterById[id]
   const cms = useCms(`section.${id}`, { kind: 'section', label: meta?.title })
   const sectionRef = useRef<HTMLElement>(null)
   const stageRef = useRef<HTMLDivElement>(null)
   useStageFit(id, sectionRef, stageRef, !noPin && !!meta)
   if (!meta) return null
-  const vh = quickView ? meta.quickVh : meta.vh
+  const vh = meta.vh
 
   return (
     <section

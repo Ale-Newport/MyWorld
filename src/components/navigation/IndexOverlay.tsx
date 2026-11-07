@@ -2,58 +2,35 @@
 
 import Link from 'next/link'
 import { useEffect, useRef, useSyncExternalStore } from 'react'
-import type { Chapter, JourneyId } from '@/content/types'
 import { useSite } from '@/cms/context'
 import { WorldEntryLink } from '@/components/world/WorldEntryLink'
-import { useJourneyRoute } from '@/components/journey/JourneyProvider'
-import { useJourney } from '@/state/journey'
-import { scrollToProgress } from '@/hooks/useLenisScroll'
 import { claimEscape, holdScroll } from '@/components/ui/scrollLock'
+import { Arrow } from '@/components/ui/Arrow'
+import { sitePages, type SitePage, type SitePageId } from './pages'
 import styles from './IndexOverlay.module.css'
 
 /* ============================================================
-   THE INDEX IS THE MAP OF BOTH JOURNEYS
-   Two routes, and the visitor is standing in one of them: an
-   index listing only the chapters underfoot would make the other
-   half of the site invisible. So both are printed, the mounted
-   one first, each broken into its thematic groups — which is the
-   whole point of the reordering, and only legible if the reader
-   can see the groups named.
+   THE INDEX IS THE LIST OF PAGES
+   It is the phone's navigation (a desktop prints the same pages
+   in its top bar: SiteNav), and it names pages only — never the
+   chapters inside them, which are reached by scrolling the page
+   they belong to. One row per page, the one underfoot marked.
    ============================================================ */
-
-interface Group {
-  label: string
-  chapters: Chapter[]
-}
-
-/** Consecutive runs of a shared group, in running order. */
-function groupsOf(list: Chapter[]): Group[] {
-  const out: Group[] = []
-  for (const c of list) {
-    const last = out[out.length - 1]
-    if (last && last.label === c.group) last.chapters.push(c)
-    else out.push({ label: c.group, chapters: [c] })
-  }
-  return out
-}
 
 /* ------------------------------------------------------------
    THE WAY OUT, AND WHO IS TOLD ABOUT IT
 
    The gateway at the foot of the home journey is the site's one
-   cinematic moment, and a panel that says "here is the world,
-   press this" has spent it before the visitor arrives. So the
-   note under this link changes rather than the link itself: a
-   first-time reader is told what it is, and a reader who has
-   already pushed their way through is told it is still there.
+   cinematic moment, so the world's row changes its note rather
+   than its name: a first-time reader is told what it is, and a
+   reader who has already pushed their way through is told it is
+   still there.
 
    `worldUnlocked` is written by the portal at the instant it
    commits. localStorage has no server-side answer, and a panel
    that disagreed with its own HTML would be a hydration error
    for the sake of one line of type — so the flag is read through
    `useSyncExternalStore`, whose server snapshot is a flat false.
-   That is the platform-owned way to say "React does not hold
-   this": no effect, no setState on mount, no cascading render.
    Nothing in the tab writes the key while the panel is up (the
    portal only writes it as the route leaves), so `subscribe` has
    nobody to notify and returns an empty teardown.
@@ -82,41 +59,27 @@ function useWorldVisited(): boolean {
   return useSyncExternalStore(subscribeUnlocked, readUnlocked, serverUnlocked)
 }
 
-/** Full-screen chapter index, plus Quick View and contact shortcuts. */
-export function IndexOverlay({ open, onClose }: { open: boolean; onClose: () => void }) {
-  /* Which journey is underfoot comes from the route, so the panel
-     prints the right one first even before a single effect has run. */
-  const { id: journeyId, chapters, ranges } = useJourneyRoute()
-  const { profile, contact, journeys, settings } = useSite()
-  const worldNav = settings.navigation.find((n) => n.id === 'world')
-  const quickView = useJourney((s) => s.quickView)
-  const setQuickView = useJourney((s) => s.setQuickView)
+/** Full-screen list of the site's pages. */
+export function IndexOverlay({ open, onClose, current }: { open: boolean; onClose: () => void; current: SitePageId | null }) {
+  const site = useSite()
+  const pages = sitePages(site)
   const sheet = useRef<HTMLDivElement>(null)
   const panel = useRef<HTMLDivElement>(null)
   const visited = useWorldVisited()
 
-  /* Focus trap + escape. */
+  /* Focus trap + escape. The row of the page underfoot takes the focus as the panel opens. */
   useEffect(() => {
     if (!open) return
     const prev = document.activeElement as HTMLElement | null
-    /* The row of the chapter being read is marked and focused as the panel opens, from the store, not
-       from a subscription: this panel stands shut for almost the whole visit, and following the
-       chapter through every boundary re-rendered both journeys' rows (a hundred-odd components) for
-       a page nobody could see. (The page does not scroll under an open panel — see holdScroll — so the
-       chapter does not change once it is open.) */
-    const reading = (chapters.find((c) => c.id === useJourney.getState().chapter) ?? chapters[0]).id
-    panel.current?.querySelectorAll<HTMLElement>('button[data-id]').forEach((row) => {
-      row.dataset.current = String(row.dataset.id === reading)
-    })
-    panel.current?.querySelector<HTMLElement>(`button[data-id="${CSS.escape(reading)}"]`)?.focus()
+    const rows = panel.current?.querySelectorAll<HTMLElement>('[data-page]')
+    const here = Array.from(rows ?? []).find((r) => r.dataset.page === current) ?? rows?.[0]
+    here?.focus()
     const release = sheet.current ? holdScroll(sheet.current) : undefined
 
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') { if (claimEscape(sheet.current, e)) onClose(); return }
       if (e.key !== 'Tab') return
-      const nodes = panel.current?.querySelectorAll<HTMLElement>(
-        'button, a[href], [tabindex]:not([tabindex="-1"])',
-      )
+      const nodes = panel.current?.querySelectorAll<HTMLElement>('button, a[href], [tabindex]:not([tabindex="-1"])')
       if (!nodes?.length) return
       const list = Array.from(nodes)
       const first = list[0]
@@ -130,26 +93,36 @@ export function IndexOverlay({ open, onClose }: { open: boolean; onClose: () => 
       release?.()
       prev?.focus()
     }
-  }, [open, onClose, chapters])
+  }, [open, onClose, current])
 
-  const go = (id: string) => {
-    const r = ranges.find((x) => x.id === id)
-    onClose()
-    if (r) requestAnimationFrame(() => scrollToProgress(r.start + 0.0015, { duration: 1.1 }))
+  const row = (p: SitePage, i: number) => {
+    const here = p.id === current
+    const note = p.id === 'world' && visited ? 'You have been · pick up where you left off' : p.note
+    const body = (
+      <>
+        <span className={styles.itemNo}>{String(i + 1).padStart(2, '0')}</span>
+        <span className={styles.itemTitle}>{p.id === 'world' && visited ? 'Back to the island' : p.label}</span>
+        <span className={styles.itemNote}>{here ? 'You are here' : note}</span>
+        <span className={styles.itemArrow}><Arrow dir="right" /></span>
+      </>
+    )
+    const common = {
+      className: styles.item,
+      'data-page': p.id,
+      'data-current': here,
+      'aria-current': here ? ('page' as const) : undefined,
+      'data-cursor': 'link',
+    }
+    return (
+      <li key={p.id}>
+        {p.id === 'world' ? (
+          <WorldEntryLink href={p.href} source="index" onClick={onClose} {...common}>{body}</WorldEntryLink>
+        ) : (
+          <Link href={p.href} prefetch={false} onClick={onClose} {...common}>{body}</Link>
+        )}
+      </li>
+    )
   }
-
-  /* The journey being read comes first: it is the one whose
-     chapters are one keystroke away rather than one page load. */
-  const order: JourneyId[] = journeyId === 'projects' ? ['projects', 'home'] : ['home', 'projects']
-
-  const rowBody = (c: Chapter) => (
-    <>
-      <span className={styles.itemNo}>{c.number}</span>
-      <span className={styles.itemTitle}>{c.title}</span>
-      <span className={styles.itemLabel}>{c.label}</span>
-      {c.year ? <span className={styles.itemYear}>{c.year}</span> : <span aria-hidden="true" />}
-    </>
-  )
 
   return (
     <div
@@ -158,11 +131,11 @@ export function IndexOverlay({ open, onClose }: { open: boolean; onClose: () => 
       data-open={open}
       role="dialog"
       aria-modal="true"
-      aria-label="Chapter index"
+      aria-label="Index"
       aria-hidden={!open}
       inert={!open}
       /* The smooth scroller drives the page by the wheel; over the index
-         the wheel belongs to the list, not to the journey behind it. */
+         the wheel belongs to the list, not to the page behind it. */
       data-lenis-prevent=""
     >
       <div className={styles.scrim} onClick={onClose} />
@@ -170,7 +143,7 @@ export function IndexOverlay({ open, onClose }: { open: boolean; onClose: () => 
         <header className={styles.head}>
           <div>
             <p className="label">Index</p>
-            <p className={styles.headName}>{profile.name}</p>
+            <p className={styles.headName}>{site.profile.name}</p>
           </div>
           <button type="button" className={styles.close} onClick={onClose} data-cursor="link" data-cursor-text="CLOSE">
             <span className={styles.closeX} aria-hidden="true"><i /><i /></span>
@@ -178,129 +151,9 @@ export function IndexOverlay({ open, onClose }: { open: boolean; onClose: () => 
           </button>
         </header>
 
-        <div className={styles.list}>
-          {order.map((id) => {
-            const journey = journeys[id]
-            const here = id === journeyId
-            return (
-              <nav key={id} className={styles.journey} aria-label={`${journey.title} chapters`}>
-                <header className={styles.journeyHead}>
-                  <h2 className={styles.journeyLabel}>{journey.label}</h2>
-                  <span className={styles.journeyPath}>{here ? 'YOU ARE HERE' : journey.path}</span>
-                </header>
-
-                {groupsOf(journey.chapters).map((group) => (
-                  // A run's first chapter names it: the same group can recur once sections are reordered.
-                  <section key={group.chapters[0].id} className={styles.group}>
-                    <h3 className={styles.groupLabel}>{group.label}</h3>
-                    {group.chapters.map((c) =>
-                      here ? (
-                        <button
-                          key={c.id}
-                          type="button"
-                          className={styles.item}
-                          data-id={c.id}
-                          data-current="false"
-                          onClick={() => go(c.id)}
-                          data-cursor="link"
-                        >
-                          {rowBody(c)}
-                        </button>
-                      ) : (
-                        <Link
-                          key={c.id}
-                          href={`${journey.path}#chapter-${c.id}`}
-                          className={`${styles.item} ${styles.itemAway}`}
-                          onClick={onClose}
-                          data-cursor="link"
-                          data-cursor-text="OPEN"
-                        >
-                          {rowBody(c)}
-                        </Link>
-                      ),
-                    )}
-                  </section>
-                ))}
-              </nav>
-            )
-          })}
-        </div>
-
-        <footer className={styles.foot}>
-          <div className={styles.modeRow}>
-            <button
-              type="button"
-              className={styles.modeBtn}
-              data-on={quickView}
-              onClick={() => setQuickView(!quickView)}
-              aria-pressed={quickView}
-              data-cursor="link"
-            >
-              <span className={styles.modeDot} />
-              <span>Quick View</span>
-            </button>
-            <p className={styles.modeNote}>
-              {quickView
-                ? 'Cinematic pauses shortened and the longer scenes trimmed. Everything a recruiter needs, in about 90 seconds.'
-                : 'Short on time? Quick View condenses the journey to roughly 90 seconds.'}
-            </p>
-          </div>
-
-          {/* Everything on the site points here now. /world still
-              answers at its own URL for anyone who kept the link,
-              but nothing leads to it: two doors onto two worlds is
-              one door too many, and the second island is the one
-              the gateway was built for. */}
-          {settings.options.worldEntrance && worldNav && <WorldEntryLink
-            href={worldNav.href}
-            className={styles.worldLink}
-            data-visited={visited || undefined}
-            data-cursor="link"
-            data-cursor-text="DRIVE"
-            source="index"
-          >
-            <span>{visited ? 'Back to the island' : worldNav.label}</span>
-            <span className={styles.worldLinkNote}>
-              {visited ? 'You have been · pick up where you left off' : 'An interactive version · WASD'}
-            </span>
-          </WorldEntryLink>}
-
-          <ul className={styles.links}>
-            {/* Links the admin adds under Settings → Navigation. */}
-            {settings.navigation.filter((n) => n.id !== 'world').map((n) => (
-              <li key={n.id}>
-                <a href={n.href} className={styles.link} target={n.external ? '_blank' : undefined} rel={n.external ? 'noreferrer noopener' : undefined} data-cursor="link">
-                  <span>{n.label}</span>
-                  <span className={styles.linkValue}>{n.external ? '↗' : '→'}</span>
-                </a>
-              </li>
-            ))}
-            {contact.map((c) => {
-              const pending = c.id === 'cv' && c.dataStatus === 'placeholder'
-              return (
-                <li key={c.id}>
-                  {pending ? (
-                    <span className={styles.link}>
-                      <span>{c.label}</span>
-                      <span className={styles.linkValue}>On request</span>
-                    </span>
-                  ) : (
-                    <a
-                      href={c.href}
-                      className={styles.link}
-                      target={c.href.startsWith('http') ? '_blank' : undefined}
-                      rel={c.href.startsWith('http') ? 'noreferrer noopener' : undefined}
-                      data-cursor="link"
-                    >
-                      <span>{c.label}</span>
-                      <span className={styles.linkValue}>{c.value}</span>
-                    </a>
-                  )}
-                </li>
-              )
-            })}
-          </ul>
-        </footer>
+        <nav className={styles.list} aria-label="Pages">
+          <ol className={styles.pages}>{pages.map(row)}</ol>
+        </nav>
       </div>
     </div>
   )

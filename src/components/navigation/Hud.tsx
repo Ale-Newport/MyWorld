@@ -9,13 +9,14 @@ import { useSite } from '@/cms/context'
 import { scrollToProgress } from '@/hooks/useLenisScroll'
 import { clamp } from '@/lib/math'
 import { IDLE, subscribe } from '@/lib/ticker'
+import { Arrow } from '@/components/ui/Arrow'
+import { SiteNav } from './SiteNav'
 import styles from './Hud.module.css'
 
-/** Persistent chrome: identity, cross-journey link, index, sound, scrub. */
+/** Persistent chrome: identity, the pages (a desktop's top bar, a phone's index), sound, scrub. */
 export function Hud({ onOpenIndex }: { onOpenIndex: () => void }) {
   const soundEnabled = useJourney((s) => s.soundEnabled)
   const toggleSound = useJourney((s) => s.toggleSound)
-  const quickView = useJourney((s) => s.quickView)
   const indexOpen = useJourney((s) => s.indexOpen)
   /* The route, not the store. This chrome is the first thing the
      HTML says about which story the visitor has opened, and it has
@@ -85,7 +86,8 @@ export function Hud({ onOpenIndex }: { onOpenIndex: () => void }) {
         </a>
 
         <div className={styles.topRight}>
-          {quickView && <span className={styles.mode}>QUICK VIEW</span>}
+          {/* A desktop names every page here; a phone keeps the way across and the index (below). */}
+          <SiteNav current={journeyId} className={styles.pages} />
 
           {/* ============================================================
               THE OTHER JOURNEY
@@ -112,9 +114,9 @@ export function Hud({ onOpenIndex }: { onOpenIndex: () => void }) {
             data-cursor="link"
             data-cursor-text={home ? 'WORK' : 'BACK'}
           >
-            {!home && <span className={styles.crossArrow} aria-hidden="true">←</span>}
+            {!home && <span className={styles.crossArrow}><Arrow dir="left" /></span>}
             <span className={styles.crossLabel}>{other.label}</span>
-            {home && <span className={styles.crossArrow} aria-hidden="true">→</span>}
+            {home && <span className={styles.crossArrow}><Arrow dir="right" /></span>}
           </Link>
 
           <button
@@ -145,8 +147,13 @@ export function Hud({ onOpenIndex }: { onOpenIndex: () => void }) {
         <div className={styles.chapterTag}>
           <span className={styles.chapterNo}>{current.number}</span>
           {/* The home room keeps this label's ground clear for its
-              longest title, not just the one it shows now. */}
-          <span className={styles.chapterName} data-room-reserve-text={widestTitle}>{current.title}</span>
+              longest title, not just the one it shows now — and the
+              column is as wide as that title too (the unseen copy under
+              it), so no chapter's name is ever cut to an ellipsis. */}
+          <span className={styles.chapterStack}>
+            <span className={styles.chapterName} data-room-reserve-text={widestTitle}>{current.title}</span>
+            <span className={styles.chapterGhost} aria-hidden="true" data-room-ignore="">{widestTitle}</span>
+          </span>
         </div>
 
         {/* ============================================================

@@ -67,16 +67,6 @@
   gap: clamp(0.6rem, 1.6vw, 1.4rem);
 }
 
-.mode {
-  font-family: var(--font-mono);
-  font-size: var(--fs-nano);
-  letter-spacing: var(--tracking-label);
-  color: var(--accent);
-  border: var(--hair) solid var(--accent);
-  padding: 0.3rem 0.45rem;
-  line-height: 1;
-}
-
 .hudBtn {
   display: flex;
   align-items: center;
@@ -157,12 +147,25 @@
 }
 .hudBtn:active .indexLines i:nth-child(2), .hudBtn[data-press] .indexLines i:nth-child(2) { transform: translateX(32%); transition-duration: var(--dur-quick); }
 
+/* ============================================================
+   DESKTOP: THE PAGES, NOT AN INDEX
+   From 900px the top bar has room to print every page (SiteNav),
+   so the index and the single way across give way to it. Below,
+   the phone keeps the way across and the index, which lists the
+   same pages.
+   ============================================================ */
+.pages { display: none; }
+@media (min-width: 900px) {
+  .pages { display: flex; }
+  .cross, .indexBtn { display: none; }
+}
+
 /* ---------------- BOTTOM ---------------- */
 .bottom {
   position: absolute;
   bottom: 0; left: 0; right: 0;
   display: grid;
-  grid-template-columns: minmax(120px, 1fr) minmax(0, 3.2fr) auto;
+  grid-template-columns: minmax(max-content, 1fr) minmax(0, 3.2fr) auto;
   align-items: center;
   gap: clamp(0.75rem, 2.5vw, 2.5rem);
   padding: 0 var(--gutter) clamp(1rem, 2.2vw, 1.6rem);
@@ -181,15 +184,16 @@
   color: var(--accent);
   letter-spacing: 0.1em;
 }
-.chapterName {
+.chapterStack { display: grid; min-width: 0; }
+.chapterName, .chapterGhost {
+  grid-area: 1 / 1;
   font-size: var(--fs-tiny);
   letter-spacing: var(--tracking-label);
   text-transform: uppercase;
   color: var(--text-secondary);
   white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
+.chapterGhost { visibility: hidden; }
 
 /* The scrub: a bare line and a fill. It used to carry year
    markers and an arrow into the future; the journeys are
@@ -230,7 +234,7 @@
   .chapterTag { grid-area: tag; }
   .pct { grid-area: pct; }
   .scrub { grid-area: time; height: 22px; }
-  .chapterName { font-size: 10px; }
+  .chapterName, .chapterGhost { font-size: 10px; }
 }
 
 .pct {

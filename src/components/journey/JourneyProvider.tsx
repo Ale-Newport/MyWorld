@@ -77,17 +77,15 @@ export function JourneyProvider({
   journey: JourneyId
   children: React.ReactNode
 }) {
-  const quickView = useJourney((s) => s.quickView)
   const reducedMotion = useJourney((s) => s.reducedMotion)
   const setReducedMotion = useJourney((s) => s.setReducedMotion)
   const setPerformanceTier = useJourney((s) => s.setPerformanceTier)
-  const setQuickView = useJourney((s) => s.setQuickView)
   const setReady = useJourney((s) => s.setReady)
 
   useLenisScroll(true)
 
   const list = useSite().journeys[journey].chapters
-  const ranges = useMemo(() => chapterRanges(quickView, list), [quickView, list])
+  const ranges = useMemo(() => chapterRanges(list), [list])
   const route = useMemo<JourneyRoute>(
     () => ({ id: journey, chapters: list, ranges }),
     [journey, list, ranges],
@@ -151,13 +149,9 @@ export function JourneyProvider({
     apply()
     mq.addEventListener('change', apply)
 
-    // Deep-link: ?quick or #quick enables recruiter mode.
-    const params = new URLSearchParams(window.location.search)
-    if (params.has('quick') || window.location.hash === '#quick') setQuickView(true)
-
     setReady(true)
     return () => mq.removeEventListener('change', apply)
-  }, [setPerformanceTier, setReducedMotion, setQuickView, setReady])
+  }, [setPerformanceTier, setReducedMotion, setReady])
 
   /* ---- reduced motion ------------------------------------ */
   useEffect(() => {
@@ -166,9 +160,9 @@ export function JourneyProvider({
 
   /* ---- document height ----------------------------------- */
   useEffect(() => {
-    const vh = totalVh(quickView, list)
+    const vh = totalVh(list)
     document.documentElement.style.setProperty('--journey-vh', String(vh))
-  }, [list, quickView])
+  }, [list])
 
   /* ============================================================
      CHAPTER DEEP LINKS

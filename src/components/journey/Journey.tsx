@@ -112,11 +112,11 @@ function SoundEffects() {
 
 /* The index reads its own open flag for the same reason: opening it commits
    the overlay and nothing else. */
-function IndexHost() {
+function IndexHost({ journey }: { journey: JourneyId }) {
   const open = useJourney((s) => s.indexOpen)
   const setIndexOpen = useJourney((s) => s.setIndexOpen)
   const close = useCallback(() => setIndexOpen(false), [setIndexOpen])
-  return <IndexOverlay open={open} onClose={close} />
+  return <IndexOverlay open={open} onClose={close} current={journey} />
 }
 
 export function Journey({ journey }: { journey: JourneyId }) {
@@ -201,21 +201,6 @@ export function Journey({ journey }: { journey: JourneyId }) {
     if (s.activeProject) s.setActiveProject(null)
   }, [])
 
-  /* Global keyboard shortcuts. */
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      const target = e.target as HTMLElement | null
-      if (target && /input|textarea|select/i.test(target.tagName)) return
-      if (e.key !== 'i' || e.metaKey || e.ctrlKey) return
-      const { indexOpen, activeProject } = useJourney.getState()
-      // The index is not opened beneath a case study: it would take the focus and the keys into a panel nobody can see.
-      if (activeProject && !indexOpen) return
-      setIndexOpen(!indexOpen)
-    }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [setIndexOpen])
-
   const list = useSite().journeys[journey].chapters
   // In the admin's preview the editor draws its own pointer feedback.
   const editing = useEditing()
@@ -245,7 +230,7 @@ export function Journey({ journey }: { journey: JourneyId }) {
       </main>
 
       <Hud onOpenIndex={openIndex} />
-      <IndexHost />
+      <IndexHost journey={journey} />
       <ProjectOverlay />
       <SoundEffects />
     </JourneyProvider>
