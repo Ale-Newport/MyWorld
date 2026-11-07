@@ -109,11 +109,9 @@ export const accumFrag = /* glsl */ `
   varying vec2 vUv;
   ${reconstruct}
 
-  vec2 hash22(vec2 p) {
-    vec3 p3 = fract(vec3(p.xyx) * vec3(0.1031, 0.1030, 0.0973));
-    p3 += dot(p3, p3.yzx + 33.33);
-    return fract((p3.xx + p3.yz) * p3.zy);
-  }
+  // Interleaved gradient noise: neighbouring pixels take values spread
+  // evenly over 0..1, where a hash would clump them.
+  float ign(vec2 p) { return fract(52.9829189 * fract(dot(p, vec2(0.06711056, 0.00583715)))); }
 
   // Depth of the occluder the light sees in this texel, as a
   // distance in metres along the light's view axis.
@@ -148,7 +146,15 @@ export const accumFrag = /* glsl */ `
     // hundred samples average the noise away.
     vec3 t1 = normalize(cross(L, abs(L.y) > 0.9 ? vec3(1.0, 0.0, 0.0) : vec3(0.0, 1.0, 0.0)));
     vec3 t2 = cross(L, t1);
-    vec2 j = hash22(gl_FragCoord.xy + uSeed * 37.13) * 2.0 - 1.0;
+    // The offsets are interleaved rather than random: within any 3×3 of
+    // pixels (the tent the surfaces read the cache through) they cover
+    // the disc evenly, and each pixel walks round it from one sample to
+    // the next, so the tent averages a sample's spread away instead of
+    // keeping its grain — which a phone, at two device pixels to the
+    // texel, shows as a fizz along every shadow's edge.
+    float ja = 6.2831853 * fract(ign(gl_FragCoord.xy) + uSeed * 0.6180340);
+    float jr = sqrt(fract(ign(gl_FragCoord.yx + 23.0) + uSeed * 0.7548777));
+    vec2 j = vec2(cos(ja), sin(ja)) * jr;
     p += (t1 * j.x + t2 * j.y) * uJitter;
     vec4 sc = uShadowVP * vec4(p, 1.0);
     vec3 s = sc.xyz / sc.w * 0.5 + 0.5;
@@ -285,8 +291,11 @@ export const roomFrag = /* glsl */ `
     vec3 n = normalize(vNormal);
     if (!gl_FrontFacing) n = -n;
     vec3 wp = vWorld;
-    vec2 q = planar(wp, n);
     int mat = int(vMat + 0.5);
+    // A slab's bevels and sides read the floor's own plane: on them the
+    // moss and the stone's grain carry on from its top, where a plane of
+    // their own put a bare, pale arris down the middle of a mossy joint.
+    vec2 q = mat == 2 ? wp.xz : planar(wp, n);
 
     // Shared fields at physical scales.
     vec4 broad = detail(q, 0.22);      // ~4.5 m tile: mottling
@@ -373,6 +382,8 @@ export const roomFrag = /* glsl */ `
       birth += -max(n.y, 0.0) * 0.32 + max(-n.y, 0.0) * 0.7;
       if (n.y < 0.5) birth += smoothstep(0.03, 0.22, wp.y) * 0.35;
     }
+    // How much a tuft's raggedness may cut into the moss here (see the grout, below).
+    float ragged = 1.0;
     if (onFloor) {
       // Joints first: moss follows the bedding between the stones.
       vec2 cell = (wp.xz - uSlab.yz) / uSlab.x;
@@ -380,11 +391,41 @@ export const roomFrag = /* glsl */ `
       // Early in the joints (lines of moss that draw the floor's
       // perspective), cushions swelling out of the crossings and the
       // odd hollow later — never a whole stone at once.
-      float je = min(e.x, e.y);
       float cross = max(e.x, e.y);
       float cushion = smoothstep(0.55, 0.8, broad.g * 0.6 + mid.r * 0.4);
-      birth -= 0.42 * exp(-je / 0.016) + 0.2 * exp(-cross / 0.06);
-      birth += (0.5 - 0.35 * cushion) * (1.0 - exp(-je / 0.035));
+      // THE GROUT. A joint holds water and grit, so moss takes it long
+      // before the stone either side — but not every joint at once,
+      // nor the whole length of one: how far ahead a stretch runs is
+      // its own (the bedding is wetter in some runs than others, at
+      // the scale of a stone or two), so the lines come in as lengths
+      // that creep along the grout and meet up as the story goes on,
+      // and widen out of the gap onto the arrises as they mature (the
+      // falloff below, ragged at a tuft's scale). Never a ruled grid.
+      // Where the copy will sit the joints get no head start beyond the
+      // one they always had: the reading field's delay rules there.
+      // A strip is kept at least a pixel wide, as the joint line is,
+      // so far stones do not break it into dashes. And moss stands a
+      // few millimetres proud of the gap while the lens meets the floor
+      // at a grazing angle: in a joint running across the view the tufts
+      // hide a band of the stone behind them, as deep as that height is
+      // foreshortened here, so a strip there is that much deeper than its
+      // footprint (or it reads as a ruled green line, not as moss).
+      vec3 eye = cameraPosition - wp;
+      float hide = 0.004 * abs(eye.z) / max(eye.y, 0.05);
+      vec2 ep = max(e - 0.6 * fwidth(wp.xz) - vec2(0.0, hide), 0.0);
+      float je = min(ep.x, ep.y);
+      float run = smoothstep(0.36, 0.64, broad.r * 0.65 + broad.g * 0.35);
+      float lead = 0.42 + mix(-0.14, 0.72, run) * (1.0 - smoothstep(0.06, 0.3, reading));
+      // Thin in one stretch, swelling into a cushion a hand's width
+      // along: how far a strip spreads off the gap varies at that scale.
+      float swell = smoothstep(0.38, 0.66, mid.r * 0.7 + fine.r * 0.3);
+      float reach = 0.01 + 0.03 * swell;
+      birth -= lead * exp(-je / reach) + 0.2 * exp(-cross / 0.06);
+      birth += (0.5 - 0.35 * cushion) * (1.0 - exp(-min(e.x, e.y) / 0.035));
+      // The core of a strip is not cut by the tufts' raggedness, only its
+      // edges are: a strip a pixel or two deep, cut at a tuft's scale, is
+      // a dashed line.
+      ragged = mix(0.35, 1.0, smoothstep(0.003, 0.025, je));
     }
     float variation = F.g * 0.6 + F.b * 0.25 + fine.r * 0.15;
     float G = uGrowth + 0.45 * uTakeover;
@@ -411,8 +452,13 @@ export const roomFrag = /* glsl */ `
     // tuft (the sheet's height and birth offsets break it up), and
     // on the floor a few lone tufts run ahead of it into the joints.
     vec4 ma = texture2D(tMossAlbedo, mossUv);
-    float rag = (md.g - 0.5) * 0.09 + (md.r - 0.5) * 0.07 + (fine.g - 0.5) * 0.05;
-    float cover = smoothstep(0.0, 0.07, t + rag);
+    float rag = ((md.g - 0.5) * 0.09 + (md.r - 0.5) * 0.07 + (fine.g - 0.5) * 0.05) * ragged;
+    // On the floor the mat's edge is drawn a pixel or two soft wherever
+    // it falls: where a joint's moss thins out over a few centimetres of
+    // stone, a fixed width of growth was a pale green wash, not an edge.
+    float tr = t + rag;
+    float cw = onFloor ? clamp(fwidth(tr), 0.004, 0.035) : 0.035;
+    float cover = smoothstep(0.035 - cw, 0.035 + cw, tr);
     float dense = smoothstep(0.05, 0.45, t);
     float ahead = onFloor ? smoothstep(0.0, 0.03, t + 0.08 - md.g * 0.12) * ma.a * 0.8 : 0.0;
     vec3 substrate = mix(vec3(0.03, 0.036, 0.013), vec3(0.055, 0.062, 0.022), variation);

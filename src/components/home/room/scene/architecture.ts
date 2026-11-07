@@ -541,6 +541,18 @@ function buildFloor(B: GeometryBuilder, plan: RoomPlan, rng: () => number) {
       slab(B, a + joint / 2, z0 + joint / 2, b - joint / 2, Math.min(z0 + s, D + 0.4) - joint / 2, lip, tiltX, tiltZ, bevel, thick)
     }
   }
+  // The bedding the slabs are laid on, a few millimetres down every
+  // joint. Mostly it is never seen; but straight down the joint the
+  // lens stands over (and along the wall's foot) the eye looks into the
+  // gap, and without it saw through the floor to the clear colour — a
+  // pale hairline drawn through the middle of the moss in that joint.
+  B.material = MAT.floor
+  B.random = 0.5
+  const bx0 = Math.max(-W / 2 - 0.05, x0)
+  const bx1 = W / 2 + 0.05
+  const bz1 = D + 0.4
+  const bed = -0.008
+  B.face(new THREE.Vector3(bx0, bed, 0), new THREE.Vector3(bx1, bed, 0), new THREE.Vector3(bx1, bed, bz1), new THREE.Vector3(bx0, bed, bz1), new THREE.Vector3(0, 1, 0))
 }
 
 function slab(

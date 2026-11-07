@@ -1,23 +1,33 @@
 import styles from './room.module.css'
 
-/** A light first frame, kept underneath the live canvas until it is ready. */
-export function RoomStill({ start = false }: { start?: boolean }) {
-  const name = start ? 'still-start' : 'still'
+/* ============================================================
+   NO START FRAME, ONLY A FALLBACK
+
+   The room is composed for the screen it covers — the lens is
+   fitted to the HUD, the gutters and the copy — so a picture of it
+   taken at one size is wrong at every other: at 1280×720 a frame
+   rendered at 1920×1080 stood its pilasters at the edges where the
+   live room has none, and its wall's foot a row lower. Shown under
+   the canvas while WebGL prepared, it was the columns "moving to
+   fit the screen" a second after every load. The first paint is
+   the wall's plain tone instead (`.host` in room.module.css), and
+   the room fades in over it once its light has converged.
+
+   The stills remain for the one case they are for: no WebGL, or a
+   context that is lost for good. They are requested only then.
+   ============================================================ */
+
+/** The fallback frame, when WebGL cannot draw the room. */
+export function RoomStill() {
   return (
     <picture>
-      {start && <>
-        <source media="(min-aspect-ratio: 21/9)" srcSet="/home-room/still-start-wide.webp" />
-        <source media="(min-aspect-ratio: 17/10)" srcSet="/home-room/still-start-landscape.webp" />
-        <source media="(min-aspect-ratio: 1/1)" srcSet="/home-room/still-start-laptop.webp" />
-        <source media="(min-aspect-ratio: 3/5)" srcSet="/home-room/still-start-tablet.webp" />
-      </>}
-      <source media="(max-aspect-ratio: 4/5)" srcSet={`/home-room/${name}-portrait.webp`} />
-      <img className={styles.still} src={`/home-room/${name}-landscape.webp`} alt="" decoding="async" fetchPriority="high" />
+      <source media="(max-aspect-ratio: 4/5)" srcSet="/home-room/still-portrait.webp" />
+      <img className={styles.still} src="/home-room/still-landscape.webp" alt="" decoding="async" />
     </picture>
   )
 }
 
-/** Server-visible placeholder while the WebGL code is being downloaded. */
+/** Server-visible placeholder while the WebGL code is being downloaded: the wall's own tone. */
 export function RoomLoading() {
-  return <div className={styles.host} aria-hidden="true"><RoomStill start /></div>
+  return <div className={styles.host} aria-hidden="true" />
 }

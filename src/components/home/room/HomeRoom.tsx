@@ -221,6 +221,32 @@ export function HomeRoom() {
     let readSince = 0
     let scrolledAt = -Infinity
     let fieldKey = ''
+    /* THE FIRST FRAME IS THE SETTLED ONE
+       The lens is fitted to the copy (the HUD's row, the gutter, the low
+       rows the wall's foot falls between), so whichever read fits it
+       decides where every pilaster stands. Two things used to let the
+       visitor see it decided twice. The first frame was drawn against
+       whatever read had last landed, even with another one due: the
+       chapters arriving a moment after the room started (a late chunk,
+       a hydration) left a read waiting on its debounce — and a debounce
+       that waits for the scroll to pause waited for the visitor's first
+       gesture to end, so the room came up fitted to a page with no copy
+       in it and refitted, columns moving, as soon as they stopped. And
+       a structural read after the first frame (an animation mounting
+       ahead of the visitor) could move the lens as well as replant.
+       Now the first frame waits for any read that is due (the engine's
+       `holdForCopy`, set every frame below), a read before the first
+       frame never waits for a scroll to pause, and once the room is up
+       only what really changes the composition refits it: a resize, the
+       fonts, the mode, the editor's copy (`refit`). A structural read
+       after that replants around the copy and leaves the lens where the
+       visitor first saw it. `lensKey` is the copy the lens was fitted to. */
+    let lensKey = ''
+    let refitAsked = false
+    // Fonts that started loading after the room did: their metrics move the copy (see the gate in the ticker below).
+    const FONT_PATIENCE_MS = 2500
+    const mountedAt = performance.now()
+    const fontsLoading = () => document.fonts?.status === 'loading' && performance.now() - mountedAt < FONT_PATIENCE_MS
     const onScroll = () => { scrolledAt = performance.now() }
     window.addEventListener('scroll', onScroll, { passive: true })
     /* The read itself is a generator: a piece of the measuring, of the rasterising, of the wall's foot. Before the
@@ -230,7 +256,7 @@ export function HomeRoom() {
        read of the whole page in one task was a dropped frame or three. Chapters whose copy has not moved are not
        rasterised again. */
     const rasters = new RasterCache()
-    function* readSteps(): Generator<void> {
+    function* readSteps(refit: boolean): Generator<void> {
       if (!engine) return
       const s = useJourney.getState()
       const ranges = s.ranges
@@ -246,7 +272,7 @@ export function HomeRoom() {
          ends (fractions of the whole). Planning against the earlier
          figure let growth born while the copy was still leaving the
          top of the screen land on it. */
-      const total = s.chapters.reduce((a, c) => a + (s.quickView ? c.quickVh : c.vh), 0)
+      const total = s.chapters.reduce((a, c) => a + c.vh, 0)
       const stretch = total > 1 ? total / (total - 1) : 1
       const ends = ranges.map((r) => (held ? 1 : growthFor(Math.min(1, r.end * stretch), ranges)))
       // One pass over the page's lines shares what it learns of their ancestors' transforms.
@@ -263,9 +289,14 @@ export function HomeRoom() {
       if (!engine) return
       const { gw, gh } = readingGrid(width, height)
       const key = `${width}x${height}|${order.join()}|${ends.join()}|${readingSignature(boxes, gw, gh)}`
-      if (key === fieldKey) return
-      yield* entablature(memo)
-      if (!engine) return
+      // The lens is fitted to this copy already, or this is not a read that may move it.
+      const fitted = !refit || key === lensKey
+      if (key === fieldKey && fitted) return
+      if (!fitted) {
+        yield* entablature(memo)
+        if (!engine) return
+        lensKey = key
+      }
       const by = groupByChapter(boxes)
       const per: Float32Array[] = []
       for (const id of order) {
@@ -282,7 +313,7 @@ export function HomeRoom() {
       engine.setReadingField(field)
     }
     // For the QA scripts: how the reads have gone (see scripts/qa/home-chapter-hitch.mjs).
-    const probe = { reads: 0, sync: 0, slices: 0, longestSlice: 0, longestPiece: 0 }
+    const probe = { reads: 0, sync: 0, refits: 0, slices: 0, longestSlice: 0, longestPiece: 0 }
     ;(window as unknown as { __roomRead?: typeof probe }).__roomRead = probe
     let reading: Sliced | null = null
     let readAgain = false
@@ -301,8 +332,12 @@ export function HomeRoom() {
       }
       readAgain = false
       probe.reads++
-      if (now) { probe.sync++; drain(readSteps()); return }
-      reading = sliced(readSteps(), {
+      // Before the first frame every read may fit the lens; after it, only one something urgent asked for, or the editor's copy.
+      const refit = now || refitAsked
+      refitAsked = false
+      if (refit) probe.refits++
+      if (now) { probe.sync++; drain(readSteps(refit)); return }
+      reading = sliced(readSteps(refit), {
         onSlice: (ms, pieces) => {
           probe.slices++
           if (ms > probe.longestSlice) probe.longestSlice = Math.round(ms * 10) / 10
@@ -334,7 +369,9 @@ export function HomeRoom() {
       window.clearTimeout(readWait)
       const fire = () => {
         readWait = 0
-        if (performance.now() - scrolledAt < QUIET_MS && performance.now() - readSince < MAX_WAIT_MS) {
+        // Waiting for the scroll to pause spares a gesture a long task; before the first frame it only kept the
+        // room waiting on a read (see THE FIRST FRAME IS THE SETTLED ONE).
+        if (up && performance.now() - scrolledAt < QUIET_MS && performance.now() - readSince < MAX_WAIT_MS) {
           readWait = window.setTimeout(fire, QUIET_MS)
           return
         }
@@ -343,8 +380,12 @@ export function HomeRoom() {
       readWait = window.setTimeout(fire, QUIET_MS)
     }
     const readSoon = () => read(false)
-    // The first visible frame uses the final font metrics.
+    // The editor's live copy is the one structural change that refits the lens once the room is up.
+    const onContent = () => { refitAsked = true; readSoon() }
+    // The first visible frame uses the final font metrics — and so does every frame after a face that arrived late.
     void document.fonts.ready.then(() => { if (engine) read(true) })
+    const onFonts = () => { if (engine) read(true) }
+    document.fonts?.addEventListener('loadingdone', onFonts)
     let observed = false
     const ro = new ResizeObserver(() => {
       // The first callback is the observer's initial report.
@@ -375,13 +416,13 @@ export function HomeRoom() {
     if (journey) mo.observe(journey, { childList: true, subtree: true })
     // The copy itself changed (the admin's live preview, a section's
     // text): measure again, whenever it happens.
-    window.addEventListener('cms:content', readSoon)
+    window.addEventListener('cms:content', onContent)
     // A stage's words started or stopped travelling through it (stageFit.ts).
     window.addEventListener('journey:layout', readSoon)
     const unsubStore = useJourney.subscribe((s, prev) => {
       // What the growth follows (the mode, the running order) is read by the loop, which may be asleep.
-      if (s.quickView !== prev.quickView || s.reducedMotion !== prev.reducedMotion || s.ranges !== prev.ranges) wake()
-      if (s.quickView !== prev.quickView || s.reducedMotion !== prev.reducedMotion) read(true)
+      if (s.reducedMotion !== prev.reducedMotion || s.ranges !== prev.ranges) wake()
+      if (s.reducedMotion !== prev.reducedMotion) read(true)
       if (s.reducedMotion !== prev.reducedMotion || s.indexOpen !== prev.indexOpen || s.activeProject !== prev.activeProject) applyMotion()
     })
 
@@ -423,6 +464,8 @@ export function HomeRoom() {
       // Pushing past the end: the room is taken back over the copy
       // before the canopy closes in front of it (see WorldPortal).
       engine.setTakeover(pinnedTakeover ?? Math.min(1, portal.pull / ROOM_CONFIG.growth.takeoverAt))
+      // Until the first frame is out: is the copy about to change under the lens (a read due, a face loading)?
+      if (!up) engine.holdForCopy(readWait !== 0 || readFrame !== 0 || reading !== null || fontsLoading())
       if (engine.frame(dt)) {
         drawn++
         if (dt > 0.04) slow++
@@ -462,7 +505,8 @@ export function HomeRoom() {
       unsubStore()
       ro.disconnect()
       mo.disconnect()
-      window.removeEventListener('cms:content', readSoon)
+      window.removeEventListener('cms:content', onContent)
+      document.fonts?.removeEventListener('loadingdone', onFonts)
       window.removeEventListener('journey:layout', readSoon)
       window.removeEventListener('scroll', onScroll)
       cancelAnimationFrame(readFrame)
@@ -488,8 +532,8 @@ export function HomeRoom() {
       data-ready={ready ? 'true' : 'false'}
       data-fallback={fallback ? 'true' : 'false'}
     >
-      {/* The first frame stays under the canvas through its fade-in. */}
-      <RoomStill start={!fallback} />
+      {/* Only when WebGL cannot draw: the first paint is the wall's plain tone (RoomStill.tsx says why). */}
+      {fallback && <RoomStill />}
     </div>
   )
 }
