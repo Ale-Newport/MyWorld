@@ -11,7 +11,7 @@
   width: 100%;
   max-width: min(100%, 72rem);
   margin-inline: auto;
-  padding: clamp(5rem, 12vh, 8rem) var(--gutter, clamp(1.25rem, 4vw, 3.5rem));
+  padding: clamp(5rem, 12svh, 8rem) var(--gutter, clamp(1.25rem, 4vw, 3.5rem));
 }
 
 .block { max-width: 100%; }

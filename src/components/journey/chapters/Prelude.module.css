@@ -5,12 +5,12 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: clamp(0.9rem, 2.4vh, 1.9rem);
+  gap: clamp(0.9rem, 2.4svh, 1.9rem);
   text-align: center;
   /* The name sits a little above centre rather than dead centre:
      optical centring, and it leaves the scroll hint room to
      breathe under it. */
-  margin-bottom: clamp(2rem, 8vh, 5rem);
+  margin-bottom: clamp(2rem, 8svh, 5rem);
 }
 
 .name {
@@ -21,7 +21,7 @@
   --name-room: calc(100vw - var(--gutter-left) - var(--gutter-right) - 1rem);
   display: flex;
   flex-direction: column;
-  font-size: min(var(--fs-mega), calc(var(--name-room) / var(--name-em, 6)), calc(50vh / var(--name-lines, 2)));
+  font-size: min(var(--fs-mega), calc(var(--name-room) / var(--name-em, 6)), calc(50svh / var(--name-lines, 2)));
   font-weight: 500;
   letter-spacing: -0.045em;
   line-height: 0.82;
@@ -71,12 +71,12 @@
 /* A phone on its side: the name, the roles and the line must fit
    between the corner labels in under 400 px of height. */
 @media (max-height: 520px) and (orientation: landscape) {
-  .name { font-size: min(clamp(2.4rem, 17vh, 14rem), calc(var(--name-room) / var(--name-em, 6)), calc(34vh / var(--name-lines, 2))); }
+  .name { font-size: min(clamp(2.4rem, 17svh, 14rem), calc(var(--name-room) / var(--name-em, 6)), calc(34svh / var(--name-lines, 2))); }
   .center { margin-bottom: 0; gap: 0.5rem; }
 }
 
 @media (max-width: 620px) {
-  .center { margin-bottom: clamp(8rem, 30vh, 16rem); gap: 1rem; }
+  .center { margin-bottom: clamp(8rem, 30svh, 16rem); gap: 1rem; }
   .thesis { font-size: clamp(0.95rem, 4.4vw, 1.4rem); }
 }
 
@@ -101,7 +101,7 @@
      into ragged halves. Set as a centred column instead — six lines that
      read as a standing list rather than a sentence that ran out of room.
      The name can then sit nearer the optical centre it was lifted from. */
-  .center { gap: clamp(1.4rem, 3.6vh, 2.2rem); margin-bottom: clamp(2rem, 12vh, 6rem); }
+  .center { gap: clamp(1.4rem, 3.6svh, 2.2rem); margin-bottom: clamp(2rem, 12svh, 6rem); }
   .rolesWrap { flex-direction: column; gap: 0.55rem; }
   .role { font-size: var(--fs-micro); }
 }

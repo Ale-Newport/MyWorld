@@ -11,9 +11,9 @@
 .stage {
   --stage-rows: auto minmax(0, 1fr) auto;
   --stage-align: stretch;
-  --stage-row-gap: clamp(1rem, 2.6vh, 2rem);
-  --stage-top: clamp(5rem, 11vh, 7.5rem);
-  --stage-bottom: clamp(5.25rem, 11vh, 7rem);
+  --stage-row-gap: clamp(1rem, 2.6svh, 2rem);
+  --stage-top: clamp(5rem, 11svh, 7.5rem);
+  --stage-bottom: clamp(5.25rem, 11svh, 7rem);
 }
 
 .head {
@@ -133,7 +133,7 @@
   /* No backdrop blur (see IndexOverlay.module.css): the 94% sheet carries it. */
   background: color-mix(in oklab, var(--bg-primary) 94%, transparent);
   overflow-y: auto;
-  padding: clamp(5rem, 12vh, 8rem) var(--gutter) clamp(6rem, 14vh, 8rem);
+  padding: clamp(5rem, 12svh, 8rem) var(--gutter) clamp(6rem, 14svh, 8rem);
   opacity: 0;
   pointer-events: none;
   transition: opacity var(--dur-mid) var(--ease-out-expo);
@@ -186,7 +186,7 @@
 @media (max-width: 960px) {
   .stage {
     --stage-rows: auto auto minmax(0, 1fr) auto;
-    --stage-top: clamp(4.75rem, 10vh, 6.5rem);
+    --stage-top: clamp(4.75rem, 10svh, 6.5rem);
   }
   .head { grid-column: 1 / -1; grid-row: 1; }
   .filters {

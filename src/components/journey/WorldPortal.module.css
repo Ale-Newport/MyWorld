@@ -22,7 +22,7 @@
   z-index: 2;
   left: var(--gutter);
   right: var(--gutter);
-  bottom: clamp(4.2rem, 9.5vh, 5.8rem);
+  bottom: clamp(4.2rem, 9.5svh, 5.8rem);
   display: grid;
   grid-template-columns: 1fr auto;
   align-items: baseline;
@@ -67,6 +67,12 @@
   transition: color var(--dur-fast) var(--ease-out-expo);
 }
 .enter:hover { color: var(--text-primary); }
+/* The one way into the world for anyone who would rather tap: on a touch screen it is as tall as a finger, not
+   as tall as its line of type (the readout's grid rows are unchanged; the extension is a hit area only). */
+@media (pointer: coarse) {
+  .enter { position: relative; }
+  .enter::after { content: ''; position: absolute; inset: -14px -10px; }
+}
 
 .enterArrow {
   color: var(--accent);

@@ -4,6 +4,7 @@
      node scripts/qa/responsive-shots.mjs [--base URL] [--path /] [--widths 320,390,768]
        [--engine chromium|firefox|webkit] [--at 0.5] [--landscape]
        [--storage state.json] [--cut] [--overlap]
+       [--sizes 390x664,360x640] [--large-ratio 1.27] [--reduced]
 
    For each width the page is loaded once, then each chapter is
    scrolled to `--at` of its length (default: the middle, where its
@@ -18,10 +19,20 @@
      overlap    with --overlap: lines of text that run into other text,
                 the HUD's labels included (`data-over-copy` marks a layer
                 drawn over the copy on purpose)
+     reach      anything the pinned stage shows (icons, cards, text) that stands outside the band between the HUD's
+                header and footer, or off the screen sideways
+     small      on a touch screen, controls under 23 CSS px a side (their invisible hit extension counts)
      travels    the stage's words are taller than the screen and travel
                 through it (stageFit.ts): checked at both ends of the
                 travel, first line clear of the HUD's header, last line
                 clear of its footer
+
+   --sizes gives exact viewports (width x height) instead of widths: a phone's VISIBLE viewport, with the browser's
+   address bar and toolbar showing, is much shorter than the screen (a 390x844 iPhone shows about 390x664).
+   --large-ratio simulates what such a browser does to the `vh` unit: there `1vh` is a hundredth of the LARGE viewport
+   (toolbars hidden), while `svh` is the visible one the stage is pinned to. A desktop browser has no toolbars, so
+   `vh` would equal the viewport; with a ratio above 1 every `vh` in the page's styles is rewritten to the larger
+   height, which is how a phone sees them. The fix is to size a stage in `svh`, and this check shows the difference.
 
    --storage loads a Playwright storage state, e.g. a signed-in
    administrator with Draft Mode on, to check a draft (long-text.mjs).
@@ -45,6 +56,9 @@ const ENGINE = opt('engine', 'chromium')
 const AT = Number(opt('at', 0.5))
 const LANDSCAPE = Boolean(opt('landscape', false))
 const WIDTHS = String(opt('widths', '320,390,768,1024,1440,1920,2560,3440')).split(',').map(Number)
+const SIZES = opt('sizes', null) ? String(opt('sizes')).split(',').map((s) => s.split('x').map(Number)) : null
+const LARGE = Number(opt('large-ratio', 1))
+const REDUCED = Boolean(opt('reduced', false))
 const STORAGE = opt('storage', null)
 const CUT = Boolean(opt('cut', false))
 const OVERLAP = Boolean(opt('overlap', false))
@@ -169,27 +183,84 @@ const INSPECT = ([CUT, OVERLAP]) => {
       }
     }
   }
-  return { overflow, offenders, clipped, cut, overlaps }
+  // Everything the pinned stage shows has to stand inside the band between the HUD's header and footer (and the screen):
+  // an icon wall or a card row taller than its stage is cut at the foot, and no text check sees it.
+  const reach = []
+  const extent = (sel) => {
+    let lo = Infinity, hi = -Infinity
+    for (const el of document.querySelectorAll(`${sel} a, ${sel} button, ${sel} span, ${sel} p`)) { const r = el.getBoundingClientRect(); if (r.width >= 1 && r.height >= 1) { lo = Math.min(lo, r.top); hi = Math.max(hi, r.bottom) } }
+    return Number.isFinite(lo) ? { top: lo, bottom: hi } : null
+  }
+  const headerEnd = extent('[data-hud] header')?.bottom ?? 0
+  const footerStart = extent('[data-hud] footer')?.top ?? innerHeight
+  const stage = [...document.querySelectorAll('section[data-chapter] > div')].find((d) => { const r = d.getBoundingClientRect(); return r.top <= 1 && r.bottom >= innerHeight - 1 })
+  if (stage) {
+    for (const el of stage.querySelectorAll('button, a, img, svg, canvas, h1, h2, h3, h4, p, li')) {
+      if (reach.length > 5) break
+      if (el.closest('[aria-hidden="true"], .sr-only, [data-stage-travel], [data-over-copy]')) continue
+      let seen = true
+      for (let a = el; a && a !== document.body; a = a.parentElement) { const s = getComputedStyle(a); if (s.display === 'none' || s.visibility === 'hidden' || Number(s.opacity) < 0.05) { seen = false; break } if (s.position === 'fixed') { seen = false; break } }
+      if (!seen) continue
+      // A row that scrolls sideways on purpose (the filter chips on a phone) is not out of band.
+      let sideways = false
+      for (let a = el.parentElement; a && a !== document.body; a = a.parentElement) if (['auto', 'scroll'].includes(getComputedStyle(a).overflowX)) { sideways = true; break }
+      if (sideways) continue
+      const r = el.getBoundingClientRect()
+      if (r.width < 6 || r.height < 6) continue
+      if (r.bottom > footerStart + 1 || r.top < headerEnd - 1 || r.left < -1 || r.right > vw + 1) reach.push(`${el.tagName.toLowerCase()}${el.getAttribute('aria-label') ? `[${el.getAttribute('aria-label').slice(0, 18)}]` : ''} ${Math.round(r.top)}..${Math.round(r.bottom)} (band ${Math.round(headerEnd)}..${Math.round(footerStart)})`)
+    }
+  }
+  // On a touch screen a control smaller than 24 CSS px a side is not a target (WCAG 2.5.8); the extended hit area some
+  // controls carry (a ::after) counts: the check asks the browser what is at the control's edge.
+  const small = []
+  const grow = (el) => { let x = 0, y = 0; for (const pseudo of ['::before', '::after']) { const c = getComputedStyle(el, pseudo); if (c.position === 'absolute' && c.content !== 'none' && c.content !== 'normal') { x = Math.max(x, parseFloat(c.left) < 0 ? -parseFloat(c.left) : 0); y = Math.max(y, parseFloat(c.top) < 0 ? -parseFloat(c.top) : 0) } } return { x, y } }
+  if (matchMedia('(pointer: coarse)').matches) {
+    for (const el of document.querySelectorAll('a[href], button, [role="button"], [role="slider"], input, select, summary')) {
+      if (small.length > 5) break
+      if (el.closest('[aria-hidden="true"], .sr-only, [data-over-copy]')) continue
+      const cs = getComputedStyle(el)
+      if (cs.display === 'none' || cs.visibility === 'hidden' || Number(cs.opacity) < 0.05 || cs.display === 'inline') continue
+      let off = false
+      for (let a = el.parentElement; a && a !== document.body; a = a.parentElement) { const s = getComputedStyle(a); if (s.display === 'none' || s.visibility === 'hidden' || Number(s.opacity) < 0.05) { off = true; break } }
+      if (off) continue
+      const r = el.getBoundingClientRect()
+      if (!r.width || !r.height || r.bottom < 0 || r.top > innerHeight || r.right < 0 || r.left > vw) continue
+      const grown = grow(el)
+      const w = r.width + 2 * grown.x, h = r.height + 2 * grown.y
+      // 24 px a side (WCAG 2.5.8), less a pixel of rounding: the orbit's densest dots are 23 and deliberately not larger, they stand a few px apart.
+      if (w < 23 || h < 23) small.push(`${el.tagName.toLowerCase()} ${Math.round(w)}×${Math.round(h)} “${(el.getAttribute('aria-label') || el.textContent || '').trim().slice(0, 16)}”`)
+    }
+  }
+  return { overflow, offenders, clipped, cut, overlaps, reach, small }
 }
 
 let problems = 0
 
-for (const w of WIDTHS) {
-  const h = HEIGHT_FOR(w)
-  const context = await browser.newContext({ viewport: { width: w, height: h }, deviceScaleFactor: 1, hasTouch: w < 800, isMobile: ENGINE === 'chromium' && w < 800, ...(STORAGE ? { storageState: STORAGE } : {}) })
+for (const [w, h] of SIZES ?? WIDTHS.map((w) => [w, HEIGHT_FOR(w)])) {
+  const context = await browser.newContext({ viewport: { width: w, height: h }, deviceScaleFactor: 1, hasTouch: w < 800, isMobile: ENGINE === 'chromium' && w < 800, ...(REDUCED ? { reducedMotion: 'reduce' } : {}), ...(STORAGE ? { storageState: STORAGE } : {}) })
   const page = await context.newPage()
   const errors = []
   page.on('pageerror', (e) => errors.push(String(e).slice(0, 200)))
   await page.goto(`${BASE}${PAGE}`, { waitUntil: 'load' })
   // A negative control: undo a fix with a stylesheet and see the check fail.
   if (process.env.QA_INJECT_CSS) await page.addStyleTag({ content: process.env.QA_INJECT_CSS })
+  if (LARGE > 1) {
+    await page.evaluate((px) => {
+      let css = ''
+      const walk = (rules) => { for (const r of rules) { if (r.cssText.includes('vh')) css += r.cssText.replace(/(-?\d*\.?\d+)vh\b/g, (m, n) => `calc(${n} * ${px}px)`) + '\n' } }
+      for (const s of document.styleSheets) { try { walk(s.cssRules) } catch { /* another origin */ } }
+      const style = document.createElement('style')
+      style.textContent = css
+      document.head.append(style)
+    }, (h * LARGE) / 100)
+  }
   await page.waitForTimeout(2500)
   const chapters = await page.evaluate(() => [...document.querySelectorAll('section[data-chapter]')].map((s) => ({ id: s.dataset.chapter, top: s.offsetTop, h: s.offsetHeight })))
   const list = chapters.length ? chapters : [{ id: 'page', top: 0, h: 0 }]
   for (const c of list) {
     await page.evaluate((y) => window.scrollTo(0, y), Math.max(0, c.top + (c.h - h) * AT))
     await page.waitForTimeout(1400)
-    const file = path.join(OUT, `${PAGE.replace(/\W+/g, '_') || 'home'}-${ENGINE}-${w}x${h}-${c.id}.png`)
+    const file = path.join(OUT, `${PAGE.replace(/\W+/g, '_') || 'home'}-${ENGINE}-${w}x${h}${LARGE > 1 ? 'L' : ''}${REDUCED ? 'R' : ''}-${c.id}.png`)
     await page.screenshot({ path: file })
     const report = await page.evaluate(INSPECT, [CUT, OVERLAP])
     // Words taller than the screen travel through it: the first line must
@@ -233,9 +304,9 @@ for (const w of WIDTHS) {
         for (const o of there.overlaps) ends.push(`${edge}: ${o}`)
       }
     }
-    const bad = report.overflow || report.clipped.length || report.cut.length || report.overlaps.length || ends.length
+    const bad = report.overflow || report.clipped.length || report.cut.length || report.overlaps.length || report.reach.length || report.small.length || ends.length
     if (bad) problems++
-    console.log(`${bad ? 'WARN' : 'ok  '} ${w}×${h} ${c.id}${travel ? `  (travels ${travel.split(' ')[0]})` : ''}${report.overflow ? `  overflow: ${report.offenders.join(', ')}` : ''}${report.clipped.length ? `  clipped: ${report.clipped.join(' | ')}` : ''}${report.cut.length ? `  cut: ${report.cut.join(' | ')}` : ''}${report.overlaps.length ? `  overlap: ${report.overlaps.join(' | ')}` : ''}${ends.length ? `  ends: ${ends.join(' | ')}` : ''}`)
+    console.log(`${bad ? 'WARN' : 'ok  '} ${w}×${h} ${c.id}${travel ? `  (travels ${travel.split(' ')[0]})` : ''}${report.overflow ? `  overflow: ${report.offenders.join(', ')}` : ''}${report.clipped.length ? `  clipped: ${report.clipped.join(' | ')}` : ''}${report.cut.length ? `  cut: ${report.cut.join(' | ')}` : ''}${report.overlaps.length ? `  overlap: ${report.overlaps.join(' | ')}` : ''}${report.reach.length ? `  out of band: ${report.reach.join(' | ')}` : ''}${report.small.length ? `  small targets: ${report.small.join(' | ')}` : ''}${ends.length ? `  ends: ${ends.join(' | ')}` : ''}`)
   }
   if (errors.length) console.log(`  page errors at ${w}: ${errors.join(' | ')}`)
   await context.close()

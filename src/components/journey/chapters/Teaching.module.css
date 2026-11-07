@@ -11,9 +11,9 @@
   --stage-rows: minmax(0, 1fr) auto;
   --stage-align: stretch;
   --stage-items: center;
-  --stage-row-gap: clamp(0.75rem, 2.4vh, 1.75rem);
-  --stage-top: clamp(5rem, 11vh, 7rem);
-  --stage-bottom: clamp(5.25rem, 11vh, 7rem);
+  --stage-row-gap: clamp(0.75rem, 2.4svh, 1.75rem);
+  --stage-top: clamp(5rem, 11svh, 7rem);
+  --stage-bottom: clamp(5.25rem, 11svh, 7rem);
 }
 
 .head {
@@ -24,7 +24,7 @@
 }
 
 .title {
-  font-size: clamp(1.3rem, min(0.9rem + 1.9vw, 6vh), 2.5rem);
+  font-size: clamp(1.3rem, min(0.9rem + 1.9vw, 6svh), 2.5rem);
   font-weight: 500; letter-spacing: -0.03em; line-height: 1.06;
   white-space: pre-line; text-wrap: balance;
 }
@@ -128,7 +128,7 @@
     --stage-rows: auto auto;
     --stage-align: center;
     --stage-items: start;
-    --stage-row-gap: clamp(0.75rem, 2vh, 1.25rem);
+    --stage-row-gap: clamp(0.75rem, 2svh, 1.25rem);
   }
   .head { grid-column: 1 / span 6; grid-row: 1 / span 2; align-self: center; }
   .editor { grid-column: 7 / span 6; grid-row: 1; }
@@ -143,9 +143,9 @@
     --stage-rows: auto auto auto;
     --stage-align: center;
     --stage-items: start;
-    --stage-row-gap: clamp(1rem, 3vh, 2rem);
-    --stage-top: clamp(4.5rem, 9vh, 6rem);
-    --stage-bottom: clamp(4.75rem, 9vh, 6rem);
+    --stage-row-gap: clamp(1rem, 3svh, 2rem);
+    --stage-top: clamp(4.5rem, 9svh, 6rem);
+    --stage-bottom: clamp(4.75rem, 9svh, 6rem);
   }
   .head { grid-column: 1 / -1; grid-row: 1; gap: var(--sp-3); align-self: start; }
   .editor { grid-column: 1 / -1; grid-row: 2; }
@@ -166,7 +166,7 @@
     --stage-bottom: 4.5rem;
   }
   .head { grid-column: 1 / span 6; grid-row: 1 / span 2; gap: var(--sp-2); align-self: center; }
-  .title { font-size: clamp(1.05rem, 5.6vh, 1.6rem); }
+  .title { font-size: clamp(1.05rem, 5.6svh, 1.6rem); }
   .head > p:last-child { font-size: var(--fs-tiny); }
   .editor { grid-column: 7 / span 6; grid-row: 1; }
   .code { padding-block: var(--sp-2); line-height: 1.6; }

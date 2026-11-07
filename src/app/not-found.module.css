@@ -23,10 +23,10 @@
    so a phone on its side still has a headline under it. */
 .beacon {
   width: 100%;
-  height: clamp(4.5rem, 26vh, 12rem);
+  height: clamp(4.5rem, 26svh, 12rem);
 }
 .title {
-  font-size: clamp(2.2rem, min(1.2rem + 4.4vw, 13vh), 5rem);
+  font-size: clamp(2.2rem, min(1.2rem + 4.4vw, 13svh), 5rem);
   font-weight: 500; letter-spacing: -0.05em; line-height: 0.9;
   text-transform: uppercase;
 }
@@ -54,6 +54,6 @@
    one screen there is. */
 @media (max-height: 520px) and (orientation: landscape) {
   .content { gap: var(--sp-2); max-width: 64ch; padding-block: var(--sp-4); }
-  .beacon { height: clamp(4.25rem, 22vh, 6rem); }
+  .beacon { height: clamp(4.25rem, 22svh, 6rem); }
   .actions { margin-top: var(--sp-2); }
 }

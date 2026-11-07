@@ -88,6 +88,33 @@ export function Prelude() {
     }
   }, [reducedMotion, profile.roles.length])
 
+  /* HOW FAR THE NAME MAY RISE
+     Scrolling lifts the name (about 14 % of the screen). On a short screen the room between the name and the corner
+     notes above it is less than that, and the name ran into "LONDON, UK / 51.5072° N" on its way up. The room is
+     measured with the name at rest and the lift is capped by it; on every other screen the cap is not reached. */
+  useEffect(() => {
+    const shell = shellRef.current
+    const name = nameRef.current
+    if (!shell || !name) return
+    const measure = () => {
+      const previous = name.style.transform
+      name.style.transform = 'none'
+      const top = name.getBoundingClientRect().top
+      name.style.transform = previous
+      let corners = 0
+      for (const c of Array.from(shell.children) as HTMLElement[]) if (c.classList.contains(shared.cornerTL) || c.classList.contains(shared.cornerTR)) corners = Math.max(corners, c.getBoundingClientRect().bottom)
+      shell.style.setProperty('--prelude-lift', `${Math.max(0, Math.floor(top - corners - 10))}px`)
+    }
+    measure()
+    window.addEventListener('resize', measure)
+    window.addEventListener('journey:layout', measure)
+    void document.fonts?.ready.then(measure)
+    return () => {
+      window.removeEventListener('resize', measure)
+      window.removeEventListener('journey:layout', measure)
+    }
+  }, [])
+
   useChapterFrame('prelude', (t) => {
     const shell = shellRef.current
     if (!shell || reducedMotion) return
@@ -96,7 +123,7 @@ export function Prelude() {
     const away = range(t, 0.08, 0.75)
     const n = nameRef.current
     if (n) {
-      n.style.transform = `translate3d(0, ${-away * 14}vh, 0) scale(${1 - away * 0.14})`
+      n.style.transform = `translate3d(0, calc(${-away} * min(14svh, var(--prelude-lift, 14svh))), 0) scale(${1 - away * 0.14})`
       n.style.letterSpacing = `${-0.045 + away * 0.09}em`
       n.style.opacity = String(1 - clamp(range(t, 0.5, 0.9)))
     }
@@ -142,7 +169,7 @@ export function Prelude() {
             kind="container"
             label="Name"
             id="prelude-title"
-            data-room-travel="10vh 0"
+            data-room-travel="10svh 0"
             className={`${styles.name} ${shared.driven}`}
             style={{ '--name-em': name.em.toFixed(3), '--name-lines': name.lines.length } as CSSProperties}
             ref={nameRef}

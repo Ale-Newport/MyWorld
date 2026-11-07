@@ -14,8 +14,8 @@
   --stage-rows: minmax(0, 1fr);
   --stage-align: stretch;
   --stage-items: center;
-  --stage-top: clamp(5rem, 11vh, 7rem);
-  --stage-bottom: clamp(5.25rem, 11vh, 7rem);
+  --stage-top: clamp(5rem, 11svh, 7rem);
+  --stage-bottom: clamp(5.25rem, 11svh, 7rem);
 }
 
 .head {
@@ -109,10 +109,10 @@
    rail longer than the viewport on a large screen — otherwise the
    scrub would run out of travel halfway through the chapter. */
 .rail {
-  --tile: clamp(170px, min(32vw, 50vh), 520px);
+  --tile: clamp(170px, min(32vw, 50svh), 520px);
   position: absolute;
   left: 0; right: 0;
-  bottom: clamp(5rem, 17vh, 10rem);
+  bottom: clamp(5rem, 17svh, 10rem);
   overflow-x: auto;
   overflow-y: hidden;
   opacity: 0;
@@ -193,7 +193,7 @@
 }
 
 @media (max-width: 700px) {
-  .rail { --tile: min(72vw, 40vh); }
+  .rail { --tile: min(72vw, 40svh); }
   .metrics { grid-template-columns: repeat(2, 1fr); }
 }
 
@@ -205,9 +205,9 @@
 @media (max-width: 900px), (max-aspect-ratio: 4/5) {
   .stage {
     --stage-rows: auto minmax(0, 1fr);
-    --stage-row-gap: clamp(1rem, 3vh, 2rem);
-    --stage-top: clamp(4.5rem, 9vh, 6rem);
-    --stage-bottom: clamp(4.75rem, 9vh, 6rem);
+    --stage-row-gap: clamp(1rem, 3svh, 2rem);
+    --stage-top: clamp(4.5rem, 9svh, 6rem);
+    --stage-bottom: clamp(4.75rem, 9svh, 6rem);
   }
   .head { grid-column: 1 / -1; grid-row: 1; gap: var(--sp-3); }
   .stack { grid-column: 1 / -1; grid-row: 2; }
@@ -231,7 +231,7 @@
     --stage-bottom: 4.5rem;
   }
   .head { grid-column: 1 / span 7; grid-row: 1; gap: var(--sp-2); }
-  .title { font-size: clamp(1.4rem, 8.5vh, 2.4rem); }
+  .title { font-size: clamp(1.4rem, 8.5svh, 2.4rem); }
   .stage .lead { font-size: var(--fs-small); line-height: 1.45; }
   .metrics { display: none; }
   .stack { grid-column: 8 / span 5; grid-row: 1; }
@@ -259,7 +259,7 @@
     /* Large enough that the screenshots are still the point, capped
        against the viewport height so the heading always keeps its own
        band — a short window shrinks the gallery rather than the type. */
-    --tile: clamp(220px, min(50vw, 44vh), 440px);
+    --tile: clamp(220px, min(50vw, 44svh), 440px);
   }
   .site[data-hover='true'] .shot { transform: none; }
 }
@@ -309,7 +309,7 @@
     align-self: end;
     margin-inline: 0 calc(var(--gutter-right) * -1);
     padding-inline: 0 var(--gutter-right);
-    --tile: clamp(150px, 44vh, 260px);
+    --tile: clamp(150px, 44svh, 260px);
   }
 }
 

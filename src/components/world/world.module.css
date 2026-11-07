@@ -434,7 +434,7 @@
   position: absolute;
   left: 50%;
   transform: translateX(-50%);
-  top: clamp(3.6rem, 8vh, 5.5rem);
+  top: clamp(3.6rem, 8svh, 5.5rem);
   width: max-content;
   max-width: min(580px, calc(100vw - 28px));
   padding: 12px 20px;
@@ -489,7 +489,7 @@
 .notifications {
   position: absolute;
   left: 50%;
-  bottom: clamp(4.5rem, 12vh, 7rem);
+  bottom: clamp(4.5rem, 12svh, 7rem);
   transform: translateX(-50%);
   display: grid;
   gap: var(--sp-2);
@@ -536,7 +536,7 @@
 .onboarding {
   position: absolute;
   left: 50%;
-  bottom: clamp(2rem, 6vh, 3.5rem);
+  bottom: clamp(2rem, 6svh, 3.5rem);
   transform: translateX(-50%);
   font-family: var(--font-mono);
   font-size: var(--fs-micro);
@@ -581,7 +581,7 @@
 .overlayPanel {
   position: relative;
   width: min(720px, 100%);
-  max-height: min(82vh, 780px);
+  max-height: min(82svh, 780px);
   overflow-y: auto;
   overscroll-behavior: contain;
   background: var(--paper);
@@ -1050,7 +1050,7 @@
   padding: 0;
   list-style: none;
   overflow-y: auto;
-  max-height: min(46vh, 26rem);
+  max-height: min(46svh, 26rem);
 }
 
 .archiveItem {

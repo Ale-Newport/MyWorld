@@ -16,9 +16,9 @@
 .stage {
   --stage-rows: auto minmax(0, 1fr) auto;
   --stage-align: stretch;
-  --stage-row-gap: clamp(1rem, 3vh, 2rem);
-  --stage-top: clamp(5rem, 11vh, 7rem);
-  --stage-bottom: clamp(5.25rem, 11vh, 7rem);
+  --stage-row-gap: clamp(1rem, 3svh, 2rem);
+  --stage-top: clamp(5rem, 11svh, 7rem);
+  --stage-bottom: clamp(5.25rem, 11svh, 7rem);
 }
 
 .head {
@@ -75,7 +75,7 @@
 /* Sized by the column it stands in, so the longest figure ("9 CLUSTERS")
    still fits it, and by the height, so a short screen keeps its line. */
 .beatValue {
-  font-size: clamp(2.1rem, min(16cqi, 13vh), 8.5rem);
+  font-size: clamp(2.1rem, min(16cqi, 13svh), 8.5rem);
   font-weight: 500; letter-spacing: -0.05em; line-height: 0.86;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
@@ -142,16 +142,16 @@
 @media (max-width: 800px), (max-aspect-ratio: 4/5) {
   .stage {
     --stage-rows: auto minmax(0, 1fr) auto auto;
-    --stage-row-gap: clamp(0.85rem, 2.4vh, 1.5rem);
-    --stage-top: clamp(4.5rem, 9vh, 6rem);
-    --stage-bottom: clamp(4.75rem, 9vh, 6rem);
+    --stage-row-gap: clamp(0.85rem, 2.4svh, 1.5rem);
+    --stage-top: clamp(4.5rem, 9svh, 6rem);
+    --stage-bottom: clamp(4.75rem, 9svh, 6rem);
   }
   .head { grid-column: 1 / -1; }
   .scene { grid-column: 1 / -1; grid-row: 2; }
   .beats { grid-column: 1 / -1; grid-row: 3; align-self: start; }
   /* The rail sits right under the outcome here: they cross-fade in place. */
   .beat { transform: none !important; }
-  .beatValue { font-size: clamp(2.1rem, min(15cqi, 8vh), 5rem); }
+  .beatValue { font-size: clamp(2.1rem, min(15cqi, 8svh), 5rem); }
   .pipeline { grid-row: 4; }
   .all { display: none; }
 }
@@ -166,11 +166,11 @@
     --stage-bottom: 4.5rem;
   }
   .head { grid-column: 1 / span 6; gap: var(--sp-2); }
-  .title { font-size: clamp(1.5rem, 8vh, 2.4rem); }
+  .title { font-size: clamp(1.5rem, 8svh, 2.4rem); }
   .scene { grid-column: 7 / span 6; grid-row: 1 / span 2; }
   .beats { grid-column: 1 / span 6; grid-row: 2; align-self: center; }
   .beat { gap: var(--sp-2); }
-  .beatValue { font-size: clamp(1.8rem, min(14cqi, 13vh), 3.5rem); }
+  .beatValue { font-size: clamp(1.8rem, min(14cqi, 13svh), 3.5rem); }
   .beatLine { font-size: var(--fs-small); }
   .pipeline, .all { display: none; }
 }
@@ -189,7 +189,7 @@
     align-self: center;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     grid-auto-rows: min-content;
-    gap: clamp(1.25rem, 3.5vh, 2.5rem) clamp(1.25rem, 2.5vw, 2.5rem);
+    gap: clamp(1.25rem, 3.5svh, 2.5rem) clamp(1.25rem, 2.5vw, 2.5rem);
   }
   .scene { grid-column: 8 / span 5; }
 
@@ -202,7 +202,7 @@
     border-top: var(--hair) solid var(--border);
     padding-top: var(--sp-3);
   }
-  .beatValue { font-size: clamp(1.6rem, min(9cqi, 6vh), 2.75rem); line-height: 0.95; }
+  .beatValue { font-size: clamp(1.6rem, min(9cqi, 6svh), 2.75rem); line-height: 0.95; }
   .beatLine { font-size: var(--fs-small); line-height: 1.45; }
 
   /* The rail names the pipeline rather than tracking a query
@@ -214,9 +214,9 @@
 /* A wide but short window: three columns of two rows, the lines set
    small, so the table keeps clear of the rail under it. */
 @media (prefers-reduced-motion: reduce) and (min-width: 801px) and (max-height: 760px) {
-  .beats { grid-column: 1 / span 8; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: clamp(0.75rem, 2.5vh, 1.5rem) clamp(1rem, 2vw, 2rem); }
+  .beats { grid-column: 1 / span 8; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: clamp(0.75rem, 2.5svh, 1.5rem) clamp(1rem, 2vw, 2rem); }
   .scene { grid-column: 9 / span 4; }
-  .beatValue { font-size: clamp(1.4rem, min(12cqi, 5.5vh), 2.2rem); }
+  .beatValue { font-size: clamp(1.4rem, min(12cqi, 5.5svh), 2.2rem); }
   .beatLine { font-size: var(--fs-tiny); line-height: 1.4; }
 }
 @media (prefers-reduced-motion: reduce) and (min-width: 801px) and (max-height: 600px) {
@@ -234,7 +234,7 @@
     grid-row: 2;
     align-self: start;
     grid-template-columns: 1fr;
-    gap: clamp(0.6rem, 1.8vh, 1.2rem);
+    gap: clamp(0.6rem, 1.8svh, 1.2rem);
   }
   .scene { grid-column: 1 / -1; grid-row: 3; min-height: 7rem; }
   .beat {
@@ -259,7 +259,7 @@
   /* A short phone holds the same six outcomes, so the table gives up
      scale rather than a row, and the galaxy gives up its place. */
   .stage { --stage-rows: auto auto; }
-  .beats { gap: clamp(0.4rem, 1.2vh, 0.8rem); }
+  .beats { gap: clamp(0.4rem, 1.2svh, 0.8rem); }
   .beat { padding-top: var(--sp-1); }
   .beatKicker { min-width: 8.5em; }
   .beatValue { font-size: clamp(1.25rem, 5.5vw, 1.5rem); }
@@ -272,7 +272,7 @@
   .head { grid-column: 1 / span 7; }
   .beats { grid-column: 1 / span 7; grid-row: 2; gap: 0.4rem 1rem; align-self: start; }
   .beat { padding-top: var(--sp-1); gap: 0.15rem; }
-  .beatValue { font-size: clamp(1.1rem, 5vh, 1.4rem); }
+  .beatValue { font-size: clamp(1.1rem, 5svh, 1.4rem); }
   .beatLine { display: none; }
   .scene { grid-column: 8 / span 5; grid-row: 1 / span 2; }
 }

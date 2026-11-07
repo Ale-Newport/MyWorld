@@ -1,7 +1,7 @@
 /* A project's page: the case-study overlay's type and rules, given room. */
 .page {
   min-height: 100svh;
-  padding: clamp(5rem, 9vh, 7rem) var(--gutter) var(--sp-9);
+  padding: clamp(5rem, 9svh, 7rem) var(--gutter) var(--sp-9);
   background: var(--bg-primary);
   color: var(--text-primary);
 }
@@ -57,7 +57,7 @@
    place names in this list) is hyphenated rather than run off the page. */
 .title {
   margin: 0;
-  font-size: clamp(2.25rem, min(1rem + 7vw, 1rem + 13vh), 7.5rem);
+  font-size: clamp(2.25rem, min(1rem + 7vw, 1rem + 13svh), 7.5rem);
   font-weight: 500;
   line-height: 0.9;
   letter-spacing: -0.045em;
@@ -117,6 +117,12 @@
 .linkList { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: var(--sp-2); }
 .linkList a, .links a { color: var(--text-primary); text-decoration: none; border-bottom: var(--hair) solid var(--border-strong); width: fit-content; }
 .linkList a:hover, .links a:hover { border-bottom-color: var(--project-accent); color: var(--project-accent); }
+/* A link in a list is as tall as its line of type: on a touch screen its hit area is extended past the underline, so a
+   thumb finds it, and the line's own height and spacing stay as drawn. */
+@media (pointer: coarse) {
+  .linkList a, .links a { position: relative; }
+  .linkList a::after, .links a::after { content: ''; position: absolute; inset: -9px -6px; }
+}
 .tableWrap { overflow-x: auto; }
 .table { width: 100%; border-collapse: collapse; font-size: var(--fs-small); }
 .table caption { caption-side: top; text-align: left; padding-bottom: var(--sp-3); font-family: var(--font-mono); font-size: var(--fs-nano); letter-spacing: 0.14em; text-transform: uppercase; color: var(--text-muted); }
@@ -160,6 +166,6 @@
   .crumbs { margin-bottom: var(--sp-5); }
   .hero { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: center; }
   .visual { justify-self: end; width: min(100%, calc((100svh - 6rem) * 16 / 11)); }
-  .title { font-size: clamp(2rem, 12vh, 3.5rem); }
+  .title { font-size: clamp(2rem, 12svh, 3.5rem); }
   .body { grid-template-columns: minmax(0, 1fr) minmax(12rem, 16rem); }
 }

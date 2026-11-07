@@ -243,3 +243,17 @@
   letter-spacing: 0.04em;
 }
 .pctSign { color: var(--text-faint); font-size: var(--fs-nano); margin-left: 1px; }
+
+/* ============================================================
+   TAP TARGETS
+   The controls are drawn as small as the design wants them (a mark, a word, a few bars), and a finger needs about
+   44px to land on one. On a touch screen each gets an invisible extension of its hit area; the gap between the
+   controls is wider than what they take from it, so neighbours do not overlap. The scrub, a control to be dragged,
+   is made taller the same way.
+   ============================================================ */
+@media (pointer: coarse) {
+  .brand, .hudBtn, .cross, .scrub { position: relative; }
+  .brand::after, .hudBtn::after, .cross::after { content: ''; position: absolute; inset: -11px -5px; }
+  .hudBtn:not(.indexBtn)::after { inset: -11px -10px; }
+  .scrub::after { content: ''; position: absolute; inset: -11px 0; }
+}

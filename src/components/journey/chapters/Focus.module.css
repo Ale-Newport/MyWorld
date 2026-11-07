@@ -11,9 +11,9 @@
 .stage {
   --stage-rows: minmax(0, 1fr) auto;
   --stage-align: stretch;
-  --stage-row-gap: clamp(0.75rem, 2.4vh, 1.75rem);
-  --stage-top: clamp(5rem, 11vh, 7rem);
-  --stage-bottom: clamp(5.25rem, 11vh, 7rem);
+  --stage-row-gap: clamp(0.75rem, 2.4svh, 1.75rem);
+  --stage-top: clamp(5rem, 11svh, 7rem);
+  --stage-bottom: clamp(5.25rem, 11svh, 7rem);
 }
 
 .visual {
@@ -36,7 +36,7 @@
 }
 
 .title {
-  font-size: clamp(2.4rem, min(1.2rem + 4.4vw, 11vh), 6.5rem);
+  font-size: clamp(2.4rem, min(1.2rem + 4.4vw, 11svh), 6.5rem);
   font-weight: 500; letter-spacing: -0.05em; line-height: 0.85;
   text-transform: uppercase;
 }
@@ -100,9 +100,9 @@
 @media (max-width: 800px), (max-aspect-ratio: 4/5) {
   .stage {
     --stage-rows: auto minmax(0, 1fr) auto;
-    --stage-row-gap: clamp(0.75rem, 2.2vh, 1.4rem);
-    --stage-top: clamp(4.5rem, 9vh, 6rem);
-    --stage-bottom: clamp(4.75rem, 9vh, 6rem);
+    --stage-row-gap: clamp(0.75rem, 2.2svh, 1.4rem);
+    --stage-top: clamp(4.5rem, 9svh, 6rem);
+    --stage-bottom: clamp(4.75rem, 9svh, 6rem);
   }
   .head { grid-column: 1 / -1; grid-row: 1; gap: var(--sp-2); }
   .visual { grid-column: 1 / -1; grid-row: 2; }
@@ -132,7 +132,7 @@
     --stage-bottom: 4.5rem;
   }
   .head { grid-column: 1 / span 4; grid-row: 1; gap: var(--sp-2); }
-  .title { font-size: clamp(1.6rem, 11vh, 2.8rem); }
+  .title { font-size: clamp(1.6rem, 11svh, 2.8rem); }
   .visual { grid-column: 5 / span 5; grid-row: 1; }
   .layers { grid-column: 10 / span 3; grid-row: 1; display: flex; gap: 0; }
   .layer { padding: 0.1rem 0; transform: none !important; }
