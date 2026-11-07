@@ -18,7 +18,7 @@ import { Icon, type IconName } from './icons'
 
 export interface Tab { href: string; label: string; icon?: IconName; match?: RegExp }
 
-/** Secondary navigation inside one area (Website: Pages · Projects · Media · History). */
+/** Secondary navigation inside one area (Website: Pages · Projects · Blog · Media · History). */
 export function Tabs({ tabs, label }: { tabs: Tab[]; label: string }) {
   const pathname = usePathname()
   return (
@@ -39,6 +39,7 @@ export function Tabs({ tabs, label }: { tabs: Tab[]; label: string }) {
 export const WEBSITE_TABS: Tab[] = [
   { href: '/admin/pages', label: 'Pages', icon: 'pages' },
   { href: '/admin/projects', label: 'Projects', icon: 'projects', match: /^\/admin\/projects/ },
+  { href: '/admin/blog', label: 'Blog', icon: 'blog', match: /^\/admin\/blog/ },
   { href: '/admin/media', label: 'Media', icon: 'media' },
   { href: '/admin/history', label: 'History', icon: 'history' },
 ]

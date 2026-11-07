@@ -30,7 +30,7 @@ const nextConfig: NextConfig = {
          page's own requests (`empty`) are served. A browser that does not send the header falls back to the cookie. */
       const document = [{ type: 'header' as const, key: 'sec-fetch-dest', value: 'document' }]
       const unknown = [{ type: 'header' as const, key: 'sec-fetch-dest' }, { type: 'cookie' as const, key: '__prerender_bypass' }]
-      for (const source of ['/', '/projects/:path*', '/world']) {
+      for (const source of ['/', '/projects/:path*', '/world', '/contact', '/blog/:path*']) {
         redirects.push({ source, has: document, destination: '/admin', permanent: false } as never)
         redirects.push({ source, missing: unknown, destination: '/admin', permanent: false } as never)
       }

@@ -1,0 +1,188 @@
+/* /blog: the site's display type for the page's name, its mono labels for every
+   date and count, and one hairline-ruled row per post — the index overlay's rhythm. */
+.page {
+  min-height: 100svh;
+  padding: clamp(6.5rem, 15svh, 10rem) var(--gutter-right) var(--sp-10) var(--gutter-left);
+  background: var(--bg-primary);
+  color: var(--text-primary);
+}
+
+.head {
+  display: grid;
+  gap: var(--sp-5);
+  padding-bottom: clamp(1.5rem, 4vw, 3rem);
+  border-bottom: var(--hair) solid var(--border-strong);
+}
+.eyebrow {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: var(--sp-2) var(--sp-4);
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: var(--fs-micro);
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.count { font-variant-numeric: tabular-nums; }
+/* The journeys' mega type: the page's one word, set as large as the screen allows. */
+.title {
+  margin: 0 0 0 -0.04em;
+  font-size: var(--fs-mega);
+  font-weight: 500;
+  line-height: 0.82;
+  letter-spacing: var(--tracking-mega);
+  text-transform: uppercase;
+}
+
+/* ---- the posts ---------------------------------------------------- */
+.list { margin: 0; padding: 0; list-style: none; }
+
+/* Date · words · cover, each in its own column on a desktop; the title's
+   link is stretched over the whole row, so the row is the target. */
+.post {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(8.5rem, 13rem) minmax(0, 1fr) minmax(12rem, 19rem) 1.5rem;
+  grid-template-areas: 'meta text cover arrow';
+  column-gap: clamp(1.25rem, 3.4vw, 3.5rem);
+  align-items: start;
+  padding: clamp(1.75rem, 3.6vw, 3rem) 0;
+  border-bottom: var(--hair) solid var(--border);
+}
+.post:not([data-cover]) .text { grid-column: text-start / cover-end; }
+
+.meta {
+  grid-area: meta;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  margin: 0;
+  padding-top: 0.55em;
+  font-family: var(--font-mono);
+  font-size: var(--fs-micro);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+.meta time { color: var(--text-primary); }
+.draft { color: var(--accent); }
+
+.text { grid-area: text; display: flex; flex-direction: column; gap: var(--sp-3); min-width: 0; }
+.postTitle {
+  margin: 0;
+  max-width: 26ch;
+  font-size: clamp(1.65rem, 1.05rem + 2.3vw, 3.1rem);
+  font-weight: 500;
+  line-height: 1.02;
+  letter-spacing: -0.035em;
+  text-wrap: balance;
+  overflow-wrap: anywhere;
+  transition: color var(--dur-fast);
+}
+.link { color: inherit; }
+.link::after { content: ''; position: absolute; inset: 0; z-index: 1; }
+.link:focus-visible { outline: none; }
+.post:has(.link:focus-visible) { outline: 2px solid var(--accent); outline-offset: 4px; }
+
+.excerpt {
+  margin: 0;
+  max-width: 60ch;
+  font-size: var(--fs-body);
+  line-height: 1.55;
+  color: var(--text-secondary);
+  text-wrap: pretty;
+}
+.tags { display: flex; flex-wrap: wrap; gap: 0.35rem; margin: var(--sp-1) 0 0; padding: 0; list-style: none; }
+.tags li {
+  padding: 0.28rem 0.55rem;
+  border: var(--hair) solid var(--border-strong);
+  font-family: var(--font-mono);
+  font-size: var(--fs-nano);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+
+.cover {
+  grid-area: cover;
+  aspect-ratio: 4 / 3;
+  overflow: hidden;
+  background: var(--bg-secondary);
+  border: var(--hair) solid var(--border);
+}
+.cover img { width: 100%; height: 100%; object-fit: cover; transition: transform var(--dur-slow) var(--ease-out-expo); }
+
+.arrow {
+  grid-area: arrow;
+  justify-self: end;
+  padding-top: 0.5rem;
+  font-size: 1.25rem;
+  color: var(--text-muted);
+  transition: transform var(--dur-fast) var(--ease-out-expo), color var(--dur-fast);
+}
+
+/* Arriving on a row or pressing it is answered at once (--dur-quick); only a
+   pointer that can hover is promised a :hover. */
+@media (hover: hover) {
+  .post:hover .postTitle { color: var(--accent); transition-duration: var(--dur-quick); }
+  .post:hover .arrow { color: var(--text-primary); transform: translateX(4px); transition-duration: var(--dur-quick); }
+  .post:hover .cover img { transform: scale(1.02); }
+}
+.post:has(.link:active) .postTitle, .post:has(.link[data-press]) .postTitle { color: var(--accent); transition-duration: var(--dur-quick); }
+
+/* ---- nothing yet ------------------------------------------------- */
+.empty {
+  display: grid;
+  justify-items: start;
+  gap: var(--sp-4);
+  max-width: 36rem;
+  padding-top: clamp(2.5rem, 7vw, 5rem);
+}
+.emptyLabel {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: var(--fs-micro);
+  font-weight: 500;
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  color: var(--accent);
+}
+.emptyText { margin: 0; font-size: var(--fs-lead); line-height: 1.45; color: var(--text-secondary); text-wrap: pretty; }
+.emptyLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding-block: 0.65rem;
+  font-family: var(--font-mono);
+  font-size: var(--fs-micro);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-primary);
+  border-bottom: var(--hair) solid var(--border-strong);
+  transition: color var(--dur-fast), border-color var(--dur-fast), gap var(--dur-fast) var(--ease-out-expo);
+}
+@media (hover: hover) {
+  .emptyLink:hover { color: var(--accent); border-bottom-color: currentColor; gap: 0.75rem; transition-duration: var(--dur-quick); }
+}
+.emptyLink:active, .emptyLink[data-press] { color: var(--accent); transition-duration: var(--dur-quick); }
+
+/* ---- narrower screens ------------------------------------------------ */
+@media (max-width: 1100px) {
+  .post { grid-template-columns: minmax(7.5rem, 10rem) minmax(0, 1fr) minmax(10rem, 15rem); grid-template-areas: 'meta text cover'; }
+  .arrow { display: none; }
+}
+/* A phone reads a post's row top to bottom: its picture, when it has one, then
+   the date line, the title and the words. */
+@media (max-width: 720px) {
+  .post, .post[data-cover] {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas: 'cover' 'meta' 'text';
+    row-gap: var(--sp-3);
+  }
+  .post:not([data-cover]) .text { grid-column: auto; }
+  .cover { aspect-ratio: 16 / 9; margin-bottom: var(--sp-2); }
+  .meta { flex-direction: row; flex-wrap: wrap; gap: 0.4rem 1rem; padding-top: 0; }
+}
