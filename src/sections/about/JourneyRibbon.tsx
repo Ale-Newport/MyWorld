@@ -39,6 +39,8 @@ interface Station {
   mode: number
   /** Lines the detail wraps to (1–2). */
   dl: number
+  /** Lines the title wraps to (1–2): a name wider than its label folds rather than being cut. */
+  tl: number
   side: Side
   x: number
   y: number
@@ -149,9 +151,9 @@ const LH = { mono: 1.5, title: 1.2, detail: 1.34, words: 1.7 }
 const GAP = 2
 const MONO = { mono: true, tracking: 0.18 }
 
-function labelHeight(mode: number, dl: number, t: Layout['type']) {
+function labelHeight(mode: number, dl: number, t: Layout['type'], tl = 1) {
   const mono = t.mono * LH.mono
-  const title = t.title * LH.title
+  const title = t.title * LH.title * tl
   if (mode === 3) return mono + title + dl * t.detail * LH.detail + GAP * 2
   if (mode === 2) return mono + title + GAP
   if (mode === 1) return Math.max(mono, title)
@@ -159,6 +161,12 @@ function labelHeight(mode: number, dl: number, t: Layout['type']) {
 }
 
 const dateOf = (m: Milestone, mode: number) => (mode === 1 ? m.year : m.when || m.year)
+
+/** How many lines a milestone's title needs in a label `width` wide: beside its year (mode 1) or on its own. */
+function titleLines(m: Milestone, mode: number, t: Layout['type'], width: number) {
+  const room = mode === 1 ? width - textWidth(dateOf(m, mode).toUpperCase(), t.mono, MONO) - t.title * 0.55 : width
+  return textWidth(m.title, t.title, { weight: 500, tracking: -0.015 }) > room + 1 ? 2 : 1
+}
 
 function labelWidth(m: Milestone, mode: number, t: Layout['type']) {
   const date = textWidth(dateOf(m, mode).toUpperCase(), t.mono, MONO)
@@ -252,7 +260,7 @@ function place(size: Size, milestones: Milestone[], from: string[], to: string[]
   const wordsH = (lines: string[]) => lines.length * type.mono * LH.words
 
   const list: Station[] = []
-  const base = { mode: 0, dl: 1, side: 'right' as Side, x: 0, y: 0, lx: 0, ly: 0, lw: 0, lh: 0, align: 'left' as const, at: 0 }
+  const base = { mode: 0, dl: 1, tl: 1, side: 'right' as Side, x: 0, y: 0, lx: 0, ly: 0, lw: 0, lh: 0, align: 'left' as const, at: 0 }
   list.push({ ...base, key: 'from', kind: 'from', lines: from })
   milestones.forEach((m, i) => {
     const labelled = !opt.thin || i === 0 || i === milestones.length - 1 || i % 2 === 0
@@ -291,7 +299,8 @@ function place(size: Size, milestones: Milestone[], from: string[], to: string[]
         st.lh = wordsH(st.lines)
       } else {
         if (st.mode === 3) st.dl = textWidth(st.m!.detail, type.detail) > st.lw ? 2 : 1
-        st.lh = labelHeight(st.mode, st.dl, type)
+        if (st.mode) st.tl = titleLines(st.m!, st.mode, type, st.lw)
+        st.lh = labelHeight(st.mode, st.dl, type, st.tl)
       }
       if ((st.lines ? st.lines.length : st.mode) && st.lw < Math.min(96, w * 0.3)) return null
     }
@@ -364,7 +373,8 @@ function place(size: Size, milestones: Milestone[], from: string[], to: string[]
       const natural = st.mode ? labelWidth(st.m!, st.mode, type) : 0
       if (st.mode === 3) st.dl = textWidth(st.m!.detail, type.detail) > maxLabel ? 2 : 1
       st.lw = st.mode ? Math.min(maxLabel, Math.max(natural, st.mode === 3 ? Math.min(maxLabel, textWidth(st.m!.detail, type.detail)) : 0) + 2) : 0
-      st.lh = labelHeight(st.mode, st.dl, type)
+      if (st.mode) st.tl = titleLines(st.m!, st.mode, type, st.lw)
+      st.lh = labelHeight(st.mode, st.dl, type, st.tl)
     }
     const minStep = Math.max(band * 1.5, 22)
     const xs: number[] = [x0]
@@ -722,12 +732,12 @@ export default function JourneyRibbon({ progress, active, reducedMotion, intensi
             ) : st.mode === 1 ? (
               <span className={styles.line}>
                 <span className={styles.when}>{m!.year}</span>
-                <span className={styles.title}>{m!.title}</span>
+                <span className={styles.title} data-lines={st.tl}>{m!.title}</span>
               </span>
             ) : (
               <>
                 <span className={styles.when}>{dateOf(m!, st.mode)}</span>
-                <span className={styles.title}>{m!.title}</span>
+                <span className={styles.title} data-lines={st.tl}>{m!.title}</span>
                 {st.mode === 3 && (
                   <span className={styles.detail} data-lines={st.dl}>
                     {m!.detail}

@@ -73,7 +73,7 @@ export function paintProjectFace(context, width, height, project, options = {}) 
     context.lineWidth = 3;
     context.strokeRect(m.x, m.y, m.size, m.size);
     const statusY = m.y + m.size + 40;
-    paintTag(context, project.link ? 'OPEN TO VISIT  ↗' : 'PRIVATE SOURCE', m.x - 16, statusY, 42, fonts, { fill: project.link ? theme.ribbon : TOKENS.woodDeep, ink: theme.ribbonInk, px: 20 });
+    paintTag(context, project.link ? 'OPEN TO VISIT  \u2197\uFE0E' : 'PRIVATE SOURCE', m.x - 16, statusY, 42, fonts, { fill: project.link ? theme.ribbon : TOKENS.woodDeep, ink: theme.ribbonInk, px: 20 });
     if (options.index !== undefined && options.total) {
         const label = `${String(options.index + 1).padStart(2, '0')}`;
         context.textBaseline = 'alphabetic';

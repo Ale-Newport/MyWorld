@@ -140,7 +140,7 @@ export function paintProjectFace(context: CanvasRenderingContext2D, width: numbe
 
   // Under the mat: whether there is something to open, and where in the run this is.
   const statusY = m.y + m.size + 40
-  paintTag(context, project.link ? 'OPEN TO VISIT  ↗' : 'PRIVATE SOURCE', m.x - 16, statusY, 42, fonts, { fill: project.link ? theme.ribbon : TOKENS.woodDeep, ink: theme.ribbonInk, px: 20 })
+  paintTag(context, project.link ? 'OPEN TO VISIT  \u2197\uFE0E' : 'PRIVATE SOURCE', m.x - 16, statusY, 42, fonts, { fill: project.link ? theme.ribbon : TOKENS.woodDeep, ink: theme.ribbonInk, px: 20 })
   if (options.index !== undefined && options.total) {
     const label = `${String(options.index + 1).padStart(2, '0')}`
     context.textBaseline = 'alphabetic'

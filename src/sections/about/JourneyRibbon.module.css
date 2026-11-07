@@ -78,6 +78,14 @@
 }
 .line .when { flex: none; }
 .line .title { min-width: 0; }
+.title[data-lines='2'] {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  white-space: normal;
+  text-wrap: balance;
+}
 .detail[data-lines='2'] {
   display: -webkit-box;
   -webkit-box-orient: vertical;

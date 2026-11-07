@@ -11,6 +11,7 @@ import { WorldMap } from './WorldMap'
 import { WorldControls } from './WorldControls'
 import { achievementGroups } from '@/content/achievements'
 import styles from './world.module.css'
+import { Arrow } from '@/components/ui/Arrow'
 
 /* ============================================================
    OVERLAYS
@@ -159,7 +160,7 @@ function ProjectPanel({ id }: { id: string }) {
             target={link.href.startsWith('http') ? '_blank' : undefined}
             rel={link.href.startsWith('http') ? 'noreferrer noopener' : undefined}
           >
-            {link.label} ↗
+            {link.label} <Arrow />
           </a>
         ))}
         {panel.projectSlug && (

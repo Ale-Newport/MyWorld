@@ -49,7 +49,7 @@ test('blank fields draw nothing: no medal for a whitespace metric, no pills for 
   assert.ok(!said(blank).includes('★'), 'whitespace is not a figure');
   assert.ok(!said(blank).some(t => /^\s*$/.test(t)), 'no blank text is drawn');
   assert.ok(!said(blank).some(t => t.includes('·') && t.trim() === '·'), 'no bare ribbon dot');
-  assert.ok(said(blank).includes('OPEN TO VISIT  ↗') || said(blank).includes('PRIVATE SOURCE'), 'the status tag stays');
+  assert.ok(said(blank).includes('OPEN TO VISIT  ↗\uFE0E') || said(blank).includes('PRIVATE SOURCE'), 'the status tag stays');
 });
 
 test('cleanTechs trims and drops blanks', () => {
@@ -115,7 +115,7 @@ test('the admin preview is the whole board: the title above the sheet, nothing o
   assert.ok(title, 'the title is drawn');
   assert.ok(title.y < PLATE_H, `title baseline ${title.y} is on the plate`);
   assert.ok(context.texts.some(t => t.text.startsWith('github.com') || t.text === 'Private source'), 'the link chip is drawn');
-  const sheet = context.texts.find(t => t.text === 'OPEN TO VISIT  ↗' || t.text === 'PRIVATE SOURCE');
+  const sheet = context.texts.find(t => t.text === 'OPEN TO VISIT  ↗\uFE0E' || t.text === 'PRIVATE SOURCE');
   assert.ok(sheet && sheet.y > PLATE_H, 'the sheet is below the plate');
   for (const t of context.texts) assert.ok(t.y >= 0 && t.y <= BOARD_H, `"${t.text}" at y ${t.y} is inside the ${BOARD_H}px canvas`);
 });
