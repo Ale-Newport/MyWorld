@@ -13,6 +13,7 @@ import {
   type DistrictId,
 } from '@/content/world'
 import styles from './map.module.css'
+import { DEFAULT_ACCENT } from '@/styles/accent'
 import {
   BRIDGES,
   CIRCUIT,
@@ -120,7 +121,7 @@ export function WorldMap({ store, getGame }: Props) {
     const ink = css.getPropertyValue('--ink').trim() || '#0c0c0d'
     const ink3 = css.getPropertyValue('--ink-3').trim() || '#75757c'
     const ink4 = css.getPropertyValue('--ink-4').trim() || '#a6a6ad'
-    const accent = css.getPropertyValue('--accent').trim() || '#d4491f'
+    const accent = css.getPropertyValue('--accent').trim() || DEFAULT_ACCENT
     const paper2 = css.getPropertyValue('--paper-2').trim() || '#eceae5'
 
     /* ---- the ground, painted from the world's own mask ----

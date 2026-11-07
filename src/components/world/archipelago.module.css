@@ -5,10 +5,34 @@
   position: fixed;
   inset: 0;
   z-index: 60;
-  background: #0f1804;
+  /* Never seen on the screen — the frame, or the veil below, covers it. See UNDER THE PHONE'S BARS, below. */
+  background: linear-gradient(#c19c70, #aba462);
   color: var(--text-primary);
 }
+/* UNDER THE PHONE'S BARS. iOS Safari (26) draws nothing of a page under its status bar or behind its floating toolbar while
+   fixed layers cover the screen, as /world's do: it paints each strip in one colour it takes from the page. On the simulator
+   (iOS 26.3; scratch pages, not shipped) it asks the topmost fixed layer at each edge — a background-color wins over any image,
+   a vertical gradient gives the top strip and the bottom strip a colour each, a transparent layer sends it on to what is
+   below or to <html>'s colour — and it reads them at the first paint. Later changes were not reliably picked up: a gradient
+   changed at run time made it fall through to the frame's own dark background instead, so this one never changes. It is the
+   world's opening view, the plaza's sand along the top and the foot (runtime/edges.js reported #c19c70 and #aba462 at
+   390 x 844): what the strips show whenever Safari reads this layer. The hedge's dark in the first paint of a direct visit
+   (the veil below, <html>) is what it reads instead there. */
+
+/* Edge to edge: under a notch and the rounded corners as well (viewport-fit=cover). The runtime keeps its buttons clear of
+   them with the insets the probe below carries. */
 .stage { position: absolute; inset: 0; }
+/* The device's safe area, as four paddings the frame reads (env() is 0 inside it; portfolio-theme.js). Never drawn. */
+.safe {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 0;
+  height: 0;
+  padding: env(safe-area-inset-top, 0px) env(safe-area-inset-right, 0px) env(safe-area-inset-bottom, 0px) env(safe-area-inset-left, 0px);
+  visibility: hidden;
+  pointer-events: none;
+}
 .player { display: block; width: 100%; height: 100%; border: 0; }
 /* Until the world is ready, the runtime's own page is under a veil of the hedge's dark: its buttons are in the frame's
    first paint, and a direct arrival has nothing else over them until its leaves are drawn (the veil lifts as the world

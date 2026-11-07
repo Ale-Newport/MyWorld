@@ -69,7 +69,7 @@
      paintNumeral(ctx, value, rect, { color?, shadow?, weight? }) big carved digits fitted to rect
      paintPips(ctx, count, total, rect)       a row of lit/unlit pips
      signFonts() -> { sans, mono }            Geist as canvas font lists (fallbacks when standalone)
-     TOKENS                                   ink #1a1712, cream, paper, timber, terracotta, teal, ochre ...
+     TOKENS                                   ink #1a1712, cream, paper, timber, accent (the site's), teal, ochre ...
    Contrast (checked in tests): ink on paper 12:1, cream on woodDeep 8.8:1, ribbon pairs >= 4.5:1.
 
    ------------------------------------------------------------

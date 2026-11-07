@@ -1,10 +1,11 @@
 /* The focus bar (focus-ui.js): the way out of a focused world board. Added to the page by that module, on demand.
    Colours and type come from the portfolio theme tokens when the page has them (body.player) and fall back to the same
-   values when it has not (the studio), so the bar is the same cream and rust either way. */
+   values when it has not (the studio), so the bar is the same cream and accent either way. The safe area is the host page's
+   (--safe-*, written by portfolio-theme.js: env() is 0 inside the world's frame), or the page's own env() when it has none. */
 
 #focus-bar {
-  --fb-accent: var(--accent, #bf4f27);
-  --fb-accent-deep: var(--accent-deep, #8d3515);
+  --fb-accent: var(--accent, #2f6b3f);
+  --fb-accent-deep: var(--accent-deep, color-mix(in srgb, var(--fb-accent) 70%, #000));
   --fb-ink: var(--text-primary, #1a1712);
   --fb-panel: var(--panel, rgba(251, 247, 239, .94));
   --fb-paper: var(--bg-primary, #f6f0e6);
@@ -12,13 +13,13 @@
   --fb-font: var(--font-mono, ui-monospace, Menlo, monospace);
   position: fixed;
   left: 50%;
-  bottom: max(18px, calc(env(safe-area-inset-bottom) + 10px));
+  bottom: max(18px, calc(var(--safe-bottom, env(safe-area-inset-bottom, 0px)) + 10px));
   z-index: 13;
   display: flex;
   align-items: center;
   gap: 10px;
   box-sizing: border-box;
-  max-width: calc(100vw - 24px - env(safe-area-inset-left) - env(safe-area-inset-right));
+  max-width: calc(100vw - 24px - var(--safe-left, env(safe-area-inset-left, 0px)) - var(--safe-right, env(safe-area-inset-right, 0px)));
   padding: 8px;
   background: var(--fb-panel);
   border: 1px solid var(--panel-edge, rgba(90, 70, 40, .14));
@@ -70,7 +71,7 @@
 #focus-bar .focus-btn:focus-visible { outline: 3px solid var(--fb-ink); outline-offset: 2px; }
 #focus-bar .focus-btn svg { flex: none; }
 
-/* Back is the way out: the one filled button. #fff7ef on #bf4f27 is 4.5:1, on the hover tone 8:1. */
+/* Back is the way out: the one filled button, in the site's accent. #fff7ef on the default #2f6b3f is 6:1, on its pressed tone 9:1. */
 #focus-bar .focus-back { background: var(--fb-accent); border-color: var(--fb-accent); color: #fff7ef; padding-left: 16px; }
 @media (hover: hover) {
   #focus-bar .focus-back:hover { background: var(--fb-accent-deep); border-color: var(--fb-accent-deep); color: #fff7ef; }
@@ -116,7 +117,7 @@
 /* A finger has no Esc, and a phone's bar fills its width: the count and the buttons share the second row. */
 @media (pointer: coarse) { #focus-bar .focus-back kbd { display: none; } }
 @media (max-width: 560px) {
-  #focus-bar { flex-wrap: wrap; width: calc(100vw - 24px - env(safe-area-inset-left) - env(safe-area-inset-right)); padding: 8px; gap: 8px; border-radius: 22px; }
+  #focus-bar { flex-wrap: wrap; width: calc(100vw - 24px - var(--safe-left, env(safe-area-inset-left, 0px)) - var(--safe-right, env(safe-area-inset-right, 0px))); padding: 8px; gap: 8px; border-radius: 22px; }
   #focus-bar .focus-back { flex: 1 1 100%; }
   #focus-bar .focus-back kbd { display: none; }
   #focus-bar .focus-steps { flex: 1 1 0; justify-content: space-between; min-width: 0; }
@@ -129,7 +130,7 @@
 }
 /* A phone on its side has height for one slim row and nothing to spare above it. */
 @media (max-height: 500px) {
-  #focus-bar { bottom: max(8px, env(safe-area-inset-bottom)); flex-wrap: nowrap; width: auto; padding: 6px; gap: 8px; border-radius: 20px; }
+  #focus-bar { bottom: max(8px, var(--safe-bottom, env(safe-area-inset-bottom, 0px))); flex-wrap: nowrap; width: auto; padding: 6px; gap: 8px; border-radius: 20px; }
   #focus-bar .focus-btn { min-height: 44px; min-width: 44px; padding: 0 14px; }
   #focus-bar .focus-step { width: 44px; padding: 0; }
   #focus-bar .focus-back { flex: 0 0 auto; min-height: 48px; }
@@ -151,8 +152,8 @@ body[data-focus] :is(#touch-controls, #interact-action, #drive-hud) { display: n
 @media (max-height: 500px), (orientation: landscape) and (max-height: 660px) and (max-width: 1100px) {
   body[data-focus] #player-nav { visibility: hidden; opacity: 0; pointer-events: none; transition: opacity .16s ease, visibility 0s linear .16s; }
   html body[data-focus] #gameplay-hud {
-    top: max(8px, env(safe-area-inset-top));
-    left: max(8px, env(safe-area-inset-left));
+    top: max(8px, var(--safe-top, env(safe-area-inset-top, 0px)));
+    left: max(8px, var(--safe-left, env(safe-area-inset-left, 0px)));
     max-width: min(240px, calc(100vw - 16px));
     padding: 6px 10px;
     font-size: 11px;

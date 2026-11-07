@@ -1,5 +1,6 @@
 import {Nipple} from '../portfolio/world/input/Nipple.js';
 import {PLACEMENT} from './placement.js';
+import {ACCENT} from '../portfolio/world2/signs/accent.js';
 /* THE TOUCH JOYSTICK ON THE ISLAND — /world2's ring on the ground around
    the car (portfolio/world/input/Nipple.js, compiled from
    src/world/input/Nipple.ts), with the two things /world needs on top.
@@ -21,9 +22,12 @@ import {PLACEMENT} from './placement.js';
    CANCEL. Letting go without a tap: the map, a teleport, a recovery, the
    plane, a run that holds the car, a blur or another device took over
    while a finger was down. A finger lifted inside the inner circle is a
-   tap, and a tap hops; a release that is not a finger lifting must not. */
+   tap, and a tap hops; a release that is not a finger lifting must not.
+
+   COLOUR. The ring fills in the site's accent (portfolio/world2/signs/accent.js) as the finger pulls: it is a control, so it
+   wears the page's signal colour, where /world2's palette gave it the car's vermilion (the car keeps that). */
 export class TouchJoystick extends Nipple{
- constructor(tweens,vehicle){super(tweens);this.vehicle=vehicle;this.ground=vehicle.position.y-PLACEMENT.rest;}
+ constructor(tweens,vehicle){super(tweens);this.vehicle=vehicle;this.ground=vehicle.position.y-PLACEMENT.rest;this.material.uniforms.uFillColor.value.set(ACCENT);}
  /** The ground under the car: where its wheels touch, or — airborne, or in the plane — where they last did. */
  groundLevel(){let y=0,n=0;for(const w of this.vehicle.wheels.items)if(w.inContact&&w.contactPoint){y+=w.contactPoint.y;n++;}if(n)this.ground=y/n;return this.ground;}
  /** Nipple.setCoordinates, measured from that ground instead of y = 0. */

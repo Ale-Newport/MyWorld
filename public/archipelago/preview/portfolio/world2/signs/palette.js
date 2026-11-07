@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { ACCENT, ACCENT_DEEP } from './accent.js';
 export const SWATCH = {
     grey: 0, sand: 1, woodDark: 2, sky: 3, silver: 4, dark: 5, slate: 6, peach: 7,
     gold: 8, sage: 9, salmon: 10, tan: 11, olive: 12, khaki: 13, copper: 14, orange: 15,
@@ -25,8 +26,8 @@ export const TOKENS = {
     copper: '#b36d45',
     timber: '#f8a658',
     gold: '#e4a90c',
-    terracotta: '#bf4f27',
-    terracottaDeep: '#8d3515',
+    accent: ACCENT,
+    accentDeep: ACCENT_DEEP,
     teal: '#2f6f5e',
     leaf: '#4b6a1d',
     sage: '#91ad78',

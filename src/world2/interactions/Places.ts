@@ -314,7 +314,7 @@ export function paintNotice(context: CanvasRenderingContext2D, width: number, he
   return metrics
 }
 
-/** One pinned card: a parchment sheet at a slight angle, its label in terracotta mono, its body in ink. */
+/** One pinned card: a parchment sheet at a slight angle, its label in the accent, mono, its body in ink. */
 function paintNote(context: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, tilt: number, note: NoticeNote, fonts: SignFonts, k: number) {
   context.save()
   context.translate(x + w / 2, y + h / 2)
@@ -325,7 +325,7 @@ function paintNote(context: CanvasRenderingContext2D, x: number, y: number, w: n
   context.shadowColor = 'transparent'; context.shadowBlur = 0; context.shadowOffsetY = 0
   const pad = 18 * k
   const label = fitText(context, note.label, { maxWidth: w - pad * 2, minPx: 18 * k, maxPx: 26 * k, weight: 700, family: fonts.mono, lineHeight: 1 })
-  context.fillStyle = TOKENS.terracottaDeep
+  context.fillStyle = TOKENS.accentDeep
   drawFit(context, label, pad, pad * 0.8, 'left')
   context.fillStyle = 'rgba(87,78,55,0.45)'
   context.fillRect(pad, pad * 0.8 + label.px + 6 * k, w - pad * 2, 2 * k)
@@ -335,7 +335,7 @@ function paintNote(context: CanvasRenderingContext2D, x: number, y: number, w: n
   drawFit(context, body, pad, top, 'left')
   // The pin.
   context.fillStyle = 'rgba(0,0,0,0.3)'; context.beginPath(); context.arc(w - pad * 0.9 + 1.5 * k, pad * 0.9 + 2.5 * k, 7 * k, 0, Math.PI * 2); context.fill()
-  context.fillStyle = TOKENS.terracotta; context.beginPath(); context.arc(w - pad * 0.9, pad * 0.9, 7 * k, 0, Math.PI * 2); context.fill()
+  context.fillStyle = TOKENS.accent; context.beginPath(); context.arc(w - pad * 0.9, pad * 0.9, 7 * k, 0, Math.PI * 2); context.fill()
   context.fillStyle = 'rgba(255,255,255,0.45)'; context.beginPath(); context.arc(w - pad * 0.9 - 2 * k, pad * 0.9 - 2.2 * k, 2.6 * k, 0, Math.PI * 2); context.fill()
   context.restore()
   return body
@@ -368,7 +368,7 @@ function paintCounter(context: CanvasRenderingContext2D, face: CounterFace): voi
 }
 
 export const paintAltarCounter = (context: CanvasRenderingContext2D, offerings: number): void =>
-  paintCounter(context, { label: 'OFFERINGS', value: String(offerings).padStart(3, '0'), caption: 'this browser', accent: TOKENS.terracotta, seed: 'altar' })
+  paintCounter(context, { label: 'OFFERINGS', value: String(offerings).padStart(3, '0'), caption: 'this browser', accent: TOKENS.accent, seed: 'altar' })
 
 export const paintCookieCounter = (context: CanvasRenderingContext2D, cookies: number): void =>
   paintCounter(context, { label: 'COOKIES TAKEN', value: String(cookies), accent: TOKENS.gold, seed: 'cookies' })

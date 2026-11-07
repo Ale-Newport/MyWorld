@@ -23,7 +23,9 @@ export const STATIC_TIME = 0.6
 type Painter = (c: CanvasRenderingContext2D, t: number, rand: () => number) => void
 
 const INK = TOKENS.ink, INK2 = TOKENS.ink2, PAPER = TOKENS.paper
-const TERRA = TOKENS.terracotta, TEAL = TOKENS.teal, GOLD = TOKENS.gold, LEAF = TOKENS.leaf, WOOD = TOKENS.woodDark, TAN = '#a47e50', SAND = '#e9d3a3'
+/* The site's accent where a picture highlights something; RED where the picture means red — a falling price, a heart or a diamond,
+   a window's close button — which stays red whatever colour the editor chooses (it was the old terracotta, and still reads as red). */
+const ACCENT = TOKENS.accent, RED = '#bf4f27', TEAL = TOKENS.teal, GOLD = TOKENS.gold, LEAF = TOKENS.leaf, WOOD = TOKENS.woodDark, TAN = '#a47e50', SAND = '#e9d3a3'
 
 const dot = (c: CanvasRenderingContext2D, x: number, y: number, r: number, fill: string) => { c.fillStyle = fill; c.beginPath(); c.arc(x, y, r, 0, Math.PI * 2); c.fill() }
 const line = (c: CanvasRenderingContext2D, x0: number, y0: number, x1: number, y1: number, w: number, stroke: string) => { c.strokeStyle = stroke; c.lineWidth = w; c.lineCap = 'round'; c.beginPath(); c.moveTo(x0, y0); c.lineTo(x1, y1); c.stroke() }
@@ -38,7 +40,7 @@ const chess: Painter = (c, t) => {
   c.fillStyle = 'rgba(47,111,94,0.22)'; c.fillRect(left, y - cell * 0.5, cell * 8, cell)
   line(c, left, y, left + cell * 8, y, 3, TEAL)
   const found = Math.floor(scan * 8)
-  c.lineWidth = 2.5; c.strokeStyle = TERRA
+  c.lineWidth = 2.5; c.strokeStyle = ACCENT
   for (let r = 0; r < found; r++) for (const q of [1, 3, 6]) { if ((r * 3 + q) % 4) continue; c.strokeRect(left + q * cell + 3, top + r * cell + 3, cell - 6, cell - 6) }
   const from = [left + cell * 4.5, top + cell * 6.5], to = [left + cell * 4.5, top + cell * 3.6]
   line(c, from[0], from[1], to[0], to[1] + 10, 6, INK)
@@ -55,19 +57,19 @@ const stock: Painter = (c, t, rand) => {
     value = Math.max(52, Math.min(190, value + move))
     const up = value < open, x = 28 + i * 13.4, hi = Math.min(open, value) - 6 - (i % 3) * 2, lo = Math.max(open, value) + 6 + (i % 4) * 2
     c.strokeStyle = INK; c.lineWidth = 1.6; c.beginPath(); c.moveTo(x, hi); c.lineTo(x, lo); c.stroke()
-    c.fillStyle = up ? TEAL : TERRA
+    c.fillStyle = up ? TEAL : RED
     c.fillRect(x - 4.6, Math.min(open, value), 9.2, Math.max(3, Math.abs(value - open)))
   }
   c.strokeStyle = INK2; c.lineWidth = 2; c.beginPath(); c.moveTo(20, 214); c.lineTo(236, 214); c.stroke()
   c.fillStyle = INK; c.font = mono(15); c.textAlign = 'left'
   const shift = (t * 30) % 90
-  for (let i = 0; i < 4; i++) { c.fillStyle = i % 2 ? TEAL : TERRA; c.fillText(i % 2 ? '▲ BUY' : '▼ SELL', 22 + i * 62 - shift * 0.0, 238) }
+  for (let i = 0; i < 4; i++) { c.fillStyle = i % 2 ? TEAL : RED; c.fillText(i % 2 ? '▲ BUY' : '▼ SELL', 22 + i * 62 - shift * 0.0, 238) }
   void rand
 }
 
 const orbit: Painter = (c, t) => {
-  const colours = [GOLD, TERRA, TEAL]
-  dot(c, 128, 128, 13, GOLD); dot(c, 128, 128, 6, TERRA)
+  const colours = [GOLD, ACCENT, TEAL]
+  dot(c, 128, 128, 13, GOLD); dot(c, 128, 128, 6, ACCENT)
   for (let i = 0; i < 3; i++) {
     const phase = t * (0.7 + i * 0.25) + (i * Math.PI * 2) / 3
     const radius = 46 + i * 28, wobble = Math.sin(t * 0.9 + i) * radius * 0.12
@@ -87,7 +89,7 @@ const gym: Painter = (c, t) => {
   dot(c, sh[0], sh[1] - 22, 17, INK)
   limb(sh, -34, 20 - cycle * 44); limb(sh, 34, 20 - cycle * 44); limb(hip, -26, 52); limb(hip, 26, 52)
   const barY = sh[1] + 20 - cycle * 44
-  line(c, sh[0] - 70, barY, sh[0] + 70, barY, 7, TERRA)
+  line(c, sh[0] - 70, barY, sh[0] + 70, barY, 7, ACCENT)
   for (const s of [-1, 1]) { c.fillStyle = WOOD; c.fillRect(sh[0] + s * 70 - 7, barY - 20, 14, 40) }
   c.fillStyle = INK; c.font = mono(24); c.textAlign = 'center'
   c.fillText(`REP ${String(Math.floor(t * 1.2) % 12 + 1).padStart(2, '0')}`, 128, 236)
@@ -101,14 +103,14 @@ const pipeline: Painter = (c, t) => {
     const lit = Math.max(0, 1 - Math.abs(active - i))
     if (i) line(c, x - 47 + 17, y, x - 17, y, 3, INK2)
     dot(c, x, y, 17 + lit * 5, 'rgba(26,23,18,0.9)')
-    dot(c, x, y, 14.5 + lit * 5, lit > 0.05 ? TERRA : PAPER)
+    dot(c, x, y, 14.5 + lit * 5, lit > 0.05 ? ACCENT : PAPER)
     c.fillStyle = lit > 0.05 ? TOKENS.cream : INK; c.font = `700 ${14 + lit * 3}px ui-sans-serif, system-ui`; c.textAlign = 'center'
     c.fillText(name, x, y + 5)
     c.fillStyle = TAN; c.fillRect(x - 10, y + 36, 20, 6)
-    c.fillStyle = lit > 0.05 ? TERRA : TAN; c.fillRect(x - 10, y + 36, 20 * Math.min(1, lit * 1.2), 6)
+    c.fillStyle = lit > 0.05 ? ACCENT : TAN; c.fillRect(x - 10, y + 36, 20 * Math.min(1, lit * 1.2), 6)
   })
   c.strokeStyle = INK; c.lineWidth = 3; c.lineJoin = 'round'
-  c.strokeRect(96, 52, 64, 40); c.fillStyle = TERRA
+  c.strokeRect(96, 52, 64, 40); c.fillStyle = ACCENT
   c.beginPath(); c.moveTo(121, 62); c.lineTo(121, 82); c.lineTo(138, 72); c.closePath(); c.fill()
 }
 
@@ -138,7 +140,7 @@ const timeline: Painter = (c, t) => {
     c.fillStyle = 'rgba(26,23,18,0.18)'; c.fillRect(24, y + 21, 208, 3)
     for (let k = 0; k < 4; k++) {
       const x = 34 + frac(k * 0.26 + row * 0.07 + t * 0.05) * 188
-      c.fillStyle = row % 2 ? TEAL : TERRA
+      c.fillStyle = row % 2 ? TEAL : ACCENT
       c.beginPath(); c.moveTo(x, y + 3); c.lineTo(x + 9, y + 12); c.lineTo(x, y + 21); c.lineTo(x - 9, y + 12); c.closePath(); c.fill()
       c.strokeStyle = INK; c.lineWidth = 1.4; c.stroke()
     }
@@ -164,7 +166,7 @@ const maze: Painter = (c, t) => {
   c.moveTo(left + cell / 2, top + cell / 2)
   for (let i = 0; i < steps; i++) { if (i % 2) y = Math.min(cells - 1, y + 1); else x = Math.min(cells - 1, x + 1); c.lineTo(left + cell * (x + 0.5), top + cell * (y + 0.5)) }
   c.stroke()
-  dot(c, left + cell / 2, top + cell / 2, 6, TERRA)
+  dot(c, left + cell / 2, top + cell / 2, 6, ACCENT)
   dot(c, left + size - cell / 2, top + size - cell / 2, 6, GOLD)
 }
 
@@ -178,7 +180,7 @@ const rings: Painter = (c, t) => {
     const a = (i / 7) * Math.PI * 2 + t * 0.4
     const x = 128 + Math.cos(a) * 62, y = 118 + Math.sin(a) * 40
     line(c, 128, 118, x, y, 2, 'rgba(68,61,49,0.55)')
-    dot(c, x, y, 9, INK); dot(c, x, y, 6.6, i % 2 ? TERRA : TEAL)
+    dot(c, x, y, 9, INK); dot(c, x, y, 6.6, i % 2 ? ACCENT : TEAL)
   }
   dot(c, 128, 118, 17, INK); dot(c, 128, 118, 12, GOLD)
 }
@@ -187,14 +189,14 @@ const browser: Painter = (c, t) => {
   c.fillStyle = INK; c.fillRect(24, 36, 208, 184)
   c.fillStyle = PAPER; c.fillRect(27, 58, 202, 159)
   c.fillStyle = WOOD; c.fillRect(27, 39, 202, 19)
-  for (const [i, col] of [TERRA, GOLD, LEAF].entries()) dot(c, 38 + i * 12, 48.5, 3.6, col)
+  for (const [i, col] of [RED, GOLD, LEAF].entries()) dot(c, 38 + i * 12, 48.5, 3.6, col)
   c.fillStyle = TOKENS.paperHi; c.fillRect(86, 43, 130, 11)
   c.save(); c.beginPath(); c.rect(27, 58, 202, 159); c.clip()
   const scroll = (Math.sin(t * 0.8) * 0.5 + 0.5) * 60
   c.translate(0, -scroll)
   c.fillStyle = TEAL; c.fillRect(38, 70, 180, 54)
   c.fillStyle = TOKENS.cream; c.fillRect(48, 82, 90, 9); c.fillRect(48, 98, 56, 6)
-  c.fillStyle = TERRA; c.fillRect(150, 94, 52, 18)
+  c.fillStyle = ACCENT; c.fillRect(150, 94, 52, 18)
   for (let i = 0; i < 3; i++) { c.fillStyle = TAN; c.fillRect(38 + i * 62, 136, 56, 40); c.fillStyle = INK2; c.fillRect(44 + i * 62, 184, 42, 5); c.fillRect(44 + i * 62, 194, 28, 5) }
   c.fillStyle = TAN; c.fillRect(38, 214, 180, 30)
   c.restore()
@@ -210,8 +212,8 @@ const cards: Painter = (c, t) => {
     c.fillStyle = 'rgba(0,0,0,0.2)'; c.fillRect(-35, -52, 76, 108)
     c.fillStyle = TOKENS.paperHi; c.fillRect(-38, -56, 76, 108); c.strokeStyle = INK; c.lineWidth = 2.4; c.strokeRect(-38, -56, 76, 108)
     const red = i % 2 === 0
-    dot(c, 0, 0, 14, red ? TERRA : INK)
-    c.fillStyle = red ? TERRA : INK; c.font = '700 18px ui-sans-serif, system-ui'; c.textAlign = 'left'; c.fillText(String(i + 1 + (i % 3)), -31, -36)
+    dot(c, 0, 0, 14, red ? RED : INK)
+    c.fillStyle = red ? RED : INK; c.font = '700 18px ui-sans-serif, system-ui'; c.textAlign = 'left'; c.fillText(String(i + 1 + (i % 3)), -31, -36)
     c.restore()
   }
 }
@@ -225,7 +227,7 @@ const jobs: Painter = (c, t) => {
     c.fillStyle = 'rgba(0,0,0,0.2)'; c.fillRect(-26, -30, 56, 66)
     c.fillStyle = i === picked ? GOLD : TOKENS.paperHi; c.fillRect(-28, -32, 56, 66)
     c.fillStyle = INK2; for (let l = 0; l < 4; l++) c.fillRect(-20, -18 + l * 11, l === 0 ? 34 : 40, 4)
-    dot(c, 0, -32, 5, i === picked ? TERRA : TEAL)
+    dot(c, 0, -32, 5, i === picked ? ACCENT : TEAL)
     c.restore()
   }
 }
@@ -247,7 +249,7 @@ const voxel: Painter = (c, t) => {
 
 const books: Painter = (c, t) => {
   c.fillStyle = WOOD; c.fillRect(20, 208, 216, 12); c.fillRect(20, 108, 216, 10)
-  const colours = [TERRA, TEAL, GOLD, LEAF, '#7e3115', TAN]
+  const colours = [ACCENT, TEAL, GOLD, LEAF, '#7e3115', TAN]
   let x = 30
   for (const [row, base] of [[0, 108], [1, 208]] as [number, number][]) {
     x = 30

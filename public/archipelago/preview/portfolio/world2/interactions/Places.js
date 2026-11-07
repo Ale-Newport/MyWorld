@@ -238,7 +238,7 @@ function paintNote(context, x, y, w, h, tilt, note, fonts, k) {
     context.shadowOffsetY = 0;
     const pad = 18 * k;
     const label = fitText(context, note.label, { maxWidth: w - pad * 2, minPx: 18 * k, maxPx: 26 * k, weight: 700, family: fonts.mono, lineHeight: 1 });
-    context.fillStyle = TOKENS.terracottaDeep;
+    context.fillStyle = TOKENS.accentDeep;
     drawFit(context, label, pad, pad * 0.8, 'left');
     context.fillStyle = 'rgba(87,78,55,0.45)';
     context.fillRect(pad, pad * 0.8 + label.px + 6 * k, w - pad * 2, 2 * k);
@@ -250,7 +250,7 @@ function paintNote(context, x, y, w, h, tilt, note, fonts, k) {
     context.beginPath();
     context.arc(w - pad * 0.9 + 1.5 * k, pad * 0.9 + 2.5 * k, 7 * k, 0, Math.PI * 2);
     context.fill();
-    context.fillStyle = TOKENS.terracotta;
+    context.fillStyle = TOKENS.accent;
     context.beginPath();
     context.arc(w - pad * 0.9, pad * 0.9, 7 * k, 0, Math.PI * 2);
     context.fill();
@@ -281,7 +281,7 @@ function paintCounter(context, face) {
         drawFit(context, caption, width / 2, height * 0.8, 'center');
     }
 }
-export const paintAltarCounter = (context, offerings) => paintCounter(context, { label: 'OFFERINGS', value: String(offerings).padStart(3, '0'), caption: 'this browser', accent: TOKENS.terracotta, seed: 'altar' });
+export const paintAltarCounter = (context, offerings) => paintCounter(context, { label: 'OFFERINGS', value: String(offerings).padStart(3, '0'), caption: 'this browser', accent: TOKENS.accent, seed: 'altar' });
 export const paintCookieCounter = (context, cookies) => paintCounter(context, { label: 'COOKIES TAKEN', value: String(cookies), accent: TOKENS.gold, seed: 'cookies' });
 const STORAGE = 'alejandro-world2-places-v1';
 const NOTICE_SINK = 3.2;

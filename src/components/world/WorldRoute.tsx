@@ -9,6 +9,8 @@ import { worldTransition } from './transition'
 import { NO_START, QUIET_MS, copyAt, createLoadingStore, plainError } from './loading'
 import { WorldLoading } from './WorldLoading'
 import { track } from '@/components/analytics/track'
+import { useSite } from '@/cms/context'
+import { DEFAULT_ACCENT, isHex } from '@/styles/accent'
 import styles from './archipelago.module.css'
 
 /* ============================================================
@@ -43,8 +45,33 @@ import styles from './archipelago.module.css'
      runtime → here   hello · progress {stage, value, step?, of?} · ready · error
      here → runtime   live      the first frame of the parting: the world takes input
                       revealed  the leaves are gone: start judging its own frame rate
+     runtime → here   edges {top, bottom}  the colours along the top and the foot of
+                      the picture it has just drawn (runtime/edges.js)
    A runtime that predates `live` and `revealed` ignores them; one
    that never sends `step`/`of` is read by `value` (loading.ts).
+
+   WHAT THE FRAME IS TOLD BEFORE IT STARTS. The site's accent is on
+   the frame element (`data-accent`, set before its address): the
+   runtime paints it into its buttons and bakes it into the signs'
+   textures at module evaluation, before a message could arrive (not
+   on the address: the runtime reads nothing from its URL but the QA
+   switches). The device's safe
+   area cannot be read from inside a frame (env() is 0 there), so
+   the shell carries a probe padded by the four insets
+   (`data-world-safe`), which the runtime reads, and reads again
+   when it is resized (portfolio-theme.js).
+
+   UNDER THE PHONE'S BARS. iOS Safari draws nothing of the frame
+   under its status bar or behind its floating toolbar: it paints
+   both strips in colours it reads from this page's fixed layers,
+   and it reads them at the first paint (archipelago.module.css has
+   what was measured, and why the shell's gradient is static). What
+   does follow the world live is theme-color (Chrome's bar): the
+   runtime reports the colours along the top and the foot of each
+   picture it draws, and the top one is the bar's colour once the
+   leaves have parted. Before that it is the hedge's (the page's
+   viewport, page.tsx), and Next sets the next page's own when the
+   route goes.
    ============================================================ */
 
 const RUNTIME = '/archipelago/preview/index.html'
@@ -58,10 +85,23 @@ const HELLO_RECHECK_MS = 300
 const LEAF_DWELL_MS = 700
 /** Most the reveal waits for a cover that will not verify (it was put away, the canopy cannot draw): the world is ready. */
 const COVER_WAIT_MS = 6_000
+/** The colour along the top of the world's opening view on a phone (runtime/edges.js reported it; archipelago.module.css). */
+const OPENING_TOP = '#c19c70'
+/** The browser's bar colour: written on whichever theme-color element Next has in the head by now (it puts its own in when a
+    segment's viewport commits, so an element held from earlier may no longer be the one in the page). */
+const paintBar = (color: string) => {
+  const meta = document.querySelector<HTMLMetaElement>('meta[name="theme-color"]')
+  if (meta) meta.content = color
+}
 
 export function WorldRoute() {
   const router = useRouter()
   const host = useRef<HTMLDivElement>(null)
+  /* The colour along the top of the world's last picture (runtime/edges.js). */
+  const lastTop = useRef<string | null>(null)
+  /* The site's accent, read once: a change in the editor reaches the world on its next start, not by rebuilding a running one. */
+  const chosen = useSite().settings.accent
+  const [accent] = useState(() => (isHex(chosen) ? chosen.toLowerCase() : DEFAULT_ACCENT))
   const frame = useRef<HTMLIFrameElement | null>(null)
   const phase = useSyncExternalStore(worldTransition.subscribe, () => worldTransition.get().phase, () => 'HOME' as const)
   /* Decided once, at mount: through the leaves, or direct. */
@@ -119,6 +159,13 @@ export function WorldRoute() {
       if (!reduced) await wait(LEAF_DWELL_MS - (performance.now() - leafSince.current))
     }
     const tell = (type: string) => frame.current?.contentWindow?.postMessage({ type }, window.location.origin)
+    /* The colour along the top of the world's last picture (runtime/edges.js) as the browser's bar colour, once the leaves have
+       parted. Written straight onto the meta element — a message twice a second is not a render. */
+    const followEdges = (next: { top?: unknown }) => {
+      if (!isHex(next.top)) return
+      lastTop.current = next.top
+      if (worldTransition.get().phase === 'IN_WORLD') paintBar(next.top)
+    }
     /* The first frame of the parting: the world is the visitor's. */
     const goLive = () => {
       const iframe = frame.current
@@ -144,6 +191,7 @@ export function WorldRoute() {
         if (e.event === 'map_open') track('map_open')
         if (e.event === 'world_activity' && typeof e.name === 'string' && typeof e.action === 'string') track('world_activity', { name: e.name.slice(0, 40), action: e.action.slice(0, 20) })
       }
+      if (data?.type === 'archipelago:edges') followEdges(data as { top?: unknown })
       if (data?.type === 'archipelago:ready') {
         stopListening()
         store.ready()
@@ -161,6 +209,7 @@ export function WorldRoute() {
       endWarm()
       const iframe = document.createElement('iframe')
       iframe.className = styles.player
+      iframe.dataset.accent = accent
       iframe.src = RUNTIME
       iframe.title = 'Archipiélago — drive around Alejandro Newport’s island'
       // `allow` alone: with the legacy `allowfullscreen` attribute beside it the browser warns that `allow` wins.
@@ -191,7 +240,7 @@ export function WorldRoute() {
       frame.current?.remove()
       frame.current = null
     }
-  }, [attempt, arrival, router, store])
+  }, [attempt, arrival, router, store, accent])
 
   /* Leaving before the leaves have parted (Back, a link) uncovers the page left for. */
   useEffect(() => () => {
@@ -199,6 +248,11 @@ export function WorldRoute() {
       if (!document.querySelector('[data-world-shell]')) worldTransition.abort()
     }, 0)
   }, [])
+
+  /* The leaves have parted: the bar takes the world's colour at once, not at its next report. */
+  useEffect(() => {
+    if (phase === 'IN_WORLD') paintBar(lastTop.current ?? OPENING_TOP)
+  }, [phase])
 
   /* After a completed visit, the machine is home again for the next way in. */
   useEffect(() => {
@@ -228,6 +282,8 @@ export function WorldRoute() {
     <>
       <div className={styles.route} data-world-shell="" data-ready={load.ready || undefined}>
         <div ref={host} className={styles.stage} aria-busy={!load.ready} />
+        {/* Padded by the device's safe area, for the frame to read (portfolio-theme.js): never drawn. */}
+        <span className={styles.safe} data-world-safe="" aria-hidden="true" />
       </div>
       {!error && phase !== 'IN_WORLD' && <WorldLoading snapshot={load} leaving={leaving} started={started} direct={!arrival} />}
       <noscript><style>{'[data-world-loader]{display:none}'}</style></noscript>
