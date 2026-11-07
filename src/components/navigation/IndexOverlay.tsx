@@ -6,6 +6,7 @@ import { useSite } from '@/cms/context'
 import { WorldEntryLink } from '@/components/world/WorldEntryLink'
 import { claimEscape, holdScroll } from '@/components/ui/scrollLock'
 import { Arrow } from '@/components/ui/Arrow'
+import { ThemeToggle } from '@/components/site/ThemeToggle'
 import { sitePages, type SitePage, type SitePageId } from './pages'
 import styles from './IndexOverlay.module.css'
 
@@ -59,8 +60,8 @@ function useWorldVisited(): boolean {
   return useSyncExternalStore(subscribeUnlocked, readUnlocked, serverUnlocked)
 }
 
-/** Full-screen list of the site's pages. */
-export function IndexOverlay({ open, onClose, current }: { open: boolean; onClose: () => void; current: SitePageId | null }) {
+/** Full-screen list of the site's pages, and on a phone the bar's switches: sound (on a journey) and the theme. */
+export function IndexOverlay({ open, onClose, current, sound }: { open: boolean; onClose: () => void; current: SitePageId | null; sound?: { on: boolean; toggle: () => void } }) {
   const site = useSite()
   const pages = sitePages(site)
   const sheet = useRef<HTMLDivElement>(null)
@@ -154,6 +155,16 @@ export function IndexOverlay({ open, onClose, current }: { open: boolean; onClos
         <nav className={styles.list} aria-label="Pages">
           <ol className={styles.pages}>{pages.map(row)}</ol>
         </nav>
+
+        <footer className={styles.foot}>
+          {sound && (
+            <button type="button" className={styles.switch} onClick={sound.toggle} aria-pressed={sound.on} data-cursor="link">
+              <span className={styles.soundBars} data-on={sound.on} aria-hidden="true"><i /><i /><i /><i /></span>
+              <span>{sound.on ? 'Sound on' : 'Sound off'}</span>
+            </button>
+          )}
+          <ThemeToggle className={styles.switch} />
+        </footer>
       </div>
     </div>
   )

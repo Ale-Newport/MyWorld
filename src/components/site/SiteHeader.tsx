@@ -9,6 +9,7 @@ import type { SitePageId } from '@/components/navigation/pages'
 import { Cursor } from '@/components/ui/Cursor'
 import { PressFeedback } from '@/components/ui/PressFeedback'
 import { useJourney } from '@/state/journey'
+import { ThemeToggle } from './ThemeToggle'
 import styles from './SiteHeader.module.css'
 
 /* ============================================================
@@ -48,7 +49,10 @@ export function SiteHeader({ current }: { current: SitePageId }) {
           <span className={styles.mark} aria-hidden="true">{profile.initials}</span>
           <span className={styles.brandName}>{profile.name}</span>
         </Link>
-        <SiteNav current={current} className={styles.pages} />
+        <div className={styles.right}>
+          <SiteNav current={current} className={styles.pages} />
+          <ThemeToggle className={styles.themeBtn} labelClassName={styles.btnLabel} />
+        </div>
         <button type="button" className={styles.indexBtn} onClick={() => setOpen(true)} aria-haspopup="dialog" data-cursor="link">
           <span className={styles.indexLines} aria-hidden="true"><i /><i /><i /></span>
           <span className={styles.btnLabel}>INDEX</span>

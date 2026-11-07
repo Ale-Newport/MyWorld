@@ -11,8 +11,9 @@ import styles from './SiteNav.module.css'
    THE PAGES, IN THE TOP BAR
    A desktop has the width to name every page where the eye
    already is, so it gets no index: the pages are printed in the
-   chrome's own mono label, the current one marked. (A phone gets
-   the index instead — see IndexOverlay.)
+   chrome's own mono label, the current one marked. Home is not
+   among them — the mark and the name at the left of the bar are
+   the way home. (A phone gets the index instead — IndexOverlay.)
 
    Every link is on screen from first paint, so none is
    prefetched until it is pointed at or focused: the same bargain
@@ -26,7 +27,7 @@ export function SiteNav({ current, className }: { current: SitePageId | null; cl
   return (
     <nav className={`${styles.nav} ${className ?? ''}`} aria-label="Pages">
       <ul className={styles.list}>
-        {sitePages(site).map((p) => {
+        {sitePages(site).filter((p) => p.id !== 'home').map((p) => {
           const here = p.id === current
           const common = {
             className: styles.link,
