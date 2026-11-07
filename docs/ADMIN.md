@@ -74,7 +74,7 @@ Production runs on **Cloudflare Workers** (OpenNext: `wrangler.jsonc`, `open-nex
 - `content/world/*` is the published world, as compact plain JSON (git keeps a new version as a small difference). The gzip that is served, and its hashes, are made from it by `npm run world:seed` and are not committed.
 - `public/media/<id>/<name>` are the uploads that the website uses.
 
-Pages are prerendered at build and served from Workers Static Assets (`open-next.config.ts` configures the read-only static-assets cache; `npm run cf:build` fills it), so a visit runs no query. **Supabase** (Postgres, through Hyperdrive) is only for what the deployed admin writes: users, sessions, the audit log and the audience's events. The schema is `supabase/migrations/`. Row Level Security is on for every table with no policies, so Supabase's public API exposes nothing; only the site's server connects.
+Pages are prerendered at build and served from Workers Static Assets (`open-next.config.ts` configures the read-only static-assets cache; `npm run cf:build` fills it), so a visit runs no query. **Supabase** (Postgres, through Hyperdrive) is only for what the deployed admin writes: users, sessions, the audit log, the audience's events — and the **blog**. Posts are written in the deployed admin (Blog) and kept as one revisioned document, `blog`, in the `documents`/`revisions` tables; their pictures go into the media library (`media` table, private bucket) and are served at `/blog-media/<id>/<name>`. `/blog`, `/blog/<slug>` and the sitemap are the only public pages rendered on request, from the published revision; everything else stays prerendered. A published post is on the site at the next request: no commit, no build. The schema is `supabase/migrations/` (the blog needs no table of its own). Row Level Security is on for every table with no policies, so Supabase's public API exposes nothing; only the site's server connects.
 
 Create the first administrator against Supabase from your machine: `DATABASE_URL=… npm run admin:create`. Back up with Supabase's own database backups.
 
@@ -86,7 +86,7 @@ A world document is about 118 MB once unzipped, more than a Worker can parse, wh
 
 **The token expires.** Settings shows how long is left (GitHub reports the date), every deployed admin page warns from 30 days before, and Settings → *GitHub token* has the steps: regenerate it on GitHub (Settings → Developer settings → Fine-grained tokens → `portfolio-admin-settings` → Regenerate token), then `npx wrangler secret put GITHUB_TOKEN` from the project folder, then *Check again*.
 
-**Old content data.** Settings → *Old content data* (shown while anything is left) deletes what the previous, database-backed content store left in Supabase: revisions of the site and the world, the media library and the stored files. The live website does not read any of it. Users, sessions, the activity log and the audience's events are kept.
+**Old content data.** Settings → *Old content data* (shown while anything is left) deletes what the previous, database-backed content store left in Supabase: revisions of the site and the world, the media library and the stored files. The live website does not read any of it. Users, sessions, the activity log, the audience's events and the blog (its document, its revisions and every picture a version of it uses) are kept.
 
 ---
 

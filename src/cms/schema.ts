@@ -243,7 +243,8 @@ export const project = z.object({
 export type Project = z.infer<typeof project>
 
 /* ---- blog --------------------------------------------------------- */
-/** A post on /blog. The body is Markdown, rendered by cms/markdown.tsx as React elements (never as HTML). */
+/** A post on /blog. Posts are not part of this document: they are the `blog` document in the database (server/blog.ts),
+    validated with this. The body is Markdown, rendered by cms/markdown.tsx as React elements (never as HTML). */
 export const blogPost = z.object({
   id,
   slug: z.string().min(1).max(80).regex(/^[a-z0-9]+(-[a-z0-9]+)*$/, 'Slugs are lowercase words joined by dashes'),
@@ -305,8 +306,6 @@ export const siteDocument = z.object({
   collections: z.record(z.string().max(80), z.array(z.string().max(120)).max(100)),
   elements: z.record(z.string().max(160), elementOverride),
   additions: z.record(z.string().max(120), z.array(elementNode).max(200)),
-  /** The blog. Absent in documents saved before it existed (migrate.ts supplies an empty one). */
-  posts: z.array(blogPost).max(500).default([]),
 })
 export type SiteDocument = z.infer<typeof siteDocument>
 export type ProjectEntity = Project

@@ -81,8 +81,7 @@ export default async function SiteLayout({ children }: { children: React.ReactNo
       <FirstPaintScript code={themeScript} />
       {typefaceCss(doc.settings.options.typeface) && <style>{typefaceCss(doc.settings.options.typeface)}</style>}
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(personJsonLd).replace(/</g, '\\u003c') }} />
-      {/* Draft posts live in site.json (the deployed admin commits them there) but never reach a visitor's page. */}
-      <SiteContentProvider doc={preview ? doc : { ...doc, posts: (doc.posts ?? []).filter((p) => p.status === 'published') }} editing={preview}>
+      <SiteContentProvider doc={doc} editing={preview}>
         {/* The editor's accent colour (read tolerantly: older documents have none). */}
         <AccentStyle />
         {children}

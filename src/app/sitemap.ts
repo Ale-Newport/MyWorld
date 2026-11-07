@@ -2,10 +2,25 @@ import type { MetadataRoute } from 'next'
 import { publishedSite } from '@/server/site'
 import { deriveSite } from '@/cms/derive'
 import { publicSiteUrl } from '@/lib/site-url'
+import { publishedPosts } from '@/server/blog'
+import type { BlogPost } from '@/cms/schema'
 
-/* The two journeys, contact, the blog and its published posts, and one page
-   per published project, all read from the published site document, so it is
-   as current as the last deploy. */
+/* The two journeys, contact, the blog and one page per published project,
+   from the published site document (as current as the last deploy), and one
+   page per published post, from the database at the moment it is asked for —
+   so it is generated on request. Without the database the posts are left out
+   for that request; the rest of the map is unchanged. */
+
+export const dynamic = 'force-dynamic'
+
+async function posts(): Promise<BlogPost[]> {
+  try {
+    return await publishedPosts()
+  } catch (error) {
+    console.error('[sitemap] the blog posts could not be read', error)
+    return []
+  }
+}
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const { doc } = await publishedSite()
@@ -17,7 +32,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${url}/projects`, lastModified: now, changeFrequency: 'monthly', priority: 0.9 },
     { url: `${url}/contact`, lastModified: now, changeFrequency: 'yearly', priority: 0.7 },
     { url: `${url}/blog`, lastModified: now, changeFrequency: 'weekly', priority: 0.7 },
-    ...(doc.posts ?? []).filter((p) => p.status === 'published').map((p) => ({
+    ...(await posts()).map((p) => ({
       url: `${url}/blog/${p.slug}`,
       lastModified: new Date(`${p.date}T12:00:00Z`),
       changeFrequency: 'yearly' as const,

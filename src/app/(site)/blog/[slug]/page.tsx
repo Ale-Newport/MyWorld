@@ -1,23 +1,24 @@
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import { loadSite } from '@/server/site'
-import { postBySlug, postDescription, listedPosts } from '@/cms/blog'
+import { adjacentPosts, linkTo, listedPosts, postDescription } from '@/cms/blog'
+import { BlogIndex } from '@/components/blog/BlogIndex'
 import { PostPage } from '@/components/blog/PostPage'
 import { publicSiteUrl } from '@/lib/site-url'
+import { readPublished } from '../published'
 
-/* One page per published post, prerendered at build in the deployed site.
-   A draft has no page there; in the editor's preview it renders on request
-   (and so does a post whose address was just changed), like projects. */
+/* One published post, read from the database on every request (no
+   static params: a post is here the moment it is published). A draft
+   or an unknown address is a 404; without the database, the blog's
+   calm "unavailable" page rather than an error. */
 
-export async function generateStaticParams() {
-  const { doc } = await loadSite()
-  return listedPosts(doc).map((p) => ({ slug: p.slug }))
-}
+export const dynamic = 'force-dynamic'
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params
-  const { doc, preview } = await loadSite()
-  const post = postBySlug(doc, slug, { preview })
+  const [{ doc }, { ok, posts }] = await Promise.all([loadSite(), readPublished()])
+  if (!ok) return { title: 'Blog' }
+  const post = listedPosts(posts).find((p) => p.slug === slug)
   if (!post) return { title: 'Post not found' }
   const name = doc.profile.name
   const description = postDescription(post)
@@ -37,15 +38,17 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
       tags: post.tags,
     },
     twitter: { card: 'summary_large_image', title: post.title, description, images: [image.url] },
-    robots: { index: post.status === 'published', follow: true },
+    robots: { index: true, follow: true },
   }
 }
 
 export default async function BlogPostRoute({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params
-  const { doc, preview } = await loadSite()
-  // In the admin's preview the editor's live document decides: a post being
-  // written, or one whose slug just changed, has no saved page yet.
-  if (!preview && !postBySlug(doc, slug)) notFound()
-  return <PostPage slug={slug} />
+  const { ok, posts } = await readPublished()
+  if (!ok) return <BlogIndex posts={[]} unavailable />
+  const list = listedPosts(posts)
+  const post = list.find((p) => p.slug === slug)
+  if (!post) notFound()
+  const { newer, older } = adjacentPosts(list, post.slug)
+  return <PostPage post={post} newer={linkTo(newer)} older={linkTo(older)} />
 }

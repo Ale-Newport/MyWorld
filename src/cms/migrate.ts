@@ -136,7 +136,8 @@ export function migrateSiteDocument<T = unknown>(input: unknown): T {
   doc.collections ??= {}
   doc.credentials ??= []
   doc.additions ??= {}
-  doc.posts ??= []
+  // Blog posts were briefly part of this document; they are the database's `blog` document now (server/blog.ts).
+  delete doc.posts
   doc.journeys = normaliseAnimations(doc.journeys)
   return doc as T
 }

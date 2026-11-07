@@ -2,9 +2,9 @@
 
 import Link from 'next/link'
 import { useMemo } from 'react'
-import { useEditing, useSite } from '@/cms/context'
-import { adjacentPosts, formatPostDate, listedPosts, readingMinutes } from '@/cms/blog'
+import { formatPostDate, readingMinutes, type PostLink } from '@/cms/blog'
 import { renderMarkdown } from '@/cms/markdown'
+import type { BlogPost } from '@/cms/schema'
 import { SiteHeader } from '@/components/site/SiteHeader'
 import { Arrow } from '@/components/ui/Arrow'
 import styles from './PostPage.module.css'
@@ -17,28 +17,13 @@ import styles from './PostPage.module.css'
    HTML — set to a reading measure. Then the posts on either side
    of it in time, and the way back to the list.
 
-   The admin's preview shows the editor's live document here, so
-   a draft (or a post whose address was just changed) reads as it
-   will before it is published.
+   The post and its neighbours are handed in: by the page, from the
+   published posts in the database; by the admin's preview, from
+   the post being written (a draft says so here).
    ============================================================ */
 
-export function PostPage({ slug }: { slug: string }) {
-  const { doc } = useSite()
-  const editing = useEditing()
-  const posts = useMemo(() => listedPosts(doc, { preview: editing }), [doc, editing])
-  const post = posts.find((p) => p.slug === slug) ?? null
-  const body = useMemo(() => (post ? renderMarkdown(post.body) : null), [post])
-
-  if (!post) {
-    return editing ? (
-      <>
-        <SiteHeader current="blog" />
-        <main className={styles.page}><p className={styles.missing}>No post in this draft answers to “{slug}”.</p></main>
-      </>
-    ) : null
-  }
-
-  const { newer, older } = adjacentPosts(posts, post.slug)
+export function PostPage({ post, newer, older }: { post: BlogPost; newer: PostLink | null; older: PostLink | null }) {
+  const body = useMemo(() => renderMarkdown(post.body), [post.body])
   const minutes = readingMinutes(post.body)
   return (
     <>
@@ -92,6 +77,16 @@ export function PostPage({ slug }: { slug: string }) {
           ) : <span />}
         </nav>
       </main>
+    </>
+  )
+}
+
+/** The admin's preview, asked for an address no post has (yet): the page's frame, and why it is empty. */
+export function PostMissing({ slug }: { slug: string }) {
+  return (
+    <>
+      <SiteHeader current="blog" />
+      <main className={styles.page}><p className={styles.missing}>No post answers to “{slug}” yet.</p></main>
     </>
   )
 }

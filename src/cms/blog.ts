@@ -4,44 +4,46 @@ import { markdownToPlain } from './markdown.tsx'
 /* ============================================================
    THE BLOG, AS THE PAGES ASK FOR IT
 
-   Posts live in the site document (`doc.posts`), written in the
-   admin. These are the few questions the public pages, their
-   metadata and the admin ask of them, answered in one place so
-   the index, a post's pager, its static params and the editor
-   can never disagree about which posts exist or in what order.
+   Posts live in their own document in the database (server/blog.ts);
+   these are the few questions the public pages, their metadata, the
+   sitemap and the admin ask of a list of them, answered in one place
+   so the index, a post's pager and the editor can never disagree
+   about which posts are listed or in what order.
 
-   The list is read tolerantly: a document saved before the blog
-   existed has none. Only published posts are public; in the
-   admin's preview drafts are listed too, so a post can be read
-   where it will appear before it goes live.
+   Visitors are only ever handed published posts; the admin's
+   preview passes drafts as well, and they are listed with them.
    ============================================================ */
-
-type WithPosts = { posts?: readonly BlogPost[] | null } | null | undefined
-
-/** Every post in the document, drafts included, in stored order. */
-export function allPosts(doc: WithPosts): BlogPost[] {
-  return Array.isArray(doc?.posts) ? [...doc.posts] : []
-}
 
 /** Newest first; posts of the same day by title. Dates are YYYY-MM-DD, so they compare as text. */
 const newestFirst = (a: BlogPost, b: BlogPost) => (a.date < b.date ? 1 : a.date > b.date ? -1 : a.title.localeCompare(b.title))
 
-/** What /blog lists: published posts, newest first — and drafts as well in the admin's preview. */
-export function listedPosts(doc: WithPosts, { preview = false }: { preview?: boolean } = {}): BlogPost[] {
-  return allPosts(doc).filter((p) => preview || p.status === 'published').sort(newestFirst)
+/** What /blog lists: published posts, newest first — drafts as well in the admin's preview. Read tolerantly. */
+export function listedPosts(posts: readonly BlogPost[] | null | undefined, { preview = false }: { preview?: boolean } = {}): BlogPost[] {
+  return (Array.isArray(posts) ? posts : []).filter((p) => preview || p.status === 'published').sort(newestFirst)
 }
 
 /** The post at /blog/<slug>, or null (a draft answers only in the preview). */
-export function postBySlug(doc: WithPosts, slug: string, options: { preview?: boolean } = {}): BlogPost | null {
-  return listedPosts(doc, options).find((p) => p.slug === slug) ?? null
+export function findPost(posts: readonly BlogPost[] | null | undefined, slug: string, options: { preview?: boolean } = {}): BlogPost | null {
+  return listedPosts(posts, options).find((p) => p.slug === slug) ?? null
 }
 
 /** A post's neighbours in a list sorted newest first. */
-export function adjacentPosts(list: BlogPost[], slug: string): { newer: BlogPost | null; older: BlogPost | null } {
+export function adjacentPosts(list: readonly BlogPost[], slug: string): { newer: BlogPost | null; older: BlogPost | null } {
   const i = list.findIndex((p) => p.slug === slug)
   if (i < 0) return { newer: null, older: null }
   return { newer: list[i - 1] ?? null, older: list[i + 1] ?? null }
 }
+
+/** A post as the list shows it: everything but the body, with its reading time — so a page never carries every body. */
+export interface PostSummary extends Omit<BlogPost, 'body'> { minutes: number }
+export function summarisePost(post: BlogPost): PostSummary {
+  const { body, ...rest } = post
+  return { ...rest, minutes: readingMinutes(body) }
+}
+
+/** A neighbour in a post's pager. */
+export interface PostLink { slug: string; title: string }
+export const linkTo = (post: BlogPost | null): PostLink | null => (post ? { slug: post.slug, title: post.title } : null)
 
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
 

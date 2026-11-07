@@ -1,19 +1,21 @@
 'use client'
 
-import type { CSSProperties } from 'react'
+import { useEffect, useState, type CSSProperties } from 'react'
 import { SiteContentProvider } from '@/cms/context'
-import type { SiteDocument } from '@/cms/schema'
+import { adjacentPosts, linkTo, listedPosts, summarisePost } from '@/cms/blog'
+import type { BlogPost, SiteDocument } from '@/cms/schema'
 import { BlogIndex } from '@/components/blog/BlogIndex'
-import { PostPage } from '@/components/blog/PostPage'
+import { PostMissing, PostPage } from '@/components/blog/PostPage'
 
 /* ============================================================
    THE PUBLIC BLOG, INSIDE THE ADMIN'S PREVIEW FRAME
 
-   The deployed site's pages are prerendered, so they cannot show a
-   draft. The admin's preview frame loads this instead: the very
-   components /blog and /blog/<slug> render (and so the same Markdown
-   renderer), given the document the editor beside it posts on every
-   change — GitHub's file with this browser's unsaved edits.
+   /blog shows only what is published. The admin's preview frame
+   loads this instead: the very components /blog and /blog/<slug>
+   render (and so the same Markdown renderer), given the posts the
+   editor beside it posts on every change — the database's posts
+   with this browser's unsaved edits, drafts included. The page's
+   chrome (header, typeface) is the site's own document.
 
    It sits under /admin (signed in, never indexed, framed only by
    the admin), whose stylesheet sets its own type on everything; the
@@ -34,11 +36,31 @@ const SITE_TYPE: CSSProperties = {
 }
 
 export function BlogPreviewPage({ doc, slug }: { doc: SiteDocument; slug: string | null }) {
+  const [posts, setPosts] = useState<BlogPost[] | null>(null)
+
+  useEffect(() => {
+    if (window.parent === window) return
+    const onMessage = (event: MessageEvent) => {
+      if (event.origin !== window.location.origin || event.source !== window.parent) return
+      const data = event.data as { type?: string; posts?: BlogPost[] }
+      if (data?.type === 'blog:posts' && Array.isArray(data.posts)) setPosts(data.posts)
+    }
+    window.addEventListener('message', onMessage)
+    window.parent.postMessage({ type: 'blog:preview-ready' }, window.location.origin)
+    return () => window.removeEventListener('message', onMessage)
+  }, [])
+
+  const list = listedPosts(posts, { preview: true })
+  const post = slug ? list.find((p) => p.slug === slug) ?? null : null
+  const around = post ? adjacentPosts(list, post.slug) : null
   return (
     <div style={SITE_TYPE} onClickCapture={(e) => { if ((e.target as Element).closest('a')) e.preventDefault() }}>
-      {/* `editing`: drafts are shown, and the document posted by the admin around this frame replaces the deploy's. */}
+      {/* `editing`: the admin's frame (no custom cursor, no tracking). */}
       <SiteContentProvider doc={doc} editing>
-        {slug ? <PostPage slug={slug} /> : <BlogIndex />}
+        {posts === null ? null
+          : !slug ? <BlogIndex posts={list.map(summarisePost)} />
+          : post ? <PostPage post={post} newer={linkTo(around!.newer)} older={linkTo(around!.older)} />
+          : <PostMissing slug={slug} />}
       </SiteContentProvider>
     </div>
   )
