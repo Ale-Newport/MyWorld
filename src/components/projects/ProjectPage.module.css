@@ -4,7 +4,13 @@
   padding: clamp(5rem, 9svh, 7rem) var(--gutter) var(--sp-9);
   background: var(--bg-primary);
   color: var(--text-primary);
+  /* The project's own colour, as ink on the page. By day it is the
+     colour itself. At night a project's brand can be a navy or a
+     black, so its OKLCH lightness is lifted to at least 0.7 along its
+     own hue: the same colour, legible on the dark (4.5:1 and up). */
+  --project-ink: var(--project-accent);
 }
+:root[data-theme='dark'] .page { --project-ink: oklch(from var(--project-accent) max(l, 0.7) c h); }
 .crumbs {
   display: flex;
   flex-wrap: wrap;
@@ -26,7 +32,7 @@
   padding-block: 0.65rem;
   margin-block: -0.65rem;
 }
-.crumbs a:hover { color: var(--text-primary); text-decoration-color: var(--project-accent); }
+.crumbs a:hover { color: var(--text-primary); text-decoration-color: var(--project-ink); }
 .crumbs [aria-current] { color: var(--text-primary); }
 
 .hero {
@@ -49,7 +55,7 @@
   text-transform: uppercase;
   color: var(--text-muted);
 }
-.eyebrow > span:first-child { color: var(--project-accent); }
+.eyebrow > span:first-child { color: var(--project-ink); }
 /* Capped against the height as well as the width, so a phone on its side
    is not handed a headline taller than its screen, and stopped short of
    the journey's display size: on an ultrawide screen it sits beside a
@@ -105,18 +111,18 @@
 .metrics { display: grid; grid-template-columns: repeat(auto-fill, minmax(9rem, 1fr)); gap: var(--sp-5); }
 .metric { display: flex; flex-direction: column; gap: 0.2rem; }
 .metricValue { font-size: clamp(1.8rem, 1.2rem + 2vw, 2.8rem); font-weight: 500; letter-spacing: -0.04em; line-height: 1; font-variant-numeric: tabular-nums; }
-.metricLabel { font-family: var(--font-mono); font-size: var(--fs-nano); letter-spacing: 0.12em; text-transform: uppercase; color: var(--project-accent); }
+.metricLabel { font-family: var(--font-mono); font-size: var(--fs-nano); letter-spacing: 0.12em; text-transform: uppercase; color: var(--project-ink); }
 .metricNote { font-size: var(--fs-nano); color: var(--text-faint); font-style: italic; }
 .facts { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: var(--sp-3); }
 .facts li { position: relative; padding-left: 1.4rem; font-size: var(--fs-small); line-height: 1.6; color: var(--text-secondary); }
-.facts li::before { content: ''; position: absolute; left: 0; top: 0.72em; width: 0.7rem; height: var(--hair); background: var(--project-accent); }
+.facts li::before { content: ''; position: absolute; left: 0; top: 0.72em; width: 0.7rem; height: var(--hair); background: var(--project-ink); }
 .gallery { display: grid; grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr)); gap: var(--sp-4); }
 .gallery figure, .video { margin: 0; }
 .gallery img, .video video { display: block; width: 100%; height: auto; border: var(--hair) solid var(--border); }
 .gallery figcaption, .video figcaption { margin-top: var(--sp-2); font-family: var(--font-mono); font-size: var(--fs-nano); color: var(--text-muted); letter-spacing: 0.06em; }
 .linkList { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: var(--sp-2); }
 .linkList a, .links a { color: var(--text-primary); text-decoration: none; border-bottom: var(--hair) solid var(--border-strong); width: fit-content; }
-.linkList a:hover, .links a:hover { border-bottom-color: var(--project-accent); color: var(--project-accent); }
+.linkList a:hover, .links a:hover { border-bottom-color: var(--project-ink); color: var(--project-ink); }
 /* A link in a list is as tall as its line of type: on a touch screen its hit area is extended past the underline, so a
    thumb finds it, and the line's own height and spacing stay as drawn. */
 @media (pointer: coarse) {
@@ -147,7 +153,7 @@
   letter-spacing: 0.06em;
 }
 .pager a { display: flex; align-items: center; min-height: 2.75rem; color: var(--text-primary); text-decoration: none; }
-.pager a:hover { color: var(--project-accent); }
+.pager a:hover { color: var(--project-ink); }
 .pager a:last-child { justify-content: flex-end; text-align: right; }
 
 @media (max-width: 900px) {

@@ -1,7 +1,7 @@
 /* ============================================================
    ADMIN — one stylesheet, every rule scoped under .admin-root so
    nothing leaks onto the public site after a client navigation.
-   The panel borrows the portfolio's paper, ink and terracotta and
+   The panel borrows the portfolio's paper, ink and green and
    its mono labels, so editing the site feels like the site.
    ============================================================ */
 
@@ -15,8 +15,8 @@
   --a-faint: #9a917f;
   --a-line: rgb(26 23 18 / 0.11);
   --a-line-strong: rgb(26 23 18 / 0.24);
-  --a-accent: #bf4f27;
-  --a-accent-soft: rgb(191 79 39 / 0.1);
+  --a-accent: #2f6b3f;
+  --a-accent-soft: rgb(47 107 63 / 0.1);
   --a-ok: #2f6f5e;
   --a-ok-soft: rgb(47 111 94 / 0.12);
   --a-warn: #a87420;

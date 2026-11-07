@@ -34,11 +34,11 @@
   inset: 0;
   overflow: hidden;
   border-radius: 3px;
-  background: color-mix(in oklab, #fbf7ef 62%, transparent);
+  background: color-mix(in oklab, var(--card) 62%, transparent);
   box-shadow:
     inset 0 0 0 1px color-mix(in oklab, var(--ink) 12%, transparent),
-    inset 0 1px 0 rgba(255, 255, 255, 0.5),
-    0 14px 24px -20px rgba(58, 40, 18, 0.5);
+    inset 0 1px 0 color-mix(in srgb, var(--sheen) 50%, transparent),
+    0 14px 24px -20px color-mix(in srgb, var(--shade) 50%, transparent);
   transition:
     box-shadow var(--dur-mid) var(--ease-out-expo),
     background-color var(--dur-mid) var(--ease-out-expo),
@@ -46,19 +46,19 @@
     filter 700ms var(--ease-out-expo),
     transform 700ms var(--ease-out-expo);
 }
-.tile[data-tier='0'] .plate { background: color-mix(in oklab, var(--accent-p) 9%, color-mix(in oklab, #fbf7ef 70%, transparent)); }
+.tile[data-tier='0'] .plate { background: color-mix(in oklab, var(--accent-p) 9%, color-mix(in oklab, var(--card) 70%, transparent)); }
 .tile[data-hot] .plate,
 .tile:focus-visible .plate {
-  background-color: color-mix(in oklab, #fbf7ef 86%, transparent);
+  background-color: color-mix(in oklab, var(--card) 86%, transparent);
   box-shadow:
     inset 0 0 0 1.5px var(--accent),
-    inset 0 1px 0 rgba(255, 255, 255, 0.55),
-    0 24px 32px -20px rgba(58, 40, 18, 0.55);
+    inset 0 1px 0 color-mix(in srgb, var(--sheen) 55%, transparent),
+    0 24px 32px -20px color-mix(in srgb, var(--shade) 55%, transparent);
   /* Pointing at a tile is answered within --dur-quick (its light and its ground); letting go takes the slower ease. */
   transition-duration: var(--dur-quick), var(--dur-quick), 700ms, 700ms, 700ms;
 }
 .tile[data-tier='0'][data-hot] .plate,
-.tile[data-tier='0']:focus-visible .plate { background-color: color-mix(in oklab, var(--accent-p) 11%, #fbf7ef); }
+.tile[data-tier='0']:focus-visible .plate { background-color: color-mix(in oklab, var(--accent-p) 11%, var(--card)); }
 .tile[data-dim] .plate {
   opacity: 0.22;
   filter: grayscale(1);

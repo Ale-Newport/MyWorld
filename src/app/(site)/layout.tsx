@@ -5,6 +5,9 @@ import { GardenCover } from '@/components/home/botanical/GardenCover'
 import { Analytics } from '@/components/analytics/Analytics'
 import { publicSiteUrl } from '@/lib/site-url'
 import { typefaceCss } from '@/styles/typefaces'
+import { themeScript } from '@/components/site/theme-script'
+import { FirstPaintScript } from '@/components/site/FirstPaintScript'
+import { AccentStyle } from '@/components/site/AccentStyle'
 
 /* ============================================================
    THE PUBLIC SITE
@@ -41,9 +44,16 @@ export async function generateMetadata(): Promise<Metadata> {
 
 export async function generateViewport(): Promise<Viewport> {
   const { doc } = await loadSite()
-  // One colour, unconditionally: the page is cream whatever the OS
-  // theme is, and a dark variant would only paint the browser chrome.
-  return { themeColor: doc.settings.themeColor, width: 'device-width', initialScale: 1, viewportFit: 'cover' }
+  // The cream by day and the night ground by night (tokens.css): the toggle repaints both when the visitor chooses.
+  return {
+    themeColor: [
+      { media: '(prefers-color-scheme: light)', color: doc.settings.themeColor },
+      { media: '(prefers-color-scheme: dark)', color: '#131410' },
+    ],
+    width: 'device-width',
+    initialScale: 1,
+    viewportFit: 'cover',
+  }
 }
 
 export default async function SiteLayout({ children }: { children: React.ReactNode }) {
@@ -67,9 +77,14 @@ export default async function SiteLayout({ children }: { children: React.ReactNo
   }
   return (
     <>
+      {/* Light or dark, before anything paints (site/theme.ts). */}
+      <FirstPaintScript code={themeScript} />
       {typefaceCss(doc.settings.options.typeface) && <style>{typefaceCss(doc.settings.options.typeface)}</style>}
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(personJsonLd).replace(/</g, '\\u003c') }} />
-      <SiteContentProvider doc={doc} editing={preview}>
+      {/* Draft posts live in site.json (the deployed admin commits them there) but never reach a visitor's page. */}
+      <SiteContentProvider doc={preview ? doc : { ...doc, posts: (doc.posts ?? []).filter((p) => p.status === 'published') }} editing={preview}>
+        {/* The editor's accent colour (read tolerantly: older documents have none). */}
+        <AccentStyle />
         {children}
         {/* Outlives every public route: the leaves the homepage closes
             over itself are the ones the world arrives under. */}

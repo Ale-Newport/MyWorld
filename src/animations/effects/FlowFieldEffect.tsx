@@ -3,7 +3,7 @@
 import { useEffect, useRef } from 'react'
 import { useCanvas2D } from '@/hooks/useCanvas2D'
 import { num, pick, type EffectProps } from '../types'
-import { alpha, makeNoise, mulberry32, resolveFx, type FxColors } from './kit'
+import { alpha, makeNoise, mulberry32, resolveFx, type FxColors, useOnPalette } from './kit'
 import s from './effects.module.css'
 
 /** Particles drifting along a slowly changing noise field, leaving fading trails. */
@@ -15,6 +15,7 @@ function Field({ params, active, reducedMotion }: EffectProps) {
   const mode = pick(params.colorMode, ['accent', 'ink', 'mixed'] as const, 'mixed')
   const seed = Math.round(num(params.seed, 11, 1, 9999))
   const st = useRef<{ x: Float32Array; y: Float32Array; age: Float32Array; colors: FxColors | null; still: boolean; noise: (x: number, y: number, z?: number) => number }>({ x: new Float32Array(0), y: new Float32Array(0), age: new Float32Array(0), colors: null, still: false, noise: makeNoise(seed) })
+  useOnPalette(() => { st.current.colors = null; st.current.still = false })
   const ref = useCanvas2D({
     setup: ({ ctx, w, h }) => {
       const r = mulberry32(seed)

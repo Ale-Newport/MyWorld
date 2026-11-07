@@ -1,7 +1,8 @@
 'use client'
 
-import { useEffect, useState, type MutableRefObject } from 'react'
+import { useEffect, useRef, useState, type MutableRefObject } from 'react'
 import { useMotionTuning } from '../tuning'
+import { onPalette } from '@/styles/palette-runtime'
 
 /* ============================================================
    SHARED PIECES FOR LIBRARY EFFECTS
@@ -54,18 +55,26 @@ export function useLiveProgress(progress: MutableRefObject<number>, enabled: boo
   return p
 }
 
+/* Light or dark chosen (or the editor's accent previewed): a canvas effect keeps the colours it resolved, so it is
+   told to forget them — and to draw its still frame again, when motion is reduced and it has only the one. */
+export function useOnPalette(fn: () => void) {
+  const fnRef = useRef(fn)
+  useEffect(() => { fnRef.current = fn })
+  useEffect(() => onPalette(() => fnRef.current()), [])
+}
+
 export interface FxColors { accent: string; ink: string; surface: string; faint: string }
 
 /** Resolves the frame's colour variables (which may themselves be var() references) to rgb() strings. */
 export function resolveFx(el: Element | null): FxColors {
-  const fallback = { accent: '#d4491f', ink: '#0c0c0d', surface: 'transparent', faint: 'rgba(12,12,13,.18)' }
+  const fallback = { accent: '#2f6b3f', ink: '#0c0c0d', surface: 'transparent', faint: 'rgba(12,12,13,.18)' }
   if (!el || typeof document === 'undefined') return fallback
   const probe = document.createElement('span')
   probe.style.cssText = 'position:absolute;width:0;height:0;overflow:hidden;visibility:hidden'
   el.appendChild(probe)
   const read = (v: string) => { probe.style.color = ''; probe.style.color = v; return getComputedStyle(probe).color }
   const out = {
-    accent: read('var(--fx-accent, var(--accent, #d4491f))'),
+    accent: read('var(--fx-accent, var(--accent, #2f6b3f))'),
     ink: read('var(--fx-ink, var(--text-primary, #0c0c0d))'),
     surface: read('var(--fx-surface, transparent)'),
     faint: read('var(--text-faint, #a6a6ad)'),

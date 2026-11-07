@@ -38,11 +38,11 @@
   padding: 9px 11px 10px;
   overflow: hidden;
   border-radius: 4px;
-  background: color-mix(in oklab, #fbf7ef 74%, transparent);
+  background: color-mix(in oklab, var(--card) 74%, transparent);
   box-shadow:
     inset 0 0 0 1px color-mix(in oklab, var(--ink) 12%, transparent),
-    inset 0 1px 0 rgba(255, 255, 255, 0.55),
-    0 16px 26px -20px rgba(58, 40, 18, 0.5);
+    inset 0 1px 0 color-mix(in srgb, var(--sheen) 55%, transparent),
+    0 16px 26px -20px color-mix(in srgb, var(--shade) 50%, transparent);
   transition:
     transform 600ms var(--ease-out-expo),
     box-shadow var(--dur-mid) var(--ease-out-expo),
@@ -51,25 +51,25 @@
 }
 .card[data-tier='0'] .face {
   padding: 12px 14px 13px;
-  background: color-mix(in oklab, var(--accent-p) 9%, #fbf7ef);
+  background: color-mix(in oklab, var(--accent-p) 9%, var(--card));
   box-shadow:
     inset 0 0 0 1px color-mix(in oklab, var(--ink) 16%, transparent),
-    inset 0 1px 0 rgba(255, 255, 255, 0.6),
-    0 26px 40px -24px rgba(58, 40, 18, 0.6);
+    inset 0 1px 0 color-mix(in srgb, var(--sheen) 60%, transparent),
+    0 26px 40px -24px color-mix(in srgb, var(--shade) 60%, transparent);
 }
 .card[data-tier='2'] .face {
-  background: color-mix(in oklab, #fbf7ef 54%, transparent);
+  background: color-mix(in oklab, var(--card) 54%, transparent);
   box-shadow:
     inset 0 0 0 1px color-mix(in oklab, var(--ink) 10%, transparent),
-    0 8px 14px -12px rgba(58, 40, 18, 0.35);
+    0 8px 14px -12px color-mix(in srgb, var(--shade) 35%, transparent);
 }
 .card[data-hot] .face,
 .card:focus-visible .face {
   transform: scale(1.045);
   box-shadow:
     inset 0 0 0 1.5px var(--accent),
-    inset 0 1px 0 rgba(255, 255, 255, 0.6),
-    0 30px 44px -24px rgba(58, 40, 18, 0.6);
+    inset 0 1px 0 color-mix(in srgb, var(--sheen) 60%, transparent),
+    0 30px 44px -24px color-mix(in srgb, var(--shade) 60%, transparent);
   /* Pointing at a card is answered within a few frames (the lift, the light); letting go takes the slower ease. */
   transition-duration: var(--dur-fast), var(--dur-quick), 700ms, 700ms;
 }

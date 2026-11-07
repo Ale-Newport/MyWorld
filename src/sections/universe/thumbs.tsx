@@ -5,14 +5,14 @@ import type { JSX } from 'react'
 
    One small still drawing per Universe option, for the admin's
    choice of animation. Static SVG in the site's palette (cream
-   ground, warm ink hairlines, one terracotta accent), no script
+   ground, warm ink hairlines, one accent), no script
    and no motion. The public page never imports this file.
    ============================================================ */
 
 const INK = '#1a1712'
 const INK3 = '#675e4f'
 const INK4 = '#8b816f'
-const ACCENT = '#bf4f27'
+const ACCENT = '#2f6b3f'
 const TEAL = '#2f6f5e'
 const GROUND = '#f6f0e6'
 const PAPER = '#fbf7ef'

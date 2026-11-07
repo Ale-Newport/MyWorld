@@ -83,15 +83,16 @@ export function Toggle({ path, label, hint }: { path: string; label: string; hin
   )
 }
 
-export function ColorInput({ path, label, optional = true }: { path: string; label: string; optional?: boolean }) {
+export function ColorInput({ path, label, optional = true, fallback = '#2f6b3f', hint }: { path: string; label: string; optional?: boolean; fallback?: string; hint?: ReactNode }) {
   const value = useValue<string | undefined>(path)
   const id = useId()
   return (
     <Field label={label} id={id}>
       <div className="row">
-        <input type="color" value={/^#[0-9a-f]{6}$/i.test(value ?? '') ? value : '#bf4f27'} onChange={(e) => write(path, e.target.value)} aria-label={`${label} colour`} style={{ width: 40, height: 32, padding: 0, border: '1px solid var(--a-line-strong)', borderRadius: 6, background: 'none' }} />
-        <input id={id} className="input" style={{ flex: 1 }} value={value ?? ''} placeholder="#bf4f27" onChange={(e) => write(path, e.target.value || (optional ? undefined : '#000000'))} />
+        <input type="color" value={/^#[0-9a-f]{6}$/i.test(value ?? '') ? value : fallback} onChange={(e) => write(path, e.target.value)} aria-label={`${label} colour`} style={{ width: 40, height: 32, padding: 0, border: '1px solid var(--a-line-strong)', borderRadius: 6, background: 'none' }} />
+        <input id={id} className="input" style={{ flex: 1 }} value={value ?? ''} placeholder={fallback} onChange={(e) => write(path, e.target.value || (optional ? undefined : '#000000'))} />
       </div>
+      {hint && <small className="a-hint">{hint}</small>}
     </Field>
   )
 }

@@ -8,6 +8,7 @@ import { readChapterProgress } from '@/hooks/useChapterProgress'
 import { currentContent } from '@/state/content'
 import { IDLE, ambient, subscribe } from '@/lib/ticker'
 import { clamp, damp, range, seeded } from '@/lib/math'
+import { ACCENT, ACCENT_SOFT, SCENE, byNight } from '../palette'
 
 /* ============================================================
    TECH TOOLBOX — an evidence lattice.
@@ -30,13 +31,19 @@ const dummy = new THREE.Object3D()
             lit is the accent.
    No dimming: picking a technology only ever adds emphasis to it
             and to its evidence; everything else stays at rest. */
-const EDGE_LIT = new THREE.Color('#d4491f')
+const EDGE_LIT = ACCENT
 const EDGE_RESTING = new THREE.Color('#8a8882')
 // The instances' own colours, parsed once.
 const TECH_REST = new THREE.Color('#5c5a56')
-const TECH_ON = new THREE.Color('#d4491f')
+const TECH_ON = ACCENT
 const PROJ_REST = new THREE.Color('#6c6a66')
-const PROJ_LIT = new THREE.Color('#e8734d')
+const PROJ_LIT = ACCENT_SOFT
+/* At night "close to the page" is a dark grey and the resting marks are
+   pale ones, each about as far from the dark as the day's are from the
+   cream, so the watermark is as quiet as it is by day and no quieter. */
+const NIGHT_EDGE_RESTING = new THREE.Color('#77746c')
+const NIGHT_TECH_REST = new THREE.Color('#a19d93')
+const NIGHT_PROJ_REST = new THREE.Color('#8f8b82')
 
 /* The lattice is a watermark, not an animation worth sixty frames a second:
    on the home journey the canvas draws on demand (GlobalCanvas) and this
@@ -140,6 +147,8 @@ export function ToolboxScene() {
     techNodes: unknown
     projects: unknown
     for: string | null | undefined
+    /** The palette the colours were written in (experience/palette): light or dark chosen writes them again. */
+    palette: number
     techScale: Float32Array
     projLit: Uint8Array
   } | null>(null)
@@ -161,29 +170,30 @@ export function ToolboxScene() {
     // Worked out again when the picked technology changes or the content does (the editor's live preview).
     let pick = picked.current
     if (!pick || pick.techNodes !== techNodes || pick.projects !== projects) {
-      pick = picked.current = { techNodes, projects, for: undefined, techScale: new Float32Array(techNodes.length), projLit: new Uint8Array(projects.length) }
+      pick = picked.current = { techNodes, projects, for: undefined, palette: -1, techScale: new Float32Array(techNodes.length), projLit: new Uint8Array(projects.length) }
     }
-    if (pick.for !== active) {
+    if (pick.for !== active || pick.palette !== SCENE.version) {
       pick.for = active
+      pick.palette = SCENE.version
       const activeNode = active ? techNodes.find((n) => n.id === active) : null
       const showsEvidence = !!activeNode && (activeNode.showCount || activeNode.showNames)
       const litProjects = new Set(showsEvidence ? activeNode!.evidence : [])
       for (let i = 0; i < techNodes.length; i++) {
         const on = techNodes[i].id === active
         pick.techScale[i] = on ? 2.3 : 1
-        techMesh.current.setColorAt(i, on ? TECH_ON : TECH_REST)
+        techMesh.current.setColorAt(i, on ? TECH_ON : byNight(TECH_REST, NIGHT_TECH_REST))
       }
       for (let i = 0; i < projects.length; i++) {
         const lit = litProjects.has(projects[i].id)
         pick.projLit[i] = lit ? 1 : 0
-        projMesh.current.setColorAt(i, lit ? PROJ_LIT : PROJ_REST)
+        projMesh.current.setColorAt(i, lit ? PROJ_LIT : byNight(PROJ_REST, NIGHT_PROJ_REST))
       }
       if (techMesh.current.instanceColor) techMesh.current.instanceColor.needsUpdate = true
       if (projMesh.current.instanceColor) projMesh.current.instanceColor.needsUpdate = true
       // Edge colours: the evidence of the picked technology lights up; every other edge stays at rest.
       const cAttr = edgeGeometry.getAttribute('color') as THREE.BufferAttribute
       for (let i = 0; i < edgeData.length; i++) {
-        const c = showsEvidence && techNodes[edgeData[i].ti].id === active ? EDGE_LIT : EDGE_RESTING
+        const c = showsEvidence && techNodes[edgeData[i].ti].id === active ? EDGE_LIT : byNight(EDGE_RESTING, NIGHT_EDGE_RESTING)
         for (let k = 0; k < 6; k += 3) {
           cAttr.array[i * 6 + k] = c.r
           cAttr.array[i * 6 + k + 1] = c.g

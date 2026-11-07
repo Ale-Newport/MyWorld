@@ -4,6 +4,7 @@ import { memo, useEffect, useLayoutEffect, useMemo, useRef, type CSSProperties }
 import type { SiteProject, UniverseAnimationProps } from '../types'
 import { CATEGORY_LABEL, CATEGORY_ORDER, approach, clamp01, fitTitle, hash01, labelOf, smooth, textWidth, tierOf, toneOf, useBoxSize, useFinePointer, useHot, useTicker, type Tier } from './shared'
 import styles from './Constellation.module.css'
+import { onPalette, triplet } from '@/styles/palette-runtime'
 
 /* ============================================================
    PROJECT CONSTELLATION
@@ -354,8 +355,10 @@ function chart(projects: SiteProject[], tech: Record<string, string[]>, w: numbe
   return { stars, edges, clusters, type, compact }
 }
 
-const INK = '26, 23, 18'
-const ACCENT = '191, 79, 39'
+// The ink, likewise: the dark brown by day, the cream at night.
+const inkRgb = () => triplet('--ink', '#1a1712')
+// The site's accent as "r, g, b" (styles/palette-runtime: read once, again when the palette changes).
+const accentRgb = () => triplet('--accent', '#2f6b3f')
 
 function Constellation({ projects, visible, filter, progress, active, reducedMotion, intensity, speed, site, onOpen, onHover }: UniverseAnimationProps) {
   const root = useRef<HTMLDivElement>(null)
@@ -467,7 +470,7 @@ function Constellation({ projects, visible, filter, progress, active, reducedMot
       const isHot = s.hot >= 0 && (e.a === s.hot || e.b === s.hot)
       const base = e.cross ? 0.2 : 0.3
       const alpha = isHot ? 0.85 : base * s.lit[k] * (s.hot >= 0 ? 0.55 : 1)
-      g.strokeStyle = `rgba(${isHot ? ACCENT : INK}, ${alpha.toFixed(3)})`
+      g.strokeStyle = `rgba(${isHot ? accentRgb() : inkRgb()}, ${alpha.toFixed(3)})`
       g.lineWidth = isHot ? 1.25 : 1
       g.setLineDash(e.cross ? [1.5, 4] : [])
       g.beginPath()
@@ -493,6 +496,20 @@ function Constellation({ projects, visible, filter, progress, active, reducedMot
   })
 
   useTicker(active && !reducedMotion && !!sky, (dt, _now, pace) => frame(dt, false, pace))
+
+  // Light or dark chosen: the lines are drawn again in the new ink, moving or still.
+  const frameRef = useRef(frame)
+  useLayoutEffect(() => {
+    frameRef.current = frame
+  })
+  useEffect(
+    () =>
+      onPalette(() => {
+        sim.current.drawn = ''
+        frameRef.current(0, reducedMotion)
+      }),
+    [reducedMotion],
+  )
 
   // Pointer parallax, on a mouse or trackpad only. The box's place is read when the pointer enters, never per frame.
   useEffect(() => {

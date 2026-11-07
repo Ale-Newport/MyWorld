@@ -24,6 +24,7 @@ export const fieldFragment = /* glsl */ `
   uniform float uTime;
   uniform float uFade;
   uniform vec3  uAccent;
+  uniform vec3  uInk;
   uniform float uProgress;
   varying vec2 vUv;
   varying vec3 vPos;
@@ -46,8 +47,9 @@ export const fieldFragment = /* glsl */ `
     // One value, and a low one: the page is white, so every line in
     // this scene is graphite subtracting from it. The alphas below do
     // the rest of the work — a paler ink at a higher alpha reads as
-    // fog, and this has to read as ruling.
-    vec3 lineCol = vec3(0.04);
+    // fog, and this has to read as ruling. (At night the page is dark
+    // and uInk is a pale cream at the same distance from it.)
+    vec3 lineCol = uInk;
     float a = (fine * 0.022 + major * 0.075) * horizon * uFade;
 
     // The timeline spine — the path the journey travels. Present, but

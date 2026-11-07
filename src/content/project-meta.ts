@@ -19,12 +19,13 @@ export const universeFilters: { id: string; label: string; match: (p: Project) =
 /** Category → display colour used by the Universe nodes. */
 /**
  * Category colour. Deliberately narrow: everything sits between
- * the site's vermilion and its muted teal, with graphite for the
+ * the site's accent and its muted teal, with graphite for the
  * quieter tiers. A rainbow would make the archive look like a
  * chart rather than a body of work.
  */
 export const categoryAccent: Record<ProjectCategory, string> = {
-  'ai-ml': '#d4491f',
+  // The site's own accent (the editor's colour), so AI work wears it whatever it is.
+  'ai-ml': 'var(--accent)',
   software: '#3f7a68',
   web: '#8a8a92',
   mobile: '#9a8578',

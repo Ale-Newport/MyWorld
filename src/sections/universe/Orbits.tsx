@@ -399,8 +399,8 @@ function Orbits({ projects, visible, progress, active, reducedMotion, intensity,
                       grads.current[i] = el
                     }}
                   >
-                    <stop offset="0" stopColor={toneOf(b.p)} stopOpacity="0.85" />
-                    <stop offset="1" stopColor={toneOf(b.p)} stopOpacity="0" />
+                    <stop offset="0" style={{ stopColor: toneOf(b.p) }} stopOpacity="0.85" />
+                    <stop offset="1" style={{ stopColor: toneOf(b.p) }} stopOpacity="0" />
                   </linearGradient>
                 ) : null,
               )}

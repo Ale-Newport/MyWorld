@@ -3,6 +3,9 @@ import { WorldFallback } from '@/components/world/WorldFallback'
 import { WorldRoute } from '@/components/world/WorldRoute'
 import { profile as seededProfile } from '@/content/profile'
 import { publishedSite } from '@/server/site'
+import { FirstPaintScript } from '@/components/site/FirstPaintScript'
+import { Daylight } from './Daylight'
+import { daylightScript } from './daylight-script'
 
 /* The world's shell — the frame, the loader, the error dialog — needs no data from the
    server, so it lives in the layout and commits the moment the route is chosen. The
@@ -28,6 +31,9 @@ function SeededName() {
 export default function WorldLayout({ children }: { children: React.ReactNode }) {
   return (
     <>
+      {/* The world keeps its daylight whatever the site's theme (./Daylight.tsx). */}
+      <FirstPaintScript code={daylightScript} />
+      <Daylight />
       {/* Server-rendered and crawlable: the whole point of the world
           is reachable without WebGL, a keyboard or a mouse. */}
       <WorldFallback name={<Suspense fallback={<SeededName />}><ProfileName /></Suspense>} />

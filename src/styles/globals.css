@@ -242,7 +242,13 @@ html[data-cursor='custom'] textarea { cursor: text !important; }
   --ink-4: #574e40;
   --text-muted: var(--ink-3);
   --text-faint: var(--ink-4);
-  --accent: #86341a;
+  --accent: var(--accent-ink);
+}
+/* At night the same labels sit on a dim wall: a step lighter, for the same 4.5:1. */
+:root[data-theme='dark'] .journey[data-journey='home'],
+:root[data-theme='dark'] [data-hud][data-journey='home'] {
+  --ink-3: #b9af9e;
+  --ink-4: #a49a8a;
 }
 
 /* Konami: the world inverts for a few seconds. */

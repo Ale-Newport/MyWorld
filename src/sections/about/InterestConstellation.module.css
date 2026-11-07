@@ -18,7 +18,7 @@
 /* The orbit the constellations sit on: barely there. */
 .orbit {
   fill: none;
-  stroke: rgba(68, 61, 49, 0.14);
+  stroke: color-mix(in srgb, var(--ink-2) 14%, transparent);
   stroke-width: 0.75;
   stroke-dasharray: 1 1;
   stroke-dashoffset: 1;
@@ -40,7 +40,7 @@
 /* A constellation's own figure. */
 .figures path {
   fill: none;
-  stroke: rgba(68, 61, 49, 0.42);
+  stroke: color-mix(in srgb, var(--ink-2) 42%, transparent);
   stroke-width: 0.75;
   stroke-dasharray: 1 1;
   stroke-dashoffset: 1;
@@ -60,7 +60,7 @@
 .name {
   opacity: 0;
   paint-order: stroke;
-  stroke: rgba(247, 241, 231, 0.9);
+  stroke: color-mix(in srgb, var(--glow) 90%, transparent);
   stroke-width: 3px;
   stroke-linejoin: round;
 }

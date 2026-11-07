@@ -8,6 +8,7 @@ import { ColorInput, Field, MediaInput, SelectInput, StringList, TextInput, Togg
 import { TokenCard } from './TokenStatus'
 import { LegacyData } from './LegacyData'
 import { TYPEFACES, TYPEFACE_INFO, resolveTypeface } from '@/styles/typefaces'
+import { DEFAULT_ACCENT, accentPalette, isHex } from '@/styles/accent'
 
 /* ============================================================
    SETTINGS — each one is read by the public site:
@@ -104,20 +105,33 @@ export function SettingsAdmin() {
   )
 }
 
-/* The editor's part of the settings: the images need the media library, which exists only on this machine. Everything
-   else about the site's settings is edited on the deployed admin (and published from there as a commit). */
+/* The editor's part of the settings: the site's accent colour, and the images, which need the media library that exists
+   only on this machine. Everything else about the site's settings is edited on the deployed admin (and published from
+   there as a commit). */
 export function SiteImagesAdmin() {
-  const { status, doc, load } = useSiteStore()
+  const { status, doc, load, apply } = useSiteStore()
   useEffect(() => { void load() }, [load])
   if (status !== 'ready' || !doc) return <main className="a-page"><Loading label="Loading the draft…" /></main>
+  const accent = (doc.settings as { accent?: string }).accent
+  const shades = accentPalette(isHex(accent) ? accent : DEFAULT_ACCENT)
   return (
     <main className="a-page">
       <PageHeader
         eyebrow="Site"
-        title="Site images"
-        description="The favicon and the share image come from the media library. The site's other settings (title, typeface, navigation, options) are edited on the website's own admin."
+        title="Site look"
+        description="The accent colour of the whole site, the favicon and the share image. The site's other settings (title, typeface, options) are edited on the website's own admin."
         actions={<DraftBar />}
       />
+      <section className="card stack" style={{ maxWidth: 640 }}>
+        <h2>Accent colour</h2>
+        <ColorInput path="settings.accent" label="Accent" fallback={DEFAULT_ACCENT} hint="The site's one signal colour: links that answer, chapter numbers, the closing words, the progress bar, highlights in the animations and the world's buttons. Its lighter and darker shades, and its dark-mode version, are worked out from it." />
+        <div className="row" aria-label="Shades">
+          {[['Light', shades.light.accent], ['On plaster', shades.light.ink], ['Soft', shades.light.soft], ['Deep', shades.light.deep], ['Dark mode', shades.dark.accent]].map(([name, hex]) => (
+            <span key={name} className="row" style={{ gap: 6, fontSize: 12 }}><span style={{ width: 18, height: 18, borderRadius: 4, background: hex, border: '1px solid var(--a-line)' }} />{name}</span>
+          ))}
+        </div>
+        {isHex(accent) && accent.toLowerCase() !== DEFAULT_ACCENT && <div><button type="button" className="btn btn-sm btn-ghost" onClick={() => apply((d) => { delete (d.settings as { accent?: string }).accent })}>Back to the default green</button></div>}
+      </section>
       <section className="card stack" style={{ maxWidth: 640 }}>
         <MediaInput path="settings.favicon" label="Favicon" hint="Square PNG or SVG. Empty keeps the built-in icon." />
         <MediaInput path="settings.ogImage" label="Share image" hint="Shown when the site is shared; 1200×630 works everywhere." />

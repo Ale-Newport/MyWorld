@@ -47,7 +47,7 @@ export function readPalette(el: Element | null): VisualPalette {
     inkSoft: themeColor(el, '--text-secondary', '#3a3a3e'),
     inkFaint: themeColor(el, '--text-faint', '#a6a6ad'),
     bg: themeColor(el, '--bg-primary', '#f4f2ee'),
-    accent: themeColor(el, '--accent', '#d4491f'),
+    accent: themeColor(el, '--accent', '#2f6b3f'),
     signal: themeColor(el, '--signal', '#2f6f5e'),
   }
 }

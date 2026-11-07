@@ -21,19 +21,21 @@
   box-sizing: border-box;
   border: var(--band) solid rgba(252, 249, 243, 0.9);
   box-shadow:
-    0 0 0 1px rgba(68, 61, 49, 0.2),
-    inset 0 0 0 1px rgba(68, 61, 49, 0.16),
-    0 16px 28px -20px rgba(58, 40, 18, 0.32);
+    0 0 0 1px color-mix(in srgb, var(--ink-2) 20%, transparent),
+    inset 0 0 0 1px color-mix(in srgb, var(--ink-2) 16%, transparent),
+    0 16px 28px -20px color-mix(in srgb, var(--shade) 32%, transparent);
   opacity: 0;
   will-change: transform, opacity;
   --cap: 0;
 }
+/* At night the band is the night's paper: a step above the wall. */
+:root[data-theme='dark'] .mat { border-color: color-mix(in srgb, var(--card) 92%, transparent); }
 /* The window the initials sit in: the one accent. */
 .mat[data-inner] {
   box-shadow:
-    0 0 0 1px rgba(68, 61, 49, 0.2),
+    0 0 0 1px color-mix(in srgb, var(--ink-2) 20%, transparent),
     inset 0 0 0 1px var(--accent),
-    0 16px 28px -20px rgba(58, 40, 18, 0.32);
+    0 16px 28px -20px color-mix(in srgb, var(--shade) 32%, transparent);
 }
 
 /* Each mat's fact, printed along its band. */
@@ -79,5 +81,5 @@
 }
 .outline {
   color: transparent;
-  -webkit-text-stroke: 1px rgba(68, 61, 49, 0.75);
+  -webkit-text-stroke: 1px color-mix(in srgb, var(--ink-2) 75%, transparent);
 }

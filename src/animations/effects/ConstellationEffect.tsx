@@ -3,7 +3,7 @@
 import { useEffect, useRef } from 'react'
 import { useCanvas2D } from '@/hooks/useCanvas2D'
 import { num, pick, type EffectProps } from '../types'
-import { alpha, mulberry32, resolveFx, type FxColors } from './kit'
+import { alpha, mulberry32, resolveFx, type FxColors, useOnPalette } from './kit'
 import s from './effects.module.css'
 
 interface P { x: number; y: number; vx: number; vy: number }
@@ -15,6 +15,7 @@ function Constellation({ params, active, reducedMotion }: EffectProps) {
   const drift = num(params.drift, 1, 0, 4)
   const pointer = pick(params.pointer, ['attract', 'repel', 'none'] as const, 'attract')
   const st = useRef<{ pts: P[]; colors: FxColors | null; mx: number; my: number; still: boolean }>({ pts: [], colors: null, mx: -1e4, my: -1e4, still: false })
+  useOnPalette(() => { st.current.colors = null; st.current.still = false })
   const ref = useCanvas2D({
     setup: ({ ctx, w, h }) => {
       const r = mulberry32(5)

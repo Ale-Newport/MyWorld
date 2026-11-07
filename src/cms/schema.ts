@@ -271,6 +271,8 @@ export const settings = z.object({
   themeColor: color,
   favicon: safeSrc.optional(),
   ogImage: safeSrc.optional(),
+  /** The site's one signal colour (styles/accent.ts works out its shades). Absent: the default forest green. */
+  accent: z.string().regex(/^#[0-9a-f]{6}$/i, 'Use a colour such as #2f6b3f').optional(),
   navigation: z.array(z.object({ id, label: shortText, href: safeHref, external: z.boolean().default(false) })).max(12),
   options: z.object({
     /** The scroll-through entrance to /world at the foot of the homepage. */

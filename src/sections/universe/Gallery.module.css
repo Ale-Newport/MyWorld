@@ -115,23 +115,23 @@
   inset: 0;
   overflow: hidden;
   border-radius: 1px;
-  background: #fbf7ef;
+  background: var(--card);
   box-shadow:
     inset 0 0 0 1px color-mix(in oklab, var(--ink) 55%, transparent),
-    inset 0 0 0 4px #f4ede1,
+    inset 0 0 0 4px var(--card-mat),
     inset 0 0 0 5px color-mix(in oklab, var(--ink) 12%, transparent),
-    0 1px 1px rgba(58, 40, 18, 0.12),
-    0 18px 30px -20px rgba(58, 40, 18, 0.55);
+    0 1px 1px color-mix(in srgb, var(--shade) 12%, transparent),
+    0 18px 30px -20px color-mix(in srgb, var(--shade) 55%, transparent);
   transition: box-shadow 700ms var(--ease-out-expo), filter 700ms var(--ease-out-expo);
 }
 .slot[data-hot] .mat,
 .frame:focus-visible .mat {
   box-shadow:
     inset 0 0 0 1px var(--accent),
-    inset 0 0 0 4px #f4ede1,
+    inset 0 0 0 4px var(--card-mat),
     inset 0 0 0 5px color-mix(in oklab, var(--ink) 12%, transparent),
     0 0 0 2px color-mix(in oklab, var(--accent) 35%, transparent),
-    0 30px 44px -24px rgba(58, 40, 18, 0.6);
+    0 30px 44px -24px color-mix(in srgb, var(--shade) 60%, transparent);
   /* Pointing at a frame is answered within a few frames; letting go of it takes the slow ease. */
   transition-duration: var(--dur-quick), 700ms;
 }
@@ -163,7 +163,7 @@
 .print[data-tier='0'] {
   inset: 5px;
   padding: 9% 9% 9%;
-  background: color-mix(in oklab, var(--accent-p) 9%, #fbf7ef);
+  background: color-mix(in oklab, var(--accent-p) 9%, var(--card));
 }
 .printHead {
   display: flex;
@@ -276,13 +276,13 @@
 .root[data-flat] .mat {
   box-shadow:
     inset 0 0 0 1px color-mix(in oklab, var(--ink) 55%, transparent),
-    inset 0 0 0 3px #f4ede1,
-    0 10px 18px -14px rgba(58, 40, 18, 0.5);
+    inset 0 0 0 3px var(--card-mat),
+    0 10px 18px -14px color-mix(in srgb, var(--shade) 50%, transparent);
 }
 .root[data-flat] .slot[data-hot] .mat,
 .root[data-flat] .frame:focus-visible .mat {
   box-shadow:
     inset 0 0 0 1.5px var(--accent),
-    inset 0 0 0 3px #f4ede1,
+    inset 0 0 0 3px var(--card-mat),
     0 0 0 2px color-mix(in oklab, var(--accent) 35%, transparent);
 }
