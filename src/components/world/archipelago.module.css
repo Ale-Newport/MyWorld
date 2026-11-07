@@ -5,19 +5,39 @@
   position: fixed;
   inset: 0;
   z-index: 60;
-  /* Never seen on the screen — the frame, or the veil below, covers it. See UNDER THE PHONE'S BARS, below. */
-  background: linear-gradient(#c19c70, #aba462);
+  background: #0f1804;
   color: var(--text-primary);
 }
-/* UNDER THE PHONE'S BARS. iOS Safari (26) draws nothing of a page under its status bar or behind its floating toolbar while
-   fixed layers cover the screen, as /world's do: it paints each strip in one colour it takes from the page. On the simulator
-   (iOS 26.3; scratch pages, not shipped) it asks the topmost fixed layer at each edge — a background-color wins over any image,
-   a vertical gradient gives the top strip and the bottom strip a colour each, a transparent layer sends it on to what is
-   below or to <html>'s colour — and it reads them at the first paint. Later changes were not reliably picked up: a gradient
-   changed at run time made it fall through to the frame's own dark background instead, so this one never changes. It is the
-   world's opening view, the plaza's sand along the top and the foot (runtime/edges.js reported #c19c70 and #aba462 at
-   390 x 844): what the strips show whenever Safari reads this layer. The hedge's dark in the first paint of a direct visit
-   (the veil below, <html>) is what it reads instead there. */
+/* UNDER THE PHONE'S BARS. iOS Safari (26) draws nothing of the page under its status bar or behind its floating toolbar while
+   fixed layers cover the screen, as /world's do: it paints each strip in one colour, the background-color of the topmost
+   fixed layer that touches that edge. While the leaves are up that is the leaves (and the hedge's dark): green. Once they
+   have parted, the two bands below are the topmost layers at the top and at the foot, each in the colour along that edge of
+   the world's last picture (runtime/edges.js, WorldRoute), so each strip continues what is on the screen beside it, and
+   follows it as the view changes. What was measured in the simulator (iOS 26.3, pages built like this one), and fixes the
+   band's form:
+     · a layer appearing at an edge is read; a layer that changes its background-color is read again only if it is at least
+       12 px tall (6 to 10 px: read once, never again; 1 to 4 px: never read);
+     · opacity below 1 makes Safari pass over it (so does visibility), but a mask does not: the bands are masked to nothing,
+       24 px tall, and never seen;
+     · a gradient, a change to <html>'s colour, a scroll, history and theme-color changes did not make it look again.
+   On a touch screen only (a phone or a tablet's Safari: a desktop's bar is left as it was), and only in the world. */
+.edge {
+  position: fixed;
+  left: 0;
+  right: 0;
+  z-index: 61;
+  height: 24px;
+  display: none;
+  pointer-events: none;
+  -webkit-mask-image: linear-gradient(transparent, transparent);
+  mask-image: linear-gradient(transparent, transparent);
+}
+/* Until the world reports its own, the colours of its opening view (the plaza's sand, top and foot, at 390 x 844). */
+.edgeTop { top: 0; background-color: #c19c70; }
+.edgeBottom { bottom: 0; background-color: #aba462; }
+@media (pointer: coarse) {
+  .edge[data-on] { display: block; }
+}
 
 /* Edge to edge: under a notch and the rounded corners as well (viewport-fit=cover). The runtime keeps its buttons clear of
    them with the insets the probe below carries. */
