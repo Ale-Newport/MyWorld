@@ -10,6 +10,8 @@ import { Loading, Notice, PageHeader, Panel, Segmented, Tabs, WEBSITE_TABS } fro
 import { Icon } from '../ui/icons'
 import { AnimationPicker } from './AnimationPicker'
 import { ToolboxSettings } from './ToolboxSettings'
+import { RolesSize } from './RolesSize'
+import { TechTools } from './TechTools'
 import { AddedContent, SectionDetails, SectionFields } from './SectionForm'
 import { PAGES, SECTION_BY_ID } from './registry'
 
@@ -140,6 +142,8 @@ export function ContentEditor() {
         </Panel>
       )}
       {def?.animation && <AnimationPicker section={def.animation} journey={page} onPreview={() => scrollTo(section.id, 0.5)} />}
+      {def?.rolesSize && <RolesSize />}
+      {def?.toolbox && <TechTools />}
       {def?.toolbox && <ToolboxSettings />}
       {def?.id === 'contact' && (
         <Panel title="The way into the world" description="At the foot of the page the garden grows over everything and opens onto /world.">

@@ -74,6 +74,8 @@ export interface SectionDef {
   fields: FieldDef[]
   animation?: AnimatedSection
   toolbox?: true
+  /** The prelude: the size of the rotating roles. */
+  rolesSize?: true
   /** Content edited elsewhere, linked from the form. */
   elsewhere?: { label: string; href: string; note: string }[]
 }
@@ -85,11 +87,10 @@ const PROJECTS_NOTE = { label: 'Projects', href: '/admin/projects', note: 'The p
 
 export const SECTIONS: SectionDef[] = [
   {
-    id: 'prelude', journey: 'home', summary: 'Your name, the rotating roles and the opening line.',
+    id: 'prelude', journey: 'home', summary: 'Your name and the rotating roles under it.', rolesSize: true,
     fields: [
       { kind: 'data', path: 'profile.name', label: 'Name', help: 'Set across the opening screen in two lines: the first word, then the rest.', recommended: 28 },
-      { kind: 'list', path: 'profile.roles', label: 'Rotating roles', help: 'Shown one after another under your name.', max: 12, addLabel: 'Add a role', recommended: 24 },
-      { kind: 'data', path: 'profile.thesis', label: 'Opening line', help: 'The sentence the opening screen settles on.', recommended: 40 },
+      { kind: 'list', path: 'profile.roles', label: 'Rotating roles', help: 'Shown one after another under your name, as its subtitle. Their size is set below.', max: 12, addLabel: 'Add a role', recommended: 24 },
       { kind: 'element', id: 'prelude.tag', label: 'Corner label', fallback: 'PORTFOLIO', recommended: 16 },
       { kind: 'element', id: 'prelude.location', label: 'Location note', fallback: 'London, UK\n51.5072° N', multiline: true, recommended: 32 },
     ],
@@ -117,7 +118,7 @@ export const SECTIONS: SectionDef[] = [
       { kind: 'element', id: 'toolbox.group.tooling', label: 'Group heading — tooling', fallback: 'Tooling', recommended: 16 },
       { kind: 'element', id: 'toolbox.group.design', label: 'Group heading — design', fallback: 'Design & Web', recommended: 16 },
     ],
-    elsewhere: [{ label: 'Projects', href: '/admin/projects', note: 'Which projects prove each technology is set on each project, under Stack.' }],
+    elsewhere: [{ label: 'Projects', href: '/admin/projects', note: 'The same ticks are on each project too, under Stack.' }],
   },
   {
     id: 'universe', journey: 'home', summary: 'Every project, the filters and the section animation.', animation: 'universe',
