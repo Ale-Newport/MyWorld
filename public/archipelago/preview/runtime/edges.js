@@ -1,10 +1,9 @@
 /* THE COLOURS AT THE EDGES OF THE PICTURE
 
-   The browser's own bar on a phone (theme-color: Chrome's address and status bar) should continue the world, not stand over
-   it in the hedge's green. So this reads the colours along the top and the foot of the frame the world has just drawn — the
-   average of its top row and of its bottom row — and tells the host (WorldRoute, `archipelago:edges`), which hands the top
-   one to theme-color while the world is up. (iOS Safari 26 paints the strips under its own bars from the host page's fixed
-   layers instead, read at the first paint: see archipelago.module.css.)
+   The browser's own bars on a phone should continue the world, not stand over it in the hedge's green. So this reads the
+   colours along the top and the foot of the frame the world has just drawn — the average of its top row and of its bottom
+   row — and tells the host (WorldRoute, `archipelago:edges`), which colours the two bands iOS Safari paints its strips from
+   (top and foot: archipelago.module.css) and hands the top one to theme-color (Chrome's bar).
 
    Read from the drawing buffer right after the frame is drawn (it is not kept: preserveDrawingBuffer is off) into a pixel-pack
    buffer, fenced, and collected on a later frame once the fence has passed: the GPU is never waited on, the frame never

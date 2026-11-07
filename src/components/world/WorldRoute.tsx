@@ -63,15 +63,15 @@ import styles from './archipelago.module.css'
 
    UNDER THE PHONE'S BARS. iOS Safari draws nothing of the frame
    under its status bar or behind its floating toolbar: it paints
-   both strips in colours it reads from this page's fixed layers,
-   and it reads them at the first paint (archipelago.module.css has
-   what was measured, and why the shell's gradient is static). What
-   does follow the world live is theme-color (Chrome's bar): the
-   runtime reports the colours along the top and the foot of each
-   picture it draws, and the top one is the bar's colour once the
-   leaves have parted. Before that it is the hedge's (the page's
-   viewport, page.tsx), and Next sets the next page's own when the
-   route goes.
+   each strip in the background-color of the topmost fixed layer at
+   that edge. Once the leaves have parted, two invisible bands are
+   those layers (`edge`, archipelago.module.css has what was
+   measured), each in the colour along that edge of the picture the
+   runtime has just drawn: it reports them (`edges`), twice a second
+   at most and only when they change, and the bands and theme-color
+   (Chrome's bar: the top one) follow. While the leaves are up the
+   bars are theirs, and the hedge's; Next sets the next page's
+   theme-color when the route goes.
    ============================================================ */
 
 const RUNTIME = '/archipelago/preview/index.html'
@@ -85,8 +85,8 @@ const HELLO_RECHECK_MS = 300
 const LEAF_DWELL_MS = 700
 /** Most the reveal waits for a cover that will not verify (it was put away, the canopy cannot draw): the world is ready. */
 const COVER_WAIT_MS = 6_000
-/** The colour along the top of the world's opening view on a phone (runtime/edges.js reported it; archipelago.module.css). */
-const OPENING_TOP = '#c19c70'
+/** The colours along the top and the foot of the world's opening view on a phone (runtime/edges.js; archipelago.module.css). */
+const OPENING = { top: '#c19c70', bottom: '#aba462' }
 /** The browser's bar colour: written on whichever theme-color element Next has in the head by now (it puts its own in when a
     segment's viewport commits, so an element held from earlier may no longer be the one in the page). */
 const paintBar = (color: string) => {
@@ -97,8 +97,10 @@ const paintBar = (color: string) => {
 export function WorldRoute() {
   const router = useRouter()
   const host = useRef<HTMLDivElement>(null)
-  /* The colour along the top of the world's last picture (runtime/edges.js). */
-  const lastTop = useRef<string | null>(null)
+  /* The colours along the top and the foot of the world's last picture (runtime/edges.js), and the bands that carry them. */
+  const edges = useRef(OPENING)
+  const edgeTop = useRef<HTMLSpanElement>(null)
+  const edgeBottom = useRef<HTMLSpanElement>(null)
   /* The site's accent, read once: a change in the editor reaches the world on its next start, not by rebuilding a running one. */
   const chosen = useSite().settings.accent
   const [accent] = useState(() => (isHex(chosen) ? chosen.toLowerCase() : DEFAULT_ACCENT))
@@ -159,11 +161,14 @@ export function WorldRoute() {
       if (!reduced) await wait(LEAF_DWELL_MS - (performance.now() - leafSince.current))
     }
     const tell = (type: string) => frame.current?.contentWindow?.postMessage({ type }, window.location.origin)
-    /* The colour along the top of the world's last picture (runtime/edges.js) as the browser's bar colour, once the leaves have
-       parted. Written straight onto the meta element — a message twice a second is not a render. */
-    const followEdges = (next: { top?: unknown }) => {
-      if (!isHex(next.top)) return
-      lastTop.current = next.top
+    /* The colours along the top and the foot of the world's last picture (runtime/edges.js): onto the bands at once (they are
+       not shown before the leaves have parted, and are right when they are), and the top one into the browser's bar once
+       they have. Written straight onto the elements — a message twice a second is not a render. */
+    const followEdges = (next: { top?: unknown; bottom?: unknown }) => {
+      if (!isHex(next.top) || !isHex(next.bottom)) return
+      edges.current = { top: next.top, bottom: next.bottom }
+      if (edgeTop.current) edgeTop.current.style.backgroundColor = next.top
+      if (edgeBottom.current) edgeBottom.current.style.backgroundColor = next.bottom
       if (worldTransition.get().phase === 'IN_WORLD') paintBar(next.top)
     }
     /* The first frame of the parting: the world is the visitor's. */
@@ -191,7 +196,7 @@ export function WorldRoute() {
         if (e.event === 'map_open') track('map_open')
         if (e.event === 'world_activity' && typeof e.name === 'string' && typeof e.action === 'string') track('world_activity', { name: e.name.slice(0, 40), action: e.action.slice(0, 20) })
       }
-      if (data?.type === 'archipelago:edges') followEdges(data as { top?: unknown })
+      if (data?.type === 'archipelago:edges') followEdges(data as { top?: unknown; bottom?: unknown })
       if (data?.type === 'archipelago:ready') {
         stopListening()
         store.ready()
@@ -251,7 +256,7 @@ export function WorldRoute() {
 
   /* The leaves have parted: the bar takes the world's colour at once, not at its next report. */
   useEffect(() => {
-    if (phase === 'IN_WORLD') paintBar(lastTop.current ?? OPENING_TOP)
+    if (phase === 'IN_WORLD') paintBar(edges.current.top)
   }, [phase])
 
   /* After a completed visit, the machine is home again for the next way in. */
@@ -285,6 +290,9 @@ export function WorldRoute() {
         {/* Padded by the device's safe area, for the frame to read (portfolio-theme.js): never drawn. */}
         <span className={styles.safe} data-world-safe="" aria-hidden="true" />
       </div>
+      {/* The bands iOS Safari colours its strips from (archipelago.module.css): never seen, shown once the leaves have parted. */}
+      <span ref={edgeTop} className={`${styles.edge} ${styles.edgeTop}`} data-on={phase === 'IN_WORLD' || undefined} aria-hidden="true" />
+      <span ref={edgeBottom} className={`${styles.edge} ${styles.edgeBottom}`} data-on={phase === 'IN_WORLD' || undefined} aria-hidden="true" />
       {!error && phase !== 'IN_WORLD' && <WorldLoading snapshot={load} leaving={leaving} started={started} direct={!arrival} />}
       <noscript><style>{'[data-world-loader]{display:none}'}</style></noscript>
       {/* Always mounted — a live region created with its text is not reliably announced —
