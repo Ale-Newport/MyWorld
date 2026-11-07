@@ -8,6 +8,7 @@ import { readChapterProgress } from '@/hooks/useChapterProgress'
 import { detectDevice } from '@/lib/perf'
 import { clamp, range, seeded, damp } from '@/lib/math'
 import { lens, readSceneRegion } from '@/experience/camera/regions'
+import { ACCENT, ACCENT_SOFT, byNight } from '../palette'
 
 /* ============================================================
    METAVIEW — 500,000 documents become an embedding space.
@@ -115,6 +116,10 @@ const documentFragment = /* glsl */ `
 `
 
 const qv = new THREE.Vector3()
+/* The documents' ink (see uBase below): a graphite speck on the cream by day, a pale warm one on the dark at night
+   (written as raw values: the shader puts its colour straight out, so a hex here would land darker than it reads). */
+const BASE_DAY = new THREE.Color('#4c4c55')
+const BASE_NIGHT = new THREE.Color(0.84, 0.81, 0.75)
 
 export function MetaviewScene() {
   const device = useMemo(() => detectDevice(), [])
@@ -207,8 +212,8 @@ export function MetaviewScene() {
          enough for a single point to register. The retrieved
          neighbourhood takes the soft accent so the query core below,
          which is the deep accent, still reads as the source. */
-      uBase: { value: new THREE.Color('#4c4c55') },
-      uHotColor: { value: new THREE.Color('#e8734d') },
+      uBase: { value: BASE_DAY.clone() },
+      uHotColor: { value: ACCENT_SOFT },
       uOpacity: { value: 0 },
     }),
     [device.tier],
@@ -242,6 +247,7 @@ export function MetaviewScene() {
     const t = reduced ? 0.62 : readChapterProgress('metaview')
     const ease = (from: number, to: number, k: number) => (reduced ? to : damp(from, to, k, d))
     u.uTime.value = reduced ? 0 : frame.time
+    ;(u.uBase.value as THREE.Color).copy(byNight(BASE_DAY, BASE_NIGHT))
 
     // Beat 1 → 2 : the sheet folds into clusters.
     const fold = range(t, 0.10, 0.42)
@@ -302,7 +308,7 @@ export function MetaviewScene() {
       {/* The query vector itself. */}
       <mesh ref={queryMesh}>
         <sphereGeometry args={[1, 16, 16]} />
-        <meshBasicMaterial color="#d4491f" />
+        <meshBasicMaterial color={ACCENT} />
       </mesh>
     </group>
   )

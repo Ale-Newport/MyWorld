@@ -9,6 +9,7 @@ import { useJourney, frame } from '@/state/journey'
 import { detectDevice, createFpsWatchdog } from '@/lib/perf'
 import { IDLE, subscribe, watchPace } from '@/lib/ticker'
 import { hasSceneRegions, sceneRegionsVersion } from '@/experience/camera/regions'
+import { onPalette, token } from '@/styles/palette-runtime'
 import styles from './GlobalCanvas.module.css'
 
 /**
@@ -16,9 +17,9 @@ import styles from './GlobalCanvas.module.css'
  * home journey's scrolled video sits beneath this layer and has to
  * show through, and everywhere else the DOM behind the canvas is
  * already this white. It still has to match `--bg-primary` in
- * tokens.css, because antialiased edges blend toward it. Set once,
- * as the clear colour rather than `scene.background`, which keeps
- * it clear of tone mapping.
+ * tokens.css, because antialiased edges blend toward it. Set as
+ * the clear colour rather than `scene.background`, which keeps it
+ * clear of tone mapping, and set again when the theme changes.
  */
 const GROUND = new THREE.Color('#f6f0e6')
 
@@ -47,6 +48,19 @@ function PaceGovernor() {
     gl.setPixelRatio(1)
     invalidate() // resizing the drawing buffer clears it, and nothing here draws until it is asked to
   }), [setTier, gl, invalidate])
+  return null
+}
+
+/* Light or dark chosen: the ground follows `--bg-primary`, and a canvas that draws on demand (the home journey's,
+   or any with motion reduced) draws once more, since its scenes take their night values per frame
+   (experience/palette). */
+function Repaint() {
+  const gl = useThree((s) => s.gl)
+  const invalidate = useThree((s) => s.invalidate)
+  useEffect(() => onPalette(() => {
+    gl.setClearColor(GROUND.set(token('--bg-primary', '#f6f0e6')), 0)
+    invalidate()
+  }), [gl, invalidate])
   return null
 }
 
@@ -143,7 +157,7 @@ export function GlobalCanvas() {
             // photographic one, and ACES would pull the ground colour
             // away from the DOM's --bg-primary token.
             gl.toneMapping = THREE.NoToneMapping
-            gl.setClearColor(GROUND, 0)
+            gl.setClearColor(GROUND.set(token('--bg-primary', '#f6f0e6')), 0)
             if (process.env.NODE_ENV === 'development') {
               const w = window as unknown as {
                 __frame?: typeof frame
@@ -162,6 +176,7 @@ export function GlobalCanvas() {
           }}
         >
           <Settle live={live} />
+          <Repaint />
           <DrawOnScroll active={reducedMotion && live} />
           <ReleaseOnLeave />
           <JourneyCamera />

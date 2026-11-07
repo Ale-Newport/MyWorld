@@ -70,6 +70,9 @@
 .code[data-fixed='false'] .line[data-changed='true'] {
   background: color-mix(in oklab, var(--accent) 12%, transparent);
 }
+/* At night the tint under a changed line lifts the ground toward the
+   faint ink, so its number takes the next ink up to stay at 4.5:1. */
+:root[data-theme='dark'] .line[data-changed='true'] .lineNo { color: var(--text-muted); }
 
 .cursors { position: absolute; inset: 20% 12% 30% 12%; pointer-events: none; opacity: 0; }
 .cursor { position: absolute; display: flex; align-items: flex-start; gap: 2px; will-change: transform; }

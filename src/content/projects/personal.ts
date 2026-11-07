@@ -53,7 +53,7 @@ export const personalProjects: Project[] = [
     privateSource: true,
     needsReplacement: true,
     featured: true,
-    accent: '#d4491f',
+    accent: 'var(--accent)',
   },
   {
     id: 'gym-app',
@@ -142,7 +142,7 @@ export const personalProjects: Project[] = [
     dataStatus: 'verified',
     privateSource: false,
     featured: true,
-    accent: '#d4491f',
+    accent: 'var(--accent)',
   },
   {
     id: 'cinquillo-fair',
@@ -294,7 +294,7 @@ export const personalProjects: Project[] = [
     dataStatus: 'verified',
     privateSource: false,
     featured: true,
-    accent: '#d4491f',
+    accent: 'var(--accent)',
   },
   {
     id: 'tappedin',

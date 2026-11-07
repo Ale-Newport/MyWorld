@@ -8,9 +8,18 @@ import { fieldVertex, fieldFragment } from '@/experience/shaders/field'
 import { detectDevice } from '@/lib/perf'
 import { clamp, damp, seeded } from '@/lib/math'
 import { lens } from '@/experience/camera/regions'
+import { ACCENT, byNight } from '../palette'
 
 /** The chapters that stand on the ground. Mirrors the field's mount window in SceneManager. */
 const FIELD_CHAPTERS = ['pansofia', 'teaching', 'focus', 'gym']
+
+/* The ruling's ink: graphite subtracting from the cream by day, a pale cream adding to the dark at night (raw
+   shader values — the field writes its colour straight out). The dust is the palest thing the field draws, so at
+   night it is a warm grey rather than the day's cool one. */
+const LINE_DAY = new THREE.Color().setScalar(0.04)
+const LINE_NIGHT = new THREE.Color(0.9, 0.87, 0.8)
+const MOTE_DAY = new THREE.Color('#8a8a8e')
+const MOTE_NIGHT = new THREE.Color('#a39d90')
 
 /**
  * THE FIELD.
@@ -31,7 +40,8 @@ export function FieldScene() {
       uTime: { value: 0 },
       uFade: { value: 0 },
       uAmp: { value: 0.35 },
-      uAccent: { value: new THREE.Color('#d4491f') },
+      uAccent: { value: ACCENT },
+      uInk: { value: LINE_DAY.clone() },
       uProgress: { value: 0 },
     }),
     [],
@@ -60,6 +70,7 @@ export function FieldScene() {
     const s = useJourney.getState()
     u.uTime.value = frame.time
     u.uProgress.value = frame.progress
+    ;(u.uInk.value as THREE.Color).copy(byNight(LINE_DAY, LINE_NIGHT))
 
     // The field fades in as the story leaves the prelude and steps
     // aside for the chapters that bring a scene of their own.
@@ -80,7 +91,10 @@ export function FieldScene() {
       motes.current.rotation.y += d * 0.012
       motes.current.position.x = -frame.pointerX * 0.9
       motes.current.position.y = -frame.pointerY * 0.6
-      if (moteMat.current) moteMat.current.opacity = u.uFade.value * 0.18
+      if (moteMat.current) {
+        moteMat.current.opacity = u.uFade.value * 0.18
+        moteMat.current.color.copy(byNight(MOTE_DAY, MOTE_NIGHT))
+      }
       motes.current.visible = u.uFade.value > 0.01
     }
   })

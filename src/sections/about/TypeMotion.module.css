@@ -18,7 +18,7 @@
   letter-spacing: -0.06em;
   line-height: 0.8;
   white-space: nowrap;
-  color: rgba(68, 61, 49, 0.055);
+  color: color-mix(in srgb, var(--ink-2) 5.5%, transparent);
   transform-origin: 100% 100%;
   opacity: 0.15;
   will-change: transform, opacity;

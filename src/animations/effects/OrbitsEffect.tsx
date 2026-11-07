@@ -3,7 +3,7 @@
 import { useEffect, useRef } from 'react'
 import { useCanvas2D } from '@/hooks/useCanvas2D'
 import { bool, num, type EffectProps } from '../types'
-import { alpha, resolveFx, type FxColors } from './kit'
+import { alpha, resolveFx, type FxColors, useOnPalette } from './kit'
 import s from './effects.module.css'
 
 /** Bodies on tilted concentric orbits, inner ones faster (Kepler's third law), passing behind and in front of a centre. */
@@ -15,12 +15,13 @@ export default function OrbitsEffect({ params, active, reducedMotion }: EffectPr
   const trails = bool(params.trails, true)
   const colors = useRef<FxColors | null>(null)
   const still = useRef(false)
+  useOnPalette(() => { colors.current = null; still.current = false })
   const ref = useCanvas2D({
     setup: ({ ctx }) => { colors.current = resolveFx(ctx.canvas); still.current = false },
     draw: ({ ctx, w, h, t }) => {
       if (reducedMotion && still.current) return
       if (!active && !reducedMotion && t > 0.1) return
-      const c = colors.current ?? resolveFx(ctx.canvas)
+      const c = colors.current ?? (colors.current = resolveFx(ctx.canvas))
       const time = reducedMotion ? 7.3 : t
       ctx.clearRect(0, 0, w, h)
       const cx = w / 2, cy = h / 2, R = Math.min(w, h / Math.max(0.25, Math.cos(tilt))) * 0.46

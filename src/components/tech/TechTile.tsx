@@ -2,7 +2,7 @@
 
 import { memo } from 'react'
 import type { ToolboxTech } from '@/cms/derive'
-import { logoOf } from '@/content/tech-ink'
+import { logoOf, nightInk } from '@/content/tech-ink'
 import styles from './tech-tile.module.css'
 
 /* ============================================================
@@ -66,7 +66,7 @@ export const TechTile = memo(function TechTile({ node, on, pinned, onPreview, on
       <span className={styles.plate}>
         <span
           className={styles.mark}
-          style={logo ? { ['--brand' as string]: logo.ink } : undefined}
+          style={logo ? { ['--brand-day' as string]: logo.ink, ['--brand-night' as string]: nightInk(logo.hex) } : undefined}
         >
           {logo ? (
             <svg viewBox="0 0 24 24" width="100%" height="100%" className={styles.brand} aria-hidden="true">

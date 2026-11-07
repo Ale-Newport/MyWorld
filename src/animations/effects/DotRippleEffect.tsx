@@ -3,7 +3,7 @@
 import { useEffect, useRef } from 'react'
 import { useCanvas2D } from '@/hooks/useCanvas2D'
 import { num, type EffectProps } from '../types'
-import { alpha, resolveFx, type FxColors } from './kit'
+import { alpha, resolveFx, type FxColors, useOnPalette } from './kit'
 import s from './effects.module.css'
 
 interface Ripple { x: number; y: number; t0: number }
@@ -16,6 +16,7 @@ function Ripples({ params, active, reducedMotion }: EffectProps) {
   const decay = num(params.decay, 1.6, 0.3, 6)
   const auto = num(params.auto, 2.5, 0, 20)
   const st = useRef<{ ripples: Ripple[]; colors: FxColors | null; clock: number; nextAuto: number; still: boolean }>({ ripples: [], colors: null, clock: 0, nextAuto: 0.6, still: false })
+  useOnPalette(() => { st.current.colors = null; st.current.still = false })
   const ref = useCanvas2D({
     setup: ({ ctx }) => { st.current.colors = resolveFx(ctx.canvas); st.current.still = false },
     draw: ({ ctx, w, h, t }) => {

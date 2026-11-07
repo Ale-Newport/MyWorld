@@ -7,6 +7,7 @@ import { frame, useJourney } from '@/state/journey'
 import { readChapterProgress } from '@/hooks/useChapterProgress'
 import { clamp, damp, range, easeOutCubic } from '@/lib/math'
 import { lens, readSceneRegion } from '@/experience/camera/regions'
+import { ACCENT, byNight } from '../palette'
 
 /* ============================================================
    CHESS — the board resolves out of the data.
@@ -29,7 +30,6 @@ const BOARD_SCALE = 0.88
 /** Starting position, as the pipeline would reconstruct it. */
 const dummy = new THREE.Object3D()
 const color = new THREE.Color()
-const ACCENT = new THREE.Color('#d4491f')
 
 /* Value scale, inverted for paper. These are albedos, and the only lit
    geometry on the page: ambient 0.5 plus a key at 1.1 lands a top face
@@ -44,6 +44,14 @@ const SQUARE_LIGHT = 0.45
 const SQUARE_DARK = 0.10
 const PIECE_PALE = 0.30
 const PIECE_DARK = 0.045
+/* At night the scale turns back over: the board is the lighter thing
+   on a dark ground, so both squares are pale greys and both armies
+   stand ABOVE their squares — the white one the brightest mark in the
+   scene, the black one a step under the light squares. */
+const NIGHT_SQUARE_LIGHT = 0.52
+const NIGHT_SQUARE_DARK = 0.2
+const NIGHT_PIECE_PALE = 0.95
+const NIGHT_PIECE_DARK = 0.42
 
 const START_RANKS = ['rnbqkbnr', 'pppppppp', '........', '........', '........', '........', 'PPPPPPPP', 'RNBQKBNR']
 
@@ -98,7 +106,7 @@ export function ChessScene() {
     const mid = from.clone().lerp(to, 0.5).add(new THREE.Vector3(0, 1.1, 0))
     const curve = new THREE.QuadraticBezierCurve3(from, mid, to)
     const g = new THREE.BufferGeometry().setFromPoints(curve.getPoints(48))
-    const m = new THREE.LineBasicMaterial({ color: '#d4491f', transparent: true, opacity: 0 })
+    const m = new THREE.LineBasicMaterial({ color: ACCENT, transparent: true, opacity: 0 })
     return new THREE.Line(g, m)
   }, [])
 
@@ -135,7 +143,7 @@ export function ChessScene() {
       squares.current.setMatrixAt(i, dummy.matrix)
 
       const light = (s.file + s.rank) % 2 === 0
-      color.setScalar(light ? SQUARE_LIGHT : SQUARE_DARK)
+      color.setScalar(light ? byNight(SQUARE_LIGHT, NIGHT_SQUARE_LIGHT) : byNight(SQUARE_DARK, NIGHT_SQUARE_DARK))
       // Squares still "in flight" carry the detection accent.
       color.lerp(ACCENT, (1 - e) * 0.35)
       squares.current.setColorAt(i, color)
@@ -154,7 +162,7 @@ export function ChessScene() {
       dummy.scale.set(0.2, Math.max(0.001, p.tall * e), 0.2)
       dummy.updateMatrix()
       pieces.current.setMatrixAt(i, dummy.matrix)
-      color.setScalar(p.white ? PIECE_PALE : PIECE_DARK)
+      color.setScalar(p.white ? byNight(PIECE_PALE, NIGHT_PIECE_PALE) : byNight(PIECE_DARK, NIGHT_PIECE_DARK))
       pieces.current.setColorAt(i, color)
     }
     pieces.current.instanceMatrix.needsUpdate = true
@@ -168,6 +176,7 @@ export function ChessScene() {
     arcLine.visible = arcT > 0.01
     arcLine.geometry.setDrawRange(0, Math.round(arcT * 49))
     ;(arcLine.material as THREE.LineBasicMaterial).opacity = opacity.current * 0.95
+    ;(arcLine.material as THREE.LineBasicMaterial).color.copy(ACCENT)
 
     group.current.rotation.y = damp(group.current.rotation.y, frame.pointerX * 0.32 - 0.22, 2.4, d)
     group.current.position.set(0, 0, 0)

@@ -52,7 +52,7 @@
    covers. Sixty per cent is what a home-screen icon uses; the
    old fifty-two left the mark floating in its own plate. */
 .mark {
-  --brand: var(--text-primary);
+  --brand: var(--brand-day, var(--text-primary));
   display: grid;
   place-items: center;
   width: 60%;
@@ -62,8 +62,12 @@
 /* The mark is painted in the legible variant of its own brand
    colour, computed against white at generation time — see the
    `ink` field in src/content/tech-logos.ts. Nothing is mixed in
-   here, because a mix on top of that would only drift the hue. */
+   here, because a mix on top of that would only drift the hue.
+   At night it is the variant lifted for the dark plate instead
+   (`nightInk` in src/content/tech-ink.ts): the brand's hue made
+   lighter, or the page's cream for a mark that is only black. */
 .brand { fill: var(--brand); }
+:root[data-theme='dark'] .mark { --brand: var(--brand-night, var(--text-primary)); }
 
 /* The house glyphs draw in a 40-unit viewBox with a stroke of 1
    user unit, and the monogram sets in the same space, so both

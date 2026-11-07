@@ -8,6 +8,7 @@ import { readChapterProgress } from '@/hooks/useChapterProgress'
 import { detectDevice } from '@/lib/perf'
 import { clamp, damp, range, seeded } from '@/lib/math'
 import { lens, readSceneRegion } from '@/experience/camera/regions'
+import { ACCENT, byNight } from '../palette'
 
 /* ============================================================
    STOCK — concurrency made spatial.
@@ -38,8 +39,14 @@ const color = new THREE.Color()
    the order 75% toward white, which on this page is the payoff moment
    erasing itself — matching now pulls the order to the house accent,
    the one colour reserved for a thing having happened. */
-const LANE_COLORS = ['#d4491f', '#2f6f5e', '#4a5675', '#6e6540']
-const MATCH = new THREE.Color('#d4491f')
+// Lane 0 is the site's accent (experience/palette), read each frame so it follows the theme and the editor.
+const LANE_COLORS = ['', '#2f6f5e', '#4a5675', '#6e6540']
+/* At night the same three hues lifted to mid-light, so they stay legible threads on the dark at the same alpha. */
+const NIGHT_LANE_COLORS = ['', '#74b09c', '#8f9cc4', '#b4aa78']
+const MATCH = ACCENT
+/* The matching plane's hairline: graphite by day, a pale ink at night. */
+const PLANE_DAY = new THREE.Color('#3a3a3e')
+const PLANE_NIGHT = new THREE.Color('#c9c2b4')
 
 interface Order { lane: number; t: number; side: 1 | -1; size: number; speed: number; alive: boolean }
 
@@ -47,6 +54,7 @@ export function StockScene() {
   const device = useMemo(() => detectDevice(), [])
   const group = useRef<THREE.Group>(null!)
   const mesh = useRef<THREE.InstancedMesh>(null!)
+  const plane = useRef<THREE.MeshBasicMaterial>(null!)
   const opacity = useRef(0)
 
   const MAX = Math.round(260 * device.density)
@@ -114,7 +122,8 @@ export function StockScene() {
       dummy.updateMatrix()
       mesh.current.setMatrixAt(n, dummy.matrix)
 
-      color.set(LANE_COLORS[o.lane])
+      if (o.lane === 0) color.copy(ACCENT)
+      else color.set(byNight(LANE_COLORS, NIGHT_LANE_COLORS)[o.lane])
       if (o.t > 0.93) color.lerp(MATCH, 0.75)
       // Travel dims the ends of the run rather than brightening the
       // middle: the old 1.25x peak pushed every lane toward the page.
@@ -126,6 +135,7 @@ export function StockScene() {
     mesh.current.instanceMatrix.needsUpdate = true
     if (mesh.current.instanceColor) mesh.current.instanceColor.needsUpdate = true
     ;(mesh.current.material as THREE.MeshBasicMaterial).opacity = opacity.current * 0.6
+    plane.current?.color.copy(byNight(PLANE_DAY, PLANE_NIGHT))
 
     // The DOM canvas owns this chapter; the 3D streams sit far behind
     // it as depth, not as a second diagram competing for attention.
@@ -146,7 +156,7 @@ export function StockScene() {
           lane converges on cannot be the same colour as the page. */}
       <mesh position={[0, 0, -0.4]}>
         <planeGeometry args={[0.012, 5.2]} />
-        <meshBasicMaterial color="#3a3a3e" transparent opacity={0.55} />
+        <meshBasicMaterial ref={plane} color="#3a3a3e" transparent opacity={0.55} />
       </mesh>
     </group>
   )

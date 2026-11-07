@@ -34,10 +34,16 @@
   --chalk-3:          #7c7b79;
   --chalk-4:          #4a4a4c;
 
-  /* ---- Accent: a single restrained signal colour ---------- */
-  --accent:           #bf4f27;   /* terracotta: the one signal colour */
-  --accent-soft:      #d8754c;
-  --accent-deep:      #8d3515;
+  /* ---- Accent: a single restrained signal colour ----------
+     A forest green, chosen in the editor (settings.accent). These
+     are the default's shades as styles/accent.ts works them out;
+     the layout overrides all four when another colour is chosen.
+     --accent-ink is the accent set as text on the home room's
+     plaster, a step darker so it holds 5:1 on the wall in shade. */
+  --accent:           #2f6b3f;
+  --accent-soft:      #6d9779;
+  --accent-deep:      #214b2c;
+  --accent-ink:       #2b623a;
   --signal:           #2f6f5e;   /* muted teal, secondary */
   /* The garden's own green, for things that grow or are live:
      never a link, never the accent. */
@@ -89,6 +95,17 @@
   --panel-edge:       color-mix(in oklab, #5a4628 14%, transparent);
   --panel-shadow:     0 1px 0 rgba(255, 255, 255, 0.55) inset, 0 22px 44px -28px rgba(58, 40, 18, 0.45);
   --radius-card:      14px;
+  /* The same paper as material, for the things pinned or hung on
+     the wall in the animations (cards, mats, prints): the sheet,
+     the mat inside a frame, the colour a shadow is cast in, the
+     sheen along a top edge and the glow that clears a label. Where
+     the old value had an alpha it is written color-mix(in srgb, …
+     N%, transparent), which gives back exactly that rgba() by day. */
+  --card:             #fbf7ef;
+  --card-mat:         #f4ede1;
+  --shade:            #3a2812;
+  --sheen:            #ffffff;
+  --glow:             #f7f1e7;
 
   /* ---- Legibility ------------------------------------------
      Type is printed over a garden, so every line of it carries a
@@ -268,4 +285,61 @@
   --ground-bloom:     #f0c090;
 
   color-scheme: light;
+}
+
+/* ============================================================
+   DARK
+   The visitor's choice (the moon in the top bar, the index on a
+   phone), or their system's when they have not made one; set on
+   <html> before the first paint (site/theme.ts), so no light frame
+   flashes. The same names with night values: the wall is a dim
+   olive-black, the ink is the cream, and the accent is the editor's
+   colour lightened until it reads on the dark (styles/accent.ts
+   writes these four when another accent is chosen).
+
+   /world keeps its own daylight: its route sets data-theme="light"
+   while it is mounted.
+   ============================================================ */
+:root[data-theme='dark'] {
+  color-scheme: dark;
+
+  --paper:            #181914;
+  --paper-2:          #1e1f19;
+  --paper-3:          #272821;
+
+  --ink:              #ece6da;
+  --ink-2:            #cfc7b8;
+  --ink-3:            #aba190;
+  --ink-4:            #8d8475;
+
+  --chalk:            #1a1712;
+  --chalk-2:          #443d31;
+  --chalk-3:          #675e4f;
+  --chalk-4:          #8b816f;
+
+  --accent:           #7aa084;
+  --accent-soft:      #9bb8a3;
+  --accent-deep:      #447a52;
+  --accent-ink:       #7aa084;
+  --signal:           #74b09c;
+  --leaf:             #93b45f;
+
+  --bg-primary:       #131410;
+  --bg-secondary:     #1a1b16;
+  --bg-tertiary:      #23241d;
+
+  --panel:            color-mix(in oklab, #1d1e18 92%, transparent);
+  --panel-edge:       color-mix(in oklab, #ece6da 12%, transparent);
+  --panel-shadow:     0 1px 0 rgba(255, 255, 255, 0.04) inset, 0 22px 44px -28px rgba(0, 0, 0, 0.75);
+
+  --halo:             0 0 1px rgba(19, 20, 16, 0.8), 0 0 10px rgba(19, 20, 16, 0.9), 0 0 24px rgba(19, 20, 16, 0.6);
+
+  /* Paper at night: a sheet a step above the wall, shadows cast in
+     black, a top-edge sheen at a fraction of the day's, and the glow
+     that clears a label is the night ground. */
+  --card:             #22231c;
+  --card-mat:         #1a1b16;
+  --shade:            #000000;
+  --sheen:            rgb(255 255 255 / 0.14);
+  --glow:             #131410;
 }

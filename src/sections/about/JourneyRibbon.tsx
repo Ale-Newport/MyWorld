@@ -6,6 +6,7 @@ import { clamp, range } from '@/lib/math'
 import type { SectionAnimationProps } from '../types'
 import { textWidth, useBoxSize, useTicker, type Size } from './shared'
 import styles from './JourneyRibbon.module.css'
+import { isNight, onPalette, token } from '@/styles/palette-runtime'
 
 /* ============================================================
    JOURNEY RIBBON — the section's default
@@ -463,10 +464,18 @@ function place(size: Size, milestones: Milestone[], from: string[], to: string[]
 
 /* ---- paint ---------------------------------------------------------- */
 
-const FRONT = [252, 249, 243]
-const FRONT_EDGE = [222, 213, 198]
-const BACK = [209, 196, 176]
-const BACK_EDGE = [176, 161, 140]
+/* The paper, by day and by night. At night the band is a dim sheet a
+   step above the wall — still lit on its face and shaded on its back —
+   and the hairlines that hold it are the cream ink, not the brown. */
+const DAY = {
+  front: [252, 249, 243], frontEdge: [222, 213, 198], back: [209, 196, 176], backEdge: [176, 161, 140],
+  shadow: 'rgba(72, 50, 24, 0.17)', underlay: 'rgb(240, 234, 224)', edge: '68, 61, 49', pin: 'rgb(253, 250, 244)', pinEdge: 'rgba(26, 23, 18, 0.8)',
+}
+const NIGHT = {
+  front: [70, 69, 59], frontEdge: [50, 50, 42], back: [40, 40, 33], backEdge: [30, 31, 25],
+  shadow: 'rgba(0, 0, 0, 0.5)', underlay: 'rgb(36, 37, 31)', edge: '207, 199, 184', pin: 'rgb(30, 31, 26)', pinEdge: 'rgba(236, 230, 218, 0.85)',
+}
+const paper = () => (isNight() ? NIGHT : DAY)
 const tone = (a: number[], b: number[], t: number) =>
   `rgb(${Math.round(a[0] + (b[0] - a[0]) * t)},${Math.round(a[1] + (b[1] - a[1]) * t)},${Math.round(a[2] + (b[2] - a[2]) * t)})`
 
@@ -545,12 +554,13 @@ function paint(ctx: CanvasRenderingContext2D, L: Layout, f: Frame, hw: Float32Ar
   })
 
   // The band stands a few pixels off the plaster.
+  const P = paper()
   ctx.save()
-  ctx.shadowColor = 'rgba(72, 50, 24, 0.17)'
+  ctx.shadowColor = P.shadow
   ctx.shadowBlur = 10 * f.dpr
   ctx.shadowOffsetX = 2 * f.dpr
   ctx.shadowOffsetY = 6 * f.dpr
-  ctx.fillStyle = 'rgb(240, 234, 224)'
+  ctx.fillStyle = P.underlay
   for (const o of outlines) ctx.fill(o)
   ctx.restore()
 
@@ -562,7 +572,7 @@ function paint(ctx: CanvasRenderingContext2D, L: Layout, f: Frame, hw: Float32Ar
     const dy = by - ay
     const l2 = dx * dx + dy * dy
     const back = r[Math.floor(r.length / 2)][2] < 0
-    const [lo, hi] = back ? [BACK_EDGE, BACK] : [FRONT_EDGE, FRONT]
+    const [lo, hi] = back ? [P.backEdge, P.back] : [P.frontEdge, P.front]
     const shade = (hwv: number) => tone(lo, hi, Math.pow(Math.abs(hwv) / W, 0.6))
     if (l2 < 1) ctx.fillStyle = shade(r[0][2])
     else {
@@ -577,13 +587,14 @@ function paint(ctx: CanvasRenderingContext2D, L: Layout, f: Frame, hw: Float32Ar
 
   ctx.lineWidth = 0.8
   ctx.lineJoin = 'round'
-  ctx.strokeStyle = 'rgba(68, 61, 49, 0.4)'
+  ctx.strokeStyle = `rgba(${P.edge}, 0.4)`
   for (const o of outlines) ctx.stroke(o)
 }
 
 /** Pins where the milestones sit, the hairline tying each to its words, and the band's leading end. */
 function paintPins(ctx: CanvasRenderingContext2D, L: Layout, p: number, still: boolean) {
   const r = clamp(L.band * 0.14, 2.2, 4.2)
+  const P = paper()
   for (const st of L.stations) {
     if (!st.m) continue
     const e = still ? 1 : easeOut(range(p, st.at - 0.015, st.at + 0.035))
@@ -597,7 +608,7 @@ function paintPins(ctx: CanvasRenderingContext2D, L: Layout, p: number, still: b
       const ex = across ? (st.side === 'left' ? st.lx + st.lw + 3 : st.lx - 3) : st.x
       const ey = across ? st.y : st.side === 'above' ? st.ly + st.lh + 1 : st.ly - 1
       if ((ex - sx) * dir > 0 || (ey - sy) * dir > 0) {
-        ctx.strokeStyle = `rgba(68, 61, 49, ${(0.55 * a).toFixed(3)})`
+        ctx.strokeStyle = `rgba(${P.edge}, ${(0.55 * a).toFixed(3)})`
         ctx.lineWidth = 0.75
         ctx.beginPath()
         ctx.moveTo(sx, sy)
@@ -607,10 +618,10 @@ function paintPins(ctx: CanvasRenderingContext2D, L: Layout, p: number, still: b
     }
     ctx.beginPath()
     ctx.arc(st.x, st.y, r * e, 0, Math.PI * 2)
-    ctx.fillStyle = 'rgb(253, 250, 244)'
+    ctx.fillStyle = P.pin
     ctx.fill()
     ctx.lineWidth = 1
-    ctx.strokeStyle = 'rgba(26, 23, 18, 0.8)'
+    ctx.strokeStyle = P.pinEdge
     ctx.stroke()
   }
   // The one accent: the band's leading end, which comes to rest at its destination.
@@ -621,7 +632,7 @@ function paintPins(ctx: CanvasRenderingContext2D, L: Layout, p: number, still: b
     while (i < L.n - 1 && L.s[i + 1] <= hs) i++
     ctx.beginPath()
     ctx.arc(L.x[i], L.y[i], clamp(L.band * 0.11, 2, 3.4), 0, Math.PI * 2)
-    ctx.fillStyle = '#bf4f27'
+    ctx.fillStyle = token('--accent', '#2f6b3f')
     ctx.fill()
   }
 }
@@ -703,6 +714,9 @@ export default function JourneyRibbon({ progress, active, reducedMotion, intensi
   }, [])
 
   useTicker(active && !reducedMotion && !!layout, (dt, _now, pace) => frame(dt, pace))
+
+  // Light or dark chosen: the band is drawn again in the other paper at once, moving or still.
+  useEffect(() => onPalette(() => frame(0)), [frame])
 
   const vars = layout ? ({ '--t': `${layout.type.title}px`, '--m': `${layout.type.mono}px`, '--d': `${layout.type.detail}px` } as CSSProperties) : undefined
 

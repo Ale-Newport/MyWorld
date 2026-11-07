@@ -11,7 +11,7 @@ import type { JSX } from 'react'
    ============================================================ */
 
 const svg = { viewBox: '0 0 160 100', width: '100%', height: '100%', fill: 'none', 'aria-hidden': true } as const
-const accent = 'var(--accent, #bf4f27)'
+const accent = 'var(--accent, #2f6b3f)'
 const signal = 'var(--signal, #2f6f5e)'
 
 /** A folded band: lit face, a twist, shaded face, a twist, lit face. */

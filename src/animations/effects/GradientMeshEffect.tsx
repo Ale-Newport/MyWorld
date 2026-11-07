@@ -3,7 +3,8 @@
 import { useEffect, useMemo, useRef } from 'react'
 import { useCanvas2D } from '@/hooks/useCanvas2D'
 import { color, num, type EffectProps } from '../types'
-import { makeNoise, resolveColor, resolveFx } from './kit'
+import { makeNoise, resolveColor, resolveFx, useOnPalette } from './kit'
+import { isNight, token } from '@/styles/palette-runtime'
 import s from './effects.module.css'
 
 /** Soft colour fields drifting past one another under a film grain. Drawn small and scaled up, so it stays cheap. */
@@ -12,13 +13,18 @@ function Mesh({ params, active, reducedMotion }: EffectProps) {
   const grain = num(params.grain, 0.12, 0, 0.5)
   const st = useRef<{ small: HTMLCanvasElement | null; noise: HTMLCanvasElement | null; colors: string[]; still: boolean }>({ small: null, noise: null, colors: [], still: false })
   const field = useMemo(() => makeNoise(31), [])
+  /* The four colours: the three chosen (or the frame's accent and two house tones) and the ground they melt into —
+     the frame's surface, or with none the paper (the night's own ground in the dark theme). */
+  const resolveMesh = (probe: Element | null) => {
+    const fx = resolveFx(probe)
+    const pick = (k: string, fallback: string) => { const v = color(params[k], ''); return v ? resolveColor(probe, v) : fallback }
+    const paper = isNight() ? token('--bg-primary', '#131410') : '#f4f2ee'
+    return [pick('c1', fx.accent), pick('c2', '#2f6f5e'), pick('c3', '#e9c46a'), fx.surface === 'rgba(0, 0, 0, 0)' ? paper : fx.surface]
+  }
   const ref = useCanvas2D({
     maxDpr: 1.5,
     setup: ({ ctx }) => {
-      const probe = ctx.canvas.parentElement
-      const fx = resolveFx(probe)
-      const pick = (k: string, fallback: string) => { const v = color(params[k], ''); return v ? resolveColor(probe, v) : fallback }
-      st.current.colors = [pick('c1', fx.accent), pick('c2', '#2f6f5e'), pick('c3', '#e9c46a'), fx.surface === 'rgba(0, 0, 0, 0)' ? '#f4f2ee' : fx.surface]
+      st.current.colors = resolveMesh(ctx.canvas.parentElement)
       st.current.small = document.createElement('canvas')
       const n = document.createElement('canvas'); n.width = n.height = 128
       const nc = n.getContext('2d')!; const img = nc.createImageData(128, 128)
@@ -58,6 +64,10 @@ function Mesh({ params, active, reducedMotion }: EffectProps) {
     },
   })
   useEffect(() => { st.current.still = false }, [reducedMotion, blur, grain])
+  useOnPalette(() => {
+    st.current.colors = resolveMesh(ref.current?.parentElement ?? null)
+    st.current.still = false
+  })
   return <canvas ref={ref} className={s.fill} aria-hidden="true" />
 }
 
