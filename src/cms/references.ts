@@ -29,6 +29,19 @@ export function validateSiteReferences(doc: SiteDocument): ReferenceProblem[] {
     projectIds.add(p.id)
     slugs.add(p.slug)
   })
+  const techIds = new Set<string>()
+  doc.techNodes.forEach((t, i) => {
+    if (techIds.has(t.id)) problems.push({ path: `techNodes.${i}.id`, message: `Two technologies share the id “${t.id}”` })
+    techIds.add(t.id)
+  })
+  const postIds = new Set<string>()
+  const postSlugs = new Set<string>()
+  ;(doc.posts ?? []).forEach((p, i) => {
+    if (postIds.has(p.id)) problems.push({ path: `posts.${i}.id`, message: `Two posts share the id “${p.id}”` })
+    if (postSlugs.has(p.slug)) problems.push({ path: `posts.${i}.slug`, message: `Two posts share the address “${p.slug}”` })
+    postIds.add(p.id)
+    postSlugs.add(p.slug)
+  })
   doc.techNodes.forEach((t, i) => t.evidence.forEach((e) => {
     if (!projectIds.has(e)) problems.push({ path: `techNodes.${i}.evidence`, message: `“${t.name}” cites a project that does not exist (${e})` })
   }))

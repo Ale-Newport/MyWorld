@@ -135,13 +135,15 @@ export const section = z.object({
   subtitle: shortText.optional(),
   group: shortText,
   year: z.string().max(12).optional(),
-  /** Scroll length in viewport heights, and in Quick View. */
+  /** Scroll length in viewport heights. (`quickVh` is what the retired Quick View used; nothing reads it now.) */
   vh: z.number().min(0.5).max(20),
   quickVh: z.number().min(0.5).max(20),
   /** Animated sections only (about, universe, contact). Absent: the section's default. */
   animation: sectionAnimation.optional(),
   /** The Tech Toolbox section only. Absent: counts and names both shown. */
   toolbox: toolboxDisplay.optional(),
+  /** The prelude only: how large the rotating roles under the name are set, as a multiple of their default size. */
+  rolesSize: z.number().min(0.6).max(2).optional(),
 })
 export type Section = z.infer<typeof section>
 
@@ -194,7 +196,10 @@ export const techNode = z.object({
   /** Per-tool overrides of the Tech Toolbox section's settings; absent inherits the section's. */
   showCounts: z.boolean().optional(),
   showNames: z.boolean().optional(),
+  /** A brand mark chosen in the editor (Simple Icons geometry, 24×24); absent: the shipped mark for the id, or a house glyph. */
+  logo: z.object({ title: shortText, hex: z.string().regex(/^#[0-9a-f]{6}$/i), path: z.string().max(20_000) }).optional(),
 })
+export type TechNodeEntity = z.infer<typeof techNode>
 
 
 export const projectSection = z.object({
@@ -236,6 +241,25 @@ export const project = z.object({
   sections: z.array(projectSection).max(40),
 })
 export type Project = z.infer<typeof project>
+
+/* ---- blog --------------------------------------------------------- */
+/** A post on /blog. The body is Markdown, rendered by cms/markdown.tsx as React elements (never as HTML). */
+export const blogPost = z.object({
+  id,
+  slug: z.string().min(1).max(80).regex(/^[a-z0-9]+(-[a-z0-9]+)*$/, 'Slugs are lowercase words joined by dashes'),
+  title: shortText,
+  /** One or two sentences: the list, the post's head and its search snippet. */
+  excerpt: z.string().max(320),
+  body: z.string().max(200_000),
+  /** Publication date, YYYY-MM-DD. */
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Use a date such as 2026-11-07'),
+  tags: z.array(z.string().min(1).max(40)).max(12),
+  cover: safeSrc.optional(),
+  coverAlt: shortText.optional(),
+  /** published: on /blog; draft: kept out of the public site. */
+  status: z.enum(['published', 'draft']),
+})
+export type BlogPost = z.infer<typeof blogPost>
 
 /* ---- settings --------------------------------------------------- */
 export const settings = z.object({
@@ -279,6 +303,8 @@ export const siteDocument = z.object({
   collections: z.record(z.string().max(80), z.array(z.string().max(120)).max(100)),
   elements: z.record(z.string().max(160), elementOverride),
   additions: z.record(z.string().max(120), z.array(elementNode).max(200)),
+  /** The blog. Absent in documents saved before it existed (migrate.ts supplies an empty one). */
+  posts: z.array(blogPost).max(500).default([]),
 })
 export type SiteDocument = z.infer<typeof siteDocument>
 export type ProjectEntity = Project
