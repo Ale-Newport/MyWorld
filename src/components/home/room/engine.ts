@@ -14,6 +14,7 @@ import { FieldBaker, fieldsToTextures, type SurfaceFields } from './nature/field
 import { createLeafAtlas, createMossSheet, type LeafAtlas } from './nature/sprites'
 import { sampleSlice, sliceFor, type ReadingField } from './layout/readingField'
 import { roomView } from './view'
+import { applyNight, nightUniforms } from './render/night'
 
 /* ============================================================
    ROOM ENGINE
@@ -37,6 +38,8 @@ import { roomView } from './view'
 
 export interface EngineOptions {
   quality: QualityName
+  /** The site's dark theme is on: the first frame is already the night's (render/night.ts). */
+  night?: boolean
   onReady?: () => void
   onContextLost?: () => void
   /** A hall has just been built (the first, or for a new layout). */
@@ -126,6 +129,11 @@ export class RoomEngine {
   private reading: ReadingField | null = null
   private vegetation: Vegetation | null = null
   private vegUniforms: VegetationUniforms
+  /** Day 0 … night 1, eased in `frame`, and where it is heading; the uniforms the hall, its plants and the output share. */
+  private night = 0
+  private nightTarget = 0
+  private nightU = nightUniforms()
+  private level = new THREE.Vector3(1, 1, 1)
   private floatable: boolean
   private width = 1
   private height = 1
@@ -258,6 +266,7 @@ export class RoomEngine {
         uDebugIrr: { value: 0 },
         uInvProj: { value: new THREE.Matrix4() },
         uCamWorld: { value: new THREE.Matrix4() },
+        ...this.nightU,
       },
     })
     this.depthMat = new THREE.ShaderMaterial({ vertexShader: depthOnlyVert, fragmentShader: depthOnlyFrag, colorWrite: false })
@@ -273,7 +282,7 @@ export class RoomEngine {
       fragmentShader: outputFrag,
       depthTest: false,
       depthWrite: false,
-      uniforms: { tColor: { value: null }, tRead: { value: this.readTex }, uDebug: { value: 0 }, uDither: { value: 1 / 255 } },
+      uniforms: { tColor: { value: null }, tRead: { value: this.readTex }, uDebug: { value: 0 }, uDither: { value: 1 / 255 }, uLevel: { value: this.level } },
     })
     this.baker = new FieldBaker(this.pause)
     this.makeTargets()
@@ -294,7 +303,11 @@ export class RoomEngine {
       uSway: { value: 0 },
       uSwayAmp: { value: ROOM_CONFIG.vines.swayAmplitude },
       uTakeover: { value: 0 },
+      ...this.nightU,
     }
+    // The theme the page opened in: no frame of the other is ever drawn.
+    this.night = this.nightTarget = options.night ? 1 : 0
+    applyNight(this.nightU, this.night, this.level)
   }
 
   /** The two multisampled passes' targets, for the current tier. */
@@ -745,6 +758,24 @@ export class RoomEngine {
     this.dirtyFrame = true
   }
 
+  /**
+   * The site's theme: night (dark) or day. Toggled at run time it is a
+   * short cross-fade (`night.fade`) of the frame over the same cached
+   * light — nothing is lit again, nothing moves; `instant` (reduced
+   * motion) and anything before the first frame land at once.
+   */
+  setNight(on: boolean, instant = false) {
+    const t = on ? 1 : 0
+    if (t === this.nightTarget && (!instant || this.night === t)) return
+    this.nightTarget = t
+    if (instant || !this.readyFired) {
+      this.night = t
+      applyNight(this.nightU, t, this.level)
+    }
+    this.dirtyRoom = true
+    this.dirtyFrame = true
+  }
+
   setSway(enabled: boolean) {
     if (enabled === this.swayEnabled) return
     this.swayEnabled = enabled
@@ -888,7 +919,7 @@ export class RoomEngine {
   get resting(): boolean {
     if (this.disposed || this.lost) return true
     if (!this.readyFired || !this.cache?.complete || this.busy || this.again || this.compiling) return false
-    if (this._needsRelight || this._dirtyRoom || this._dirtyFrame || this._dirtyPlants) return false
+    if (this._needsRelight || this._dirtyRoom || this._dirtyFrame || this._dirtyPlants || this.night !== this.nightTarget) return false
     return this.air === 0 && !this.stirred()
   }
 
@@ -917,6 +948,13 @@ export class RoomEngine {
     if (!this.readyFired && !this.compiled) {
       void this.compileAll()
       if (this.compiling) return false
+    }
+    // Day to night (or back): the surfaces are redrawn each frame of the fade, the light is not gathered again.
+    if (this.night !== this.nightTarget) {
+      const step = dt / ROOM_CONFIG.night.fade
+      this.night = this.night < this.nightTarget ? Math.min(this.nightTarget, this.night + step) : Math.max(this.nightTarget, this.night - step)
+      applyNight(this.nightU, this.night * this.night * (3 - 2 * this.night), this.level)
+      this.dirtyRoom = true
     }
     if (this.dirtyPlants) this.replant()
     // Ambient air, capped in rate, only where something can move, and
@@ -973,6 +1011,7 @@ export class RoomEngine {
       dpr: this.dpr,
       growth: this.growth,
       takeover: this.takeover,
+      night: +this.night.toFixed(3),
       cache: this.cache?.progress,
       field: this.reading ? `${this.reading.gw}x${this.reading.gh}` : null,
       stems: `${this.vegetation?.kept.stems ?? 0}/${this.built?.plan.stems.length ?? 0}`,
