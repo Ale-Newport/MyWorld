@@ -9,8 +9,8 @@ import { useSite } from '@/cms/context'
 import { scrollToProgress } from '@/hooks/useLenisScroll'
 import { clamp } from '@/lib/math'
 import { IDLE, subscribe } from '@/lib/ticker'
-import { Arrow } from '@/components/ui/Arrow'
 import { SiteNav } from './SiteNav'
+import { ThemeToggle } from '@/components/site/ThemeToggle'
 import styles from './Hud.module.css'
 
 /** Persistent chrome: identity, the pages (a desktop's top bar, a phone's index), sound, scrub. */
@@ -22,7 +22,7 @@ export function Hud({ onOpenIndex }: { onOpenIndex: () => void }) {
      HTML says about which story the visitor has opened, and it has
      to be right in the markup the server sends. */
   const { id: journeyId, chapters, ranges } = useJourneyRoute()
-  const { profile, journeys } = useSite()
+  const { profile } = useSite()
   const current = useActiveChapter()
   const widestTitle = chapters.reduce((w, c) => (c.title.length > w.length ? c.title : w), '')
   const router = useRouter()
@@ -75,53 +75,31 @@ export function Hud({ onOpenIndex }: { onOpenIndex: () => void }) {
   const position = Math.max(0, ranges.findIndex((r) => r.id === current.id))
 
   const home = journeyId === 'home'
-  const other = journeys[home ? 'projects' : 'home']
 
   return (
     <div className={styles.hud} data-hud="" data-journey={journeyId} data-hidden={indexOpen ? 'true' : 'false'}>
       <header className={styles.top}>
-        <a href={`#chapter-${chapters[0].id}`} className={styles.brand} data-cursor="link" data-cursor-text="TOP">
-          <span className={styles.mark} aria-hidden="true">{profile.initials}</span>
-          <span className={styles.brandName}>{profile.name}</span>
-        </a>
+        {/* The mark and the name are the way home (the pages list has no Home): on the homepage, its top. */}
+        {home ? (
+          <a href={`#chapter-${chapters[0].id}`} className={styles.brand} data-cursor="link" data-cursor-text="TOP">
+            <span className={styles.mark} aria-hidden="true">{profile.initials}</span>
+            <span className={styles.brandName}>{profile.name}</span>
+          </a>
+        ) : (
+          <Link href="/" prefetch={false} onPointerEnter={() => router.prefetch('/')} className={styles.brand} aria-label={`${profile.name} — home`} data-cursor="link" data-cursor-text="HOME">
+            <span className={styles.mark} aria-hidden="true">{profile.initials}</span>
+            <span className={styles.brandName}>{profile.name}</span>
+          </Link>
+        )}
 
         <div className={styles.topRight}>
-          {/* A desktop names every page here; a phone keeps the way across and the index (below). */}
+          {/* A desktop names every page here and keeps sound and the theme beside them; a phone has only the
+              mark and INDEX, and the index holds the pages, sound and the theme. */}
           <SiteNav current={journeyId} className={styles.pages} />
-
-          {/* ============================================================
-              THE OTHER JOURNEY
-              Splitting the story in two makes each half a dead end
-              unless the persistent chrome carries the way across. It
-              sits in the top bar, in the same mono label as the rest,
-              because it is navigation and not a call to action.
-
-              It is also on screen from first paint on every page, so
-              Next's default prefetch would pull the other route down
-              for every visitor, on any connection, whether or not
-              they ever cross. Warmed on intent instead — the same
-              bargain the portal's link to `/world` strikes, and for
-              the same reason.
-              ============================================================ */}
-          <Link
-            href={other.path}
-            prefetch={false}
-            onPointerEnter={() => router.prefetch(other.path)}
-            onFocus={() => router.prefetch(other.path)}
-            className={styles.cross}
-            data-back={home ? 'false' : 'true'}
-            aria-label={home ? 'Go to the projects' : 'Go back to the portfolio'}
-            data-cursor="link"
-            data-cursor-text={home ? 'WORK' : 'BACK'}
-          >
-            {!home && <span className={styles.crossArrow}><Arrow dir="left" /></span>}
-            <span className={styles.crossLabel}>{other.label}</span>
-            {home && <span className={styles.crossArrow}><Arrow dir="right" /></span>}
-          </Link>
 
           <button
             type="button"
-            className={styles.hudBtn}
+            className={`${styles.hudBtn} ${styles.soundBtn}`}
             onClick={toggleSound}
             aria-pressed={soundEnabled}
             data-cursor="link"
@@ -131,6 +109,7 @@ export function Hud({ onOpenIndex }: { onOpenIndex: () => void }) {
             </span>
             <span className={styles.btnLabel}>{soundEnabled ? 'SOUND ON' : 'SOUND OFF'}</span>
           </button>
+          <ThemeToggle className={`${styles.hudBtn} ${styles.themeBtn}`} labelClassName={styles.btnLabel} />
           <button
             type="button"
             className={`${styles.hudBtn} ${styles.indexBtn}`}

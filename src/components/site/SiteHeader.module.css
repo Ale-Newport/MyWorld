@@ -54,9 +54,14 @@
   .brand::after, .indexBtn::after { content: ''; position: absolute; inset: -11px -5px; }
 }
 
-/* A desktop prints the pages; a phone opens the index (the same breakpoint as the journeys' HUD). */
-.pages { display: none; }
+.right { align-items: center; gap: clamp(0.9rem, 1.6vw, 1.6rem); }
+.themeBtn { display: flex; align-items: center; gap: var(--sp-2); padding: 0.3rem 0; color: var(--text-primary); }
+
+/* A desktop prints the pages and the theme switch; a phone has the mark and INDEX, and the index holds the rest
+   (the same breakpoint as the journeys' HUD). */
+.right { display: none; }
 @media (min-width: 900px) {
-  .pages { display: flex; }
+  .right { display: flex; }
   .indexBtn { display: none; }
 }
+@media (max-width: 1080px) { .themeBtn .btnLabel { display: none; } }

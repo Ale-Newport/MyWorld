@@ -25,7 +25,7 @@
   position: relative;
   height: 100%;
   display: grid;
-  grid-template-rows: auto 1fr;
+  grid-template-rows: auto 1fr auto;
   padding: clamp(1rem, 2.2vw, 1.75rem) var(--gutter) clamp(1.25rem, 2.4vw, 2rem);
   max-width: 1680px;
   margin-inline: auto;
@@ -142,3 +142,34 @@
   .itemTitle { font-size: 1.6rem; }
   .item { padding-block: 0.6rem; }
 }
+
+/* ============================================================
+   THE BAR'S SWITCHES, ON A PHONE
+   A phone's top bar is the mark and INDEX only, so sound (on a
+   journey) and the theme live here, under the pages, in the
+   chrome's mono label.
+   ============================================================ */
+.foot {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-3) var(--sp-6);
+  padding-top: var(--sp-4);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+.switch {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+  min-height: 44px;
+  font-family: var(--font-mono);
+  font-size: var(--fs-micro);
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  color: var(--text-secondary);
+  transition: color var(--dur-fast);
+}
+.switch:active, .switch[data-press] { color: var(--text-primary); transition-duration: var(--dur-quick); }
+@media (hover: hover) { .switch:hover { color: var(--text-primary); transition-duration: var(--dur-quick); } }
+.soundBars { display: flex; align-items: center; gap: 2px; height: 11px; }
+.soundBars i { width: 1.5px; height: 11px; background: currentColor; display: block; transform: scaleY(0.272727); }
+.soundBars[data-on='true'] i { transform: scaleY(1); }

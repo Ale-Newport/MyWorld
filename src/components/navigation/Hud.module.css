@@ -83,7 +83,7 @@
   letter-spacing: var(--tracking-label);
   text-transform: uppercase;
 }
-@media (max-width: 720px) { .hudBtn:not(.indexBtn) .btnLabel { display: none; } }
+@media (max-width: 1080px) { .soundBtn .btnLabel, .themeBtn .btnLabel { display: none; } }
 
 .soundBars { display: flex; align-items: center; gap: 2px; height: 11px; }
 /* The bars are as tall as they ever get and scaled down to rest (3px of 11): moving a bar is then a
@@ -101,44 +101,6 @@
 .soundBars[data-on='true'] i:nth-child(4) { animation-delay: 90ms; }
 @keyframes bar { 0%,100% { transform: scaleY(0.272727) } 50% { transform: scaleY(1) } }
 
-/* ============================================================
-   CROSS-JOURNEY LINK
-   Deliberately NOT `.hudBtn`: that class hides its label under
-   720px, and an arrow with nothing beside it is not a
-   destination. This one keeps its word at every width — it is
-   the only route out of the half of the site you are in.
-   ============================================================ */
-.cross {
-  display: flex;
-  align-items: center;
-  gap: var(--sp-2);
-  padding: 0.3rem 0;
-  color: var(--text-secondary);
-  transition: color var(--dur-fast), transform var(--dur-fast) var(--ease-out-expo);
-}
-.cross:active, .cross[data-press] { color: var(--accent); transform: scale(0.97); transition-duration: var(--dur-quick); }
-@media (hover: hover) {
-  .cross:hover { color: var(--accent); transition-duration: var(--dur-quick); }
-}
-[data-reduced='true'] .cross:active, [data-reduced='true'] .cross[data-press] { transform: none; }
-.crossLabel {
-  font-family: var(--font-mono);
-  font-size: var(--fs-nano);
-  letter-spacing: var(--tracking-label);
-  text-transform: uppercase;
-}
-.crossArrow {
-  font-family: var(--font-mono);
-  font-size: var(--fs-nano);
-  line-height: 1;
-  transition: transform var(--dur-fast) var(--ease-out-expo);
-}
-@media (hover: hover) {
-  .cross:hover .crossArrow { transform: translateX(3px); transition-duration: var(--dur-quick); }
-  .cross[data-back='true']:hover .crossArrow { transform: translateX(-3px); }
-}
-[data-reduced='true'] .cross:hover .crossArrow { transform: none; }
-
 .indexLines { display: flex; flex-direction: column; gap: 3px; width: 14px; }
 .indexLines i { height: 1px; background: currentColor; display: block; transition: transform var(--dur-fast) var(--ease-out-expo); }
 .indexLines i:nth-child(2) { width: 68%; }
@@ -148,16 +110,16 @@
 .hudBtn:active .indexLines i:nth-child(2), .hudBtn[data-press] .indexLines i:nth-child(2) { transform: translateX(32%); transition-duration: var(--dur-quick); }
 
 /* ============================================================
-   DESKTOP: THE PAGES, NOT AN INDEX
-   From 900px the top bar has room to print every page (SiteNav),
-   so the index and the single way across give way to it. Below,
-   the phone keeps the way across and the index, which lists the
-   same pages.
+   DESKTOP: THE PAGES; PHONE: THE MARK AND THE INDEX
+   From 900px the top bar has room to print every page (SiteNav)
+   with sound and the theme beside them, and there is no index.
+   Below, the bar is the mark on the left and INDEX on the right:
+   the pages, sound and the theme are in the index.
    ============================================================ */
-.pages { display: none; }
+.pages, .soundBtn, .themeBtn { display: none; }
 @media (min-width: 900px) {
-  .pages { display: flex; }
-  .cross, .indexBtn { display: none; }
+  .pages, .soundBtn, .themeBtn { display: flex; }
+  .indexBtn { display: none; }
 }
 
 /* ---------------- BOTTOM ---------------- */
@@ -256,8 +218,8 @@
    is made taller the same way.
    ============================================================ */
 @media (pointer: coarse) {
-  .brand, .hudBtn, .cross, .scrub { position: relative; }
-  .brand::after, .hudBtn::after, .cross::after { content: ''; position: absolute; inset: -11px -5px; }
+  .brand, .hudBtn, .scrub { position: relative; }
+  .brand::after, .hudBtn::after { content: ''; position: absolute; inset: -11px -5px; }
   .hudBtn:not(.indexBtn)::after { inset: -11px -10px; }
   .scrub::after { content: ''; position: absolute; inset: -11px 0; }
 }

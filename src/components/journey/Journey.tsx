@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import dynamic from 'next/dynamic'
 import { JourneyProvider } from './JourneyProvider'
 import { Hud } from '@/components/navigation/Hud'
@@ -115,8 +115,11 @@ function SoundEffects() {
 function IndexHost({ journey }: { journey: JourneyId }) {
   const open = useJourney((s) => s.indexOpen)
   const setIndexOpen = useJourney((s) => s.setIndexOpen)
+  const soundOn = useJourney((s) => s.soundEnabled)
+  const toggleSound = useJourney((s) => s.toggleSound)
   const close = useCallback(() => setIndexOpen(false), [setIndexOpen])
-  return <IndexOverlay open={open} onClose={close} current={journey} />
+  const sound = useMemo(() => ({ on: soundOn, toggle: toggleSound }), [soundOn, toggleSound])
+  return <IndexOverlay open={open} onClose={close} current={journey} sound={sound} />
 }
 
 export function Journey({ journey }: { journey: JourneyId }) {
