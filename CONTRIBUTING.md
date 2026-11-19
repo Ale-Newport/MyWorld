@@ -33,8 +33,7 @@ maintainer approves them.
 
 ## Local setup
 
-You need **Node.js 26 LTS** and npm (Node 24 runs the site, but one
-allocation test in `npm test` depends on Node 26's V8). Nothing else: no
+You need **Node.js 24 or 26 LTS** and npm (CI tests both). Nothing else: no
 database, cloud account or API key.
 
 ```bash

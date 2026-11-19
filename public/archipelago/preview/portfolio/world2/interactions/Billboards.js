@@ -2,15 +2,12 @@ import * as THREE from 'three';
 export const ORDER = 21;
 export const AFTER_ORDER = ORDER + 1;
 export const MAP_HIDDEN_LAYER = 2;
-const Y_AXIS = new THREE.Vector3(0, 1, 0);
-const X_AXIS = new THREE.Vector3(1, 0, 0);
 const _m = new THREE.Matrix4();
 const _pv = new THREE.Matrix4();
 const _frustum = new THREE.Frustum();
 const _sphere = new THREE.Sphere();
 const _qCam = new THREE.Quaternion();
 const _qWorld = new THREE.Quaternion();
-const _qLean = new THREE.Quaternion();
 const _qParentInverse = new THREE.Quaternion();
 const _pos = new THREE.Vector3();
 const systems = new WeakMap();
@@ -197,14 +194,14 @@ export class Billboards {
                     _qWorld.copy(_qCam);
                 }
                 else {
-                    _qWorld.setFromAxisAngle(Y_AXIS, Math.atan2(dx, dz));
                     let pitch = b.lean;
                     if (b.pitchFollow > 0)
                         pitch += b.pitchFollow * Math.atan2(dy, Math.sqrt(dx * dx + dz * dz));
                     if (pitch > b.maxPitch)
                         pitch = b.maxPitch;
-                    if (pitch !== 0)
-                        _qWorld.multiply(_qLean.setFromAxisAngle(X_AXIS, -pitch));
+                    const yaw = Math.atan2(dx, dz) / 2, lean = -pitch / 2;
+                    const sy = Math.sin(yaw), cy = Math.cos(yaw), sx = Math.sin(lean), cx = Math.cos(lean);
+                    _qWorld.set(cy * sx, sy * cx, -sy * sx, cy * cx);
                 }
                 if (p)
                     o.quaternion.copy(_qParentInverse).multiply(_qWorld);
