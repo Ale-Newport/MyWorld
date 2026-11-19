@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Report a security vulnerability
+    url: https://github.com/Ale-Newport/MyWorld/security/advisories/new
+    about: Please report vulnerabilities privately, never in a public issue.
+  - name: Ask a question or share an idea
+    url: https://github.com/Ale-Newport/MyWorld/discussions
+    about: Questions about the code, the island or running it locally belong in Discussions.

@@ -136,7 +136,7 @@ Thank you. The engineering in `folio-2025` — particularly the ray-cast vehicle
 tuning and the focus-point camera — is the reason this page is fun rather than
 merely functional. If anything here misrepresents the relationship or you would
 like the attribution worded differently, the contact details are on the
-[home page](https://alejandronewport.com).
+[home page](https://www.alenewport.com).
 
 ---
 
@@ -182,7 +182,7 @@ public project behind it, its tile is dashed and dimmed and the readout says
 "no public repository yet", so a mark on this wall is never a claim about the
 mark's owner. If you own one
 of these marks and would rather it were not shown, the contact details are on
-the [home page](https://alejandronewport.com).
+the [home page](https://www.alenewport.com).
 
 ### Where a mark stands in for a relative
 

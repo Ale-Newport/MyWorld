@@ -1,0 +1,56 @@
+name: Bug report
+description: Something on the site, the island or the editor does not work as it should.
+labels: [bug, triage]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report this. Please check the [open issues](https://github.com/Ale-Newport/MyWorld/issues) first.
+        **Security problems** go to a [private advisory](https://github.com/Ale-Newport/MyWorld/security/advisories/new), not here.
+  - type: dropdown
+    id: area
+    attributes:
+      label: Where does it happen?
+      options:
+        - Portfolio story (/)
+        - Projects archive (/projects)
+        - The island (/world)
+        - Blog or contact page
+        - Admin / local editor
+        - Running locally / build
+        - Somewhere else
+    validations:
+      required: true
+  - type: input
+    id: url
+    attributes:
+      label: Page or route
+      placeholder: https://www.alenewport.com/world
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened, and what did you expect?
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Open /world on a phone
+        2. Drive to the fountain
+        3. ...
+    validations:
+      required: true
+  - type: input
+    id: env
+    attributes:
+      label: Browser, device and OS
+      placeholder: Safari 26 on iPhone 15, iOS 26.1
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Console output or screenshots
+      description: Paste errors from the browser console, or drop a screenshot or screen recording.

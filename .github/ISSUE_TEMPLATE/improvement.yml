@@ -1,0 +1,30 @@
+name: Improvement
+description: Make something that already exists faster, more accessible, clearer or simpler.
+labels: [improvement, triage]
+body:
+  - type: dropdown
+    id: kind
+    attributes:
+      label: Kind of improvement
+      options:
+        - Performance
+        - Accessibility
+        - Documentation
+        - Code quality / tests
+        - Developer experience
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: current
+    attributes:
+      label: What is the situation today?
+      description: Measurements, screenshots or file paths help a lot.
+    validations:
+      required: true
+  - type: textarea
+    id: better
+    attributes:
+      label: What would be better?
+    validations:
+      required: true

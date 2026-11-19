@@ -2,6 +2,20 @@
   "name": "alejandro-newport-portfolio",
   "version": "1.0.0",
   "private": true,
+  "description": "A portfolio you can read, explore and drive through: a scroll-led story and an explorable 3D island, built with Next.js, Three.js and Rapier.",
+  "homepage": "https://www.alenewport.com",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Ale-Newport/MyWorld.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Ale-Newport/MyWorld/issues"
+  },
+  "license": "SEE LICENSE IN LICENSE",
+  "author": "Alejandro Newport Diaz",
+  "engines": {
+    "node": ">=24"
+  },
   "scripts": {
     "world:seed": "node scripts/world/build-seed.mjs",
     "predev": "npm run world:seed --silent",
@@ -19,6 +33,7 @@
     "deploy": "npm run world:seed --silent && opennextjs-cloudflare build && opennextjs-cloudflare deploy",
     "cf-typegen": "wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts",
     "lint": "eslint .",
+    "pretypecheck": "npm run world:seed --silent",
     "typecheck": "tsc --noEmit",
     "pretest": "npm run world:seed --silent",
     "test": "node --test --no-warnings \"tests/**/*.test.mjs\"",

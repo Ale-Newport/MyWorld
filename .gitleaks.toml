@@ -1,0 +1,11 @@
+# gitleaks configuration: run `gitleaks git --log-opts="--all" .` to scan history,
+# or `gitleaks git --staged .` before a commit.
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Content hashes, not secrets"
+paths = [
+  # SHA-256 of every vendored world file, used to audit the byte-for-byte copy.
+  '''public/archipelago/release\.json''',
+]

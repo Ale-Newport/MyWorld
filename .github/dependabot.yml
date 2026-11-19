@@ -1,0 +1,31 @@
+# Weekly dependency updates. Minor and patch releases arrive grouped in one PR per
+# ecosystem so they can be reviewed together; majors arrive one by one.
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: Europe/London
+    open-pull-requests-limit: 5
+    labels: [dependencies]
+    commit-message:
+      prefix: "chore(deps)"
+    groups:
+      npm-minor-and-patch:
+        update-types: [minor, patch]
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: Europe/London
+    labels: [dependencies, ci]
+    commit-message:
+      prefix: "ci(deps)"
+    groups:
+      actions:
+        patterns: ["*"]

@@ -1,0 +1,30 @@
+name: Feature request
+description: Propose something new for the island, the site's engineering or the editor.
+labels: [enhancement, triage]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        This is a personal portfolio, so its content (projects, biography, copy) is the author's own.
+        Ideas about how it is **built** are very welcome: the 3D runtime, performance, accessibility, tooling and the editor.
+  - type: textarea
+    id: problem
+    attributes:
+      label: What would this make possible or better?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed approach
+      description: How you would build it, and which parts of the code it would touch, if you know.
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives you considered
+  - type: checkboxes
+    id: help
+    attributes:
+      label: Contribution
+      options:
+        - label: I would like to open a pull request for this myself.

@@ -35,3 +35,19 @@ next-env.d.ts
 # The world seed is MADE from content/world (npm run world:seed): the gzip and its hashes are never committed
 /public/archipelago/seed/
 /src/server/world-seed.json
+
+# Secrets and keys that must never be committed
+*.pem
+*.key
+*.p12
+*.pfx
+.npmrc
+.secrets
+service-account*.json
+
+# Test and tooling output
+/coverage
+/blob-report
+/playwright/.cache
+npm-debug.log*
+.eslintcache

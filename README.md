@@ -1,93 +1,165 @@
-# MyWorld
+<p align="center">
+  <a href="https://www.alenewport.com"><img src="docs/images/demo.gif" alt="Scrolling through the portfolio's chapters, parting the leaves and driving a small car around the 3D island" width="720"></a>
+</p>
 
-### A portfolio you can read, explore and drive through.
+<h1 align="center">MyWorld</h1>
 
-Alejandro Newport's interactive portfolio combines a scroll-led story, a searchable project archive and an explorable 3D island. It brings software, AI and creative engineering work into one connected experience, backed by an administration workspace for editing and publishing content.
+<p align="center"><b>A developer portfolio you can read, explore and drive through: a scroll-led story that opens onto an explorable 3D island, built with Next.js, Three.js and Rapier physics.</b></p>
 
-**Next.js · React · TypeScript · Three.js · React Three Fiber · Rapier**
+<p align="center">
+  <a href="https://github.com/Ale-Newport/MyWorld/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/Ale-Newport/MyWorld/actions/workflows/ci.yml/badge.svg?branch=main"></a>
+  <a href="https://github.com/Ale-Newport/MyWorld/actions/workflows/codeql.yml"><img alt="CodeQL" src="https://github.com/Ale-Newport/MyWorld/actions/workflows/codeql.yml/badge.svg?branch=main"></a>
+  <a href="https://github.com/Ale-Newport/MyWorld/releases"><img alt="Latest release" src="https://img.shields.io/github/v/release/Ale-Newport/MyWorld?sort=semver&color=2f6b3f"></a>
+  <a href="LICENSE"><img alt="MIT licence (code)" src="https://img.shields.io/badge/code-MIT-2f6b3f"></a>
+  <img alt="Node.js 24+" src="https://img.shields.io/badge/node-%E2%89%A524-339933?logo=nodedotjs&logoColor=white">
+  <img alt="Next.js 16" src="https://img.shields.io/badge/Next.js-16-000000?logo=nextdotjs">
+  <img alt="Three.js" src="https://img.shields.io/badge/Three.js-r185-000000?logo=threedotjs">
+  <img alt="Cloudflare Workers" src="https://img.shields.io/badge/Cloudflare-Workers-F38020?logo=cloudflare&logoColor=white">
+</p>
 
-[Visit the live portfolio](https://alejandro-newport-portfolio.anewportd.workers.dev) · [Explore the island](https://alejandro-newport-portfolio.anewportd.workers.dev/world) · [Run locally](#run-locally)
+<p align="center">
+  <a href="https://www.alenewport.com"><b>Live site</b></a> ·
+  <a href="https://www.alenewport.com/world"><b>Drive the island</b></a> ·
+  <a href="#quick-start"><b>Run it locally</b></a> ·
+  <a href="CHANGELOG.md">Changelog</a>
+</p>
 
-![The deployed portfolio introduction](docs/images/portfolio.jpg)
+---
 
-*The public portfolio, captured in October 2026. Published content can evolve independently of the source defaults.*
+## Why it is interesting
 
-## Two ways to explore
+Most portfolios are a page of cards. This one is two connected experiences that share one content model:
 
-**Follow the story.** Move through the portfolio's chapters, discover the technologies behind the work, and open project case studies. Quick View, an index and a readable HTML profile give visitors different ways through the same material.
+- **The story.** Six chapters scroll over a lit, real-time 3D room: an introduction, a career ribbon, a *Tech Toolbox* where every technology links to the projects that used it, and a **project universe** that puts 37 projects on orbits you can filter and open.
+- **The world.** Keep scrolling and the garden takes over: leaves close over the page, part again, and you are on **Archipiélago**, an island you explore by car or plane, with districts for projects, career, education and achievements, a map with fast travel, mini-games, physics and synthesised sound.
+- **The editor.** Content is edited in a local editor app and published *to git*; the site is prerendered from those files, so a visit reads no database.
 
-**Enter the world.** Drive or fly around Archipiélago: discover project areas, career and education content, activities and achievements. The world includes its own map and travel controls.
+## Features
 
-![The Archipiélago world running locally from this repository](docs/images/world.jpg)
+| | |
+| --- | --- |
+| 🧭 **Scroll-led story** | Pinned chapters with 17 section animations, all with reduced-motion fallbacks; dark mode and a night version of the room |
+| 🪐 **Project universe** | 37 projects on an orbital system with category filters; case studies open in an overlay that keeps its URL |
+| 🏝️ **Explorable island** | Ray-cast vehicle on Rapier physics, driving and flying, keyboard and touch controls, map travel, signs and labels that face the camera |
+| ⚡ **Fast** | Static pages from Cloudflare's edge; the island loads only when you go there. Time to drive fell from 8.1 s to 4.1 s and transfer from 28.5 MB to 12.9 MB in the last performance pass |
+| ✍️ **Git-backed CMS** | A local editor (pages → sections → text and animations, device previews, drafts and revisions) whose *Publish* commits and pushes content |
+| 📊 **Private analytics** | First-party audience statistics in the deployed admin; no third-party trackers |
+| 🔒 **Hardened admin** | scrypt hashes, `__Host-` session cookies, CSRF and same-origin checks, login throttling, byte-typed uploads |
 
-## Run locally
+## Screenshots
 
-Use **Node.js 24+** and npm. The local content store uses Node's built-in SQLite; no Supabase account or Cloudflare setup is needed to explore the project.
+<table>
+  <tr>
+    <td width="50%"><img src="docs/images/portfolio.jpg" alt="The introduction chapter: the name set large over a pale 3D room framed by ivy"></td>
+    <td width="50%"><img src="docs/images/projects-universe.jpg" alt="The project universe: projects arranged on elliptical orbits with category filters"></td>
+  </tr>
+  <tr>
+    <td align="center"><sub>The introduction, rendered over a real-time 3D room</sub></td>
+    <td align="center"><sub>The project universe: 37 projects, filterable by category</sub></td>
+  </tr>
+  <tr>
+    <td colspan="2"><img src="docs/images/world.jpg" alt="Archipiélago: a low-poly island with roads, trees and a small car"></td>
+  </tr>
+  <tr>
+    <td colspan="2" align="center"><sub>Archipiélago, the island at <code>/world</code></sub></td>
+  </tr>
+</table>
+
+## Quick start
+
+You need **Node.js 24+** and npm. No database, cloud account or API key: the repository ships its content and the island's world document.
 
 ```bash
-git clone https://github.com/Ale-Newport/MyWorld.git
-cd MyWorld
-npm ci
-npm run dev
+git clone https://github.com/Ale-Newport/MyWorld.git && cd MyWorld && npm ci && npm run dev:site
 ```
 
-Open **[localhost:3000](http://localhost:3000)**. The repository includes default content and a world seed, so the public experience works before you create an administrator. Stop the server with `Ctrl+C`.
+Open **<http://localhost:3000>**.
 
-| Route | Explore |
+| Route | What you will see |
 | --- | --- |
-| `/` | The portfolio journey |
-| `/projects` | Project archive and case studies |
-| `/world` | The interactive island; use a modern browser with WebGL enabled |
-| `/admin/login` | Sign-in for the optional content workspace |
+| `/` | The portfolio story |
+| `/projects` | The project archive and case studies |
+| `/world` | The island (needs a browser with WebGL) |
+| `/blog`, `/contact` | The blog and the contact page |
 
-To create your own local administrator:
+**Controls on the island:** <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> or arrow keys to drive, <kbd>Space</kbd> to jump (twice to fly), <kbd>M</kbd> for the map. On a phone, press on the ground and drag: an on-screen joystick steers, and a tap on the car jumps.
+
+### The editor
+
+`npm run dev` starts the **editor** instead of the site: public pages redirect to `/admin`, where you edit pages, sections, animations and the world. Create a local account first:
 
 ```bash
 npm run admin:create -- --email you@example.com --name "Your Name"
 ```
 
-The command prompts for a password. Then open `/admin/login`. Local content, uploads and revisions live under `.data/cms/`. Setup and publishing are described in the [administration guide](docs/ADMIN.md).
+Local content, uploads and revisions live in `.data/cms/` (git-ignored). The [admin guide](docs/ADMIN.md) covers publishing, media and deployment; the [world guide](docs/ARCHIPELAGO_WORLD.md) covers the island's runtime and studio.
 
-## Built around the experience
+## Architecture
+
+```mermaid
+flowchart LR
+  subgraph Local["Your machine"]
+    E["Editor<br/>(npm run dev)"]
+  end
+  subgraph GH["GitHub"]
+    R[("MyWorld repo<br/>content/ + code")]
+  end
+  subgraph CF["Cloudflare"]
+    B["Workers Builds<br/>npm run cf:build"]
+    W["Worker (OpenNext)<br/>Next.js 16"]
+    S[("Static Assets<br/>prerendered pages,<br/>island runtime")]
+    H["Hyperdrive"]
+  end
+  P[("Supabase<br/>Postgres + storage")]
+  V(("Visitor"))
+
+  E -- "Publish = git commit + push" --> R
+  R -- "push to main" --> B --> W & S
+  V --> W --> S
+  W -- "admin: sessions, audience, blog" --> H --> P
+```
 
 | Layer | Implementation |
 | --- | --- |
-| Portfolio | Next.js App Router, React and TypeScript |
-| Visuals | Three.js, React Three Fiber, shaders and scroll-driven motion |
-| Island | ES-module runtime, Rapier physics, driving and flying |
-| Content | Project and page documents, drafts, revisions and publication history |
-| Local storage | SQLite and files on disk |
-| Hosted storage | Supabase Postgres and private object storage |
-| Hosting | OpenNext on Cloudflare Workers |
-
-The public page provides readable profile content alongside the visual experience. The world requires WebGL; the project archive remains a useful way to browse the work separately.
+| Site | Next.js 16 App Router, React 19, TypeScript, GSAP + Lenis for scroll |
+| 3D | Three.js, React Three Fiber and drei for the room; a standalone ES-module runtime with Rapier for the island |
+| Content | A versioned site document (zod schema + migrations), revisions, drafts; published to `content/` in git |
+| Admin storage | SQLite + files locally; Supabase Postgres (via Hyperdrive) and private storage when deployed |
+| Hosting | OpenNext on Cloudflare Workers, static pages from Workers Static Assets |
 
 ## Repository guide
 
 | Path | Purpose |
 | --- | --- |
 | `src/app/` | Public routes, admin routes and API handlers |
-| `src/content/` | Profile, projects and source content |
-| `src/components/` + `src/sections/` | Portfolio interface and chapter composition |
+| `src/sections/`, `src/components/` | Chapter composition and the portfolio interface |
 | `src/experience/` | React Three Fiber scenes and visual systems |
-| `src/server/` | Content store, authentication, revisions and storage |
-| `public/archipelago/` | Island runtime, assets and initial world document |
-| `scripts/` + `tests/` | Authoring tools, browser checks and automated tests |
+| `src/world/`, `public/archipelago/` | The island runtime, its assets and seed |
+| `src/server/` | Content store, authentication, revisions, media, blog, analytics |
+| `src/cms/` | Site document schema, migration and the Markdown renderer |
+| `content/` | The published site and world documents |
+| `scripts/`, `tests/` | Generators, QA and performance harnesses, automated tests |
 
-The [world guide](docs/ARCHIPELAGO_WORLD.md) explains the runtime, controls, seed and editor. The [admin guide](docs/ADMIN.md) covers the content workspace, media, revisions and deployment configuration.
-
-## Useful commands
+## Development
 
 ```bash
-npm run typecheck   # TypeScript checks
 npm run lint        # ESLint
-npm test            # Automated tests
-npm run build       # Next.js production build
-npm start           # Serve that build locally
+npm run typecheck   # TypeScript
+npm test            # 680+ node:test tests: CMS, auth, media, world systems
+npm run build       # Production build
+npm run preview     # Build for Cloudflare and serve it on local workerd
 ```
 
-For a local production preview, set a private `CMS_SECRET` of at least 32 characters; `.env.example` documents the settings. Cloudflare deployment uses `npm run cf:build` and `npm run deploy` after configuring the production services in the admin guide.
+CI runs lint, typecheck, tests, a dependency audit and a production build on every push and pull request; CodeQL scans every change to `main`. Deployment is `npm run deploy` (or Cloudflare Workers Builds on push); the production services and secrets are listed in [`.env.example`](.env.example) and the [admin guide](docs/ADMIN.md).
 
-## Preview verification
+## Contributing
 
-The clean-clone setup was checked on **22 October 2026** with `npm ci` and the development server. The local `/world` route loaded the bundled island, and the public portfolio URL was checked before linking it here. Screenshots show the deployed introduction and the local island; they are actual captures of the project.
+Bug fixes, performance and accessibility improvements, browser fixes, tests and docs are all welcome. The **content** (biography, projects, images) is the author's own and is not open for changes. Start with [CONTRIBUTING.md](CONTRIBUTING.md) and the issues labelled [`good first issue`](https://github.com/Ale-Newport/MyWorld/labels/good%20first%20issue); questions go to [Discussions](https://github.com/Ale-Newport/MyWorld/discussions).
+
+Found a vulnerability? Please report it privately; see [SECURITY.md](SECURITY.md).
+
+## Credits and licence
+
+The island's engine (game loop, physics layer, ray-cast vehicle, camera and input) is ported and adapted from **Bruno Simon's [folio-2025](https://github.com/brunosimon/folio-2025)** (MIT); every ported file says so, and [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) details what was ported, adapted or written fresh.
+
+The **code** is released under the [MIT License](LICENSE). The **personal content** (biography, project write-ups, images and identity) is © Alejandro Newport Diaz, all rights reserved: see [CONTENT_LICENSE.md](CONTENT_LICENSE.md). Build your own site from the code, with your own story in it.

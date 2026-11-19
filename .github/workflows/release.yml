@@ -1,0 +1,42 @@
+name: Release
+
+# Pushing a version tag (only the owner may create tags) publishes a GitHub
+# Release whose notes are that version's section of CHANGELOG.md.
+on:
+  push:
+    tags: ["v*.*.*"]
+
+permissions:
+  contents: read
+
+jobs:
+  release:
+    name: Publish release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Extract release notes from CHANGELOG.md
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          version="${TAG#v}"
+          awk -v v="$version" '
+            $0 ~ "^## \\[" v "\\]" { on = 1; next }
+            on && /^## \[/ { exit }
+            on { print }
+          ' CHANGELOG.md > notes.md
+          test -s notes.md || { echo "CHANGELOG.md has no section for $version"; exit 1; }
+      - name: Create the release (skipped if it already exists)
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            echo "Release $TAG already exists."
+          else
+            gh release create "$TAG" --verify-tag --title "$TAG" --notes-file notes.md
+          fi

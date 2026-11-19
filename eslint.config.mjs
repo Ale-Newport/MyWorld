@@ -17,7 +17,7 @@ const config = [
      errors out of compiled output — which has already happened once,
      with `.next-prod`. tsconfig's include list has the same shape of
      hole and the same fix. */
-  { ignores: ['public/archipelago/**', '.next*/**', 'node_modules/**', 'out/**', '.qa/**', 'next-env.d.ts'] },
+  { ignores: ['public/archipelago/**', '.next*/**', '.open-next/**', '.wrangler/**', 'node_modules/**', 'out/**', '.qa/**', '.data/**', 'assets/**', 'design-source/**', 'next-env.d.ts'] },
   ...spread(next),
   ...spread(nextCoreWebVitals),
   ...spread(nextTypeScript),
