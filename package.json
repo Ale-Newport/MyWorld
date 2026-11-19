@@ -83,3 +83,8 @@
     "wrangler": "^4.147.0"
   }
 }
+  },
+  "overrides": {
+    "@opennextjs/cloudflare": {
+      "glob": "^14.0.6"
+    }
