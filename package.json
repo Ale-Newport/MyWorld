@@ -25,6 +25,10 @@
     "editor:restart": "node scripts/editor/service.mjs restart",
     "editor:status": "node scripts/editor/service.mjs status",
     "editor:uninstall": "node scripts/editor/service.mjs uninstall",
+    "deps:automerge": "node scripts/maintenance/dependabot-merge.mjs run",
+    "deps:automerge:install": "node scripts/maintenance/dependabot-merge.mjs install",
+    "deps:automerge:uninstall": "node scripts/maintenance/dependabot-merge.mjs uninstall",
+    "deps:automerge:status": "node scripts/maintenance/dependabot-merge.mjs status",
     "dev:site": "npm run world:seed --silent && CMS_SHOW_SITE=1 next dev",
     "prebuild": "npm run world:seed --silent",
     "build": "next build",
@@ -82,10 +86,10 @@
     "simple-icons": "^16.30.0",
     "typescript": "^5.9.3",
     "wrangler": "^4.147.0"
-  }
-}
   },
   "overrides": {
     "@opennextjs/cloudflare": {
       "glob": "^14.0.6"
     }
+  }
+}
