@@ -69,9 +69,8 @@ export async function recordBatch(batch: IncomingBatch, request: { ip: string; u
   if (RATE.size > 5000) for (const [k, v] of RATE) if (at - v.at > 60_000) RATE.delete(k)
   const dev = device(Number(batch.width) || 0, batch.touch === true)
   const ref = referrerHost(batch.referrer, request.host)
-  const d = await db()
-  const insert = (...v: (string | number | null)[]) => d.run('insert into events (at, day, type, path, referrer, device, visitor, session, props) values (?, ?, ?, ?, ?, ?, ?, null, ?)', v)
-  let stored = 0
+  // Cleaned first, then stored in ONE statement: on the deployed site each statement is a round trip to Postgres.
+  const rows: (string | number | null)[][] = []
   for (const raw of batch.events.slice(0, 40)) {
     const e = raw as { type?: unknown; path?: unknown; props?: unknown }
     if (!EVENT_TYPES.includes(e?.type as EventType)) continue
@@ -79,10 +78,12 @@ export async function recordBatch(batch: IncomingBatch, request: { ip: string; u
     if (path?.startsWith('/admin')) continue
     const props: Record<string, unknown> = {}
     if (e.props && typeof e.props === 'object') for (const [k, v] of Object.entries(e.props as Record<string, unknown>).slice(0, 8)) if (/^[a-z_]{1,24}$/i.test(k)) props[k] = clean(v)
-    await insert(at, day, e.type as string, path, e.type === 'pageview' ? ref : null, dev, visitor, Object.keys(props).length ? JSON.stringify(props) : null)
-    stored++
+    rows.push([at, day, e.type as string, path, e.type === 'pageview' ? ref : null, dev, visitor, Object.keys(props).length ? JSON.stringify(props) : null])
   }
-  return stored
+  if (!rows.length) return 0
+  const d = await db()
+  await d.run(`insert into events (at, day, type, path, referrer, device, visitor, session, props) values ${rows.map(() => '(?, ?, ?, ?, ?, ?, ?, null, ?)').join(', ')}`, rows.flat())
+  return rows.length
 }
 
 /* ---- queries ------------------------------------------------- */

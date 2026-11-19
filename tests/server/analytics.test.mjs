@@ -4,7 +4,7 @@ import { freshDataDir, load } from '../setup.mjs'
 
 freshDataDir('analytics')
 const A = await load('src/server/analytics.ts')
-const { db } = await load('src/server/db.ts')
+const { db, tx } = await load('src/server/db.ts')
 const visitor = { ip: '203.0.113.7', ua: 'Mozilla/5.0 (Macintosh) AppleWebKit/537.36 Chrome/140.0 Safari/537.36', host: 'example.com', gpc: false, dnt: false, admin: false }
 const batch = (events, extra = {}) => ({ events, referrer: 'https://news.example.org/some/path?utm=1', width: 1440, ...extra })
 
@@ -40,4 +40,25 @@ test('the report says what was recorded', async () => {
   assert.equal(r.pages[0].path, '/projects')
   assert.equal(r.projects[0].slug, 'focus')
   assert.equal(r.total, 2)
+})
+
+test('a full batch is stored in one statement, in order, invalid events skipped', async () => {
+  const d = await db()
+  const before = Number((await d.get('select count(*) n from events')).n)
+  const events = Array.from({ length: 45 }, (_, i) => (i % 9 === 4 ? { type: 'nope', path: '/' } : { type: 'pageview', path: `/p/${i}` }))
+  // Inside a transaction every db() call returns the same handle, so its statements can be counted.
+  let statements = 0
+  const n = await tx(async () => {
+    const inner = await db()
+    const run = inner.run
+    inner.run = async (...args) => { statements++; return run.apply(inner, args) }
+    try { return await A.recordBatch(batch(events), { ...visitor, ua: `${visitor.ua} batch` }) } finally { inner.run = run }
+  })
+  // The first 40 events count; 4 of those (i = 4, 13, 22, 31) are not a known type.
+  assert.equal(n, 36)
+  assert.equal(statements, 1, 'one insert for the whole batch')
+  const rows = await d.all('select path from events order by id')
+  assert.equal(rows.length - before, 36)
+  assert.deepEqual(rows.slice(before, before + 3).map((r) => r.path), ['/p/0', '/p/1', '/p/2'])
+  assert.equal(await A.recordBatch(batch([{ type: 'nope' }]), visitor), 0, 'nothing valid, nothing written')
 })
