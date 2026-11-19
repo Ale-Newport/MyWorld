@@ -97,7 +97,8 @@ export function ContactForm({ address, open, onClose }: { address: string; open:
       if (res.ok && data.sent) { setStatus({ kind: 'sent' }); setValues({ name: '', email: '', message: '' }); return }
       if (res.status === 400 && data.fields) { setErrors(data.fields); setStatus({ kind: 'idle' }); return }
       if (data.fallback === 'mailto') {
-        if (res.status === 503) setRoute('mailto')
+        // 503: this deployment does not send email (or cannot right now); the mail app is simply the way.
+        if (res.status === 503) { setRoute('mailto'); handOff(); return }
         handOff(res.status === 429 ? 'You have sent several messages in a short time, so this one goes through your mail app.' : 'The site could not send it, so it goes through your mail app instead.')
         return
       }
@@ -149,10 +150,10 @@ export function ContactForm({ address, open, onClose }: { address: string; open:
 
       <div className={styles.foot}>
         <button type="submit" className={styles.send} disabled={busy} data-cursor="link">
-          {busy ? 'Sending…' : route === 'mailto' ? 'Open in my mail app' : 'Send message'}
+          {busy ? 'Sending…' : route === 'email' ? 'Send message' : 'Open in my mail app'}
         </button>
         <p className={styles.note}>
-          {route === 'mailto'
+          {route !== 'email'
             ? <>Your mail app opens with this message ready to send to <a href={`mailto:${address}`}>{address}</a>.</>
             : <>Sent to <a href={`mailto:${address}`}>{address}</a>. I reply from there.</>}
         </p>
