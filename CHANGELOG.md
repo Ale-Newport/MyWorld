@@ -62,7 +62,8 @@ The first tagged release: everything built since September 2026, live at
 - Login throttling keyed on Cloudflare's client address and counted atomically;
   the audience page checks the session itself; backslash paths can no longer
   leave the site through stored links; the login page no longer shows database
-  errors to visitors; HSTS, `nosniff`, referrer policy and `frame-ancestors` on
+  errors to visitors; the audience collector's rate limit can no longer be
+  reset by changing the User-Agent; HSTS, `nosniff`, referrer policy and `frame-ancestors` on
   every response.
 - Dependencies updated (Next.js 16.4.6, zod 4.6.7, undici) to clear known
   advisories in production dependencies.

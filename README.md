@@ -11,7 +11,7 @@
   <a href="https://github.com/Ale-Newport/MyWorld/actions/workflows/codeql.yml"><img alt="CodeQL" src="https://github.com/Ale-Newport/MyWorld/actions/workflows/codeql.yml/badge.svg?branch=main"></a>
   <a href="https://github.com/Ale-Newport/MyWorld/releases"><img alt="Latest release" src="https://img.shields.io/github/v/release/Ale-Newport/MyWorld?sort=semver&color=2f6b3f"></a>
   <a href="LICENSE"><img alt="MIT licence (code)" src="https://img.shields.io/badge/code-MIT-2f6b3f"></a>
-  <img alt="Node.js 24+" src="https://img.shields.io/badge/node-%E2%89%A524-339933?logo=nodedotjs&logoColor=white">
+  <img alt="Node.js 26 LTS" src="https://img.shields.io/badge/node-26%20LTS-339933?logo=nodedotjs&logoColor=white">
   <img alt="Next.js 16" src="https://img.shields.io/badge/Next.js-16-000000?logo=nextdotjs">
   <img alt="Three.js" src="https://img.shields.io/badge/Three.js-r185-000000?logo=threedotjs">
   <img alt="Cloudflare Workers" src="https://img.shields.io/badge/Cloudflare-Workers-F38020?logo=cloudflare&logoColor=white">
@@ -67,7 +67,7 @@ Most portfolios are a page of cards. This one is two connected experiences that 
 
 ## Quick start
 
-You need **Node.js 24+** and npm. No database, cloud account or API key: the repository ships its content and the island's world document.
+You need **Node.js 26 LTS** (24 also runs the site) and npm. No database, cloud account or API key: the repository ships its content and the island's world document.
 
 ```bash
 git clone https://github.com/Ale-Newport/MyWorld.git && cd MyWorld && npm ci && npm run dev:site
