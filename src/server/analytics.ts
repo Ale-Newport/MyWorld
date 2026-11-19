@@ -62,9 +62,10 @@ export async function recordBatch(batch: IncomingBatch, request: { ip: string; u
   const at = now()
   const day = new Date(at).toISOString().slice(0, 10)
   const visitor = createHash('sha256').update(`${cmsSecret()}|${day}|${request.ip}|${request.ua}`).digest('hex').slice(0, 16)
-  const rate = RATE.get(visitor)
+  // Keyed on the address alone: a client can rotate its User-Agent, not Cloudflare's view of its IP.
+  const rate = RATE.get(request.ip)
   if (rate && at - rate.at < 60_000 && rate.n > 120) return 0
-  RATE.set(visitor, rate && at - rate.at < 60_000 ? { at: rate.at, n: rate.n + batch.events.length } : { at, n: batch.events.length })
+  RATE.set(request.ip, rate && at - rate.at < 60_000 ? { at: rate.at, n: rate.n + batch.events.length } : { at, n: batch.events.length })
   if (RATE.size > 5000) for (const [k, v] of RATE) if (at - v.at > 60_000) RATE.delete(k)
   const dev = device(Number(batch.width) || 0, batch.touch === true)
   const ref = referrerHost(batch.referrer, request.host)
