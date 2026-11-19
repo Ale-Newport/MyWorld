@@ -1,6 +1,8 @@
 import type { NextConfig } from 'next'
 
 const nextConfig: NextConfig = {
+  // No `X-Powered-By: Next.js` on responses: it tells a visitor nothing and a scanner which exploits to try.
+  poweredByHeader: false,
   /* A production build normally writes to `.next`, which is also where
      `next dev` keeps its state — so building while a dev server is up
      restarts it mid-compile. `NEXT_DIST_DIR` lets a verification build
