@@ -22,6 +22,7 @@
     "dev": "next dev",
     "editor:install": "node scripts/editor/service.mjs install",
     "editor:update": "node scripts/editor/service.mjs update",
+    "editor:restart": "node scripts/editor/service.mjs restart",
     "editor:status": "node scripts/editor/service.mjs status",
     "editor:uninstall": "node scripts/editor/service.mjs uninstall",
     "dev:site": "npm run world:seed --silent && CMS_SHOW_SITE=1 next dev",
