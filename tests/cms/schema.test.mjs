@@ -121,3 +121,15 @@ test('the document committed as the published site is valid and has no broken re
   // What the editor writes is what the schema produces: nothing is left to a default at build time.
   assert.deepEqual(parsed.data, raw)
 })
+
+test('links and media never leave the site through a backslash path', async () => {
+  const { isSafeHref, isSafeSrc } = await load('src/cms/safe.ts')
+  for (const v of ['//evil.example', '/\\evil.example', 'javascript:alert(1)', 'data:text/html,x']) {
+    assert.equal(isSafeHref(v), false, v)
+  }
+  for (const v of ['//evil.example/a.png', '/\\evil.example/a.png', 'http://example.com/a.png']) {
+    assert.equal(isSafeSrc(v), false, v)
+  }
+  for (const v of ['/projects', '#top', 'https://example.com', 'mailto:hi@example.com', '']) assert.equal(isSafeHref(v), true, v)
+  assert.equal(isSafeSrc('/media/a.png'), true)
+})

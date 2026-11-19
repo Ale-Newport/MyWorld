@@ -12,7 +12,8 @@
 /** A URL a visitor may follow: http(s), mailto, tel, or a site-relative path. Never javascript: or data:. */
 export function isSafeHref(v: string): boolean {
   if (v.length > 2000) return false
-  if (v === '' || v.startsWith('/') || v.startsWith('#')) return !v.startsWith('//')
+  // Browsers read `/\host` like `//host`: both leave the site.
+  if (v === '' || v.startsWith('/') || v.startsWith('#')) return !/^\/[/\\]/.test(v)
   try {
     return ['http:', 'https:', 'mailto:', 'tel:'].includes(new URL(v).protocol)
   } catch {
@@ -22,5 +23,5 @@ export function isSafeHref(v: string): boolean {
 
 /** Media the site may load: site-relative, or https. */
 export function isSafeSrc(v: string): boolean {
-  return v.length <= 2000 && (v === '' || (v.startsWith('/') && !v.startsWith('//')) || v.startsWith('https://'))
+  return v.length <= 2000 && (v === '' || (v.startsWith('/') && !/^\/[/\\]/.test(v)) || v.startsWith('https://'))
 }

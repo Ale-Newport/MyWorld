@@ -48,7 +48,16 @@ const nextConfig: NextConfig = {
       { key: 'Referrer-Policy', value: 'same-origin' },
       { key: 'X-Content-Type-Options', value: 'nosniff' },
     ]
+    /* Every page: no sniffing, no framing by another site, no plugins, no <base> hijack.
+       The same set is in public/_headers for the files Cloudflare serves without the Worker. */
+    const site = [
+      { key: 'Strict-Transport-Security', value: 'max-age=31536000' },
+      { key: 'X-Content-Type-Options', value: 'nosniff' },
+      { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
+      { key: 'Content-Security-Policy', value: "frame-ancestors 'self'; object-src 'none'; base-uri 'self'" },
+    ]
     return [
+      { source: '/:path*', headers: site },
       { source: '/admin', headers: admin },
       { source: '/admin/:path*', headers: admin },
     ]

@@ -29,9 +29,16 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
     return (
       <main style={{ maxWidth: 560, margin: '15vh auto', padding: '0 1.5rem', fontFamily: 'system-ui, sans-serif', lineHeight: 1.5 }}>
         <h1 style={{ fontSize: '1.4rem' }}>The admin cannot reach its database</h1>
-        <p>Check the Worker&apos;s <code>DATABASE_URL</code> secret (Supabase → Connect → Transaction pooler, port 6543).</p>
-        <pre style={{ whiteSpace: 'pre-wrap', background: '#f3f3f3', padding: '0.8rem', borderRadius: 6 }}>{reason(error)}</pre>
-        <pre style={{ whiteSpace: 'pre-wrap', background: '#f3f3f3', padding: '0.8rem', borderRadius: 6, fontSize: 12 }}>{envReport(['DATABASE_URL', 'SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY', 'CMS_SECRET'])}</pre>
+        {EDITOR ? (
+          <>
+            <p>Check the Worker&apos;s <code>DATABASE_URL</code> secret (Supabase → Connect → Transaction pooler, port 6543).</p>
+            <pre style={{ whiteSpace: 'pre-wrap', background: '#f3f3f3', padding: '0.8rem', borderRadius: 6 }}>{reason(error)}</pre>
+            <pre style={{ whiteSpace: 'pre-wrap', background: '#f3f3f3', padding: '0.8rem', borderRadius: 6, fontSize: 12 }}>{envReport(['DATABASE_URL', 'SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY', 'CMS_SECRET'])}</pre>
+          </>
+        ) : (
+          /* Anyone can open this page, so the deployed site keeps the details in the Worker's logs. */
+          <p>Please try again in a few minutes. The details are in the Worker&apos;s logs.</p>
+        )}
       </main>
     )
   }

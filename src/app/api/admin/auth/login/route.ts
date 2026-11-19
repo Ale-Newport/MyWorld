@@ -12,8 +12,10 @@ export const runtime = 'nodejs'
    so a missing account and a wrong password take the same time. */
 const DECOY = 'scrypt$32768$8$1$AAAAAAAAAAAAAAAAAAAAAA$AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA'
 
+/* Cloudflare sets cf-connecting-ip itself; X-Forwarded-For is whatever the
+   client sent, so keying the lock on it would let every guess use a new key. */
 function clientAddress(req: NextRequest) {
-  return (req.headers.get('x-forwarded-for')?.split(',')[0] ?? req.headers.get('x-real-ip') ?? 'local').trim().slice(0, 64)
+  return (req.headers.get('cf-connecting-ip') ?? 'local').trim().slice(0, 64)
 }
 
 export async function POST(req: NextRequest) {
