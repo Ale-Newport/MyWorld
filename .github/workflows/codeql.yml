@@ -33,11 +33,14 @@ jobs:
           languages: ${{ matrix.language }}
           build-mode: none
           queries: security-extended
-          # Vendored, byte-for-byte third-party code (three.js, Rapier) and generated output.
+          # Vendored, byte-for-byte third-party code (three.js, Rapier), generated output,
+          # and code that never ships: tests and the local QA/measurement harnesses.
           config: |
             paths-ignore:
               - public/archipelago/preview/vendor
               - public/archipelago/dist
+              - tests
+              - scripts/qa
       - uses: github/codeql-action/analyze@33d7b85da1a04171e211befe2c739303b9a4c066 # v4.39.3
         with:
           category: /language:${{ matrix.language }}

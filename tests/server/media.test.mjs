@@ -40,3 +40,18 @@ test('a file still in use cannot be deleted', async () => {
   await M.deleteMedia(item.id, [], actor)
   assert.equal(await M.getMedia(item.id), null)
 })
+
+test('an SVG is recognised after a declaration and comments, and unclosed comments are refused quickly', async () => {
+  const svg = '<?xml version="1.0"?>\n<!-- made by hand --> <!-- twice -->\n<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 4 4"><rect width="4" height="4"/></svg>'
+  const item = await M.saveUpload(Buffer.from(svg), 'mark.svg', actor)
+  assert.equal(item.mime, 'image/svg+xml')
+  const started = performance.now()
+  await assert.rejects(M.saveUpload(Buffer.from('<!--'.repeat(600)), 'evil.svg', actor), /not accepted/)
+  assert.ok(performance.now() - started < 500, 'refused without backtracking')
+})
+
+test('comment stripping cannot assemble a new comment out of the pieces it removes', () => {
+  const out = M.sanitizeSvg('<svg xmlns="http://www.w3.org/2000/svg"><!<!-- x -->-- <script>alert(1)</script> --><rect width="1" height="1"/></svg>')
+  assert.doesNotMatch(out, /<script/i)
+  assert.doesNotMatch(out, /<!--/)
+})

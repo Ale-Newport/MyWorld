@@ -39,9 +39,19 @@ function detect(b: Buffer): Format | null {
   if (b[0] === 0x1a && b[1] === 0x45 && b[2] === 0xdf && b[3] === 0xa3) return { ext: 'webm', mime: 'video/webm', kind: 'video', max: config.maxMediaBytes }
   if (at(0, 'glTF')) return { ext: 'glb', mime: 'model/gltf-binary', kind: 'model', max: config.maxMediaBytes }
   if (b[0] === 0 && b[1] === 0 && b[2] === 1 && b[3] === 0) return { ext: 'ico', mime: 'image/x-icon', kind: 'icon', max: 1 * MB }
-  const head = b.subarray(0, 2048).toString('utf8').trimStart()
-  if (/^(<\?xml[^>]*>\s*)?(<!--[\s\S]*?-->\s*)*<svg[\s>]/i.test(head)) return { ext: 'svg', mime: 'image/svg+xml', kind: 'icon', max: 2 * MB }
+  if (looksLikeSvg(b.subarray(0, 2048).toString('utf8'))) return { ext: 'svg', mime: 'image/svg+xml', kind: 'icon', max: 2 * MB }
   return null
+}
+
+/** An optional XML declaration, any comments, then `<svg`. A loop rather than one regex, which could backtrack badly on unclosed comments. */
+function looksLikeSvg(head: string): boolean {
+  let s = head.trimStart().replace(/^<\?xml[^>]*>/i, '').trimStart()
+  while (s.startsWith('<!--')) {
+    const end = s.indexOf('-->', 4)
+    if (end < 0) return false
+    s = s.slice(end + 3).trimStart()
+  }
+  return /^<svg[\s>]/i.test(s)
 }
 
 function dimensions(b: Buffer, f: Format): [number | null, number | null] {
@@ -83,7 +93,13 @@ const SVG_UNWRAP = new Set(['a', 'switch'])
 export function sanitizeSvg(source: string): string {
   const out: string[] = []
   const stack: string[] = []
-  const tokens = source.replace(/<!--[\s\S]*?-->/g, '').replace(/<\?[\s\S]*?\?>/g, '').replace(/<!DOCTYPE[\s\S]*?>/gi, '').replace(/<!\[CDATA\[[\s\S]*?\]\]>/g, '').split(/(<[^>]*>)/)
+  // Repeated until nothing changes, so a removal cannot join the pieces of a new comment or declaration.
+  let text = source
+  for (let previous = ''; previous !== text; ) {
+    previous = text
+    text = text.replace(/<!--[\s\S]*?-->/g, '').replace(/<\?[\s\S]*?\?>/g, '').replace(/<!DOCTYPE[\s\S]*?>/gi, '').replace(/<!\[CDATA\[[\s\S]*?\]\]>/g, '')
+  }
+  const tokens = text.split(/(<[^>]*>)/)
   let skipDepth = 0
   for (const token of tokens) {
     if (!token.startsWith('<')) { if (!skipDepth && stack.length) out.push(token.replace(/[<>&]/g, (c) => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;' })[c]!)); continue }
