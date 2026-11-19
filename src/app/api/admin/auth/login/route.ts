@@ -1,6 +1,6 @@
 import type { NextRequest } from 'next/server'
-import { findByEmail, recordLogin } from '@/server/auth/users'
-import { verifyPassword } from '@/server/auth/password'
+import { findByEmail, recordLogin, upgradePasswordHash } from '@/server/auth/users'
+import { needsRehash, verifyPassword } from '@/server/auth/password'
 import { createSession, cookieOptions, SESSION_COOKIE } from '@/server/auth/session'
 import { clearFailures, lockedFor, recordFailure } from '@/server/auth/limits'
 import { json, problem, sameOrigin } from '@/server/auth/guard'
@@ -10,7 +10,7 @@ export const runtime = 'nodejs'
 
 /* A fixed hash to verify against when the account does not exist,
    so a missing account and a wrong password take the same time. */
-const DECOY = 'scrypt$32768$8$1$AAAAAAAAAAAAAAAAAAAAAA$AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA'
+const DECOY = 'scrypt$32768$8$3$AAAAAAAAAAAAAAAAAAAAAA$AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA'
 
 /* Cloudflare sets cf-connecting-ip itself; X-Forwarded-For is whatever the
    client sent, so keying the lock on it would let every guess use a new key. */
@@ -40,6 +40,8 @@ export async function POST(req: NextRequest) {
     return problem(401, 'That email and password do not match an administrator.')
   }
   await clearFailures(keys)
+  // A hash from before the current scrypt settings is replaced now, while the password is known.
+  if (needsRehash(user.passwordHash)) await upgradePasswordHash(user.id, password).catch((error) => console.error('[auth] could not upgrade a password hash:', (error as Error).message))
   await recordLogin(user.id)
   const session = await createSession(user.id, req.headers.get('user-agent'))
   audit({ id: user.id, name: user.name }, 'auth.login')

@@ -71,6 +71,11 @@ export async function setPassword(id: string, password: string) {
   await d.run('delete from sessions where user_id = ?', [id])
 }
 
+/** Stores a stronger hash of a password that was just verified. Sessions stay: the password did not change. */
+export async function upgradePasswordHash(id: string, password: string) {
+  await (await db()).run('update users set password_hash = ? where id = ?', [await hashPassword(password), id])
+}
+
 export async function recordLogin(id: string) {
   await (await db()).run('update users set last_login_at = ? where id = ?', [now(), id])
 }

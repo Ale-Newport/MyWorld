@@ -298,8 +298,17 @@ Not linking the admin is not what protects it. These do:
   - The cookie is `HttpOnly`, `SameSite=Strict`, `Secure`, and named with the `__Host-` prefix in production.
   - Sessions end after 14 days without activity and after 30 days at most. Sign-out deletes them.
 - **Sign-in.**
-  - Passwords are salted scrypt hashes.
-  - Five failures in 15 minutes lock that account and address. Each further lock doubles the time.
+  - Passwords are salted scrypt hashes with N = 2^15, r = 8, p = 3: OWASP's equal-strength alternative to N = 2^17, at the 32 MiB a Worker can afford (N = 2^17 needs 128 MiB, a whole Worker isolate). Hashes made with the earlier p = 1 are replaced at the next correct sign-in; sessions are kept. A sign-in for an unknown email costs the same, so timing does not reveal which accounts exist.
+
+    | Setting (r = 8) | Memory | Node 26 | workerd |
+    | --- | --- | --- | --- |
+    | N = 2^15, p = 1 (before) | 32 MiB | 84 ms | 62 ms |
+    | N = 2^16, p = 1 | 64 MiB | 452 ms | 132 ms |
+    | N = 2^17, p = 1 | 128 MiB | 1206 ms | 405 ms |
+    | **N = 2^15, p = 3 (now)** | **32 MiB** | 521 ms | 252 ms |
+
+    Measured on 2026-11-19 on an Apple-silicon Mac (Node 26.13, `wrangler dev`); one hash per sign-in.
+  - Five failures in 15 minutes lock that account and address (the address is Cloudflare's `cf-connecting-ip`). Locks escalate: failing again soon after a lock ends doubles the next one.
   - A correct password is still refused during a lock, so a lock cannot be used to test guesses.
 - **No open registration.** Administrators exist only through `npm run admin:create`.
 - **Validation.** Every saved document is checked against a schema and for broken references before it is stored, and again before it is published:

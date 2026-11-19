@@ -4,9 +4,14 @@ import { randomBytes, scrypt, timingSafeEqual } from 'node:crypto'
    `scrypt$N$r$p$salt$hash`, all parameters in the string so they
    can be raised later without invalidating existing accounts. */
 
+/* OWASP's scrypt guidance offers equal-strength settings; N = 2^17 (128 MiB) is
+   the whole memory of a Cloudflare Worker isolate, so this uses the N = 2^15,
+   r = 8, p = 3 row: the same 32 MiB per hash as before, three times the work
+   (about 250 ms on workerd, measured 2026-11-19; see docs/ADMIN.md). Hashes made
+   with weaker settings are upgraded at the next successful sign-in. */
 const N = 2 ** 15
 const R = 8
-const P = 1
+const P = 3
 const KEYLEN = 64
 
 function derive(password: string, salt: Buffer, n = N, r = R, p = P): Promise<Buffer> {
@@ -27,6 +32,12 @@ export async function verifyPassword(password: string, stored: string): Promise<
   const expected = Buffer.from(hash, 'base64url')
   const key = await derive(password, Buffer.from(salt, 'base64url'), Number(n), Number(r), Number(p))
   return key.length === expected.length && timingSafeEqual(key, expected)
+}
+
+/** True when a stored hash was made with weaker settings than today's (or is not ours): re-hash after a correct sign-in. */
+export function needsRehash(stored: string): boolean {
+  const [scheme, n, r, p] = stored.split('$')
+  return scheme !== 'scrypt' || Number(n) < N || Number(r) < R || Number(n) * Number(r) * Number(p) < N * R * P
 }
 
 /** Twelve characters at least, and not one of the obvious ones. */
