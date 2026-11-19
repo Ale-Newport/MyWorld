@@ -468,10 +468,10 @@ export const landmarks: Landmark[] = [
     href: 'https://www.linkedin.com/in/alejandro-newport',
   },
   {
-    id: 'social-email', district: 'social', label: 'EMAIL', sublabel: 'hello@alejandronewport.com',
+    id: 'social-email', district: 'social', label: 'EMAIL', sublabel: 'ale.newport.diaz@gmail.com',
     x: ZONES.social.x - 6, z: ZONES.social.z + 15, rotation: Math.PI,
     visual: 'sign', interaction: 'link', radius: 6.5,
-    href: 'mailto:hello@alejandronewport.com',
+    href: 'mailto:ale.newport.diaz@gmail.com',
   },
   {
     id: 'social-cv', district: 'social', label: 'CV', sublabel: 'PDF',

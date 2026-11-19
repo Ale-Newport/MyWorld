@@ -59,10 +59,9 @@ export const contact: ContactLink[] = [
   {
     id: 'email',
     label: 'Email',
-    value: 'hello@alejandronewport.com',
-    href: 'mailto:hello@alejandronewport.com',
-    dataStatus: 'placeholder',
-    needsVerification: true,
+    value: 'ale.newport.diaz@gmail.com',
+    href: 'mailto:ale.newport.diaz@gmail.com',
+    dataStatus: 'verified',
   },
   {
     id: 'github',

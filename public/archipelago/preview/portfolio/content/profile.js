@@ -40,10 +40,9 @@ export const contact = [
     {
         id: 'email',
         label: 'Email',
-        value: 'hello@alejandronewport.com',
-        href: 'mailto:hello@alejandronewport.com',
-        dataStatus: 'placeholder',
-        needsVerification: true,
+        value: 'ale.newport.diaz@gmail.com',
+        href: 'mailto:ale.newport.diaz@gmail.com',
+        dataStatus: 'verified',
     },
     {
         id: 'github',
@@ -70,7 +69,7 @@ export const contact = [
     },
 ];
 export const siteConfig = {
-    url: 'https://alejandronewport.com',
+    url: 'https://www.alenewport.com',
     title: 'Alejandro Newport — Software & AI Engineer',
     description: 'Computer scientist and engineer building intelligent products across software, AI, data and interactive systems. King’s College London → UCL. Portfolio 2026.',
     keywords: [

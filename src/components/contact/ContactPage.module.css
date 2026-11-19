@@ -19,7 +19,8 @@
 
 /* The page's words stand above the light behind the terminal's glass (Terminal.module.css, .glow), wherever the
    window is dragged; the window itself stands above them. */
-.eyebrow, .closing, .links, .colophon { position: relative; z-index: 1; }
+.eyebrow, .closing, .reach, .colophon { position: relative; z-index: 1; }
+.reach { min-width: 0; }
 
 /* ---- the corner notes, as a row ---- */
 .eyebrow {
@@ -81,6 +82,7 @@
 .item { border-bottom: var(--hair) solid var(--border); }
 .link {
   display: grid;
+  width: 100%;
   grid-template-columns: 1fr auto;
   grid-template-rows: auto auto;
   align-items: baseline;
@@ -93,6 +95,8 @@
   .link:hover { padding-left: var(--sp-4); color: var(--text-primary); transition-duration: var(--dur-quick); }
 }
 .link:active, .link[data-press] { padding-left: var(--sp-4); color: var(--text-primary); transition-duration: var(--dur-quick); }
+/* The Message row is a button that opens the form: the same row, without a button's own look. */
+button.link { border: 0; background: none; font: inherit; text-align: left; cursor: pointer; }
 .link[data-pending='true'] { cursor: default; }
 @media (hover: hover) {
   .link[data-pending='true']:hover { padding-left: 0; color: var(--text-muted); }

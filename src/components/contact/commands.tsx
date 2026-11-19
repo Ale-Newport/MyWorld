@@ -272,6 +272,15 @@ function buildCommands(site: SiteContent): Command[] {
     },
     ...contactCommands,
     {
+      name: 'message', aliases: ['write', 'mail'], group: 'site', summary: 'Write to me from this page',
+      run: (_a, _l, sh) => {
+        if (!mailLink(sh.site)) { sh.print(<Line tone="dim">There is no address to write to yet.</Line>); return }
+        sh.print(<Line>Opening the message form under the links…</Line>)
+        // ContactPage listens for this and opens ContactForm.
+        window.dispatchEvent(new Event('contact:compose'))
+      },
+    },
+    {
       name: 'projects', group: 'site', summary: 'Everything I have built, listed',
       run: (_a, _l, sh) => {
         const { projects } = sh.site
@@ -477,7 +486,7 @@ function buildCommands(site: SiteContent): Command[] {
   return [...listed, ...eggs]
 }
 
-/** The site's own address, without the scheme: `alejandronewport.com`. */
+/** The site's own address, without the scheme: `alenewport.com`. */
 export function domain(site: SiteContent) {
   try { return new URL(site.settings.siteUrl).host.replace(/^www\./, '') } catch { return 'localhost' }
 }
