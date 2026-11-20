@@ -156,8 +156,11 @@ interface WriteInput {
 async function insert(docId: DocId, parentId: string | null, input: Omit<WriteInput, 'base' | 'force'>, publishedAt: number | null = null): Promise<RevisionMeta> {
   const id = randomUUID()
   const body = input.content ?? JSON.stringify(input.blobs ?? {})
-  const at = now()
   const d = await db()
+  // Strictly after this document's newest revision: two saves in the same millisecond would otherwise share a
+  // timestamp, and history (ordered by created_at, then a random id) could list them the wrong way round.
+  const latest = Number((await d.get<{ m: number | null }>('select max(created_at) as m from revisions where doc_id = ?', [docId]))?.m ?? 0)
+  const at = Math.max(now(), latest + 1)
   // The Cloudflare TCP socket closes when a single Postgres parameter reaches
   // roughly 64 KiB. Write large documents in smaller pieces in this transaction.
   // Slice on UTF-16 boundaries without splitting a surrogate pair.
