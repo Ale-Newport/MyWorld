@@ -51,3 +51,12 @@ service-account*.json
 /playwright/.cache
 npm-debug.log*
 .eslintcache
+
+# Kept locally, never published: promotional drafts, agent instructions, internal reports and archives
+LAUNCH*.md
+/launch/
+/docs/launch/
+[Aa][Gg][Ee][Nn][Tt][Ss].md
+.cursor/
+.aider*
+/docs/archive/
