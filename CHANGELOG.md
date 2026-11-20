@@ -8,6 +8,21 @@ URLs, the content document schema and the documented commands are its
 
 ## [Unreleased]
 
+### Fixed
+
+- The contact email is ale.newport.diaz@gmail.com everywhere (a plain `mailto:`
+  link); canonical URLs, the sitemap and robots.txt use www.alenewport.com.
+- Camera-facing labels on the island no longer allocate per frame on Node 24.
+- Analytics batches are stored with one insert; revision history keeps its
+  order when two saves land in the same millisecond.
+- Admin passwords use scrypt N=2^15, r=8, p=3, upgraded at the next sign-in.
+- The editor's status check reports the truth and never takes another
+  process's port.
+
+### Security
+
+- OpenNext's `glob` dependency is overridden to a patched release.
+
 ## [1.0.0] - 2026-11-19
 
 The first tagged release: everything built since September 2026, live at

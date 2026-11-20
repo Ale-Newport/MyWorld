@@ -1,13 +1,12 @@
 'use client'
 
-import { useEffect, useState, type CSSProperties } from 'react'
+import type { CSSProperties } from 'react'
 import { useSite } from '@/cms/context'
 import { useCmsText } from '@/cms/editable'
 import { widestWordEm } from '@/components/typography/capitals'
 import { SiteHeader } from '@/components/site/SiteHeader'
 import { Arrow } from '@/components/ui/Arrow'
 import { Terminal } from './Terminal'
-import { ContactForm } from './ContactForm'
 import styles from './ContactPage.module.css'
 
 /* ============================================================
@@ -31,16 +30,6 @@ export function ContactPage() {
   const { question, answer } = profile.closing
   // As large as the column allows, and no larger than its longest word does (capitals.ts): lines break between words.
   const wordEm = (Math.max(widestWordEm(question, -0.052), widestWordEm(answer, -0.052)) + 0.1).toFixed(3)
-  // The form writes to the address the Email link uses; without one there is no form.
-  const mail = contact.find((c) => c.href.startsWith('mailto:') && c.dataStatus !== 'placeholder')
-  const address = mail ? decodeURIComponent(mail.href.slice('mailto:'.length).split('?')[0]) : null
-  const [writing, setWriting] = useState(false)
-  // The terminal's `message` command opens the form too (commands.tsx).
-  useEffect(() => {
-    const open = () => setWriting(true)
-    window.addEventListener('contact:compose', open)
-    return () => window.removeEventListener('contact:compose', open)
-  }, [])
 
   return (
     <>
@@ -69,7 +58,6 @@ export function ContactPage() {
           </h1>
         </div>
 
-        <div className={styles.reach}>
         <ul className={styles.links} aria-label="Contact links">
           {contact.map((c, i) => {
             const pending = c.id === 'cv' && c.dataStatus === 'placeholder'
@@ -98,31 +86,13 @@ export function ContactPage() {
               </li>
             )
           })}
-          {address && (
-            <li className={styles.item} style={{ '--i': 3 + contact.length } as CSSProperties}>
-              <button
-                type="button"
-                className={styles.link}
-                aria-expanded={writing}
-                onClick={() => setWriting((w) => !w)}
-                data-cursor="link"
-                data-cursor-text="WRITE"
-              >
-                <span className={styles.linkLabel}>Message</span>
-                <span className={styles.linkValue}>{writing ? 'Writing…' : 'Write to me here'}</span>
-                <span className={styles.linkArrow}><Arrow dir={writing ? 'up' : 'down'} /></span>
-              </button>
-            </li>
-          )}
         </ul>
-        {address && <ContactForm address={address} open={writing} onClose={() => setWriting(false)} />}
-        </div>
 
         <div className={styles.terminal}>
           <Terminal />
         </div>
 
-        <footer className={styles.colophon} style={{ '--i': 4 + contact.length } as CSSProperties}>
+        <footer className={styles.colophon} style={{ '--i': 3 + contact.length } as CSSProperties}>
           <span>{signature}</span>
           <span>{credits}</span>
         </footer>

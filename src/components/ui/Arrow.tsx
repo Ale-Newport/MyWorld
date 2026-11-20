@@ -12,7 +12,6 @@ const PATHS = {
   right: 'M2.5 8h11M9 3.5 13.5 8 9 12.5',
   left: 'M13.5 8h-11M7 3.5 2.5 8 7 12.5',
   down: 'M8 2.5v11M3.5 9 8 13.5 12.5 9',
-  up: 'M8 13.5v-11M3.5 7 8 2.5 12.5 7',
 } as const
 
 export type ArrowDirection = keyof typeof PATHS
